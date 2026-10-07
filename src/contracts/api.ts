@@ -1,0 +1,209 @@
+// Every Milestone A HTTP route: method and path, path params, query, body
+// and response. Mocks for every response are in ./mocks/api.ts, and the
+// type of that object makes a route without a mock a compile error.
+//
+// Server-free on purpose: the client imports this file.
+
+import type {
+  AccountView,
+  AdminOverview,
+  AuditRow,
+  AuthMethods,
+  LoginResponse,
+  Me,
+  NewUserRequest,
+  SessionView,
+  SettingValue,
+  TotpEnrollment,
+  TotpStatus,
+  TotpVerifyRequest,
+  UserChangesRequest,
+  UserView,
+} from "./auth.js";
+import type { BackupPosture, RestoreTestMark } from "./backups.js";
+import type { CheckRequest, CheckView } from "./checks.js";
+import type { Category, CategoryDetail, CheckHistory, CheckResult, HealthBoard } from "./health.js";
+import type { HostRequest, HostTestResult, HostView } from "./hosts.js";
+import type { CapabilityReport } from "./k8s.js";
+import type { NodeSummary, SeriesInfo, SeriesResult } from "./metrics.js";
+import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
+import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
+import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
+import type { EventView, LogLines, NamespaceView, PodView, WorkloadLinks, WorkloadView } from "./workloads.js";
+
+type None = Record<string, never>;
+
+export interface Route<Params = None, Query = None, Body = None, Res = unknown> {
+  params: Params;
+  query: Query;
+  body: Body;
+  response: Res;
+}
+
+// A text/event-stream whose every `data:` line is one JSON-encoded T.
+export interface EventStream<T> {
+  readonly eventStream: T;
+}
+
+// A non-JSON body (CSV export).
+export interface TextBody<Type extends string> {
+  readonly contentType: Type;
+}
+
+// Every error response, any route: { error } with a 4xx/5xx status.
+export interface ApiError {
+  error: string;
+}
+
+export interface Ok {
+  ok: true;
+}
+
+export interface ApiRoutes {
+  // --- runtime (S1) -------------------------------------------------------
+  // Unauthenticated probes. /healthz is readiness and answers 503 Draining
+  // during a drain; /livez always answers 200.
+  "GET /healthz": Route<None, None, None, Healthz | Draining>;
+  "GET /livez": Route<None, None, None, { status: "ok" }>;
+  "GET /api/system/modules": Route<None, None, None, ModuleStatus[]>;
+  // Admin only.
+  "GET /api/system/jobs": Route<None, None, None, JobsView>;
+
+  // --- platform (S2), same shapes as code-console --------------------------
+  // Browser navigations, not JSON: GET /auth/oidc/start[?link=1] and
+  // GET /auth/oidc/callback redirect.
+  "GET /api/me": Route<None, None, None, Me>;
+  "GET /api/auth/methods": Route<None, None, None, AuthMethods>;
+  "POST /api/auth/login": Route<None, None, { username: string; password: string }, LoginResponse>;
+  "POST /api/auth/logout": Route<None, None, None, Ok>;
+  "POST /api/auth/password": Route<None, None, { current: string; next: string }, Ok>;
+  "GET /api/auth/account": Route<None, None, None, AccountView>;
+  "POST /api/auth/totp/verify": Route<None, None, TotpVerifyRequest, { mustChangePassword: boolean }>;
+  "GET /api/auth/totp/status": Route<None, None, None, TotpStatus>;
+  "POST /api/auth/totp/enroll": Route<None, None, None, TotpEnrollment>;
+  "POST /api/auth/totp/confirm": Route<None, None, { code: string }, { recoveryCodes: string[] }>;
+  "POST /api/auth/totp/disable": Route<None, None, { password?: string; code?: string }, Ok>;
+  "POST /api/auth/totp/recovery-codes": Route<None, None, { code: string }, { recoveryCodes: string[] }>;
+  "GET /api/admin/overview": Route<None, None, None, AdminOverview>;
+  "PUT /api/admin/settings/:key": Route<
+    { key: string },
+    None,
+    { value: SettingValue },
+    { key: string; value: SettingValue }
+  >;
+  "DELETE /api/admin/settings/:key": Route<{ key: string }, None, None, { key: string; value: SettingValue }>;
+  "PUT /api/admin/oidc/secret": Route<None, None, { value: string }, { hasSecret: boolean }>;
+  "POST /api/admin/oidc/test": Route<None, None, None, { ok: boolean; issuer?: string; error?: string }>;
+  "GET /api/admin/users": Route<None, None, None, UserView[]>;
+  "POST /api/admin/users": Route<None, None, NewUserRequest, { user: UserView; temporaryPassword: string | null }>;
+  "PATCH /api/admin/users/:id": Route<{ id: string }, None, UserChangesRequest, UserView>;
+  "DELETE /api/admin/users/:id": Route<{ id: string }, None, None, Ok>;
+  "POST /api/admin/users/:id/password": Route<{ id: string }, None, None, { temporaryPassword: string }>;
+  "POST /api/admin/users/:id/totp/reset": Route<{ id: string }, None, None, Ok>;
+  "GET /api/admin/users/:id/sessions": Route<{ id: string }, None, None, SessionView[]>;
+  "DELETE /api/admin/users/:id/sessions": Route<{ id: string }, None, None, { ended: number }>;
+  "DELETE /api/admin/users/:id/sessions/:handle": Route<{ id: string; handle: string }, None, None, Ok>;
+  "DELETE /api/admin/users/:id/identities": Route<{ id: string }, None, { provider: string }, UserView>;
+  "GET /api/admin/audit": Route<None, { limit?: string; before?: string }, None, AuditRow[]>;
+
+  // --- k8s (A1) -----------------------------------------------------------
+  "GET /api/k8s/capabilities": Route<None, { refresh?: "1" }, None, CapabilityReport>;
+
+  // --- health (A2) --------------------------------------------------------
+  "GET /api/health/board": Route<None, None, None, HealthBoard>;
+  "GET /api/health/categories/:category": Route<{ category: Category }, None, None, CategoryDetail>;
+  // from/to: ISO 8601; default the last 24h.
+  "GET /api/health/history/:providerId/:checkId": Route<
+    { providerId: string; checkId: string },
+    { from?: string; to?: string },
+    None,
+    CheckHistory
+  >;
+  // Runs the provider now (write): results as collect() returned them.
+  "POST /api/health/providers/:providerId/run": Route<{ providerId: string }, None, None, CheckResult[]>;
+
+  // --- metrics (A3) -------------------------------------------------------
+  // q: JSON-encoded SeriesQuery[]. One SeriesResult per matching label set.
+  "GET /api/metrics/query": Route<None, { q: string }, None, SeriesResult[]>;
+  "GET /api/metrics/series": Route<None, { prefix?: string }, None, SeriesInfo[]>;
+
+  // --- notify (A4) --------------------------------------------------------
+  "GET /api/notify/channels": Route<None, None, None, ChannelView[]>;
+  "POST /api/notify/channels": Route<None, None, ChannelRequest, ChannelView>;
+  "PUT /api/notify/channels/:id": Route<{ id: string }, None, ChannelRequest, ChannelView>;
+  "DELETE /api/notify/channels/:id": Route<{ id: string }, None, None, Ok>;
+  "POST /api/notify/channels/:id/test": Route<{ id: string }, None, None, TestSendResult>;
+
+  // --- hosts (A9) ---------------------------------------------------------
+  "GET /api/hosts": Route<None, None, None, HostView[]>;
+  "POST /api/hosts": Route<None, None, HostRequest, HostView>;
+  "GET /api/hosts/:id": Route<{ id: string }, None, None, HostView>;
+  "PUT /api/hosts/:id": Route<{ id: string }, None, HostRequest, HostView>;
+  "DELETE /api/hosts/:id": Route<{ id: string }, None, None, Ok>;
+  // Connects with the given (unsaved) settings; nothing is stored.
+  "POST /api/hosts/test": Route<None, None, HostRequest, HostTestResult>;
+
+  // --- checks (A10) -------------------------------------------------------
+  "GET /api/checks": Route<None, None, None, CheckView[]>;
+  "POST /api/checks": Route<None, None, CheckRequest, CheckView>;
+  "PUT /api/checks/:id": Route<{ id: string }, None, CheckRequest, CheckView>;
+  "DELETE /api/checks/:id": Route<{ id: string }, None, None, Ok>;
+  "POST /api/checks/:id/run": Route<{ id: string }, None, None, CheckResult>;
+
+  // --- metrics-k8s (A11) --------------------------------------------------
+  "GET /api/metrics-k8s/nodes": Route<None, None, None, NodeSummary[]>;
+
+  // --- backups (A12) ------------------------------------------------------
+  "GET /api/backups/posture": Route<None, None, None, BackupPosture>;
+  "GET /api/backups/posture.csv": Route<None, None, None, TextBody<"text/csv">>;
+  // uid: the PVC's uid. at: ISO 8601 date the restore was tested.
+  "POST /api/backups/volumes/:uid/restore-tests": Route<
+    { uid: string },
+    None,
+    { at: string; note: string },
+    RestoreTestMark
+  >;
+
+  // --- workloads (A13) ----------------------------------------------------
+  "GET /api/workloads/links": Route<None, None, None, WorkloadLinks>;
+  "GET /api/workloads/namespaces": Route<None, None, None, NamespaceView[]>;
+  "GET /api/workloads/namespaces/:namespace/workloads": Route<{ namespace: string }, None, None, WorkloadView[]>;
+  "GET /api/workloads/namespaces/:namespace/pods": Route<{ namespace: string }, { workload?: string }, None, PodView[]>;
+  "GET /api/workloads/namespaces/:namespace/pods/:pod": Route<{ namespace: string; pod: string }, None, None, PodView>;
+  "GET /api/workloads/namespaces/:namespace/events": Route<
+    { namespace: string },
+    { object?: string },
+    None,
+    EventView[]
+  >;
+  "GET /api/workloads/namespaces/:namespace/pods/:pod/logs": Route<
+    { namespace: string; pod: string },
+    { container?: string; tail?: string; previous?: "1" },
+    None,
+    LogLines
+  >;
+  // Follows the log; every event is one line, already redacted.
+  "GET /api/workloads/namespaces/:namespace/pods/:pod/logs/stream": Route<
+    { namespace: string; pod: string },
+    { container?: string; tail?: string },
+    None,
+    EventStream<{ line: string }>
+  >;
+
+  // --- onboarding (A14) ---------------------------------------------------
+  "GET /api/onboarding/state": Route<None, None, None, OnboardingState>;
+  "POST /api/onboarding/steps/:step": Route<
+    { step: OnboardingStepId },
+    None,
+    { action: "done" | "skip" },
+    OnboardingState
+  >;
+}
+
+export type RouteKey = keyof ApiRoutes;
+
+// What a mock of a route's response looks like: the response itself, the
+// sequence of events for a stream, the text for a text body.
+export type MockResponse<R> = R extends EventStream<infer T> ? T[] : R extends TextBody<string> ? string : R;
+
+export type ApiMocks = { [K in RouteKey]: MockResponse<ApiRoutes[K]["response"]> };

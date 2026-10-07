@@ -1,0 +1,65 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "RecurringJob",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:34:25Z",
+        "generation": 2,
+        "name": "nightly-backups",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27032458",
+        "uid": "a02fad34-53c6-417f-b93f-ce67a2756aeb"
+      },
+      "spec": {
+        "concurrency": 1,
+        "cron": "0 10 * * *",
+        "groups": [
+          "default"
+        ],
+        "labels": {},
+        "name": "nightly-backups",
+        "parameters": {},
+        "retain": 7,
+        "task": "backup"
+      },
+      "status": {
+        "executionCount": 1,
+        "ownerID": "agent-1"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "RecurringJob",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:35:31Z",
+        "generation": 2,
+        "name": "weekly-system-backup",
+        "namespace": "longhorn-system",
+        "resourceVersion": "26978853",
+        "uid": "116a0ce1-3dc4-4549-85d9-a2dfec0342ea"
+      },
+      "spec": {
+        "concurrency": 10,
+        "cron": "0 8 * * 0",
+        "groups": [],
+        "labels": {},
+        "name": "weekly-system-backup",
+        "parameters": {
+          "volume-backup-policy": "if-not-present"
+        },
+        "retain": 4,
+        "task": "system-backup"
+      },
+      "status": {
+        "executionCount": 0,
+        "ownerID": "server-1"
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

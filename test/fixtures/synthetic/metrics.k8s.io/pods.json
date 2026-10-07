@@ -1,0 +1,29 @@
+{
+  "apiVersion": "metrics.k8s.io/v1beta1",
+  "kind": "PodMetricsList",
+  "metadata": {},
+  "items": [
+    {
+      "metadata": {
+        "name": "web-7d9f8b6c5d-x2k4q",
+        "namespace": "default",
+        "creationTimestamp": "2026-10-07T11:59:30.000Z"
+      },
+      "timestamp": "2026-10-07T11:59:30.000Z",
+      "window": "17.2s",
+      "containers": [{ "name": "web", "usage": { "cpu": "12000000n", "memory": "90112Ki" } }]
+    },
+    {
+      "metadata": { "name": "postgres-0", "namespace": "databases", "creationTimestamp": "2026-10-07T11:59:30.000Z" },
+      "timestamp": "2026-10-07T11:59:30.000Z",
+      "window": "17.2s",
+      "containers": [{ "name": "postgres", "usage": { "cpu": "85000000n", "memory": "626688Ki" } }]
+    },
+    {
+      "metadata": { "name": "jellyfin-0", "namespace": "media", "creationTimestamp": "2026-10-07T11:59:30.000Z" },
+      "timestamp": "2026-10-07T11:59:30.000Z",
+      "window": "17.2s",
+      "containers": [{ "name": "jellyfin", "usage": { "cpu": "310000000n", "memory": "1515520Ki" } }]
+    }
+  ]
+}

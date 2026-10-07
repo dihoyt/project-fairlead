@@ -1,0 +1,68 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "name": "nightly-db-dump-29326800",
+        "namespace": "default",
+        "uid": "4794e828-fa34-5b28-fc39-9dacf926c4da",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T03:00:00.000Z",
+        "ownerReferences": [
+          {
+            "apiVersion": "batch/v1",
+            "kind": "CronJob",
+            "name": "nightly-db-dump",
+            "uid": "808830ac-911b-0f3f-80fa-7395bfed0b04",
+            "controller": true
+          }
+        ]
+      },
+      "spec": { "completions": 1, "parallelism": 1, "backoffLimit": 6 },
+      "status": {
+        "succeeded": 1,
+        "startTime": "2026-10-07T03:00:00.000Z",
+        "completionTime": "2026-10-07T03:00:41.000Z",
+        "conditions": [{ "type": "Complete", "status": "True", "lastTransitionTime": "2026-10-07T03:00:41.000Z" }]
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "name": "nightly-db-dump-29325360",
+        "namespace": "default",
+        "uid": "bf073d5a-33f9-96d2-3e9a-60a84073f7ac",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-06T03:00:00.000Z",
+        "ownerReferences": [
+          {
+            "apiVersion": "batch/v1",
+            "kind": "CronJob",
+            "name": "nightly-db-dump",
+            "uid": "808830ac-911b-0f3f-80fa-7395bfed0b04",
+            "controller": true
+          }
+        ]
+      },
+      "spec": { "completions": 1, "parallelism": 1, "backoffLimit": 6 },
+      "status": {
+        "failed": 7,
+        "startTime": "2026-10-06T03:00:00.000Z",
+        "conditions": [
+          {
+            "type": "Failed",
+            "status": "True",
+            "reason": "BackoffLimitExceeded",
+            "message": "Job has reached the specified backoff limit",
+            "lastTransitionTime": "2026-10-06T04:00:00.000Z"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,223 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "report-worker-6c8d7f9b4-m5v2n.f708de1f420657",
+        "namespace": "default",
+        "uid": "ce31a68e-7269-fb33-6ba8-365ecec6532a",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T11:58:00.000Z"
+      },
+      "involvedObject": {
+        "kind": "Pod",
+        "name": "report-worker-6c8d7f9b4-m5v2n",
+        "namespace": "default",
+        "uid": "f52f3703-6ff6-7dc2-3311-60338ec53bab",
+        "apiVersion": "v1"
+      },
+      "reason": "BackOff",
+      "message": "Back-off restarting failed container report-worker in pod report-worker-6c8d7f9b4-m5v2n_default(2e0f)",
+      "type": "Warning",
+      "count": 311,
+      "firstTimestamp": "2026-10-07T08:58:00.000Z",
+      "lastTimestamp": "2026-10-07T11:58:00.000Z",
+      "eventTime": null,
+      "reportingComponent": "kubelet",
+      "source": { "component": "kubelet", "host": "worker-1" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "batch-import-5b7c9d8f6-q9w8e.9bab9036f69342",
+        "namespace": "default",
+        "uid": "21037792-0a31-a7ff-dfe8-e05f0a708223",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T11:56:00.000Z"
+      },
+      "involvedObject": {
+        "kind": "Pod",
+        "name": "batch-import-5b7c9d8f6-q9w8e",
+        "namespace": "default",
+        "uid": "3d89d822-f7ed-7498-6fe4-7c5c52861271",
+        "apiVersion": "v1"
+      },
+      "reason": "FailedScheduling",
+      "message": "0/3 nodes are available: 1 node(s) had untolerated taint {node.kubernetes.io/unreachable: }, 2 Insufficient memory.",
+      "type": "Warning",
+      "count": 9,
+      "firstTimestamp": "2026-10-07T08:56:00.000Z",
+      "lastTimestamp": "2026-10-07T11:56:00.000Z",
+      "eventTime": null,
+      "reportingComponent": "default-scheduler",
+      "source": { "component": "default-scheduler" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "legacy-app-84f6d5c7b9-t4r6y.3764b16f8f6cfa",
+        "namespace": "default",
+        "uid": "7a7e680e-8760-6d2d-9775-f4ba51761c2c",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T11:54:00.000Z"
+      },
+      "involvedObject": {
+        "kind": "Pod",
+        "name": "legacy-app-84f6d5c7b9-t4r6y",
+        "namespace": "default",
+        "uid": "9c700d6a-98a4-9164-12f6-ac97c29f1020",
+        "apiVersion": "v1"
+      },
+      "reason": "Failed",
+      "message": "Failed to pull image \"registry.example.lan/apps/legacy:0.9\": rpc error: code = NotFound desc = failed to pull and unpack image: not found",
+      "type": "Warning",
+      "count": 14,
+      "firstTimestamp": "2026-10-07T08:54:00.000Z",
+      "lastTimestamp": "2026-10-07T11:54:00.000Z",
+      "eventTime": null,
+      "reportingComponent": "kubelet",
+      "source": { "component": "kubelet", "host": "worker-1" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "legacy-app-84f6d5c7b9-t4r6y.6bff444371be6a",
+        "namespace": "default",
+        "uid": "f3e336c1-5196-4db4-123b-59f329045f17",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T11:57:00.000Z"
+      },
+      "involvedObject": {
+        "kind": "Pod",
+        "name": "legacy-app-84f6d5c7b9-t4r6y",
+        "namespace": "default",
+        "uid": "9c700d6a-98a4-9164-12f6-ac97c29f1020",
+        "apiVersion": "v1"
+      },
+      "reason": "BackOff",
+      "message": "Back-off pulling image \"registry.example.lan/apps/legacy:0.9\"",
+      "type": "Normal",
+      "count": 40,
+      "firstTimestamp": "2026-10-07T08:57:00.000Z",
+      "lastTimestamp": "2026-10-07T11:57:00.000Z",
+      "eventTime": null,
+      "reportingComponent": "kubelet",
+      "source": { "component": "kubelet", "host": "worker-1" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "jellyfin-0.69fa3193de2547",
+        "namespace": "media",
+        "uid": "a896cae8-cd04-0d94-1dc7-bb58777e4314",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-04T12:00:00.000Z"
+      },
+      "involvedObject": {
+        "kind": "Pod",
+        "name": "jellyfin-0",
+        "namespace": "media",
+        "uid": "596d1d28-dc91-2332-e242-5bf6db806481",
+        "apiVersion": "v1"
+      },
+      "reason": "FailedMount",
+      "message": "MountVolume.MountDevice failed for volume \"pvc-9a4d2e17-6c3b-4f85-8e20-5b7a1c0d3e02\" : rpc error: code = Aborted desc = volume is not ready for workloads",
+      "type": "Warning",
+      "count": 3,
+      "firstTimestamp": "2026-10-04T09:00:00.000Z",
+      "lastTimestamp": "2026-10-04T12:00:00.000Z",
+      "eventTime": null,
+      "reportingComponent": "kubelet",
+      "source": { "component": "kubelet", "host": "worker-1" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "web-7d9f8b6c5d-x2k4q.61f78a94b7170b",
+        "namespace": "default",
+        "uid": "54ebc0f4-2748-d31b-0ce2-a4852ccdd1d8",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-02T12:00:00.000Z"
+      },
+      "involvedObject": {
+        "kind": "Pod",
+        "name": "web-7d9f8b6c5d-x2k4q",
+        "namespace": "default",
+        "uid": "6d93005c-2e31-6b52-0223-40435dda4540",
+        "apiVersion": "v1"
+      },
+      "reason": "Started",
+      "message": "Started container web",
+      "type": "Normal",
+      "count": 1,
+      "firstTimestamp": "2026-10-02T12:00:00.000Z",
+      "lastTimestamp": "2026-10-02T12:00:00.000Z",
+      "eventTime": null,
+      "reportingComponent": "kubelet",
+      "source": { "component": "kubelet", "host": "worker-1" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "worker-2.afd98a73c7f501",
+        "namespace": "default",
+        "uid": "a3433f94-da6b-c1c3-af4a-3ab2bfb629cb",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T11:38:00.000Z"
+      },
+      "involvedObject": {
+        "kind": "Node",
+        "name": "worker-2",
+        "namespace": "default",
+        "uid": "4fddedeb-04f5-4acf-21ba-8f73d9086275",
+        "apiVersion": "v1"
+      },
+      "reason": "NodeNotReady",
+      "message": "Node worker-2 status is now: NodeNotReady",
+      "type": "Normal",
+      "count": 1,
+      "firstTimestamp": "2026-10-07T11:38:00.000Z",
+      "lastTimestamp": "2026-10-07T11:38:00.000Z",
+      "eventTime": null,
+      "reportingComponent": "node-controller",
+      "source": { "component": "node-controller" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "worker-1.5e006ee78f8c6a",
+        "namespace": "default",
+        "uid": "bfcb4b58-965b-0159-3022-b93f30262ec8",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T11:38:00.000Z"
+      },
+      "involvedObject": {
+        "kind": "Node",
+        "name": "worker-1",
+        "namespace": "default",
+        "uid": "2eb2e2df-98e8-461b-5235-b343a01111f8",
+        "apiVersion": "v1"
+      },
+      "reason": "NodeHasInsufficientMemory",
+      "message": "Node worker-1 status is now: NodeHasInsufficientMemory",
+      "type": "Warning",
+      "count": 1,
+      "firstTimestamp": "2026-10-07T11:38:00.000Z",
+      "lastTimestamp": "2026-10-07T11:38:00.000Z",
+      "eventTime": null,
+      "reportingComponent": "kubelet",
+      "source": { "component": "kubelet", "host": "worker-1" }
+    }
+  ]
+}

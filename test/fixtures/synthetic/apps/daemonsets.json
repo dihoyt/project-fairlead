@@ -1,0 +1,29 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "DaemonSet",
+      "metadata": {
+        "name": "longhorn-manager",
+        "namespace": "longhorn-system",
+        "uid": "74dd951b-c739-2d43-8ccc-5bcb7e3ddbf3",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-28T12:00:00.000Z",
+        "labels": { "app": "longhorn-manager" }
+      },
+      "spec": { "selector": { "matchLabels": { "app": "longhorn-manager" } } },
+      "status": {
+        "desiredNumberScheduled": 3,
+        "currentNumberScheduled": 3,
+        "numberReady": 2,
+        "numberAvailable": 2,
+        "numberMisscheduled": 0,
+        "updatedNumberScheduled": 3,
+        "observedGeneration": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+public/
+data/
+package-lock.json
+client/package-lock.json
+LICENSE
+*.md
+chart/templates
+test/fixtures/real/

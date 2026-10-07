@@ -1,0 +1,64 @@
+{
+  "node": {
+    "nodeName": "cp-1",
+    "systemContainers": [
+      {
+        "name": "kubelet",
+        "startTime": "2026-08-08T12:00:00.000Z",
+        "cpu": { "time": "2026-10-07T11:59:45.000Z", "usageNanoCores": 24000000, "usageCoreNanoSeconds": 912000000000 },
+        "memory": {
+          "time": "2026-10-07T11:59:45.000Z",
+          "usageBytes": 120000000,
+          "workingSetBytes": 110000000,
+          "rssBytes": 90000000
+        }
+      }
+    ],
+    "startTime": "2026-08-08T12:00:00.000Z",
+    "cpu": {
+      "time": "2026-10-07T11:59:45.000Z",
+      "usageNanoCores": 412000000,
+      "usageCoreNanoSeconds": 1648000000000000
+    },
+    "memory": {
+      "time": "2026-10-07T11:59:45.000Z",
+      "availableBytes": 13530000000,
+      "usageBytes": 5120000000,
+      "workingSetBytes": 3120000000,
+      "rssBytes": 2120000000,
+      "pageFaults": 1204881,
+      "majorPageFaults": 311
+    },
+    "network": {
+      "time": "2026-10-07T11:59:45.000Z",
+      "name": "eth0",
+      "rxBytes": 48120331904,
+      "rxErrors": 0,
+      "txBytes": 21700118222,
+      "txErrors": 0,
+      "interfaces": [{ "name": "eth0", "rxBytes": 48120331904, "rxErrors": 0, "txBytes": 21700118222, "txErrors": 0 }]
+    },
+    "fs": {
+      "time": "2026-10-07T11:59:45.000Z",
+      "availableBytes": 66571993088,
+      "capacityBytes": 107374182400,
+      "usedBytes": 40802189312,
+      "inodesFree": 6100000,
+      "inodes": 6553600,
+      "inodesUsed": 453600
+    },
+    "runtime": {
+      "imageFs": {
+        "time": "2026-10-07T11:59:45.000Z",
+        "availableBytes": 66571993088,
+        "capacityBytes": 107374182400,
+        "usedBytes": 15032385536,
+        "inodesFree": 6100000,
+        "inodes": 6553600,
+        "inodesUsed": 453600
+      }
+    },
+    "rlimit": { "time": "2026-10-07T11:59:45.000Z", "maxpid": 4194304, "curproc": 412 }
+  },
+  "pods": []
+}

@@ -1,0 +1,56 @@
+# Lives in your own homelab repo on Gitea (e.g. .gitea/workflows/deploy.yaml),
+# next to values.yaml and wait-for-image.sh from this directory. It checks a
+# Gitea pull mirror of the project every few minutes and rolls out whatever
+# commit the mirror is at, once the GitHub workflow has published its image.
+#
+# Variables: MIRROR_URL (clone URL of the mirror), NAMESPACE, RELEASE,
+#            IMAGE (owner/image on ghcr.io)
+# Secrets:   KUBECONFIG (the deployer's, see deployer-rbac.yaml),
+#            GHCR_USER, GHCR_TOKEN (read:packages; omit once the package is public),
+#            MIRROR_TOKEN (read access to the mirror, if it is private)
+name: deploy
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.2
+      - name: Fetch chart from the mirror
+        run: |
+          url="${{ vars.MIRROR_URL }}"
+          [ -z "${{ secrets.MIRROR_TOKEN }}" ] || url="${url/https:\/\//https://token:${{ secrets.MIRROR_TOKEN }}@}"
+          git clone --depth 1 "$url" mirror
+          echo "SHA=$(git -C mirror rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Skip when this commit is already deployed
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > "$RUNNER_TEMP/kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> "$GITHUB_ENV"
+          current=$(KUBECONFIG="$RUNNER_TEMP/kubeconfig" helm get values "${{ vars.RELEASE }}" -n "${{ vars.NAMESPACE }}" -o json 2>/dev/null | jq -r '.image.tag // empty')
+          if [ "$current" = "$SHA" ]; then echo "already at $SHA"; echo "SKIP=1" >> "$GITHUB_ENV"; fi
+      - name: Wait for the published image
+        if: env.SKIP != '1'
+        env:
+          GHCR_USER: ${{ secrets.GHCR_USER }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: ./wait-for-image.sh "${{ vars.IMAGE }}" "$SHA"
+      - name: helm upgrade --install
+        if: env.SKIP != '1'
+        run: |
+          helm upgrade --install "${{ vars.RELEASE }}" mirror/chart \
+            --namespace "${{ vars.NAMESPACE }}" \
+            --values values.yaml \
+            --set-string image.tag="$SHA" \
+            --wait --timeout 15m

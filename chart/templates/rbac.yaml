@@ -1,0 +1,99 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "app.clusterName" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: [nodes, namespaces, pods, pods/log, events, persistentvolumeclaims, persistentvolumes, services]
+    verbs: [get, list, watch]
+  - apiGroups: [events.k8s.io]
+    resources: [events]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets, replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list, watch]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses]
+    verbs: [get, list, watch]
+  - apiGroups: [metrics.k8s.io]
+    resources: [nodes, pods]
+    verbs: [get, list]
+  {{- if .Values.rbac.nodesProxy }}
+  - apiGroups: [""]
+    resources: [nodes/proxy]
+    verbs: [get]
+  {{- end }}
+  - apiGroups: [longhorn.io]
+    resources: [volumes, backups, backupvolumes, backuptargets, recurringjobs, settings, nodes, replicas, snapshots]
+    verbs: [get, list, watch]
+  - apiGroups: [velero.io]
+    resources: [backups, schedules, restores, backupstoragelocations]
+    verbs: [get, list, watch]
+  - apiGroups: [fleet.cattle.io]
+    resources: [gitrepos, bundles]
+    verbs: [get, list, watch]
+  - apiGroups: [cert-manager.io]
+    resources: [certificates]
+    verbs: [get, list, watch]
+  {{- if and .Values.rbac.secrets.enabled (not .Values.rbac.secrets.namespaces) }}
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, list, watch]
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "app.clusterName" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "app.clusterName" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "app.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- if and .Values.rbac.secrets.enabled .Values.rbac.secrets.namespaces }}
+{{- range .Values.rbac.secrets.namespaces }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "app.fullname" $ }}-secrets
+  namespace: {{ . }}
+  labels:
+    {{- include "app.labels" $ | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "app.fullname" $ }}-secrets
+  namespace: {{ . }}
+  labels:
+    {{- include "app.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "app.fullname" $ }}-secrets
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "app.serviceAccountName" $ }}
+    namespace: {{ $.Release.Namespace }}
+{{- end }}
+{{- end }}
+{{- end }}

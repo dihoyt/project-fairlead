@@ -1,0 +1,675 @@
+{
+  "kind": "APIGroupList",
+  "apiVersion": "v1",
+  "groups": [
+    {
+      "name": "apiregistration.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "apiregistration.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "apiregistration.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "apps",
+      "versions": [
+        {
+          "groupVersion": "apps/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "apps/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "events.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "events.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "events.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "authentication.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "authentication.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "authentication.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "authorization.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "authorization.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "authorization.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "autoscaling",
+      "versions": [
+        {
+          "groupVersion": "autoscaling/v2",
+          "version": "v2"
+        },
+        {
+          "groupVersion": "autoscaling/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "autoscaling/v2",
+        "version": "v2"
+      }
+    },
+    {
+      "name": "batch",
+      "versions": [
+        {
+          "groupVersion": "batch/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "batch/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "certificates.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "certificates.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "certificates.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "networking.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "networking.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "networking.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "policy",
+      "versions": [
+        {
+          "groupVersion": "policy/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "policy/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "rbac.authorization.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "rbac.authorization.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "rbac.authorization.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "storage.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "storage.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "storage.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "admissionregistration.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "admissionregistration.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "admissionregistration.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "apiextensions.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "apiextensions.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "apiextensions.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "scheduling.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "scheduling.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "scheduling.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "coordination.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "coordination.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "coordination.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "node.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "node.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "node.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "discovery.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "discovery.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "discovery.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "resource.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "resource.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "resource.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "flowcontrol.apiserver.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "flowcontrol.apiserver.k8s.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "acme.cert-manager.io",
+      "versions": [
+        {
+          "groupVersion": "acme.cert-manager.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "acme.cert-manager.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "auditlog.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "auditlog.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "auditlog.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "catalog.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "catalog.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "catalog.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "cert-manager.io",
+      "versions": [
+        {
+          "groupVersion": "cert-manager.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "cert-manager.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "gateway.networking.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "gateway.networking.k8s.io/v1",
+          "version": "v1"
+        },
+        {
+          "groupVersion": "gateway.networking.k8s.io/v1beta1",
+          "version": "v1beta1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "gateway.networking.k8s.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "helm.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "helm.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "helm.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "k3s.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "k3s.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "k3s.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "provisioning.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "provisioning.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "provisioning.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "rke-machine-config.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "rke-machine-config.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "rke-machine-config.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "rke-machine.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "rke-machine.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "rke-machine.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "rke.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "rke.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "rke.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "telemetry.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "telemetry.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "telemetry.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "ui.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "ui.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "ui.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "upgrade.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "upgrade.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "upgrade.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "fleet.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "fleet.cattle.io/v1alpha1",
+          "version": "v1alpha1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "fleet.cattle.io/v1alpha1",
+        "version": "v1alpha1"
+      }
+    },
+    {
+      "name": "hub.traefik.io",
+      "versions": [
+        {
+          "groupVersion": "hub.traefik.io/v1alpha1",
+          "version": "v1alpha1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "hub.traefik.io/v1alpha1",
+        "version": "v1alpha1"
+      }
+    },
+    {
+      "name": "ipam.cluster.x-k8s.io",
+      "versions": [
+        {
+          "groupVersion": "ipam.cluster.x-k8s.io/v1beta2",
+          "version": "v1beta2"
+        },
+        {
+          "groupVersion": "ipam.cluster.x-k8s.io/v1beta1",
+          "version": "v1beta1"
+        },
+        {
+          "groupVersion": "ipam.cluster.x-k8s.io/v1alpha1",
+          "version": "v1alpha1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "ipam.cluster.x-k8s.io/v1beta2",
+        "version": "v1beta2"
+      }
+    },
+    {
+      "name": "operation.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "operation.cattle.io/v1alpha1",
+          "version": "v1alpha1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "operation.cattle.io/v1alpha1",
+        "version": "v1alpha1"
+      }
+    },
+    {
+      "name": "plan.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "plan.cattle.io/v1alpha1",
+          "version": "v1alpha1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "plan.cattle.io/v1alpha1",
+        "version": "v1alpha1"
+      }
+    },
+    {
+      "name": "runtime.cluster.x-k8s.io",
+      "versions": [
+        {
+          "groupVersion": "runtime.cluster.x-k8s.io/v1beta2",
+          "version": "v1beta2"
+        },
+        {
+          "groupVersion": "runtime.cluster.x-k8s.io/v1alpha1",
+          "version": "v1alpha1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "runtime.cluster.x-k8s.io/v1beta2",
+        "version": "v1beta2"
+      }
+    },
+    {
+      "name": "traefik.io",
+      "versions": [
+        {
+          "groupVersion": "traefik.io/v1alpha1",
+          "version": "v1alpha1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "traefik.io/v1alpha1",
+        "version": "v1alpha1"
+      }
+    },
+    {
+      "name": "turtles-capi.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "turtles-capi.cattle.io/v1alpha1",
+          "version": "v1alpha1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "turtles-capi.cattle.io/v1alpha1",
+        "version": "v1alpha1"
+      }
+    },
+    {
+      "name": "addons.cluster.x-k8s.io",
+      "versions": [
+        {
+          "groupVersion": "addons.cluster.x-k8s.io/v1beta2",
+          "version": "v1beta2"
+        },
+        {
+          "groupVersion": "addons.cluster.x-k8s.io/v1beta1",
+          "version": "v1beta1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "addons.cluster.x-k8s.io/v1beta2",
+        "version": "v1beta2"
+      }
+    },
+    {
+      "name": "cluster.x-k8s.io",
+      "versions": [
+        {
+          "groupVersion": "cluster.x-k8s.io/v1beta2",
+          "version": "v1beta2"
+        },
+        {
+          "groupVersion": "cluster.x-k8s.io/v1beta1",
+          "version": "v1beta1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "cluster.x-k8s.io/v1beta2",
+        "version": "v1beta2"
+      }
+    },
+    {
+      "name": "metallb.io",
+      "versions": [
+        {
+          "groupVersion": "metallb.io/v1beta2",
+          "version": "v1beta2"
+        },
+        {
+          "groupVersion": "metallb.io/v1beta1",
+          "version": "v1beta1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "metallb.io/v1beta2",
+        "version": "v1beta2"
+      }
+    },
+    {
+      "name": "longhorn.io",
+      "versions": [
+        {
+          "groupVersion": "longhorn.io/v1beta2",
+          "version": "v1beta2"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "longhorn.io/v1beta2",
+        "version": "v1beta2"
+      }
+    },
+    {
+      "name": "management.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "management.cattle.io/v3",
+          "version": "v3"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "management.cattle.io/v3",
+        "version": "v3"
+      }
+    },
+    {
+      "name": "ext.cattle.io",
+      "versions": [
+        {
+          "groupVersion": "ext.cattle.io/v1",
+          "version": "v1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "ext.cattle.io/v1",
+        "version": "v1"
+      }
+    },
+    {
+      "name": "metrics.k8s.io",
+      "versions": [
+        {
+          "groupVersion": "metrics.k8s.io/v1beta1",
+          "version": "v1beta1"
+        }
+      ],
+      "preferredVersion": {
+        "groupVersion": "metrics.k8s.io/v1beta1",
+        "version": "v1beta1"
+      }
+    }
+  ]
+}

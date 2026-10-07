@@ -1,0 +1,126 @@
+{
+  "apiVersion": "velero.io/v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "velero.io/v1",
+      "kind": "Backup",
+      "metadata": {
+        "name": "daily-databases-20261007-020012",
+        "namespace": "velero",
+        "uid": "76149cdd-bec4-8d4e-35d9-0e35fe3b4d18",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T02:00:00.000Z",
+        "labels": { "velero.io/schedule-name": "daily-databases", "velero.io/storage-location": "default" },
+        "annotations": {
+          "velero.io/source-cluster-k8s-gitversion": "v1.31.4+k3s1",
+          "velero.io/source-cluster-k8s-major-version": "1",
+          "velero.io/source-cluster-k8s-minor-version": "31"
+        },
+        "finalizers": ["velero.io/delete-backup"]
+      },
+      "spec": {
+        "csiSnapshotTimeout": "10m0s",
+        "defaultVolumesToFsBackup": true,
+        "hooks": {},
+        "includedNamespaces": ["databases"],
+        "itemOperationTimeout": "4h0m0s",
+        "metadata": {},
+        "snapshotMoveData": false,
+        "storageLocation": "default",
+        "ttl": "720h0m0s"
+      },
+      "status": {
+        "version": 1,
+        "formatVersion": "1.1.0",
+        "expiration": "2026-11-06T02:00:00.000Z",
+        "startTimestamp": "2026-10-07T02:00:00.000Z",
+        "completionTimestamp": "2026-10-07T02:03:00.000Z",
+        "phase": "Completed",
+        "progress": { "totalItems": 212, "itemsBackedUp": 212 },
+        "warnings": 1
+      }
+    },
+    {
+      "apiVersion": "velero.io/v1",
+      "kind": "Backup",
+      "metadata": {
+        "name": "daily-media-20261006-020009",
+        "namespace": "velero",
+        "uid": "4376d4ff-8414-61c0-542a-28b85271c84d",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-06T02:00:00.000Z",
+        "labels": { "velero.io/schedule-name": "daily-media", "velero.io/storage-location": "default" },
+        "annotations": {
+          "velero.io/source-cluster-k8s-gitversion": "v1.31.4+k3s1",
+          "velero.io/source-cluster-k8s-major-version": "1",
+          "velero.io/source-cluster-k8s-minor-version": "31"
+        },
+        "finalizers": ["velero.io/delete-backup"]
+      },
+      "spec": {
+        "csiSnapshotTimeout": "10m0s",
+        "defaultVolumesToFsBackup": true,
+        "hooks": {},
+        "includedNamespaces": ["media"],
+        "itemOperationTimeout": "4h0m0s",
+        "metadata": {},
+        "snapshotMoveData": false,
+        "storageLocation": "default",
+        "ttl": "720h0m0s"
+      },
+      "status": {
+        "version": 1,
+        "formatVersion": "1.1.0",
+        "expiration": "2026-11-05T02:00:00.000Z",
+        "startTimestamp": "2026-10-06T02:00:00.000Z",
+        "completionTimestamp": "2026-10-06T02:03:00.000Z",
+        "phase": "PartiallyFailed",
+        "progress": { "totalItems": 212, "itemsBackedUp": 212 },
+        "errors": 3,
+        "warnings": 2
+      }
+    },
+    {
+      "apiVersion": "velero.io/v1",
+      "kind": "Backup",
+      "metadata": {
+        "name": "daily-default-20261004-020004",
+        "namespace": "velero",
+        "uid": "e59bb373-5edd-a6e0-2870-fd985704c278",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-04T12:00:00.000Z",
+        "labels": { "velero.io/schedule-name": "daily-default", "velero.io/storage-location": "default" },
+        "annotations": {
+          "velero.io/source-cluster-k8s-gitversion": "v1.31.4+k3s1",
+          "velero.io/source-cluster-k8s-major-version": "1",
+          "velero.io/source-cluster-k8s-minor-version": "31"
+        },
+        "finalizers": ["velero.io/delete-backup"]
+      },
+      "spec": {
+        "csiSnapshotTimeout": "10m0s",
+        "defaultVolumesToFsBackup": true,
+        "hooks": {},
+        "includedNamespaces": ["default"],
+        "itemOperationTimeout": "4h0m0s",
+        "metadata": {},
+        "snapshotMoveData": false,
+        "storageLocation": "default",
+        "ttl": "720h0m0s"
+      },
+      "status": {
+        "version": 1,
+        "formatVersion": "1.1.0",
+        "expiration": "2026-11-03T12:00:00.000Z",
+        "startTimestamp": "2026-10-04T12:00:00.000Z",
+        "completionTimestamp": "2026-10-04T12:03:00.000Z",
+        "phase": "Failed",
+        "progress": { "totalItems": 212, "itemsBackedUp": 41 },
+        "failureReason": "get a backup with BackupStorageLocation default and cannot get a backup store: rpc error: code = Unknown desc = RequestError: dial tcp 192.168.10.5:9000: connect: connection refused",
+        "errors": 1
+      }
+    }
+  ]
+}

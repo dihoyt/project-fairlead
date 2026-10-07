@@ -1,0 +1,514 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "web",
+        "namespace": "default",
+        "uid": "7f9faa24-a5a9-f88f-c53c-8ea3257f2d55",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "generation": 3,
+        "labels": { "app": "web" }
+      },
+      "spec": {
+        "replicas": 2,
+        "selector": { "matchLabels": { "app": "web" } },
+        "strategy": { "type": "RollingUpdate" },
+        "template": {
+          "metadata": { "labels": { "app": "web" } },
+          "spec": {
+            "containers": [
+              {
+                "name": "web",
+                "image": "registry.example.lan/apps/app:1.4.2",
+                "env": [{ "name": "LOG_LEVEL", "value": "REDACTED" }]
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "observedGeneration": 3,
+        "replicas": 2,
+        "updatedReplicas": 2,
+        "readyReplicas": 2,
+        "availableReplicas": 2,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "True",
+            "reason": "MinimumReplicasAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          },
+          {
+            "type": "Progressing",
+            "status": "True",
+            "reason": "NewReplicaSetAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "report-worker",
+        "namespace": "default",
+        "uid": "9bc3b251-026a-6960-cb3d-b2f64b4ebaa1",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "generation": 3,
+        "labels": { "app": "report-worker" }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "report-worker" } },
+        "strategy": { "type": "RollingUpdate" },
+        "template": {
+          "metadata": { "labels": { "app": "report-worker" } },
+          "spec": {
+            "containers": [
+              {
+                "name": "report-worker",
+                "image": "registry.example.lan/apps/app:1.4.2",
+                "env": [{ "name": "LOG_LEVEL", "value": "REDACTED" }]
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "observedGeneration": 3,
+        "replicas": 1,
+        "updatedReplicas": 1,
+        "unavailableReplicas": 1,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "False",
+            "reason": "MinimumReplicasUnavailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          },
+          {
+            "type": "Progressing",
+            "status": "True",
+            "reason": "ReplicaSetUpdated",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "batch-import",
+        "namespace": "default",
+        "uid": "d5c52973-07a4-6714-3bd3-ecc998ad25ed",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "generation": 3,
+        "labels": { "app": "batch-import" }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "batch-import" } },
+        "strategy": { "type": "RollingUpdate" },
+        "template": {
+          "metadata": { "labels": { "app": "batch-import" } },
+          "spec": {
+            "containers": [
+              {
+                "name": "batch-import",
+                "image": "registry.example.lan/apps/app:1.4.2",
+                "env": [{ "name": "LOG_LEVEL", "value": "REDACTED" }]
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "observedGeneration": 3,
+        "replicas": 1,
+        "updatedReplicas": 1,
+        "unavailableReplicas": 1,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "False",
+            "reason": "MinimumReplicasUnavailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          },
+          {
+            "type": "Progressing",
+            "status": "True",
+            "reason": "ReplicaSetUpdated",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "legacy-app",
+        "namespace": "default",
+        "uid": "c63b35f0-0b56-9a93-75ac-2ecb198937ba",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "generation": 3,
+        "labels": { "app": "legacy-app" }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "legacy-app" } },
+        "strategy": { "type": "RollingUpdate" },
+        "template": {
+          "metadata": { "labels": { "app": "legacy-app" } },
+          "spec": {
+            "containers": [
+              {
+                "name": "legacy-app",
+                "image": "registry.example.lan/apps/app:1.4.2",
+                "env": [{ "name": "LOG_LEVEL", "value": "REDACTED" }]
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "observedGeneration": 3,
+        "replicas": 1,
+        "updatedReplicas": 1,
+        "unavailableReplicas": 1,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "False",
+            "reason": "MinimumReplicasUnavailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          },
+          {
+            "type": "Progressing",
+            "status": "True",
+            "reason": "ReplicaSetUpdated",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "uploads-api",
+        "namespace": "default",
+        "uid": "8ff9f2b4-7485-9a17-30da-b1bfb53e0071",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "generation": 3,
+        "labels": { "app": "uploads-api" }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "uploads-api" } },
+        "strategy": { "type": "RollingUpdate" },
+        "template": {
+          "metadata": { "labels": { "app": "uploads-api" } },
+          "spec": {
+            "containers": [
+              {
+                "name": "uploads-api",
+                "image": "registry.example.lan/apps/app:1.4.2",
+                "env": [{ "name": "LOG_LEVEL", "value": "REDACTED" }]
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "observedGeneration": 3,
+        "replicas": 1,
+        "updatedReplicas": 1,
+        "readyReplicas": 1,
+        "availableReplicas": 1,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "True",
+            "reason": "MinimumReplicasAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          },
+          {
+            "type": "Progressing",
+            "status": "True",
+            "reason": "NewReplicaSetAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "coredns",
+        "namespace": "kube-system",
+        "uid": "f95ad5fa-93b1-9014-4767-548dfd40e404",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "generation": 3,
+        "labels": { "app": "coredns" }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "coredns" } },
+        "strategy": { "type": "RollingUpdate" },
+        "template": {
+          "metadata": { "labels": { "app": "coredns" } },
+          "spec": {
+            "containers": [
+              {
+                "name": "coredns",
+                "image": "registry.example.lan/apps/app:1.4.2",
+                "env": [{ "name": "LOG_LEVEL", "value": "REDACTED" }]
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "observedGeneration": 3,
+        "replicas": 1,
+        "updatedReplicas": 1,
+        "readyReplicas": 1,
+        "availableReplicas": 1,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "True",
+            "reason": "MinimumReplicasAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          },
+          {
+            "type": "Progressing",
+            "status": "True",
+            "reason": "NewReplicaSetAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "metrics-server",
+        "namespace": "kube-system",
+        "uid": "92af345f-3909-c2ce-21bd-ad10a4d5bc99",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "generation": 3,
+        "labels": { "app": "metrics-server" }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "metrics-server" } },
+        "strategy": { "type": "RollingUpdate" },
+        "template": {
+          "metadata": { "labels": { "app": "metrics-server" } },
+          "spec": {
+            "containers": [
+              {
+                "name": "metrics-server",
+                "image": "registry.example.lan/apps/app:1.4.2",
+                "env": [{ "name": "LOG_LEVEL", "value": "REDACTED" }]
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "observedGeneration": 3,
+        "replicas": 1,
+        "updatedReplicas": 1,
+        "readyReplicas": 1,
+        "availableReplicas": 1,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "True",
+            "reason": "MinimumReplicasAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          },
+          {
+            "type": "Progressing",
+            "status": "True",
+            "reason": "NewReplicaSetAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "velero",
+        "namespace": "velero",
+        "uid": "12bd0424-1bf4-c8f7-27f4-700b5d01fcb4",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "generation": 3,
+        "labels": { "app": "velero" }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "velero" } },
+        "strategy": { "type": "RollingUpdate" },
+        "template": {
+          "metadata": { "labels": { "app": "velero" } },
+          "spec": {
+            "containers": [
+              {
+                "name": "velero",
+                "image": "registry.example.lan/apps/app:1.4.2",
+                "env": [{ "name": "LOG_LEVEL", "value": "REDACTED" }]
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "observedGeneration": 3,
+        "replicas": 1,
+        "updatedReplicas": 1,
+        "readyReplicas": 1,
+        "availableReplicas": 1,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "True",
+            "reason": "MinimumReplicasAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          },
+          {
+            "type": "Progressing",
+            "status": "True",
+            "reason": "NewReplicaSetAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "fleet-controller",
+        "namespace": "cattle-fleet-system",
+        "uid": "30c35e58-ecf7-d82a-31aa-23f231671e6f",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "generation": 3,
+        "labels": { "app": "fleet-controller" }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "fleet-controller" } },
+        "strategy": { "type": "RollingUpdate" },
+        "template": {
+          "metadata": { "labels": { "app": "fleet-controller" } },
+          "spec": {
+            "containers": [
+              {
+                "name": "fleet-controller",
+                "image": "registry.example.lan/apps/app:1.4.2",
+                "env": [{ "name": "LOG_LEVEL", "value": "REDACTED" }]
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "observedGeneration": 3,
+        "replicas": 1,
+        "updatedReplicas": 1,
+        "readyReplicas": 1,
+        "availableReplicas": 1,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "True",
+            "reason": "MinimumReplicasAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          },
+          {
+            "type": "Progressing",
+            "status": "True",
+            "reason": "NewReplicaSetAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "cert-manager",
+        "namespace": "cert-manager",
+        "uid": "daa31d31-5a18-be69-75d3-d5f41a38909c",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "generation": 3,
+        "labels": { "app": "cert-manager" }
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "cert-manager" } },
+        "strategy": { "type": "RollingUpdate" },
+        "template": {
+          "metadata": { "labels": { "app": "cert-manager" } },
+          "spec": {
+            "containers": [
+              {
+                "name": "cert-manager",
+                "image": "registry.example.lan/apps/app:1.4.2",
+                "env": [{ "name": "LOG_LEVEL", "value": "REDACTED" }]
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "observedGeneration": 3,
+        "replicas": 1,
+        "updatedReplicas": 1,
+        "readyReplicas": 1,
+        "availableReplicas": 1,
+        "conditions": [
+          {
+            "type": "Available",
+            "status": "True",
+            "reason": "MinimumReplicasAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          },
+          {
+            "type": "Progressing",
+            "status": "True",
+            "reason": "NewReplicaSetAvailable",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+// Type-checks test/ and everything it imports without emitting. The base
+// config's rootDir/include keep the build emitting src only; tests get their
+// own program so compiled tests never reach dist/ or the image.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["test", "src"]
+}

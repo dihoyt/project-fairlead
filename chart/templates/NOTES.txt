@@ -1,0 +1,14 @@
+Installed {{ .Chart.Name }} in {{ .Release.Namespace }}.
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+  https://{{ .host }}{{ .path | default "/" }}
+{{- end }}
+{{- else }}
+
+Reach it with:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "app.fullname" . }} 8080:{{ .Values.service.port }}
+{{- end }}
+{{- if not (include "app.secretName" .) }}
+
+No Secret is configured: set secrets.existingSecret to a Secret holding SECRETS_KEY and BOOTSTRAP_ADMIN_PASSWORD.
+{{- end }}

@@ -1,0 +1,40 @@
+{
+  "apiVersion": "velero.io/v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "velero.io/v1",
+      "kind": "Schedule",
+      "metadata": {
+        "name": "daily-databases",
+        "namespace": "velero",
+        "uid": "623510a6-e09e-94ac-fa73-9f5ea156176b",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z"
+      },
+      "spec": {
+        "schedule": "0 2 * * *",
+        "template": { "includedNamespaces": ["databases"], "storageLocation": "default", "ttl": "720h0m0s" },
+        "useOwnerReferencesInBackup": false
+      },
+      "status": { "phase": "Enabled", "lastBackup": "2026-10-07T02:00:00.000Z" }
+    },
+    {
+      "apiVersion": "velero.io/v1",
+      "kind": "Schedule",
+      "metadata": {
+        "name": "daily-media",
+        "namespace": "velero",
+        "uid": "667a7f60-c06f-2044-5b03-60a679475284",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z"
+      },
+      "spec": {
+        "schedule": "0 2 * * *",
+        "template": { "includedNamespaces": ["media"], "storageLocation": "default", "ttl": "720h0m0s" }
+      },
+      "status": { "phase": "Enabled", "lastBackup": "2026-10-06T02:00:00.000Z" }
+    }
+  ]
+}

@@ -1,0 +1,163 @@
+{
+  "node": {
+    "nodeName": "worker-1",
+    "systemContainers": [
+      {
+        "name": "kubelet",
+        "startTime": "2026-08-08T12:00:00.000Z",
+        "cpu": { "time": "2026-10-07T11:59:45.000Z", "usageNanoCores": 24000000, "usageCoreNanoSeconds": 912000000000 },
+        "memory": {
+          "time": "2026-10-07T11:59:45.000Z",
+          "usageBytes": 120000000,
+          "workingSetBytes": 110000000,
+          "rssBytes": 90000000
+        }
+      }
+    ],
+    "startTime": "2026-08-08T12:00:00.000Z",
+    "cpu": {
+      "time": "2026-10-07T11:59:45.000Z",
+      "usageNanoCores": 1830000000,
+      "usageCoreNanoSeconds": 7320000000000000
+    },
+    "memory": {
+      "time": "2026-10-07T11:59:45.000Z",
+      "availableBytes": 1440000000,
+      "usageBytes": 17210000000,
+      "workingSetBytes": 15210000000,
+      "rssBytes": 14210000000,
+      "pageFaults": 1204881,
+      "majorPageFaults": 311
+    },
+    "network": {
+      "time": "2026-10-07T11:59:45.000Z",
+      "name": "eth0",
+      "rxBytes": 48120331904,
+      "rxErrors": 0,
+      "txBytes": 21700118222,
+      "txErrors": 0,
+      "interfaces": [{ "name": "eth0", "rxBytes": 48120331904, "rxErrors": 0, "txBytes": 21700118222, "txErrors": 0 }]
+    },
+    "fs": {
+      "time": "2026-10-07T11:59:45.000Z",
+      "availableBytes": 31138512896,
+      "capacityBytes": 107374182400,
+      "usedBytes": 76235669504,
+      "inodesFree": 6100000,
+      "inodes": 6553600,
+      "inodesUsed": 453600
+    },
+    "runtime": {
+      "imageFs": {
+        "time": "2026-10-07T11:59:45.000Z",
+        "availableBytes": 31138512896,
+        "capacityBytes": 107374182400,
+        "usedBytes": 15032385536,
+        "inodesFree": 6100000,
+        "inodes": 6553600,
+        "inodesUsed": 453600
+      }
+    },
+    "rlimit": { "time": "2026-10-07T11:59:45.000Z", "maxpid": 4194304, "curproc": 412 }
+  },
+  "pods": [
+    {
+      "podRef": { "name": "postgres-0", "namespace": "databases", "uid": "6a140db3-ad4f-57a5-f3a4-94ecd72b8b02" },
+      "startTime": "2026-09-07T12:00:00.000Z",
+      "containers": [
+        {
+          "name": "app",
+          "startTime": "2026-09-07T12:00:00.000Z",
+          "cpu": {
+            "time": "2026-10-07T11:59:45.000Z",
+            "usageNanoCores": 20000000,
+            "usageCoreNanoSeconds": 500000000000
+          },
+          "memory": {
+            "time": "2026-10-07T11:59:45.000Z",
+            "usageBytes": 300000000,
+            "workingSetBytes": 250000000,
+            "rssBytes": 200000000
+          }
+        }
+      ],
+      "cpu": { "time": "2026-10-07T11:59:45.000Z", "usageNanoCores": 20000000, "usageCoreNanoSeconds": 500000000000 },
+      "memory": {
+        "time": "2026-10-07T11:59:45.000Z",
+        "usageBytes": 300000000,
+        "workingSetBytes": 250000000,
+        "rssBytes": 200000000
+      },
+      "network": {
+        "time": "2026-10-07T11:59:45.000Z",
+        "name": "eth0",
+        "rxBytes": 1000000000,
+        "rxErrors": 0,
+        "txBytes": 800000000,
+        "txErrors": 0
+      },
+      "volume": [
+        {
+          "time": "2026-10-07T11:59:45.000Z",
+          "name": "data",
+          "availableBytes": 7516192768,
+          "capacityBytes": 10737418240,
+          "usedBytes": 3221225472,
+          "inodesFree": 6000000,
+          "inodes": 6553600,
+          "inodesUsed": 553600,
+          "pvcRef": { "name": "data-postgres-0", "namespace": "databases" }
+        }
+      ]
+    },
+    {
+      "podRef": { "name": "jellyfin-0", "namespace": "media", "uid": "596d1d28-dc91-2332-e242-5bf6db806481" },
+      "startTime": "2026-09-07T12:00:00.000Z",
+      "containers": [
+        {
+          "name": "app",
+          "startTime": "2026-09-07T12:00:00.000Z",
+          "cpu": {
+            "time": "2026-10-07T11:59:45.000Z",
+            "usageNanoCores": 20000000,
+            "usageCoreNanoSeconds": 500000000000
+          },
+          "memory": {
+            "time": "2026-10-07T11:59:45.000Z",
+            "usageBytes": 300000000,
+            "workingSetBytes": 250000000,
+            "rssBytes": 200000000
+          }
+        }
+      ],
+      "cpu": { "time": "2026-10-07T11:59:45.000Z", "usageNanoCores": 20000000, "usageCoreNanoSeconds": 500000000000 },
+      "memory": {
+        "time": "2026-10-07T11:59:45.000Z",
+        "usageBytes": 300000000,
+        "workingSetBytes": 250000000,
+        "rssBytes": 200000000
+      },
+      "network": {
+        "time": "2026-10-07T11:59:45.000Z",
+        "name": "eth0",
+        "rxBytes": 1000000000,
+        "rxErrors": 0,
+        "txBytes": 800000000,
+        "txErrors": 0
+      },
+      "volume": [
+        {
+          "time": "2026-10-07T11:59:45.000Z",
+          "name": "data",
+          "availableBytes": 7516192768,
+          "capacityBytes": 107374182400,
+          "usedBytes": 99857989632,
+          "inodesFree": 6000000,
+          "inodes": 6553600,
+          "inodesUsed": 553600,
+          "pvcRef": { "name": "media-library", "namespace": "media" }
+        }
+      ]
+    }
+  ]
+}

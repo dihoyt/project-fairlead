@@ -1,0 +1,80 @@
+{
+  "apiVersion": "fleet.cattle.io/v1alpha1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "name": "cluster-apps-web",
+        "namespace": "fleet-default",
+        "uid": "753efc59-a378-bd19-5979-259ce4d792e0",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-23T12:00:00.000Z",
+        "labels": { "fleet.cattle.io/commit": "4f9a1c7e2b3d", "fleet.cattle.io/repo-name": "cluster-apps" },
+        "annotations": {},
+        "ownerReferences": [
+          {
+            "apiVersion": "fleet.cattle.io/v1alpha1",
+            "kind": "GitRepo",
+            "name": "cluster-apps",
+            "uid": "c04a0972-5a5f-80ca-3493-8ddf72cdbaf9",
+            "controller": true
+          }
+        ]
+      },
+      "spec": {
+        "resources": [{ "name": "kustomization.yaml" }, { "name": "deployment.yaml" }],
+        "helm": { "values": {} },
+        "targets": [{ "clusterName": "local" }]
+      },
+      "status": {
+        "display": { "readyClusters": "1/1", "state": "Ready" },
+        "summary": { "desiredReady": 1, "ready": 1 },
+        "conditions": [{ "type": "Ready", "status": "True", "lastUpdateTime": "2026-10-07T11:55:00.000Z" }],
+        "resourceKey": [{ "apiVersion": "apps/v1", "kind": "Deployment", "name": "web", "namespace": "default" }]
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "name": "cluster-addons-cert-issuers",
+        "namespace": "fleet-default",
+        "uid": "a357ee5e-dd53-3c31-330c-4470d219f3a9",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-23T12:00:00.000Z",
+        "labels": { "fleet.cattle.io/commit": "4f9a1c7e2b3d", "fleet.cattle.io/repo-name": "cluster-addons" },
+        "annotations": {},
+        "ownerReferences": [
+          {
+            "apiVersion": "fleet.cattle.io/v1alpha1",
+            "kind": "GitRepo",
+            "name": "cluster-addons",
+            "uid": "b6e06cd3-3eb7-c505-6a41-be056463a3b9",
+            "controller": true
+          }
+        ]
+      },
+      "spec": {
+        "resources": [{ "name": "kustomization.yaml" }, { "name": "deployment.yaml" }],
+        "helm": { "values": {} },
+        "targets": [{ "clusterName": "local" }]
+      },
+      "status": {
+        "display": { "readyClusters": "0/1", "state": "NotReady" },
+        "summary": { "desiredReady": 1, "ready": 0, "notReady": 1 },
+        "conditions": [
+          {
+            "type": "Ready",
+            "status": "False",
+            "lastUpdateTime": "2026-10-07T11:55:00.000Z",
+            "message": "NotReady(1) [Cluster local]; clusterissuer.cert-manager.io letsencrypt [not ready]"
+          }
+        ],
+        "resourceKey": [{ "apiVersion": "apps/v1", "kind": "Deployment", "name": "web", "namespace": "default" }]
+      }
+    }
+  ]
+}

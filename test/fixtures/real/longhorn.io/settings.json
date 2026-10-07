@@ -1,0 +1,2210 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 1,
+        "name": "allow-collecting-longhorn-usage-metrics",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208240",
+        "uid": "6347f816-b2f9-444a-80eb-b1070a2e4245"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "allow-empty-disk-selector-volume",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208114",
+        "uid": "e5ee441c-8571-491c-a02a-97376364a947"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "allow-empty-node-selector-volume",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208210",
+        "uid": "d05a32f9-2990-4090-ae0a-0c727de95e86"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:25Z",
+        "generation": 1,
+        "name": "allow-live-engine-upgrade-on-same-image-commit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208067",
+        "uid": "ce1537a0-df72-4c56-afeb-0f4ce7c2392f"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:02Z",
+        "generation": 2,
+        "name": "allow-recurring-job-while-volume-detached",
+        "namespace": "longhorn-system",
+        "resourceVersion": "26980646",
+        "uid": "37d0c99f-f4a9-479d-afaa-09954ee0a47f"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "allow-volume-creation-with-degraded-availability",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208104",
+        "uid": "2a441558-d55f-47fd-85b5-fd507dc0a07e"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "auto-cleanup-recurring-job-backup-snapshot",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208088",
+        "uid": "00f0c517-8544-430e-bc11-c6e281836df7"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "auto-cleanup-snapshot-after-on-demand-backup-completed",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208204",
+        "uid": "25eac7d3-a7af-446f-9900-8255f29c5a22"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "auto-cleanup-system-generated-snapshot",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208216",
+        "uid": "e19a825d-a7a8-4be4-9b26-b4058023a3a5"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "auto-cleanup-when-delete-backup",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208192",
+        "uid": "2ab0f76c-e537-4549-9cc1-6d0cf8689973"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "auto-delete-pod-when-volume-detached-unexpectedly",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208093",
+        "uid": "5563bed4-0314-49b6-9237-65891c43a2bf"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "auto-salvage",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208225",
+        "uid": "ce60effa-7d71-450f-a2b8-54e2c1405824"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "backing-image-cleanup-wait-interval",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208125",
+        "uid": "88826d70-8251-43ad-b2ee-c4667cc603bb"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "60"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "backing-image-recovery-wait-interval",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208162",
+        "uid": "8d9088bf-2d2e-48fe-9483-d51cc8e75e01"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "300"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "backup-compression-method",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208230",
+        "uid": "077a53ad-4d5c-4a37-9875-2eb4fd9bf1d2"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "lz4"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "backup-concurrent-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208146",
+        "uid": "efe968f9-1319-4385-8bba-ca60d5103b60"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "2"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "backup-execution-timeout",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208199",
+        "uid": "3683980a-fabb-4f74-acd3-6fa965603443"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "1"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "blacklist-for-auto-delete-pod-when-volume-detached-unexpectedly",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208173",
+        "uid": "4ff6a846-29fa-44f1-ab2e-0681f0cde29d"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": ""
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "concurrent-automatic-engine-upgrade-per-node-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208129",
+        "uid": "d674ad90-5ee8-4d36-823d-cd20e63411ef"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "0"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "concurrent-backing-image-replenish-per-node-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208164",
+        "uid": "2f9ce45c-477c-4a00-a678-64b5e8994c3a"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "5"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "concurrent-replica-rebuild-per-node-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208132",
+        "uid": "81642483-849d-4aae-8e99-52948e14e7df"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "5"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "concurrent-volume-backup-restore-per-node-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208123",
+        "uid": "b468c710-019b-4411-b7dc-820b5e27fc9b"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "5"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "creationTimestamp": "2026-08-29T00:17:02Z",
+        "generation": 1,
+        "name": "crd-api-version",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207684",
+        "uid": "9f6d672a-1d37-4fff-8060-460c4a7aec80"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "longhorn.io/v1beta2"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:02Z",
+        "generation": 1,
+        "name": "create-default-disk-labeled-nodes",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207701",
+        "uid": "f45bb9d1-64a8-4735-95a7-79a6a9330e7f"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:25Z",
+        "generation": 1,
+        "name": "csi-allowed-topology-keys",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208233",
+        "uid": "f391424c-b670-4517-8e16-5fb1c1ae858e"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": ""
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:25Z",
+        "generation": 1,
+        "name": "csi-storage-capacity-tracking",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10226713",
+        "uid": "3e71d789-444a-4f67-b009-562bb34bf813"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 1,
+        "name": "current-longhorn-version",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208217",
+        "uid": "d68c9d4b-33d6-4fc1-9b27-5505d8938ada"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "v1.12.1"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "data-engine-cpu-isolation-enabled",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208138",
+        "uid": "0d829324-77ee-4a5a-a7d6-2a0eaa8fcaea"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"false\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "data-engine-cpu-mask",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208220",
+        "uid": "f15d30a3-bb77-4437-871b-cccc987a6ef1"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"0x3\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "data-engine-hugepage-enabled",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208075",
+        "uid": "cdcd7c94-87e5-4239-b150-4f73ddc1baaf"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"true\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "data-engine-interrupt-mode-enabled",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208126",
+        "uid": "bfe23b07-7e30-4dcd-b59e-f89062e973a3"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"false\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "data-engine-iobuf-large-pool-size",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208187",
+        "uid": "6f8aa10f-8927-4198-9255-2734e7a8dacd"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"1024\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "data-engine-iobuf-small-pool-size",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208183",
+        "uid": "b52e103c-cad0-442a-b179-35a2c9fb8b61"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"8192\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "data-engine-log-flags",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208218",
+        "uid": "2efc99fe-d0c0-4523-94a1-758fd4cd4bce"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "data-engine-log-level",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208160",
+        "uid": "1e15e433-8372-4d5d-9f87-14ac9ef21f5f"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"Notice\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "data-engine-memory-size",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208208",
+        "uid": "bc45f082-97e4-48a2-aa26-1ac1ec4391b3"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"2048\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "data-engine-number-of-cpu-cores",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208107",
+        "uid": "cc6d5628-7780-48b4-9964-004ff4db6952"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"0\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": ""
+        },
+        "creationTimestamp": "2026-08-29T00:17:02Z",
+        "generation": 1,
+        "name": "default-backing-image-manager-image",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207829",
+        "uid": "947fc257-7e36-4585-90d3-93c1c7a374c0"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "docker.io/longhornio/backing-image-manager:v1.12.1"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "default-backup-block-size",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208227",
+        "uid": "3bec2a51-c566-438c-baec-29578b3c2770"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "2"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "default-data-locality",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208069",
+        "uid": "92c3a773-e4a5-4634-b155-f797379168bf"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "disabled"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:02Z",
+        "generation": 1,
+        "name": "default-data-path",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207844",
+        "uid": "ee67cc1e-6e62-4f9e-a972-792b8be4190e"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "/var/lib/longhorn/"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": ""
+        },
+        "creationTimestamp": "2026-08-29T00:17:02Z",
+        "generation": 1,
+        "name": "default-engine-image",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207861",
+        "uid": "5fbd9652-57bb-4266-a9f9-ee83d27641db"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "docker.io/longhornio/longhorn-engine:v1.12.1"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": ""
+        },
+        "creationTimestamp": "2026-08-29T00:17:02Z",
+        "generation": 1,
+        "name": "default-instance-manager-image",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207875",
+        "uid": "dbe51dde-505f-4b72-b4e4-2946fbb87953"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "docker.io/longhornio/longhorn-instance-manager:v1.12.1"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "default-longhorn-static-storage-class",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208185",
+        "uid": "a25d0d3a-a3cb-4346-b530-2a8cd8963613"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "longhorn-static"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "default-min-number-of-backing-image-copies",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208153",
+        "uid": "da1d06dc-fa0e-4583-8872-c4e862f56d05"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "3"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "default-replica-count",
+        "namespace": "longhorn-system",
+        "resourceVersion": "26959629",
+        "uid": "2a9fcee2-a834-4977-8406-aa6a6ade2f33"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v1\":\"2\",\"v2\":\"2\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "default-ublk-number-of-queue",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208179",
+        "uid": "d9613d49-e932-4d26-ace4-abc5cc669446"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"1\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "default-ublk-queue-depth",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208211",
+        "uid": "6cb44552-1252-4e8e-9526-ead85a7667c1"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"128\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "deleting-confirmation-flag",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208156",
+        "uid": "4e5ba916-8936-4ed8-b6d8-7fa02b998d64"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "detach-manually-attached-volumes-when-cordoned",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208170",
+        "uid": "d7f8f965-ed2e-44f5-b67e-1e29c5f0edc7"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "disable-revision-counter",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208166",
+        "uid": "0bee4d8a-3b3f-4dba-9912-426e1c82b895"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v1\":\"true\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "disable-scheduling-on-cordoned-node",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208237",
+        "uid": "2266eca0-daba-4104-a587-a9caa52260d1"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "disable-snapshot-purge",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208200",
+        "uid": "cffe021c-3f17-4b8e-a523-26a5b9d62176"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "endpoint-network-for-rwx-volume",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10226709",
+        "uid": "4e1b58b8-f841-49cc-9cea-90691aac1179"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": ""
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:25Z",
+        "generation": 1,
+        "name": "engine-image-pod-liveness-probe-failure-threshold",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208078",
+        "uid": "d14a29c4-f745-4a5c-aac1-4e2ddbc95813"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "3"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "engine-image-pod-liveness-probe-period",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208201",
+        "uid": "50e6ba10-fbaf-4313-836e-701211a816a7"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "5"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "engine-image-pod-liveness-probe-timeout",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208186",
+        "uid": "d4d2c857-734c-4caf-9a9a-439a1caa0715"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "4"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "engine-replica-timeout",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208229",
+        "uid": "0f05467a-6a91-48f8-bfc1-f8af1aa79956"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v1\":\"8\",\"v2\":\"8\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "failed-backup-ttl",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208198",
+        "uid": "7ab9c754-db37-4fa9-997d-50ff895b85bc"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "1440"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "fast-replica-rebuild-enabled",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208168",
+        "uid": "bc6e3114-3fc1-4670-bb23-fceca12a8e63"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v1\":\"true\",\"v2\":\"true\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "freeze-filesystem-for-snapshot",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208105",
+        "uid": "e81bc26b-34a0-40e2-a824-15dff2885353"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v1\":\"false\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "guaranteed-instance-manager-cpu",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208206",
+        "uid": "43c22dc8-fe6c-4aa2-89de-a94a144f05ac"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v1\":\"12\",\"v2\":\"12\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:25Z",
+        "generation": 1,
+        "name": "instance-manager-pod-liveness-probe-timeout",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208130",
+        "uid": "73ce424a-49b9-4da7-9a4d-4af1ad9b0d74"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "10"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "kubernetes-cluster-autoscaler-enabled",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208205",
+        "uid": "600c8a1e-d51e-471f-b083-33ed4a73bea1"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 1,
+        "name": "kubernetes-metrics-server-metrics-enabled",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208214",
+        "uid": "01b0d7ef-cc99-4423-ac59-9fbbd6b33479"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 2,
+        "name": "latest-longhorn-version",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208238",
+        "uid": "c0d6bc11-7238-48f2-84ba-d28fbdca18a3"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "v1.12.1"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "log-level",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208178",
+        "uid": "66122545-cd0e-4cd3-a0a0-ceacfc768731"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "Info"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:25Z",
+        "generation": 1,
+        "name": "log-path",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208242",
+        "uid": "c81aef74-9a59-4fb2-9baf-06d038bec14b"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "/var/lib/longhorn/logs/"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "long-grpc-timeout",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208215",
+        "uid": "bd2dd054-f888-4a11-a2d0-ef9be8a433fa"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "86400"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 1,
+        "name": "manager-url",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207965",
+        "uid": "f7b2bcc6-12de-4434-bc9b-20e3282594fb"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": ""
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:25Z",
+        "generation": 1,
+        "name": "node-disk-health-monitoring",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208203",
+        "uid": "ca9cc234-0969-4deb-ae10-faacac613965"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "node-down-pod-deletion-policy",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208226",
+        "uid": "affdc496-6637-4a61-bc90-375b7fe9c654"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "do-nothing"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "node-drain-policy",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208163",
+        "uid": "1a03dba8-a21f-450e-95e4-3cb52eafb994"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "block-if-contains-last-replica"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "offline-replica-rebuilding",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208177",
+        "uid": "dd7a1b5d-b029-4d97-9da2-fd1c9807525f"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "orphan-resource-auto-deletion",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208239",
+        "uid": "af7745d8-d4b1-46d5-bebd-bcaaa0168531"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": ""
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "orphan-resource-auto-deletion-grace-period",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208070",
+        "uid": "377e0780-0171-4ce2-a840-caf99fd8e77c"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "300"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "priority-class",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208196",
+        "uid": "df10a1f8-55ac-4a19-9946-f902ec2dd1d9"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "longhorn-critical"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "recurring-failed-jobs-history-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208197",
+        "uid": "ecb730e7-3c0b-4b6f-bae8-693721ed083a"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "1"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "recurring-job-max-retention",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208176",
+        "uid": "292c7525-4c58-4f10-9794-09dca44d39f0"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "100"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "recurring-successful-jobs-history-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208194",
+        "uid": "02809649-fa7d-4e1c-b1d0-b9e1880f455c"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "1"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "registry-secret",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208167",
+        "uid": "003bb73b-f2b8-450e-a148-4e41a5ed8b92"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": ""
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "remove-snapshots-during-filesystem-trim",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208171",
+        "uid": "f72d6503-5fee-4d40-8601-1f769d98c54a"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 1,
+        "name": "replica-auto-balance",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207909",
+        "uid": "4d1bb06f-52e9-4b66-b58e-dc530a0e8713"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "disabled"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 1,
+        "name": "replica-auto-balance-disk-pressure-percentage",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207914",
+        "uid": "6baf0ec2-8589-4751-9fbc-7b1546ed3e8b"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "90"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "replica-disk-soft-anti-affinity",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208228",
+        "uid": "cebcd02f-cb29-47f6-ad7d-b7c8528fb53b"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "replica-file-sync-http-client-timeout",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208165",
+        "uid": "54b90015-1691-47f1-a2a8-410756606f5f"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "30"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "replica-rebuild-concurrent-sync-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208137",
+        "uid": "d61b3274-7891-4659-94e8-97567f38db98"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v1\":\"1\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "replica-rebuilding-bandwidth-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208219",
+        "uid": "cca677ca-546f-4866-9364-884fa0d8bc2f"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v2\":\"0\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "replica-replenishment-wait-interval",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208139",
+        "uid": "909a22e1-acd1-4fd8-9e44-b8ad405eac2b"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "600"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 1,
+        "name": "replica-soft-anti-affinity",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207905",
+        "uid": "3633dde5-c64d-47e3-8790-88e116938e83"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "replica-zone-soft-anti-affinity",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208169",
+        "uid": "ffabb192-a77b-418b-b387-172f1e190f53"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "restore-concurrent-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208212",
+        "uid": "eaabb509-a63a-40a0-acc5-7369b7ca2eea"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "2"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "restore-volume-recurring-jobs",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208188",
+        "uid": "1f517933-d159-4003-8120-c506afb5ae88"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:24Z",
+        "generation": 1,
+        "name": "rwx-volume-fast-failover",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208116",
+        "uid": "7ca68fb5-1833-4b53-9017-f252d8d77ae7"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "snapshot-count-warning-threshold",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208190",
+        "uid": "8b90b191-1ad1-4546-8c6e-3f050aaef0a3"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "100"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "snapshot-data-integrity",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208155",
+        "uid": "14a1286b-e613-41b9-ae6a-aafccc13988b"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v1\":\"fast-check\",\"v2\":\"fast-check\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "snapshot-data-integrity-cronjob",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208207",
+        "uid": "46dddde6-9b4d-49b6-8453-4acb2fcebb65"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v1\":\"0 0 */7 * *\",\"v2\":\"0 0 */7 * *\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "snapshot-data-integrity-immediate-check-after-snapshot-creation",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208209",
+        "uid": "480911b0-5621-4ef5-9f41-2a9dfadf8749"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "{\"v1\":\"false\",\"v2\":\"false\"}"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:25Z",
+        "generation": 1,
+        "name": "snapshot-heavy-task-concurrent-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208180",
+        "uid": "21b2efac-4a90-4dce-8992-39b32c622704"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "5"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "snapshot-max-count",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208195",
+        "uid": "529f6fc7-2094-4ffb-aba7-909010da7e45"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "250"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 2,
+        "name": "stable-longhorn-versions",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208149",
+        "uid": "2ca7be4b-d441-447b-8b4a-ce1db99dd423"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "v1.10.2,v1.11.3,v1.12.1,v1.3.3,v1.4.4,v1.5.5,v1.6.4,v1.7.3,v1.8.2,v1.9.2"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 1,
+        "name": "storage-minimal-available-percentage",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207924",
+        "uid": "c5f25823-a670-4f1e-808f-2b5cee8320e7"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "15"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "storage-network",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10226698",
+        "uid": "f5a1f341-9347-42cf-bb7d-0acd7933547e"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": ""
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 2,
+        "name": "storage-over-provisioning-percentage",
+        "namespace": "longhorn-system",
+        "resourceVersion": "26334705",
+        "uid": "e322f51b-69a7-4181-b6e5-7d6c0446b872"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "200"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 1,
+        "name": "storage-reserved-percentage-for-default-disk",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207928",
+        "uid": "24c30353-4ff4-4686-abc2-3bb8b346bcad"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "30"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "support-bundle-failed-history-limit",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208174",
+        "uid": "393cd4ba-916a-452b-ae68-07118e0b2e23"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "1"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": ""
+        },
+        "creationTimestamp": "2026-08-29T00:17:02Z",
+        "generation": 1,
+        "name": "support-bundle-manager-image",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207892",
+        "uid": "5d645325-c07c-4f7b-a073-d5a3c4205a02"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "docker.io/longhornio/support-bundle-kit:v0.0.92"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "support-bundle-node-collection-timeout",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207984",
+        "uid": "b564b98f-50d4-4f91-ab5f-55030d8d36b9"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "30"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "system-managed-components-node-selector",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208241",
+        "uid": "b28ac89f-8c73-4112-bd4d-9ac41f08b762"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": ""
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "system-managed-csi-components-resource-limits",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208235",
+        "uid": "2bf676bb-96c7-4890-886b-7b2153939ab7"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": ""
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "system-managed-pods-image-pull-policy",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208193",
+        "uid": "8280cc9b-ce6e-4155-a3e5-4229880d0679"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "if-not-present"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "taint-toleration",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208213",
+        "uid": "86f9d929-8661-471d-8073-ccb7881d512f"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": ""
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 1,
+        "name": "upgrade-checker",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207955",
+        "uid": "41a34cc6-262f-4ab8-84cc-f88b9f45298c"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "generation": 1,
+        "name": "upgrade-responder-url",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10207959",
+        "uid": "b42e4e1a-4179-46cd-be1e-3997f556abe9"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "https://longhorn-upgrade-responder.rancher.io/v1/checkupgrade"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "v1-data-engine",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208172",
+        "uid": "2bffd445-db1a-4ae6-b551-c1474f561e97"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "true"
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/configmap-resource-version": "10207324"
+        },
+        "creationTimestamp": "2026-08-29T00:17:23Z",
+        "generation": 1,
+        "name": "v2-data-engine",
+        "namespace": "longhorn-system",
+        "resourceVersion": "10208147",
+        "uid": "7b20c0d8-ec17-4862-a336-2a58751c7163"
+      },
+      "status": {
+        "applied": true
+      },
+      "value": "false"
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

@@ -1,0 +1,275 @@
+{
+  "apiVersion": "longhorn.io/v1beta2",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Node",
+      "metadata": {
+        "name": "cp-1",
+        "namespace": "longhorn-system",
+        "uid": "3d659242-8ede-5942-8867-e2ef52548a48",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "finalizers": ["longhorn.io"]
+      },
+      "spec": {
+        "name": "cp-1",
+        "allowScheduling": true,
+        "evictionRequested": false,
+        "instanceManagerCPURequest": 0,
+        "tags": [],
+        "disks": {
+          "default-disk-cd590dae0f692213": {
+            "path": "/var/lib/longhorn/",
+            "allowScheduling": true,
+            "diskType": "filesystem",
+            "evictionRequested": false,
+            "storageReserved": 32212254720,
+            "tags": []
+          }
+        }
+      },
+      "status": {
+        "region": "",
+        "zone": "",
+        "snapshotCheckStatus": {},
+        "autoEvicting": false,
+        "conditions": [
+          {
+            "type": "Ready",
+            "status": "True",
+            "reason": "",
+            "message": "",
+            "lastTransitionTime": "2026-09-07T12:00:00.000Z"
+          },
+          {
+            "type": "Schedulable",
+            "status": "True",
+            "reason": "",
+            "message": "",
+            "lastTransitionTime": "2026-09-07T12:00:00.000Z"
+          },
+          {
+            "type": "MountPropagation",
+            "status": "True",
+            "reason": "",
+            "message": "Node cp-1 is managed by Longhorn",
+            "lastTransitionTime": "2026-09-07T12:00:00.000Z"
+          }
+        ],
+        "diskStatus": {
+          "default-disk-cd590dae0f692213": {
+            "diskName": "default-disk-cd590dae0f692213",
+            "diskPath": "/var/lib/longhorn/",
+            "diskType": "filesystem",
+            "diskUUID": "c7901f63-1eb9-909a-411c-0b4d44e3f512",
+            "filesystemType": "ext2/ext3",
+            "storageAvailable": 66571993088,
+            "storageMaximum": 107374182400,
+            "storageScheduled": 12884901888,
+            "scheduledReplica": {
+              "pvc-3f1c6a52-0b7e-4d0a-9a55-1d2b8c9e7a01-r-9d3c": 10737418240,
+              "pvc-b2d9f604-1a85-4c7e-9d31-6e0c8a2b4f05-r-1c9d": 2147483648
+            },
+            "conditions": [
+              {
+                "type": "Ready",
+                "status": "True",
+                "reason": "",
+                "message": "",
+                "lastTransitionTime": "2026-09-07T12:00:00.000Z"
+              },
+              {
+                "type": "Schedulable",
+                "status": "True",
+                "reason": "",
+                "message": "",
+                "lastTransitionTime": "2026-09-07T12:00:00.000Z"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Node",
+      "metadata": {
+        "name": "worker-1",
+        "namespace": "longhorn-system",
+        "uid": "dd291fe5-06b7-5223-7e2a-16ca475738a2",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "finalizers": ["longhorn.io"]
+      },
+      "spec": {
+        "name": "worker-1",
+        "allowScheduling": true,
+        "evictionRequested": false,
+        "instanceManagerCPURequest": 0,
+        "tags": [],
+        "disks": {
+          "default-disk-13029f9e83d15b3d": {
+            "path": "/var/lib/longhorn/",
+            "allowScheduling": true,
+            "diskType": "filesystem",
+            "evictionRequested": false,
+            "storageReserved": 32212254720,
+            "tags": []
+          }
+        }
+      },
+      "status": {
+        "region": "",
+        "zone": "",
+        "snapshotCheckStatus": {},
+        "autoEvicting": false,
+        "conditions": [
+          {
+            "type": "Ready",
+            "status": "True",
+            "reason": "",
+            "message": "",
+            "lastTransitionTime": "2026-10-07T11:20:00.000Z"
+          },
+          {
+            "type": "Schedulable",
+            "status": "True",
+            "reason": "",
+            "message": "",
+            "lastTransitionTime": "2026-10-07T11:20:00.000Z"
+          },
+          {
+            "type": "MountPropagation",
+            "status": "True",
+            "reason": "",
+            "message": "Node worker-1 is managed by Longhorn",
+            "lastTransitionTime": "2026-10-07T11:20:00.000Z"
+          }
+        ],
+        "diskStatus": {
+          "default-disk-13029f9e83d15b3d": {
+            "diskName": "default-disk-13029f9e83d15b3d",
+            "diskPath": "/var/lib/longhorn/",
+            "diskType": "filesystem",
+            "diskUUID": "76fa24b0-0ad9-ebb4-9c74-39ad99a6b647",
+            "filesystemType": "ext2/ext3",
+            "storageAvailable": 16106127360,
+            "storageMaximum": 107374182400,
+            "storageScheduled": 120259084288,
+            "scheduledReplica": {
+              "pvc-3f1c6a52-0b7e-4d0a-9a55-1d2b8c9e7a01-r-4f1a": 10737418240,
+              "pvc-9a4d2e17-6c3b-4f85-8e20-5b7a1c0d3e02-r-7b2e": 107374182400,
+              "pvc-b2d9f604-1a85-4c7e-9d31-6e0c8a2b4f05-r-3e5a": 2147483648
+            },
+            "conditions": [
+              {
+                "type": "Ready",
+                "status": "True",
+                "reason": "",
+                "message": "",
+                "lastTransitionTime": "2026-10-07T11:20:00.000Z"
+              },
+              {
+                "type": "Schedulable",
+                "status": "False",
+                "reason": "DiskPressure",
+                "message": "Disk default-disk-13029f9e83d15b3d (/var/lib/longhorn/) on the node worker-1 has 15% available, less than the 25% minimum",
+                "lastTransitionTime": "2026-10-07T11:20:00.000Z"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Node",
+      "metadata": {
+        "name": "worker-2",
+        "namespace": "longhorn-system",
+        "uid": "c433746a-54b0-88bf-c073-5dfd6635576c",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "finalizers": ["longhorn.io"]
+      },
+      "spec": {
+        "name": "worker-2",
+        "allowScheduling": true,
+        "evictionRequested": false,
+        "instanceManagerCPURequest": 0,
+        "tags": [],
+        "disks": {
+          "default-disk-1ce9fa3f65c172f1": {
+            "path": "/var/lib/longhorn/",
+            "allowScheduling": true,
+            "diskType": "filesystem",
+            "evictionRequested": false,
+            "storageReserved": 32212254720,
+            "tags": []
+          }
+        }
+      },
+      "status": {
+        "region": "",
+        "zone": "",
+        "snapshotCheckStatus": {},
+        "autoEvicting": false,
+        "conditions": [
+          {
+            "type": "Ready",
+            "status": "False",
+            "reason": "KubernetesNodeNotReady",
+            "message": "Kubernetes node worker-2 is not ready",
+            "lastTransitionTime": "2026-10-07T11:20:00.000Z"
+          },
+          {
+            "type": "Schedulable",
+            "status": "False",
+            "reason": "",
+            "message": "",
+            "lastTransitionTime": "2026-10-07T11:20:00.000Z"
+          },
+          {
+            "type": "MountPropagation",
+            "status": "True",
+            "reason": "",
+            "message": "Node worker-2 is managed by Longhorn",
+            "lastTransitionTime": "2026-10-07T11:20:00.000Z"
+          }
+        ],
+        "diskStatus": {
+          "default-disk-1ce9fa3f65c172f1": {
+            "diskName": "default-disk-1ce9fa3f65c172f1",
+            "diskPath": "/var/lib/longhorn/",
+            "diskType": "filesystem",
+            "diskUUID": "4f47ea61-aa23-a5b8-edb5-ca0b7084c6e6",
+            "filesystemType": "ext2/ext3",
+            "storageAvailable": 51539607552,
+            "storageMaximum": 107374182400,
+            "storageScheduled": 107374182400,
+            "scheduledReplica": { "pvc-9a4d2e17-6c3b-4f85-8e20-5b7a1c0d3e02-r-2a8f": 107374182400 },
+            "conditions": [
+              {
+                "type": "Ready",
+                "status": "False",
+                "reason": "NodeDown",
+                "message": "",
+                "lastTransitionTime": "2026-10-07T11:20:00.000Z"
+              },
+              {
+                "type": "Schedulable",
+                "status": "False",
+                "reason": "",
+                "message": "",
+                "lastTransitionTime": "2026-10-07T11:20:00.000Z"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

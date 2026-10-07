@@ -1,0 +1,124 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "default",
+        "uid": "261ac5cc-b245-9955-5596-bc06056c39d6",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": { "kubernetes.io/metadata.name": "default" }
+      },
+      "spec": { "finalizers": ["kubernetes"] },
+      "status": { "phase": "Active" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "kube-system",
+        "uid": "040d869a-243c-6dbb-1386-a067e844978a",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": { "kubernetes.io/metadata.name": "kube-system" }
+      },
+      "spec": { "finalizers": ["kubernetes"] },
+      "status": { "phase": "Active" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "longhorn-system",
+        "uid": "c0e6476c-941d-133f-800f-bdb9867c8186",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": { "kubernetes.io/metadata.name": "longhorn-system" }
+      },
+      "spec": { "finalizers": ["kubernetes"] },
+      "status": { "phase": "Active" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "velero",
+        "uid": "6f46e197-223e-aff9-5bfe-94717948f1ae",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": { "kubernetes.io/metadata.name": "velero" }
+      },
+      "spec": { "finalizers": ["kubernetes"] },
+      "status": { "phase": "Active" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "fleet-default",
+        "uid": "9fb25a9d-c1cd-995d-da3b-480bf51f1e54",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": { "kubernetes.io/metadata.name": "fleet-default" }
+      },
+      "spec": { "finalizers": ["kubernetes"] },
+      "status": { "phase": "Active" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "cattle-fleet-system",
+        "uid": "cb9970b7-50b1-2989-affb-4255a4416143",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": { "kubernetes.io/metadata.name": "cattle-fleet-system" }
+      },
+      "spec": { "finalizers": ["kubernetes"] },
+      "status": { "phase": "Active" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "cert-manager",
+        "uid": "e79fef9c-2ec8-8fc5-86ac-4ddb231cba3d",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": { "kubernetes.io/metadata.name": "cert-manager" }
+      },
+      "spec": { "finalizers": ["kubernetes"] },
+      "status": { "phase": "Active" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "media",
+        "uid": "18e9da30-3742-478e-0c79-3e3e7134731c",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": { "kubernetes.io/metadata.name": "media" }
+      },
+      "spec": { "finalizers": ["kubernetes"] },
+      "status": { "phase": "Active" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "databases",
+        "uid": "b6ffa431-6ba7-68eb-aed3-35c18b743561",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": { "kubernetes.io/metadata.name": "databases" }
+      },
+      "spec": { "finalizers": ["kubernetes"] },
+      "status": { "phase": "Active" }
+    }
+  ]
+}

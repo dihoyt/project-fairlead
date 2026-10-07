@@ -1,0 +1,1144 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-28T22:42:33Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "name": "beszel-data",
+        "namespace": "beszel",
+        "resourceVersion": "10185063",
+        "uid": "7e7d27e9-a689-4377-88ad-c64d63300906"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "2Gi"
+          }
+        },
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-7e7d27e9-a689-4377-88ad-c64d63300906"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "2Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-06T00:45:14Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "name": "act-runner-data",
+        "namespace": "ci",
+        "resourceVersion": "26383581",
+        "uid": "0cddb8b9-bf40-41a5-bfff-160a0aea8f01"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "1Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "1Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-06T00:44:52Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "name": "registry-data",
+        "namespace": "ci",
+        "resourceVersion": "26383342",
+        "uid": "b851930a-e9a2-4361-ba3d-78756102e777"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "20Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-b851930a-e9a2-4361-ba3d-78756102e777"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "20Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-code-server",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-code-server-cattle-fleet-lo-d80fd"
+        },
+        "creationTimestamp": "2026-08-01T10:38:08Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "ef4cf55657bab2fb560df69a60557f64999e7baa"
+        },
+        "name": "code-server-workspace",
+        "namespace": "code-server",
+        "resourceVersion": "325061",
+        "uid": "42832446-ebcf-454d-ac43-845926271114"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "20Gi"
+          }
+        },
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-42832446-ebcf-454d-ac43-845926271114"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "20Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "coder-console",
+          "meta.helm.sh/release-namespace": "coder-console"
+        },
+        "creationTimestamp": "2026-10-06T18:24:40Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/instance": "coder-console",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "coder-console",
+          "app.kubernetes.io/version": "latest",
+          "helm.sh/chart": "coder-console-0.2.0"
+        },
+        "name": "coder-console-data",
+        "namespace": "coder-console",
+        "resourceVersion": "26755084",
+        "uid": "9b71d068-c678-4ae1-956f-d528a247c277"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "5Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-9b71d068-c678-4ae1-956f-d528a247c277"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-07T19:33:27Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "coder-console",
+          "app.kubernetes.io/name": "coder-workspace",
+          "coder-console.io/backup": "true",
+          "coder-console.io/owner": "owner.example.com",
+          "coder-console.io/workspace": "ws-2"
+        },
+        "name": "ws-2-home",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238858",
+        "uid": "c46ad0bc-26fe-4f12-86bc-339a644fc632"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "10Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "10Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-firefox",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-firefox-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-29T00:48:47Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "1d8f54792a4f7d1ccb0bfecf7518dc62a258e0ea"
+        },
+        "name": "firefox-config",
+        "namespace": "firefox",
+        "resourceVersion": "10400472",
+        "uid": "e89ab022-400f-4cb2-a222-f172dc1604ff"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "5Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-02T04:50:38Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "name": "dragonwilds-data",
+        "namespace": "games",
+        "resourceVersion": "24702218",
+        "uid": "5f66be89-5104-4be7-adef-e003ab9e4a7b"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "20Gi"
+          }
+        },
+        "storageClassName": "",
+        "volumeMode": "Filesystem",
+        "volumeName": "games-dragonwilds"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "20Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-05T22:50:36Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "name": "dragonwilds-files",
+        "namespace": "games",
+        "resourceVersion": "26343379",
+        "uid": "82366cb4-05a0-457b-88f4-e58b3eb7901e"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "15Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "15Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-06T00:57:09Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "name": "game-panel-data",
+        "namespace": "games",
+        "resourceVersion": "26387900",
+        "uid": "eb37313f-85fe-48ae-81aa-9a398777345d"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "5Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-07T04:09:14Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app": "valheim-valheim-fresh-2",
+          "app.kubernetes.io/managed-by": "game-panel",
+          "game-panel.example.com/server": "valheim-valheim-fresh-2"
+        },
+        "name": "valheim-valheim-fresh-2-files",
+        "namespace": "games",
+        "resourceVersion": "26905999",
+        "uid": "4c2c9f3b-add8-4d07-b5db-9a70a921bc36"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "10Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "10Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "gitea",
+          "meta.helm.sh/release-namespace": "git"
+        },
+        "creationTimestamp": "2026-08-01T04:34:18Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm"
+        },
+        "name": "gitea-shared-storage",
+        "namespace": "git",
+        "resourceVersion": "70304",
+        "uid": "0354fa27-d444-43d5-b00c-089ce46ecd4e"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "10Gi"
+          }
+        },
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-0354fa27-d444-43d5-b00c-089ce46ecd4e"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "10Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T04:34:18Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/instance": "gitea",
+          "app.kubernetes.io/name": "valkey-cluster"
+        },
+        "name": "valkey-data-gitea-valkey-cluster-0",
+        "namespace": "git",
+        "resourceVersion": "70293",
+        "uid": "f6d64599-c550-4b04-a858-07cd713dad96"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "8Gi"
+          }
+        },
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-f6d64599-c550-4b04-a858-07cd713dad96"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "8Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T04:34:18Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/instance": "gitea",
+          "app.kubernetes.io/name": "valkey-cluster"
+        },
+        "name": "valkey-data-gitea-valkey-cluster-1",
+        "namespace": "git",
+        "resourceVersion": "70288",
+        "uid": "b39b1ffd-ca08-4ea5-a2bb-6061237135ab"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "8Gi"
+          }
+        },
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-b39b1ffd-ca08-4ea5-a2bb-6061237135ab"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "8Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T04:34:18Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/instance": "gitea",
+          "app.kubernetes.io/name": "valkey-cluster"
+        },
+        "name": "valkey-data-gitea-valkey-cluster-2",
+        "namespace": "git",
+        "resourceVersion": "70299",
+        "uid": "fe9296f6-c682-4c42-9f1c-0f11e7d3c40e"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "8Gi"
+          }
+        },
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-fe9296f6-c682-4c42-9f1c-0f11e7d3c40e"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "8Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-media",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-media-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T18:38:17Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5768aa22afa2880734d02c41d2d62a29ad2c2d00"
+        },
+        "name": "nas-downloads",
+        "namespace": "media",
+        "resourceVersion": "10400513",
+        "uid": "52abd6c6-fd79-4877-a81c-12a3d541f29d"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "10Ti"
+          }
+        },
+        "storageClassName": "",
+        "volumeMode": "Filesystem",
+        "volumeName": "nas-downloads"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "capacity": {
+          "storage": "10Ti"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-media",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-media-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T18:38:17Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5768aa22afa2880734d02c41d2d62a29ad2c2d00"
+        },
+        "name": "nas-private",
+        "namespace": "media",
+        "resourceVersion": "10400510",
+        "uid": "170a04fe-7b21-49e9-8ae4-0433678fbe4c"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "10Ti"
+          }
+        },
+        "storageClassName": "",
+        "volumeMode": "Filesystem",
+        "volumeName": "nas-private"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "capacity": {
+          "storage": "10Ti"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-media",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-media-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T18:38:17Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5768aa22afa2880734d02c41d2d62a29ad2c2d00"
+        },
+        "name": "nas-public",
+        "namespace": "media",
+        "resourceVersion": "10400493",
+        "uid": "78e55eed-69c2-4825-a6b9-381203dd03ac"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "10Ti"
+          }
+        },
+        "storageClassName": "",
+        "volumeMode": "Filesystem",
+        "volumeName": "nas-public"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "capacity": {
+          "storage": "10Ti"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-media",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-media-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-29T01:46:11Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5768aa22afa2880734d02c41d2d62a29ad2c2d00"
+        },
+        "name": "plex-config",
+        "namespace": "media",
+        "resourceVersion": "10400518",
+        "uid": "015d2a5a-b086-40c5-a5fe-818b2206bca8"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "10Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "10Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-media",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-media-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-29T01:46:11Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5768aa22afa2880734d02c41d2d62a29ad2c2d00"
+        },
+        "name": "plex-private-config",
+        "namespace": "media",
+        "resourceVersion": "10400516",
+        "uid": "8966ce73-9ed1-4a11-8154-3a8d19e6a3f1"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "25Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "25Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-media",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-media-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-29T01:46:11Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5768aa22afa2880734d02c41d2d62a29ad2c2d00"
+        },
+        "name": "prowlarr-config",
+        "namespace": "media",
+        "resourceVersion": "10400519",
+        "uid": "739c938e-25a5-4369-aaf4-ec112eeb5ca6"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "5Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-media",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-media-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-29T01:46:11Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5768aa22afa2880734d02c41d2d62a29ad2c2d00"
+        },
+        "name": "sonarr-config",
+        "namespace": "media",
+        "resourceVersion": "10400504",
+        "uid": "f7bc5aaf-aade-4283-9da8-48df27349b55"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "5Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-portal",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-portal-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-09-01T20:00:28Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5dd03d96be7a81ba10d2b602f13fc6084e73862c"
+        },
+        "name": "homarr-data",
+        "namespace": "portal",
+        "resourceVersion": "11483500",
+        "uid": "1b3cc1b7-8540-4741-95a3-ac5aee9e38f1"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "2Gi"
+          }
+        },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "2Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-portal",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-portal-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-31T22:09:46Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5dd03d96be7a81ba10d2b602f13fc6084e73862c"
+        },
+        "name": "moonlight-web-data",
+        "namespace": "portal",
+        "resourceVersion": "11465086",
+        "uid": "d697678e-88b9-4fd9-83b8-cef3a73c9e03"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "1Gi"
+          }
+        },
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-d697678e-88b9-4fd9-83b8-cef3a73c9e03"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "1Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-09-01T22:23:54Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "name": "sftp-nas-share",
+        "namespace": "sftp",
+        "resourceVersion": "11529206",
+        "uid": "b0895cea-6e76-417a-abbb-51dea5cb24af"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "1Ti"
+          }
+        },
+        "storageClassName": "",
+        "volumeMode": "Filesystem",
+        "volumeName": "sftp-nas-share"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "capacity": {
+          "storage": "1Ti"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T19:24:18Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "name": "sftpgo-data",
+        "namespace": "sftp",
+        "resourceVersion": "335724",
+        "uid": "89985f7f-f3a9-4a28-97d0-8c5e62742d5d"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "2Gi"
+          }
+        },
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-89985f7f-f3a9-4a28-97d0-8c5e62742d5d"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "2Gi"
+        },
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-termix",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-termix-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T13:37:30Z",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "d18dff21322c350a966ca8002a5521c32276f1f2"
+        },
+        "name": "termix-data",
+        "namespace": "termix",
+        "resourceVersion": "325282",
+        "uid": "5dd7169e-c5cd-4591-9277-de0b0a842b57"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "5Gi"
+          }
+        },
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-5dd7169e-c5cd-4591-9277-de0b0a842b57"
+      },
+      "status": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "phase": "Bound"
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

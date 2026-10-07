@@ -1,0 +1,1536 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-02T04:50:38Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "name": "games-dragonwilds",
+        "resourceVersion": "24702214",
+        "uid": "a5a6e081-e3e5-4282-84a7-6b91d33d7d37"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "20Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "dragonwilds-data",
+          "namespace": "games",
+          "resourceVersion": "24702212",
+          "uid": "5f66be89-5104-4be7-adef-e003ab9e4a7b"
+        },
+        "hostPath": {
+          "path": "/k3s/games/dragonwilds",
+          "type": "Directory"
+        },
+        "nodeAffinity": {
+          "required": {
+            "nodeSelectorTerms": [
+              {
+                "matchExpressions": [
+                  {
+                    "key": "kubernetes.io/hostname",
+                    "operator": "In",
+                    "values": [
+                      "server-1"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "persistentVolumeReclaimPolicy": "Retain",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-10-02T04:50:38Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-cluster",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-cluster-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-29T10:56:34Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5e41e808bd1d95404613184e02821a42c92698bb"
+        },
+        "name": "nas-backups",
+        "resourceVersion": "10423366",
+        "uid": "9be6a9bc-7d53-4de7-b7ac-e7832db0ee8e"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "capacity": {
+          "storage": "10Ti"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "nfs": {
+          "path": "/volume1/backups",
+          "server": "nas.example.lan"
+        },
+        "persistentVolumeReclaimPolicy": "Retain",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-29T10:56:34Z",
+        "phase": "Available"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-cluster",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-cluster-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T18:49:56Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5e41e808bd1d95404613184e02821a42c92698bb"
+        },
+        "name": "nas-downloads",
+        "resourceVersion": "10423364",
+        "uid": "3d1117e6-42dd-4881-a56f-cd0fe9b43907"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "capacity": {
+          "storage": "10Ti"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "nas-downloads",
+          "namespace": "media",
+          "resourceVersion": "323449",
+          "uid": "52abd6c6-fd79-4877-a81c-12a3d541f29d"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "nfs": {
+          "path": "/volume1/downloads",
+          "server": "nas.example.lan"
+        },
+        "persistentVolumeReclaimPolicy": "Retain",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-01T18:49:58Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-cluster",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-cluster-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T18:49:56Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5e41e808bd1d95404613184e02821a42c92698bb"
+        },
+        "name": "nas-private",
+        "resourceVersion": "10423362",
+        "uid": "dc2ef5f8-2d80-4767-8ca0-a365c1e8ca73"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "capacity": {
+          "storage": "10Ti"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "nas-private",
+          "namespace": "media",
+          "resourceVersion": "323448",
+          "uid": "170a04fe-7b21-49e9-8ae4-0433678fbe4c"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "nfs": {
+          "path": "/volume1/private",
+          "server": "nas.example.lan"
+        },
+        "persistentVolumeReclaimPolicy": "Retain",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-01T18:49:58Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-cluster",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-cluster-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T18:49:56Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5e41e808bd1d95404613184e02821a42c92698bb"
+        },
+        "name": "nas-public",
+        "resourceVersion": "10423360",
+        "uid": "f70515a2-8ccc-4461-ba1c-5db2ba0fa178"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "capacity": {
+          "storage": "10Ti"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "nas-public",
+          "namespace": "media",
+          "resourceVersion": "323447",
+          "uid": "78e55eed-69c2-4825-a6b9-381203dd03ac"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "nfs": {
+          "path": "/volume1/public",
+          "server": "nas.example.lan"
+        },
+        "persistentVolumeReclaimPolicy": "Retain",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-01T18:49:58Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-08-29T01:46:13Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8",
+        "resourceVersion": "10236852",
+        "uid": "f1603ea5-d7bf-46fb-8a41-83bee3540933"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "10Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "plex-config",
+          "namespace": "media",
+          "resourceVersion": "10236605",
+          "uid": "015d2a5a-b086-40c5-a5fe-818b2206bca8"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1787962747744-8714-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-29T01:46:13Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T04:39:29Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "name": "pvc-0354fa27-d444-43d5-b00c-089ce46ecd4e",
+        "resourceVersion": "70319",
+        "uid": "17ef9ff2-de42-47cb-acde-fc1fbbb391a6"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "10Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "gitea-shared-storage",
+          "namespace": "git",
+          "resourceVersion": "68622",
+          "uid": "0354fa27-d444-43d5-b00c-089ce46ecd4e"
+        },
+        "csi": {
+          "driver": "nfs.csi.k8s.io",
+          "volumeAttributes": {
+            "csi.storage.k8s.io/pv/name": "pvc-0354fa27-d444-43d5-b00c-089ce46ecd4e",
+            "csi.storage.k8s.io/pvc/name": "gitea-shared-storage",
+            "csi.storage.k8s.io/pvc/namespace": "git",
+            "server": "nas.example.lan",
+            "share": "/volume1/k3s",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1785559168794-3860-nfs.csi.k8s.io",
+            "subDir": "git-gitea-shared-storage"
+          },
+          "volumeHandle": "nas.example.lan#volume1/k3s#git-gitea-shared-storage#pvc-0354fa27-d444-43d5-b00c-089ce46ecd4e#"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-01T04:39:29Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-10-06T00:45:16Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01",
+        "resourceVersion": "26383585",
+        "uid": "2d6f6d49-26e2-4079-9251-e7f8b13eee1f"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "1Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "act-runner-data",
+          "namespace": "ci",
+          "resourceVersion": "26383518",
+          "uid": "0cddb8b9-bf40-41a5-bfff-160a0aea8f01"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1791230936736-5946-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-10-06T00:45:16Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-09-01T20:00:30Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1",
+        "resourceVersion": "26931253",
+        "uid": "a3673a71-f15d-4838-97d0-e8e79a5167f2"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "2Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "homarr-data",
+          "namespace": "portal",
+          "resourceVersion": "11483385",
+          "uid": "1b3cc1b7-8540-4741-95a3-ac5aee9e38f1"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1788153573328-7551-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-09-01T20:00:30Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T10:38:08Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "name": "pvc-42832446-ebcf-454d-ac43-845926271114",
+        "resourceVersion": "166986",
+        "uid": "8c3cd677-5163-43eb-abf8-7b4b8bcd6b91"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "20Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "code-server-workspace",
+          "namespace": "code-server",
+          "resourceVersion": "166966",
+          "uid": "42832446-ebcf-454d-ac43-845926271114"
+        },
+        "csi": {
+          "driver": "nfs.csi.k8s.io",
+          "volumeAttributes": {
+            "csi.storage.k8s.io/pv/name": "pvc-42832446-ebcf-454d-ac43-845926271114",
+            "csi.storage.k8s.io/pvc/name": "code-server-workspace",
+            "csi.storage.k8s.io/pvc/namespace": "code-server",
+            "server": "nas.example.lan",
+            "share": "/volume1/k3s",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1785559168794-3860-nfs.csi.k8s.io",
+            "subDir": "code-server-code-server-workspace"
+          },
+          "volumeHandle": "nas.example.lan#volume1/k3s#code-server-code-server-workspace#pvc-42832446-ebcf-454d-ac43-845926271114#"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-01T10:38:08Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-10-07T04:09:16Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36",
+        "resourceVersion": "26906005",
+        "uid": "675086c1-b582-40b6-bb1f-85fdb4da38ca"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "10Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "valheim-valheim-fresh-2-files",
+          "namespace": "games",
+          "resourceVersion": "26905897",
+          "uid": "4c2c9f3b-add8-4d07-b5db-9a70a921bc36"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1791232217632-8862-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-10-07T04:09:16Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T13:37:31Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "name": "pvc-5dd7169e-c5cd-4591-9277-de0b0a842b57",
+        "resourceVersion": "241315",
+        "uid": "6669033e-ca94-4503-82a4-396aaed44b80"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "termix-data",
+          "namespace": "termix",
+          "resourceVersion": "241288",
+          "uid": "5dd7169e-c5cd-4591-9277-de0b0a842b57"
+        },
+        "csi": {
+          "driver": "nfs.csi.k8s.io",
+          "volumeAttributes": {
+            "csi.storage.k8s.io/pv/name": "pvc-5dd7169e-c5cd-4591-9277-de0b0a842b57",
+            "csi.storage.k8s.io/pvc/name": "termix-data",
+            "csi.storage.k8s.io/pvc/namespace": "termix",
+            "server": "nas.example.lan",
+            "share": "/volume1/k3s",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1785582960025-796-nfs.csi.k8s.io",
+            "subDir": "termix-termix-data"
+          },
+          "volumeHandle": "nas.example.lan#volume1/k3s#termix-termix-data#pvc-5dd7169e-c5cd-4591-9277-de0b0a842b57#"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-01T13:37:31Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-08-29T01:46:13Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6",
+        "resourceVersion": "10236851",
+        "uid": "7e188486-6521-443b-b63b-02451e381c65"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "prowlarr-config",
+          "namespace": "media",
+          "resourceVersion": "10236622",
+          "uid": "739c938e-25a5-4369-aaf4-ec112eeb5ca6"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1787962747744-8714-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-29T01:46:13Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-28T22:42:33Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "name": "pvc-7e7d27e9-a689-4377-88ad-c64d63300906",
+        "resourceVersion": "10185067",
+        "uid": "94bd3e87-0414-4099-8864-3c1565ee6422"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "2Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "beszel-data",
+          "namespace": "beszel",
+          "resourceVersion": "10185037",
+          "uid": "7e7d27e9-a689-4377-88ad-c64d63300906"
+        },
+        "csi": {
+          "driver": "nfs.csi.k8s.io",
+          "volumeAttributes": {
+            "csi.storage.k8s.io/pv/name": "pvc-7e7d27e9-a689-4377-88ad-c64d63300906",
+            "csi.storage.k8s.io/pvc/name": "beszel-data",
+            "csi.storage.k8s.io/pvc/namespace": "beszel",
+            "server": "nas.example.lan",
+            "share": "/volume1/k3s",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1786991129821-5241-nfs.csi.k8s.io",
+            "subDir": "beszel-beszel-data"
+          },
+          "volumeHandle": "nas.example.lan#volume1/k3s#beszel-beszel-data#pvc-7e7d27e9-a689-4377-88ad-c64d63300906#"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-28T22:42:33Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-10-05T22:50:38Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e",
+        "resourceVersion": "26931257",
+        "uid": "5a85fc8e-fa20-4b0a-bc30-d943d2b88b3b"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "15Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "dragonwilds-files",
+          "namespace": "games",
+          "resourceVersion": "26343319",
+          "uid": "82366cb4-05a0-457b-88f4-e58b3eb7901e"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1791230936736-5946-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-10-05T22:50:38Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-08-29T01:46:13Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1",
+        "resourceVersion": "26938058",
+        "uid": "e1adf93f-e15c-4205-b07c-fbf48649380d"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "25Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "plex-private-config",
+          "namespace": "media",
+          "resourceVersion": "10236610",
+          "uid": "8966ce73-9ed1-4a11-8154-3a8d19e6a3f1"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1787962747744-8714-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-29T01:46:13Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T19:24:18Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "name": "pvc-89985f7f-f3a9-4a28-97d0-8c5e62742d5d",
+        "resourceVersion": "335721",
+        "uid": "3aa7cb3f-51f5-4cff-8449-265ea8e9318b"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "2Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "sftpgo-data",
+          "namespace": "sftp",
+          "resourceVersion": "335696",
+          "uid": "89985f7f-f3a9-4a28-97d0-8c5e62742d5d"
+        },
+        "csi": {
+          "driver": "nfs.csi.k8s.io",
+          "volumeAttributes": {
+            "csi.storage.k8s.io/pv/name": "pvc-89985f7f-f3a9-4a28-97d0-8c5e62742d5d",
+            "csi.storage.k8s.io/pvc/name": "sftpgo-data",
+            "csi.storage.k8s.io/pvc/namespace": "sftp",
+            "server": "nas.example.lan",
+            "share": "/volume1/k3s",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1785582960025-796-nfs.csi.k8s.io",
+            "subDir": "sftp-sftpgo-data"
+          },
+          "volumeHandle": "nas.example.lan#volume1/k3s#sftp-sftpgo-data#pvc-89985f7f-f3a9-4a28-97d0-8c5e62742d5d#"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-01T19:24:18Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-10-06T18:24:42Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-9b71d068-c678-4ae1-956f-d528a247c277",
+        "resourceVersion": "26931248",
+        "uid": "67470f90-6f70-4af7-bb2a-edd3f793b875"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "coder-console-data",
+          "namespace": "coder-console",
+          "resourceVersion": "26719166",
+          "uid": "9b71d068-c678-4ae1-956f-d528a247c277"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1791232217632-8862-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-9b71d068-c678-4ae1-956f-d528a247c277"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-10-06T18:24:42Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T04:39:29Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "name": "pvc-b39b1ffd-ca08-4ea5-a2bb-6061237135ab",
+        "resourceVersion": "70286",
+        "uid": "aa7a47c5-d342-4369-b329-5010aa1c35c0"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "8Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "valkey-data-gitea-valkey-cluster-1",
+          "namespace": "git",
+          "resourceVersion": "68660",
+          "uid": "b39b1ffd-ca08-4ea5-a2bb-6061237135ab"
+        },
+        "csi": {
+          "driver": "nfs.csi.k8s.io",
+          "volumeAttributes": {
+            "csi.storage.k8s.io/pv/name": "pvc-b39b1ffd-ca08-4ea5-a2bb-6061237135ab",
+            "csi.storage.k8s.io/pvc/name": "valkey-data-gitea-valkey-cluster-1",
+            "csi.storage.k8s.io/pvc/namespace": "git",
+            "server": "nas.example.lan",
+            "share": "/volume1/k3s",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1785559168794-3860-nfs.csi.k8s.io",
+            "subDir": "git-valkey-data-gitea-valkey-cluster-1"
+          },
+          "volumeHandle": "nas.example.lan#volume1/k3s#git-valkey-data-gitea-valkey-cluster-1#pvc-b39b1ffd-ca08-4ea5-a2bb-6061237135ab#"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-01T04:39:29Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-10-06T00:44:54Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-b851930a-e9a2-4361-ba3d-78756102e777",
+        "resourceVersion": "26383350",
+        "uid": "9909f761-d0dd-443c-87f8-53e37484b9ac"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "20Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "registry-data",
+          "namespace": "ci",
+          "resourceVersion": "26383280",
+          "uid": "b851930a-e9a2-4361-ba3d-78756102e777"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1791230936736-5946-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-b851930a-e9a2-4361-ba3d-78756102e777"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-10-06T00:44:54Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-10-07T19:33:29Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632",
+        "resourceVersion": "27238862",
+        "uid": "37b05662-0fd2-42ac-9cbd-331308c370f7"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "10Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "ws-2-home",
+          "namespace": "coder-workspaces",
+          "resourceVersion": "27238760",
+          "uid": "c46ad0bc-26fe-4f12-86bc-339a644fc632"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1791355488799-8084-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-10-07T19:33:29Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-31T22:09:46Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "name": "pvc-d697678e-88b9-4fd9-83b8-cef3a73c9e03",
+        "resourceVersion": "11079938",
+        "uid": "94247924-9637-4406-8ec9-3ef60f63a791"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "1Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "moonlight-web-data",
+          "namespace": "portal",
+          "resourceVersion": "11079906",
+          "uid": "d697678e-88b9-4fd9-83b8-cef3a73c9e03"
+        },
+        "csi": {
+          "driver": "nfs.csi.k8s.io",
+          "volumeAttributes": {
+            "csi.storage.k8s.io/pv/name": "pvc-d697678e-88b9-4fd9-83b8-cef3a73c9e03",
+            "csi.storage.k8s.io/pvc/name": "moonlight-web-data",
+            "csi.storage.k8s.io/pvc/namespace": "portal",
+            "server": "nas.example.lan",
+            "share": "/volume1/k3s",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1788154294062-3240-nfs.csi.k8s.io",
+            "subDir": "portal-moonlight-web-data"
+          },
+          "volumeHandle": "nas.example.lan#volume1/k3s#portal-moonlight-web-data#pvc-d697678e-88b9-4fd9-83b8-cef3a73c9e03#"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-31T22:09:46Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-08-29T00:48:49Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff",
+        "resourceVersion": "26931255",
+        "uid": "a2b14583-0fe8-4d68-b761-791d1415efe3"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "firefox-config",
+          "namespace": "firefox",
+          "resourceVersion": "10217529",
+          "uid": "e89ab022-400f-4cb2-a222-f172dc1604ff"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1787962747744-8714-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-29T00:48:49Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-10-06T00:57:11Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d",
+        "resourceVersion": "26931250",
+        "uid": "ff46b936-c568-43ee-aad9-571aaa22911e"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "game-panel-data",
+          "namespace": "games",
+          "resourceVersion": "26387816",
+          "uid": "eb37313f-85fe-48ae-81aa-9a398777345d"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1791230936736-5946-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-10-06T00:57:11Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T04:39:29Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "name": "pvc-f6d64599-c550-4b04-a858-07cd713dad96",
+        "resourceVersion": "70314",
+        "uid": "78a9034b-3079-4ffc-afcf-72eafee9123a"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "8Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "valkey-data-gitea-valkey-cluster-0",
+          "namespace": "git",
+          "resourceVersion": "68650",
+          "uid": "f6d64599-c550-4b04-a858-07cd713dad96"
+        },
+        "csi": {
+          "driver": "nfs.csi.k8s.io",
+          "volumeAttributes": {
+            "csi.storage.k8s.io/pv/name": "pvc-f6d64599-c550-4b04-a858-07cd713dad96",
+            "csi.storage.k8s.io/pvc/name": "valkey-data-gitea-valkey-cluster-0",
+            "csi.storage.k8s.io/pvc/namespace": "git",
+            "server": "nas.example.lan",
+            "share": "/volume1/k3s",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1785559168794-3860-nfs.csi.k8s.io",
+            "subDir": "git-valkey-data-gitea-valkey-cluster-0"
+          },
+          "volumeHandle": "nas.example.lan#volume1/k3s#git-valkey-data-gitea-valkey-cluster-0#pvc-f6d64599-c550-4b04-a858-07cd713dad96#"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-01T04:39:29Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/volume-scheduling-error": ""
+        },
+        "creationTimestamp": "2026-08-29T01:46:13Z",
+        "finalizers": [
+          "external-provisioner.volume.kubernetes.io/finalizer",
+          "kubernetes.io/pv-protection",
+          "external-attacher/driver-longhorn-io"
+        ],
+        "name": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55",
+        "resourceVersion": "10236854",
+        "uid": "466f001b-141f-41a2-acd6-6b012670864f"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "5Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "sonarr-config",
+          "namespace": "media",
+          "resourceVersion": "10236614",
+          "uid": "f7bc5aaf-aade-4283-9da8-48df27349b55"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeAttributes": {
+            "backupTargetName": "default",
+            "dataEngine": "v1",
+            "dataLocality": "disabled",
+            "disableRevisionCounter": "true",
+            "fromBackup": "",
+            "fsType": "ext4",
+            "numberOfReplicas": "2",
+            "staleReplicaTimeout": "30",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1787962747744-8714-driver.longhorn.io",
+            "unmapMarkSnapChainRemoved": "ignored"
+          },
+          "volumeHandle": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-29T01:46:13Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T04:39:29Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "name": "pvc-fe9296f6-c682-4c42-9f1c-0f11e7d3c40e",
+        "resourceVersion": "70309",
+        "uid": "e3fadc90-9d51-4901-812e-2c5a69aa60a4"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": {
+          "storage": "8Gi"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "valkey-data-gitea-valkey-cluster-2",
+          "namespace": "git",
+          "resourceVersion": "68661",
+          "uid": "fe9296f6-c682-4c42-9f1c-0f11e7d3c40e"
+        },
+        "csi": {
+          "driver": "nfs.csi.k8s.io",
+          "volumeAttributes": {
+            "csi.storage.k8s.io/pv/name": "pvc-fe9296f6-c682-4c42-9f1c-0f11e7d3c40e",
+            "csi.storage.k8s.io/pvc/name": "valkey-data-gitea-valkey-cluster-2",
+            "csi.storage.k8s.io/pvc/namespace": "git",
+            "server": "nas.example.lan",
+            "share": "/volume1/k3s",
+            "storage.kubernetes.io/csiProvisionerIdentity": "1785559168794-3860-nfs.csi.k8s.io",
+            "subDir": "git-valkey-data-gitea-valkey-cluster-2"
+          },
+          "volumeHandle": "nas.example.lan#volume1/k3s#git-valkey-data-gitea-valkey-cluster-2#pvc-fe9296f6-c682-4c42-9f1c-0f11e7d3c40e#"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "nfs-nas",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-08-01T04:39:29Z",
+        "phase": "Bound"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-09-01T22:23:54Z",
+        "finalizers": [
+          "kubernetes.io/pv-protection"
+        ],
+        "name": "sftp-nas-share",
+        "resourceVersion": "11529204",
+        "uid": "be4fd6e2-81c0-4330-a985-9c6ed154f19c"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteMany"
+        ],
+        "capacity": {
+          "storage": "1Ti"
+        },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "sftp-nas-share",
+          "namespace": "sftp",
+          "resourceVersion": "11529202",
+          "uid": "b0895cea-6e76-417a-abbb-51dea5cb24af"
+        },
+        "mountOptions": [
+          "nfsvers=4.0"
+        ],
+        "nfs": {
+          "path": "/volume1/sftp/data",
+          "server": "10.0.0.100"
+        },
+        "persistentVolumeReclaimPolicy": "Retain",
+        "volumeMode": "Filesystem"
+      },
+      "status": {
+        "lastPhaseTransitionTime": "2026-09-01T22:23:54Z",
+        "phase": "Bound"
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "apiVersion": "longhorn.io/v1beta2",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "RecurringJob",
+      "metadata": {
+        "name": "db-backup",
+        "namespace": "longhorn-system",
+        "uid": "4056f25d-116a-0e81-002e-36242d56d516",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "finalizers": ["longhorn.io"]
+      },
+      "spec": {
+        "name": "db-backup",
+        "groups": [],
+        "task": "backup",
+        "cron": "0 2 * * *",
+        "retain": 14,
+        "concurrency": 2,
+        "labels": { "RecurringJob": "db-backup" }
+      },
+      "status": { "executionCount": 41, "ownerID": "cp-1" }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "RecurringJob",
+      "metadata": {
+        "name": "media-backup",
+        "namespace": "longhorn-system",
+        "uid": "0e0424ca-0efb-86e0-58ec-572c44774e12",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "finalizers": ["longhorn.io"]
+      },
+      "spec": {
+        "name": "media-backup",
+        "groups": [],
+        "task": "backup",
+        "cron": "30 2 * * 0",
+        "retain": 4,
+        "concurrency": 2,
+        "labels": { "RecurringJob": "media-backup" }
+      },
+      "status": { "executionCount": 41, "ownerID": "cp-1" }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "RecurringJob",
+      "metadata": {
+        "name": "hourly-snap",
+        "namespace": "longhorn-system",
+        "uid": "b8e73c81-1a6f-489a-810e-04c95f75a3a9",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "finalizers": ["longhorn.io"]
+      },
+      "spec": {
+        "name": "hourly-snap",
+        "groups": [],
+        "task": "snapshot",
+        "cron": "0 * * * *",
+        "retain": 6,
+        "concurrency": 2,
+        "labels": { "RecurringJob": "hourly-snap" }
+      },
+      "status": { "executionCount": 41, "ownerID": "cp-1" }
+    }
+  ]
+}

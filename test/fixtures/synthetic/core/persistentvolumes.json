@@ -1,0 +1,142 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "name": "pvc-3f1c6a52-0b7e-4d0a-9a55-1d2b8c9e7a01",
+        "uid": "e719cc88-c684-9c36-957f-5d53b7394e7d",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "accessModes": ["ReadWriteOnce"],
+        "capacity": { "storage": "10Gi" },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "namespace": "databases",
+          "name": "data-postgres-0"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeHandle": "pvc-3f1c6a52-0b7e-4d0a-9a55-1d2b8c9e7a01"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": { "phase": "Bound" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "name": "pvc-9a4d2e17-6c3b-4f85-8e20-5b7a1c0d3e02",
+        "uid": "9d9e1236-4b51-ab1d-6616-dbacf1931aaa",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "accessModes": ["ReadWriteOnce"],
+        "capacity": { "storage": "100Gi" },
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "namespace": "media",
+          "name": "media-library"
+        },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeHandle": "pvc-9a4d2e17-6c3b-4f85-8e20-5b7a1c0d3e02"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": { "phase": "Bound" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "name": "pvc-c71e5b93-2d48-41a6-b3f9-8a6d0e4c2f03",
+        "uid": "c527a3c6-0250-a9ad-1f8a-1eab0addbed0",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "accessModes": ["ReadWriteOnce"],
+        "capacity": { "storage": "20Gi" },
+        "claimRef": { "apiVersion": "v1", "kind": "PersistentVolumeClaim", "namespace": "default", "name": "uploads" },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeHandle": "pvc-c71e5b93-2d48-41a6-b3f9-8a6d0e4c2f03"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": { "phase": "Bound" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "name": "pvc-5e8a0c24-7f19-4b3d-a6c2-3d9e1b7f5a04",
+        "uid": "387ce2ba-de55-b586-b70c-6f60267dc198",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "accessModes": ["ReadWriteOnce"],
+        "capacity": { "storage": "5Gi" },
+        "claimRef": { "apiVersion": "v1", "kind": "PersistentVolumeClaim", "namespace": "default", "name": "scratch" },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeHandle": "pvc-5e8a0c24-7f19-4b3d-a6c2-3d9e1b7f5a04"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": { "phase": "Bound" }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "name": "pvc-b2d9f604-1a85-4c7e-9d31-6e0c8a2b4f05",
+        "uid": "28617ea5-0920-22a3-5af6-c8852f08efe1",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "accessModes": ["ReadWriteOnce"],
+        "capacity": { "storage": "2Gi" },
+        "claimRef": { "apiVersion": "v1", "kind": "PersistentVolumeClaim", "namespace": "default", "name": "cache" },
+        "csi": {
+          "driver": "driver.longhorn.io",
+          "fsType": "ext4",
+          "volumeHandle": "pvc-b2d9f604-1a85-4c7e-9d31-6e0c8a2b4f05"
+        },
+        "persistentVolumeReclaimPolicy": "Delete",
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": { "phase": "Bound" }
+    }
+  ]
+}

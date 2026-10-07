@@ -1,0 +1,1070 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-05T00:05:00Z",
+        "generation": 1,
+        "labels": {
+          "batch.kubernetes.io/controller-uid": "b716313e-4644-4bcd-a7ad-683ad3e18ee1",
+          "batch.kubernetes.io/job-name": "rke2-machineconfig-cleanup-cronjob-29852645",
+          "controller-uid": "b716313e-4644-4bcd-a7ad-683ad3e18ee1",
+          "job-name": "rke2-machineconfig-cleanup-cronjob-29852645"
+        },
+        "name": "rke2-machineconfig-cleanup-cronjob-29852645",
+        "namespace": "fleet-local",
+        "ownerReferences": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "rke2-machineconfig-cleanup-cronjob",
+            "uid": "c77d142b-33c2-4f3e-81eb-5afacac6b560"
+          }
+        ],
+        "resourceVersion": "25919472",
+        "uid": "b716313e-4644-4bcd-a7ad-683ad3e18ee1"
+      },
+      "spec": {
+        "backoffLimit": 10,
+        "completionMode": "NonIndexed",
+        "completions": 1,
+        "manualSelector": false,
+        "parallelism": 1,
+        "podReplacementPolicy": "TerminatingOrFailed",
+        "selector": {
+          "matchLabels": {
+            "batch.kubernetes.io/controller-uid": "b716313e-4644-4bcd-a7ad-683ad3e18ee1"
+          }
+        },
+        "suspend": false,
+        "template": {
+          "metadata": {
+            "labels": {
+              "batch.kubernetes.io/controller-uid": "b716313e-4644-4bcd-a7ad-683ad3e18ee1",
+              "batch.kubernetes.io/job-name": "rke2-machineconfig-cleanup-cronjob-29852645",
+              "controller-uid": "b716313e-4644-4bcd-a7ad-683ad3e18ee1",
+              "job-name": "rke2-machineconfig-cleanup-cronjob-29852645"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "command": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "CATTLE_SERVER",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "CATTLE_CA_CHECKSUM"
+                  },
+                  {
+                    "name": "CATTLE_TOKEN",
+                    "value": "REDACTED"
+                  }
+                ],
+                "image": "rancher/rancher-agent:v2.15.0",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "rke2-machineconfig-cleanup-pod",
+                "resources": {},
+                "securityContext": {
+                  "runAsGroup": 65534,
+                  "runAsUser": 65534
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/helper",
+                    "name": "config-volume"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Never",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "serviceAccount": "rke2-machineconfig-cleanup-sa",
+            "serviceAccountName": "rke2-machineconfig-cleanup-sa",
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "configMap": {
+                  "defaultMode": 420,
+                  "name": "rke2-machineconfig-cleanup-script"
+                },
+                "name": "config-volume"
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "completionTime": "2026-10-05T00:05:06Z",
+        "conditions": [
+          {
+            "lastProbeTime": "2026-10-05T00:05:06Z",
+            "lastTransitionTime": "2026-10-05T00:05:06Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "SuccessCriteriaMet"
+          },
+          {
+            "lastProbeTime": "2026-10-05T00:05:06Z",
+            "lastTransitionTime": "2026-10-05T00:05:06Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "Complete"
+          }
+        ],
+        "ready": 0,
+        "startTime": "2026-10-05T00:05:00Z",
+        "succeeded": 1,
+        "terminating": 0,
+        "uncountedTerminatedPods": {}
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-06T00:05:00Z",
+        "generation": 1,
+        "labels": {
+          "batch.kubernetes.io/controller-uid": "703a2805-dbd1-493c-b35d-58784e108c0c",
+          "batch.kubernetes.io/job-name": "rke2-machineconfig-cleanup-cronjob-29854085",
+          "controller-uid": "703a2805-dbd1-493c-b35d-58784e108c0c",
+          "job-name": "rke2-machineconfig-cleanup-cronjob-29854085"
+        },
+        "name": "rke2-machineconfig-cleanup-cronjob-29854085",
+        "namespace": "fleet-local",
+        "ownerReferences": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "rke2-machineconfig-cleanup-cronjob",
+            "uid": "c77d142b-33c2-4f3e-81eb-5afacac6b560"
+          }
+        ],
+        "resourceVersion": "26369936",
+        "uid": "703a2805-dbd1-493c-b35d-58784e108c0c"
+      },
+      "spec": {
+        "backoffLimit": 10,
+        "completionMode": "NonIndexed",
+        "completions": 1,
+        "manualSelector": false,
+        "parallelism": 1,
+        "podReplacementPolicy": "TerminatingOrFailed",
+        "selector": {
+          "matchLabels": {
+            "batch.kubernetes.io/controller-uid": "703a2805-dbd1-493c-b35d-58784e108c0c"
+          }
+        },
+        "suspend": false,
+        "template": {
+          "metadata": {
+            "labels": {
+              "batch.kubernetes.io/controller-uid": "703a2805-dbd1-493c-b35d-58784e108c0c",
+              "batch.kubernetes.io/job-name": "rke2-machineconfig-cleanup-cronjob-29854085",
+              "controller-uid": "703a2805-dbd1-493c-b35d-58784e108c0c",
+              "job-name": "rke2-machineconfig-cleanup-cronjob-29854085"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "command": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "CATTLE_SERVER",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "CATTLE_CA_CHECKSUM"
+                  },
+                  {
+                    "name": "CATTLE_TOKEN",
+                    "value": "REDACTED"
+                  }
+                ],
+                "image": "rancher/rancher-agent:v2.15.0",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "rke2-machineconfig-cleanup-pod",
+                "resources": {},
+                "securityContext": {
+                  "runAsGroup": 65534,
+                  "runAsUser": 65534
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/helper",
+                    "name": "config-volume"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Never",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "serviceAccount": "rke2-machineconfig-cleanup-sa",
+            "serviceAccountName": "rke2-machineconfig-cleanup-sa",
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "configMap": {
+                  "defaultMode": 420,
+                  "name": "rke2-machineconfig-cleanup-script"
+                },
+                "name": "config-volume"
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "completionTime": "2026-10-06T00:05:37Z",
+        "conditions": [
+          {
+            "lastProbeTime": "2026-10-06T00:05:37Z",
+            "lastTransitionTime": "2026-10-06T00:05:37Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "SuccessCriteriaMet"
+          },
+          {
+            "lastProbeTime": "2026-10-06T00:05:37Z",
+            "lastTransitionTime": "2026-10-06T00:05:37Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "Complete"
+          }
+        ],
+        "ready": 0,
+        "startTime": "2026-10-06T00:05:00Z",
+        "succeeded": 1,
+        "terminating": 0,
+        "uncountedTerminatedPods": {}
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-07T00:05:00Z",
+        "generation": 1,
+        "labels": {
+          "batch.kubernetes.io/controller-uid": "1e5a4cb9-806a-40cb-b04c-6706c5f71099",
+          "batch.kubernetes.io/job-name": "rke2-machineconfig-cleanup-cronjob-29855525",
+          "controller-uid": "1e5a4cb9-806a-40cb-b04c-6706c5f71099",
+          "job-name": "rke2-machineconfig-cleanup-cronjob-29855525"
+        },
+        "name": "rke2-machineconfig-cleanup-cronjob-29855525",
+        "namespace": "fleet-local",
+        "ownerReferences": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "rke2-machineconfig-cleanup-cronjob",
+            "uid": "c77d142b-33c2-4f3e-81eb-5afacac6b560"
+          }
+        ],
+        "resourceVersion": "26827803",
+        "uid": "1e5a4cb9-806a-40cb-b04c-6706c5f71099"
+      },
+      "spec": {
+        "backoffLimit": 10,
+        "completionMode": "NonIndexed",
+        "completions": 1,
+        "manualSelector": false,
+        "parallelism": 1,
+        "podReplacementPolicy": "TerminatingOrFailed",
+        "selector": {
+          "matchLabels": {
+            "batch.kubernetes.io/controller-uid": "1e5a4cb9-806a-40cb-b04c-6706c5f71099"
+          }
+        },
+        "suspend": false,
+        "template": {
+          "metadata": {
+            "labels": {
+              "batch.kubernetes.io/controller-uid": "1e5a4cb9-806a-40cb-b04c-6706c5f71099",
+              "batch.kubernetes.io/job-name": "rke2-machineconfig-cleanup-cronjob-29855525",
+              "controller-uid": "1e5a4cb9-806a-40cb-b04c-6706c5f71099",
+              "job-name": "rke2-machineconfig-cleanup-cronjob-29855525"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "command": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "CATTLE_SERVER",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "CATTLE_CA_CHECKSUM"
+                  },
+                  {
+                    "name": "CATTLE_TOKEN",
+                    "value": "REDACTED"
+                  }
+                ],
+                "image": "rancher/rancher-agent:v2.15.0",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "rke2-machineconfig-cleanup-pod",
+                "resources": {},
+                "securityContext": {
+                  "runAsGroup": 65534,
+                  "runAsUser": 65534
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/helper",
+                    "name": "config-volume"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Never",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "serviceAccount": "rke2-machineconfig-cleanup-sa",
+            "serviceAccountName": "rke2-machineconfig-cleanup-sa",
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "configMap": {
+                  "defaultMode": 420,
+                  "name": "rke2-machineconfig-cleanup-script"
+                },
+                "name": "config-volume"
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "completionTime": "2026-10-07T00:05:34Z",
+        "conditions": [
+          {
+            "lastProbeTime": "2026-10-07T00:05:34Z",
+            "lastTransitionTime": "2026-10-07T00:05:34Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "SuccessCriteriaMet"
+          },
+          {
+            "lastProbeTime": "2026-10-07T00:05:34Z",
+            "lastTransitionTime": "2026-10-07T00:05:34Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "Complete"
+          }
+        ],
+        "ready": 0,
+        "startTime": "2026-10-07T00:05:00Z",
+        "succeeded": 1,
+        "terminating": 0,
+        "uncountedTerminatedPods": {}
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "annotations": {
+          "objectset.rio.cattle.io/applied": "REDACTED",
+          "objectset.rio.cattle.io/id": "helm-controller-chart-registration",
+          "objectset.rio.cattle.io/owner-gvk": "helm.cattle.io/v1, Kind=HelmChart",
+          "objectset.rio.cattle.io/owner-name": "traefik",
+          "objectset.rio.cattle.io/owner-namespace": "kube-system"
+        },
+        "creationTimestamp": "2026-07-31T23:24:48Z",
+        "generation": 1,
+        "labels": {
+          "helmcharts.helm.cattle.io/chart": "traefik",
+          "objectset.rio.cattle.io/hash": "c0f97ea7a25e3dec71957c7a3241a38f3e5fae5f"
+        },
+        "name": "helm-install-traefik",
+        "namespace": "kube-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "helm.cattle.io/v1",
+            "blockOwnerDeletion": false,
+            "controller": false,
+            "kind": "HelmChart",
+            "name": "traefik",
+            "uid": "b1d536f0-2957-4228-8325-2d3c160a9802"
+          }
+        ],
+        "resourceVersion": "756",
+        "uid": "7ea231ee-226e-4682-8308-6c3e4b7286b4"
+      },
+      "spec": {
+        "backoffLimit": 1000,
+        "completionMode": "NonIndexed",
+        "completions": 1,
+        "manualSelector": false,
+        "parallelism": 1,
+        "podReplacementPolicy": "TerminatingOrFailed",
+        "selector": {
+          "matchLabels": {
+            "batch.kubernetes.io/controller-uid": "7ea231ee-226e-4682-8308-6c3e4b7286b4"
+          }
+        },
+        "suspend": false,
+        "template": {
+          "metadata": {
+            "annotations": {},
+            "labels": {
+              "batch.kubernetes.io/controller-uid": "7ea231ee-226e-4682-8308-6c3e4b7286b4",
+              "batch.kubernetes.io/job-name": "helm-install-traefik",
+              "controller-uid": "7ea231ee-226e-4682-8308-6c3e4b7286b4",
+              "helmcharts.helm.cattle.io/chart": "traefik",
+              "job-name": "helm-install-traefik"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "NAME",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "VERSION"
+                  },
+                  {
+                    "name": "REPO"
+                  },
+                  {
+                    "name": "HELM_DRIVER",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "CHART_NAMESPACE",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "CHART",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "HELM_VERSION"
+                  },
+                  {
+                    "name": "TARGET_NAMESPACE",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "AUTH_PASS_CREDENTIALS",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "INSECURE_SKIP_TLS_VERIFY",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "PLAIN_HTTP",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "NO_PROXY",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "FAILURE_POLICY",
+                    "value": "REDACTED"
+                  }
+                ],
+                "image": "rancher/klipper-helm:v0.11.1-build20260615",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "helm",
+                "resources": {
+                  "limits": {
+                    "cpu": "32",
+                    "memory": "32G"
+                  },
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "10M"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  },
+                  "readOnlyRootFilesystem": true
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/home/klipper-helm/.helm",
+                    "name": "klipper-helm"
+                  },
+                  {
+                    "mountPath": "/home/klipper-helm/.cache",
+                    "name": "klipper-cache"
+                  },
+                  {
+                    "mountPath": "/home/klipper-helm/.config",
+                    "name": "klipper-config"
+                  },
+                  {
+                    "mountPath": "/tmp",
+                    "name": "tmp"
+                  },
+                  {
+                    "mountPath": "/config",
+                    "name": "values"
+                  },
+                  {
+                    "mountPath": "/chart",
+                    "name": "content"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "nodeSelector": {
+              "kubernetes.io/os": "linux"
+            },
+            "priorityClassName": "system-cluster-critical",
+            "restartPolicy": "OnFailure",
+            "schedulerName": "default-scheduler",
+            "securityContext": {
+              "runAsNonRoot": true,
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "serviceAccount": "helm-traefik",
+            "serviceAccountName": "helm-traefik",
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "emptyDir": {
+                  "medium": "Memory"
+                },
+                "name": "klipper-helm"
+              },
+              {
+                "emptyDir": {
+                  "medium": "Memory"
+                },
+                "name": "klipper-cache"
+              },
+              {
+                "emptyDir": {
+                  "medium": "Memory"
+                },
+                "name": "klipper-config"
+              },
+              {
+                "emptyDir": {
+                  "medium": "Memory"
+                },
+                "name": "tmp"
+              },
+              {
+                "name": "values",
+                "projected": {
+                  "defaultMode": 420,
+                  "sources": [
+                    {
+                      "secret": {
+                        "items": [
+                          {
+                            "key": "HelmChartValuesContent",
+                            "path": "values-0-000-HelmChart-ValuesContent.yaml"
+                          }
+                        ],
+                        "name": "chart-values-traefik"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "configMap": {
+                  "defaultMode": 420,
+                  "name": "chart-content-traefik"
+                },
+                "name": "content"
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "completionTime": "2026-07-31T23:25:40Z",
+        "conditions": [
+          {
+            "lastProbeTime": "2026-07-31T23:25:40Z",
+            "lastTransitionTime": "2026-07-31T23:25:40Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "SuccessCriteriaMet"
+          },
+          {
+            "lastProbeTime": "2026-07-31T23:25:40Z",
+            "lastTransitionTime": "2026-07-31T23:25:40Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "Complete"
+          }
+        ],
+        "ready": 0,
+        "startTime": "2026-07-31T23:24:48Z",
+        "succeeded": 1,
+        "terminating": 0,
+        "uncountedTerminatedPods": {}
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "annotations": {
+          "objectset.rio.cattle.io/applied": "REDACTED",
+          "objectset.rio.cattle.io/id": "helm-controller-chart-registration",
+          "objectset.rio.cattle.io/owner-gvk": "helm.cattle.io/v1, Kind=HelmChart",
+          "objectset.rio.cattle.io/owner-name": "traefik-crd",
+          "objectset.rio.cattle.io/owner-namespace": "kube-system"
+        },
+        "creationTimestamp": "2026-07-31T23:24:48Z",
+        "generation": 1,
+        "labels": {
+          "helmcharts.helm.cattle.io/chart": "traefik-crd",
+          "objectset.rio.cattle.io/hash": "48ff3d5c3117b372fcdca509795f9f2702af0592"
+        },
+        "name": "helm-install-traefik-crd",
+        "namespace": "kube-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "helm.cattle.io/v1",
+            "blockOwnerDeletion": false,
+            "controller": false,
+            "kind": "HelmChart",
+            "name": "traefik-crd",
+            "uid": "cfc34815-41ae-46ab-a777-19aba6dd1fd5"
+          }
+        ],
+        "resourceVersion": "744",
+        "uid": "5fe021c4-ab14-4a7b-a7b1-75a03278d0d2"
+      },
+      "spec": {
+        "backoffLimit": 1000,
+        "completionMode": "NonIndexed",
+        "completions": 1,
+        "manualSelector": false,
+        "parallelism": 1,
+        "podReplacementPolicy": "TerminatingOrFailed",
+        "selector": {
+          "matchLabels": {
+            "batch.kubernetes.io/controller-uid": "5fe021c4-ab14-4a7b-a7b1-75a03278d0d2"
+          }
+        },
+        "suspend": false,
+        "template": {
+          "metadata": {
+            "annotations": {},
+            "labels": {
+              "batch.kubernetes.io/controller-uid": "5fe021c4-ab14-4a7b-a7b1-75a03278d0d2",
+              "batch.kubernetes.io/job-name": "helm-install-traefik-crd",
+              "controller-uid": "5fe021c4-ab14-4a7b-a7b1-75a03278d0d2",
+              "helmcharts.helm.cattle.io/chart": "traefik-crd",
+              "job-name": "helm-install-traefik-crd"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "NAME",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "VERSION"
+                  },
+                  {
+                    "name": "REPO"
+                  },
+                  {
+                    "name": "HELM_DRIVER",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "CHART_NAMESPACE",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "CHART",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "HELM_VERSION"
+                  },
+                  {
+                    "name": "TARGET_NAMESPACE",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "AUTH_PASS_CREDENTIALS",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "INSECURE_SKIP_TLS_VERIFY",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "PLAIN_HTTP",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "NO_PROXY",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "FAILURE_POLICY",
+                    "value": "REDACTED"
+                  }
+                ],
+                "image": "rancher/klipper-helm:v0.11.1-build20260615",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "helm",
+                "resources": {
+                  "limits": {
+                    "cpu": "32",
+                    "memory": "32G"
+                  },
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "10M"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  },
+                  "readOnlyRootFilesystem": true
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/home/klipper-helm/.helm",
+                    "name": "klipper-helm"
+                  },
+                  {
+                    "mountPath": "/home/klipper-helm/.cache",
+                    "name": "klipper-cache"
+                  },
+                  {
+                    "mountPath": "/home/klipper-helm/.config",
+                    "name": "klipper-config"
+                  },
+                  {
+                    "mountPath": "/tmp",
+                    "name": "tmp"
+                  },
+                  {
+                    "mountPath": "/config",
+                    "name": "values"
+                  },
+                  {
+                    "mountPath": "/chart",
+                    "name": "content"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "nodeSelector": {
+              "kubernetes.io/os": "linux"
+            },
+            "priorityClassName": "system-cluster-critical",
+            "restartPolicy": "OnFailure",
+            "schedulerName": "default-scheduler",
+            "securityContext": {
+              "runAsNonRoot": true,
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "serviceAccount": "helm-traefik-crd",
+            "serviceAccountName": "helm-traefik-crd",
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "emptyDir": {
+                  "medium": "Memory"
+                },
+                "name": "klipper-helm"
+              },
+              {
+                "emptyDir": {
+                  "medium": "Memory"
+                },
+                "name": "klipper-cache"
+              },
+              {
+                "emptyDir": {
+                  "medium": "Memory"
+                },
+                "name": "klipper-config"
+              },
+              {
+                "emptyDir": {
+                  "medium": "Memory"
+                },
+                "name": "tmp"
+              },
+              {
+                "name": "values",
+                "projected": {
+                  "defaultMode": 420,
+                  "sources": [
+                    {
+                      "secret": {
+                        "name": "chart-values-traefik-crd"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "configMap": {
+                  "defaultMode": 420,
+                  "name": "chart-content-traefik-crd"
+                },
+                "name": "content"
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "completionTime": "2026-07-31T23:25:34Z",
+        "conditions": [
+          {
+            "lastProbeTime": "2026-07-31T23:25:34Z",
+            "lastTransitionTime": "2026-07-31T23:25:34Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "SuccessCriteriaMet"
+          },
+          {
+            "lastProbeTime": "2026-07-31T23:25:35Z",
+            "lastTransitionTime": "2026-07-31T23:25:35Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "Complete"
+          }
+        ],
+        "ready": 0,
+        "startTime": "2026-07-31T23:24:48Z",
+        "succeeded": 1,
+        "terminating": 0,
+        "uncountedTerminatedPods": {}
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-07T10:00:00Z",
+        "generation": 1,
+        "labels": {
+          "batch.kubernetes.io/controller-uid": "9c1bbe30-d936-4a90-bc0e-701398b30724",
+          "batch.kubernetes.io/job-name": "nightly-backups-29856120",
+          "controller-uid": "9c1bbe30-d936-4a90-bc0e-701398b30724",
+          "job-name": "nightly-backups-29856120",
+          "longhorn.io/managed-by": "longhorn-manager",
+          "recurring-job.longhorn.io": "nightly-backups"
+        },
+        "name": "nightly-backups-29856120",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "nightly-backups",
+            "uid": "d5aa6aab-4afd-452f-94d4-ec16e052215d"
+          }
+        ],
+        "resourceVersion": "27033811",
+        "uid": "9c1bbe30-d936-4a90-bc0e-701398b30724"
+      },
+      "spec": {
+        "backoffLimit": 3,
+        "completionMode": "NonIndexed",
+        "completions": 1,
+        "manualSelector": false,
+        "parallelism": 1,
+        "podReplacementPolicy": "TerminatingOrFailed",
+        "selector": {
+          "matchLabels": {
+            "batch.kubernetes.io/controller-uid": "9c1bbe30-d936-4a90-bc0e-701398b30724"
+          }
+        },
+        "suspend": false,
+        "template": {
+          "metadata": {
+            "labels": {
+              "batch.kubernetes.io/controller-uid": "9c1bbe30-d936-4a90-bc0e-701398b30724",
+              "batch.kubernetes.io/job-name": "nightly-backups-29856120",
+              "controller-uid": "9c1bbe30-d936-4a90-bc0e-701398b30724",
+              "job-name": "nightly-backups-29856120",
+              "longhorn.io/managed-by": "longhorn-manager",
+              "recurring-job.longhorn.io": "nightly-backups"
+            },
+            "name": "nightly-backups"
+          },
+          "spec": {
+            "containers": [
+              {
+                "command": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "POD_NAMESPACE",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.namespace"
+                      }
+                    }
+                  }
+                ],
+                "image": "docker.io/longhornio/longhorn-manager:v1.12.1",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "nightly-backups",
+                "resources": {},
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/var/lib/longhorn/engine-binaries/",
+                    "name": "engine-binaries"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "priorityClassName": "longhorn-critical",
+            "restartPolicy": "OnFailure",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "serviceAccount": "longhorn-service-account",
+            "serviceAccountName": "longhorn-service-account",
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "hostPath": {
+                  "path": "/var/lib/longhorn/engine-binaries/",
+                  "type": ""
+                },
+                "name": "engine-binaries"
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "completionTime": "2026-10-07T10:02:32Z",
+        "conditions": [
+          {
+            "lastProbeTime": "2026-10-07T10:02:32Z",
+            "lastTransitionTime": "2026-10-07T10:02:32Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "SuccessCriteriaMet"
+          },
+          {
+            "lastProbeTime": "2026-10-07T10:02:32Z",
+            "lastTransitionTime": "2026-10-07T10:02:32Z",
+            "message": "Reached expected number of succeeded pods",
+            "reason": "CompletionsReached",
+            "status": "True",
+            "type": "Complete"
+          }
+        ],
+        "ready": 0,
+        "startTime": "2026-10-07T10:00:00Z",
+        "succeeded": 1,
+        "terminating": 0,
+        "uncountedTerminatedPods": {}
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

@@ -1,0 +1,36 @@
+# An install's own values. Nothing here is a default of the chart: hostnames,
+# ingress class, issuer and storage class belong to the cluster being installed.
+image:
+  repository: ghcr.io/OWNER/IMAGE
+imagePullSecrets:
+  - ghcr-pull # remove once the package is public
+
+config:
+  publicOrigin: https://console.example.test
+  # trustedProxies: 10.42.0.0/16
+  # clientIpHeader: X-Forwarded-For
+
+secrets:
+  # Holds SECRETS_KEY and BOOTSTRAP_ADMIN_PASSWORD; created once by hand.
+  existingSecret: console-secrets
+
+persistence:
+  storageClass: longhorn
+  size: 2Gi
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  hosts:
+    - host: console.example.test
+  tls:
+    - secretName: console-tls
+      hosts: [console.example.test]
+
+# Optional, off by default. See docs/install.md before enabling.
+# rbac:
+#   secrets:
+#     enabled: true
+#     namespaces: [apps]

@@ -1,0 +1,19 @@
+{
+  "apiVersion": "metrics.k8s.io/v1beta1",
+  "kind": "NodeMetricsList",
+  "metadata": {},
+  "items": [
+    {
+      "metadata": { "name": "cp-1", "creationTimestamp": "2026-10-07T11:59:30.000Z" },
+      "timestamp": "2026-10-07T11:59:30.000Z",
+      "window": "20.043s",
+      "usage": { "cpu": "412000000n", "memory": "3194880Ki" }
+    },
+    {
+      "metadata": { "name": "worker-1", "creationTimestamp": "2026-10-07T11:59:30.000Z" },
+      "timestamp": "2026-10-07T11:59:30.000Z",
+      "window": "20.043s",
+      "usage": { "cpu": "1830000000n", "memory": "15575040Ki" }
+    }
+  ]
+}

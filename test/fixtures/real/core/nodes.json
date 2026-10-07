@@ -1,0 +1,517 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Node",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-07-31T23:29:55Z",
+        "finalizers": [
+          "wrangler.cattle.io/node"
+        ],
+        "labels": {
+          "beta.kubernetes.io/arch": "amd64",
+          "beta.kubernetes.io/instance-type": "k3s",
+          "beta.kubernetes.io/os": "linux",
+          "kubernetes.io/arch": "amd64",
+          "kubernetes.io/hostname": "agent-1",
+          "kubernetes.io/os": "linux",
+          "node.kubernetes.io/instance-type": "k3s",
+          "plan.cattle.io/cluster-group": "management.cattle.io",
+          "plan.cattle.io/cluster-kind": "Cluster",
+          "plan.cattle.io/cluster-name": "local",
+          "plan.cattle.io/machine-group": "management.cattle.io",
+          "plan.cattle.io/machine-kind": "Node",
+          "plan.cattle.io/machine-name": "machine-4chcp"
+        },
+        "name": "agent-1",
+        "resourceVersion": "27251423",
+        "uid": "d53ae22c-6547-453b-9d73-cf6ffbf93017"
+      },
+      "spec": {
+        "podCIDR": "10.42.1.0/24",
+        "podCIDRs": [
+          "10.42.1.0/24"
+        ],
+        "providerID": "k3s://agent-1"
+      },
+      "status": {
+        "addresses": [
+          {
+            "address": "10.0.0.21",
+            "type": "InternalIP"
+          },
+          {
+            "address": "agent-1",
+            "type": "Hostname"
+          }
+        ],
+        "allocatable": {
+          "cpu": "8",
+          "ephemeral-storage": "94253405111",
+          "hugepages-2Mi": "0",
+          "memory": "16375556Ki",
+          "pods": "110"
+        },
+        "capacity": {
+          "cpu": "8",
+          "ephemeral-storage": "96888780Ki",
+          "hugepages-2Mi": "0",
+          "memory": "16375556Ki",
+          "pods": "110"
+        },
+        "conditions": [
+          {
+            "lastHeartbeatTime": "2026-10-07T20:08:16Z",
+            "lastTransitionTime": "2026-10-07T06:43:49Z",
+            "message": "kubelet has sufficient memory available",
+            "reason": "KubeletHasSufficientMemory",
+            "status": "False",
+            "type": "MemoryPressure"
+          },
+          {
+            "lastHeartbeatTime": "2026-10-07T20:08:16Z",
+            "lastTransitionTime": "2026-10-07T06:43:49Z",
+            "message": "kubelet has no disk pressure",
+            "reason": "KubeletHasNoDiskPressure",
+            "status": "False",
+            "type": "DiskPressure"
+          },
+          {
+            "lastHeartbeatTime": "2026-10-07T20:08:16Z",
+            "lastTransitionTime": "2026-10-07T06:43:49Z",
+            "message": "kubelet has sufficient PID available",
+            "reason": "KubeletHasSufficientPID",
+            "status": "False",
+            "type": "PIDPressure"
+          },
+          {
+            "lastHeartbeatTime": "2026-10-07T20:08:16Z",
+            "lastTransitionTime": "2026-10-07T06:43:49Z",
+            "message": "kubelet is posting ready status",
+            "reason": "KubeletReady",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "daemonEndpoints": {
+          "kubeletEndpoint": {
+            "Port": 10250
+          }
+        },
+        "declaredFeatures": [
+          "ExtendWebSocketsToKubelet",
+          "InPlacePodLevelResourcesVerticalScaling",
+          "InPlacePodVerticalScalingInitContainers",
+          "RestartAllContainersOnContainerExits"
+        ],
+        "features": {
+          "supplementalGroupsPolicy": true
+        },
+        "nodeInfo": {
+          "architecture": "amd64",
+          "bootID": "85ff4d6c-97d6-4aec-ac5f-b076001ecc06",
+          "containerRuntimeVersion": "containerd://2.3.2-k3s2",
+          "kernelVersion": "6.8.0-142-generic",
+          "kubeProxyVersion": "",
+          "kubeletVersion": "v1.36.2+k3s1",
+          "machineID": "75270ae9b050451ebf73c73a964f3ac8",
+          "operatingSystem": "linux",
+          "osImage": "Ubuntu 24.04.4 LTS",
+          "systemUUID": "75270ae9-b050-451e-bf73-c73a964f3ac8"
+        },
+        "runtimeHandlers": [
+          {
+            "features": {
+              "recursiveReadOnlyMounts": true,
+              "userNamespaces": true
+            },
+            "name": ""
+          },
+          {
+            "features": {
+              "recursiveReadOnlyMounts": true,
+              "userNamespaces": true
+            },
+            "name": "runc"
+          },
+          {
+            "features": {
+              "recursiveReadOnlyMounts": false,
+              "userNamespaces": false
+            },
+            "name": "runhcs-wcow-process"
+          }
+        ],
+        "volumesAttached": [
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8"
+          }
+        ],
+        "volumesInUse": [
+          "kubernetes.io/csi/driver.longhorn.io^pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8"
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Node",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-29T01:29:30Z",
+        "finalizers": [
+          "wrangler.cattle.io/node"
+        ],
+        "labels": {
+          "beta.kubernetes.io/arch": "amd64",
+          "beta.kubernetes.io/instance-type": "k3s",
+          "beta.kubernetes.io/os": "linux",
+          "kubernetes.io/arch": "amd64",
+          "kubernetes.io/hostname": "agent-2",
+          "kubernetes.io/os": "linux",
+          "node.kubernetes.io/instance-type": "k3s",
+          "plan.cattle.io/cluster-group": "management.cattle.io",
+          "plan.cattle.io/cluster-kind": "Cluster",
+          "plan.cattle.io/cluster-name": "local",
+          "plan.cattle.io/machine-group": "management.cattle.io",
+          "plan.cattle.io/machine-kind": "Node",
+          "plan.cattle.io/machine-name": "machine-zrnhj"
+        },
+        "name": "agent-2",
+        "resourceVersion": "27251369",
+        "uid": "ae98f820-475f-4b6e-8559-54896eae6bbf"
+      },
+      "spec": {
+        "podCIDR": "10.42.2.0/24",
+        "podCIDRs": [
+          "10.42.2.0/24"
+        ],
+        "providerID": "k3s://agent-2"
+      },
+      "status": {
+        "addresses": [
+          {
+            "address": "10.0.0.22",
+            "type": "InternalIP"
+          },
+          {
+            "address": "agent-2",
+            "type": "Hostname"
+          }
+        ],
+        "allocatable": {
+          "cpu": "8",
+          "ephemeral-storage": "94253405111",
+          "hugepages-2Mi": "0",
+          "memory": "16375568Ki",
+          "pods": "110"
+        },
+        "capacity": {
+          "cpu": "8",
+          "ephemeral-storage": "96888780Ki",
+          "hugepages-2Mi": "0",
+          "memory": "16375568Ki",
+          "pods": "110"
+        },
+        "conditions": [
+          {
+            "lastHeartbeatTime": "2026-10-07T20:08:07Z",
+            "lastTransitionTime": "2026-10-07T06:45:43Z",
+            "message": "kubelet has sufficient memory available",
+            "reason": "KubeletHasSufficientMemory",
+            "status": "False",
+            "type": "MemoryPressure"
+          },
+          {
+            "lastHeartbeatTime": "2026-10-07T20:08:07Z",
+            "lastTransitionTime": "2026-10-07T06:45:43Z",
+            "message": "kubelet has no disk pressure",
+            "reason": "KubeletHasNoDiskPressure",
+            "status": "False",
+            "type": "DiskPressure"
+          },
+          {
+            "lastHeartbeatTime": "2026-10-07T20:08:07Z",
+            "lastTransitionTime": "2026-10-07T06:45:43Z",
+            "message": "kubelet has sufficient PID available",
+            "reason": "KubeletHasSufficientPID",
+            "status": "False",
+            "type": "PIDPressure"
+          },
+          {
+            "lastHeartbeatTime": "2026-10-07T20:08:07Z",
+            "lastTransitionTime": "2026-10-07T06:45:43Z",
+            "message": "kubelet is posting ready status",
+            "reason": "KubeletReady",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "daemonEndpoints": {
+          "kubeletEndpoint": {
+            "Port": 10250
+          }
+        },
+        "declaredFeatures": [
+          "ExtendWebSocketsToKubelet",
+          "InPlacePodLevelResourcesVerticalScaling",
+          "InPlacePodVerticalScalingInitContainers",
+          "RestartAllContainersOnContainerExits"
+        ],
+        "features": {
+          "supplementalGroupsPolicy": true
+        },
+        "nodeInfo": {
+          "architecture": "amd64",
+          "bootID": "69a04187-5d0f-4721-aad3-ef4e02246734",
+          "containerRuntimeVersion": "containerd://2.3.4-k3s1.36",
+          "kernelVersion": "6.8.0-142-generic",
+          "kubeProxyVersion": "",
+          "kubeletVersion": "v1.36.4+k3s1",
+          "machineID": "0dd7db88654f46a79a8400844cb6c271",
+          "operatingSystem": "linux",
+          "osImage": "Ubuntu 24.04.4 LTS",
+          "systemUUID": "0dd7db88-654f-46a7-9a84-00844cb6c271"
+        },
+        "runtimeHandlers": [
+          {
+            "features": {
+              "recursiveReadOnlyMounts": true,
+              "userNamespaces": true
+            },
+            "name": ""
+          },
+          {
+            "features": {
+              "recursiveReadOnlyMounts": true,
+              "userNamespaces": true
+            },
+            "name": "runc"
+          },
+          {
+            "features": {
+              "recursiveReadOnlyMounts": false,
+              "userNamespaces": false
+            },
+            "name": "runhcs-wcow-process"
+          }
+        ],
+        "volumesAttached": [
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-eb37313f-85fe-48ae-81aa-9a398777345d"
+          },
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1"
+          },
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-f7bc5aaf-aade-4283-9da8-48df27349b55"
+          },
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e"
+          }
+        ],
+        "volumesInUse": [
+          "kubernetes.io/csi/driver.longhorn.io^pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e",
+          "kubernetes.io/csi/driver.longhorn.io^pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1",
+          "kubernetes.io/csi/driver.longhorn.io^pvc-eb37313f-85fe-48ae-81aa-9a398777345d",
+          "kubernetes.io/csi/driver.longhorn.io^pvc-f7bc5aaf-aade-4283-9da8-48df27349b55"
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Node",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-07-31T23:24:41Z",
+        "finalizers": [
+          "wrangler.cattle.io/node"
+        ],
+        "labels": {
+          "beta.kubernetes.io/arch": "amd64",
+          "beta.kubernetes.io/instance-type": "k3s",
+          "beta.kubernetes.io/os": "linux",
+          "kubernetes.io/arch": "amd64",
+          "kubernetes.io/hostname": "server-1",
+          "kubernetes.io/os": "linux",
+          "node-role.kubernetes.io/control-plane": "true",
+          "node.kubernetes.io/instance-type": "k3s",
+          "plan.cattle.io/cluster-group": "management.cattle.io",
+          "plan.cattle.io/cluster-kind": "Cluster",
+          "plan.cattle.io/cluster-name": "local",
+          "plan.cattle.io/machine-group": "management.cattle.io",
+          "plan.cattle.io/machine-kind": "Node",
+          "plan.cattle.io/machine-name": "machine-8npkm"
+        },
+        "name": "server-1",
+        "resourceVersion": "27251070",
+        "uid": "104b6ba4-1397-48c9-9de6-2ec736cf6eaa"
+      },
+      "spec": {
+        "podCIDR": "10.42.0.0/24",
+        "podCIDRs": [
+          "10.42.0.0/24"
+        ],
+        "providerID": "k3s://server-1"
+      },
+      "status": {
+        "addresses": [
+          {
+            "address": "10.0.0.20",
+            "type": "InternalIP"
+          },
+          {
+            "address": "server-1",
+            "type": "Hostname"
+          }
+        ],
+        "allocatable": {
+          "cpu": "8",
+          "ephemeral-storage": "94253405111",
+          "hugepages-2Mi": "0",
+          "memory": "16375568Ki",
+          "pods": "110"
+        },
+        "capacity": {
+          "cpu": "8",
+          "ephemeral-storage": "96888780Ki",
+          "hugepages-2Mi": "0",
+          "memory": "16375568Ki",
+          "pods": "110"
+        },
+        "conditions": [
+          {
+            "lastHeartbeatTime": "2026-10-07T20:07:16Z",
+            "lastTransitionTime": "2026-10-05T19:44:19Z",
+            "message": "kubelet has sufficient memory available",
+            "reason": "KubeletHasSufficientMemory",
+            "status": "False",
+            "type": "MemoryPressure"
+          },
+          {
+            "lastHeartbeatTime": "2026-10-07T20:07:16Z",
+            "lastTransitionTime": "2026-10-05T19:44:19Z",
+            "message": "kubelet has no disk pressure",
+            "reason": "KubeletHasNoDiskPressure",
+            "status": "False",
+            "type": "DiskPressure"
+          },
+          {
+            "lastHeartbeatTime": "2026-10-07T20:07:16Z",
+            "lastTransitionTime": "2026-10-05T19:44:19Z",
+            "message": "kubelet has sufficient PID available",
+            "reason": "KubeletHasSufficientPID",
+            "status": "False",
+            "type": "PIDPressure"
+          },
+          {
+            "lastHeartbeatTime": "2026-10-07T20:07:16Z",
+            "lastTransitionTime": "2026-10-05T19:44:19Z",
+            "message": "kubelet is posting ready status",
+            "reason": "KubeletReady",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "daemonEndpoints": {
+          "kubeletEndpoint": {
+            "Port": 10250
+          }
+        },
+        "declaredFeatures": [
+          "ExtendWebSocketsToKubelet",
+          "InPlacePodLevelResourcesVerticalScaling",
+          "InPlacePodVerticalScalingInitContainers",
+          "RestartAllContainersOnContainerExits"
+        ],
+        "features": {
+          "supplementalGroupsPolicy": true
+        },
+        "nodeInfo": {
+          "architecture": "amd64",
+          "bootID": "8353cd47-f51f-4132-bdfe-26218abe1665",
+          "containerRuntimeVersion": "containerd://2.3.2-k3s2",
+          "kernelVersion": "6.8.0-142-generic",
+          "kubeProxyVersion": "",
+          "kubeletVersion": "v1.36.2+k3s1",
+          "machineID": "d23657f205864ceb84ecb420949f962d",
+          "operatingSystem": "linux",
+          "osImage": "Ubuntu 24.04.4 LTS",
+          "systemUUID": "d23657f2-0586-4ceb-84ec-b420949f962d"
+        },
+        "runtimeHandlers": [
+          {
+            "features": {
+              "recursiveReadOnlyMounts": true,
+              "userNamespaces": true
+            },
+            "name": ""
+          },
+          {
+            "features": {
+              "recursiveReadOnlyMounts": true,
+              "userNamespaces": true
+            },
+            "name": "runc"
+          },
+          {
+            "features": {
+              "recursiveReadOnlyMounts": false,
+              "userNamespaces": false
+            },
+            "name": "runhcs-wcow-process"
+          }
+        ],
+        "volumesAttached": [
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6"
+          },
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1"
+          },
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01"
+          },
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-b851930a-e9a2-4361-ba3d-78756102e777"
+          },
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-9b71d068-c678-4ae1-956f-d528a247c277"
+          },
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-e89ab022-400f-4cb2-a222-f172dc1604ff"
+          },
+          {
+            "devicePath": "",
+            "name": "kubernetes.io/csi/driver.longhorn.io^pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632"
+          }
+        ],
+        "volumesInUse": [
+          "kubernetes.io/csi/driver.longhorn.io^pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01",
+          "kubernetes.io/csi/driver.longhorn.io^pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1",
+          "kubernetes.io/csi/driver.longhorn.io^pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6",
+          "kubernetes.io/csi/driver.longhorn.io^pvc-9b71d068-c678-4ae1-956f-d528a247c277",
+          "kubernetes.io/csi/driver.longhorn.io^pvc-b851930a-e9a2-4361-ba3d-78756102e777",
+          "kubernetes.io/csi/driver.longhorn.io^pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632",
+          "kubernetes.io/csi/driver.longhorn.io^pvc-e89ab022-400f-4cb2-a222-f172dc1604ff"
+        ]
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

@@ -1,0 +1,1592 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "DaemonSet",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-dns-resolver",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-dns-resolver-cattle-fleet-l-10be2"
+        },
+        "creationTimestamp": "2026-08-01T05:07:51Z",
+        "generation": 5,
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "a0282b209b35d1e40b5c3a93d07845e3b275e85e"
+        },
+        "name": "coredns-lan",
+        "namespace": "dns-resolver",
+        "resourceVersion": "26959391",
+        "uid": "86097776-63be-4cfd-9b0c-13ffd3dc2959"
+      },
+      "spec": {
+        "revisionHistoryLimit": 10,
+        "selector": {
+          "matchLabels": {
+            "app": "coredns-lan"
+          }
+        },
+        "template": {
+          "metadata": {
+            "annotations": {},
+            "labels": {
+              "app": "coredns-lan"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "HOST_IP",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "status.hostIP"
+                      }
+                    }
+                  }
+                ],
+                "image": "coredns/coredns:latest",
+                "imagePullPolicy": "Always",
+                "name": "coredns",
+                "ports": [
+                  {
+                    "containerPort": 53,
+                    "protocol": "UDP"
+                  },
+                  {
+                    "containerPort": 53,
+                    "protocol": "TCP"
+                  }
+                ],
+                "resources": {},
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/etc/coredns",
+                    "name": "config",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirstWithHostNet",
+            "hostNetwork": true,
+            "restartPolicy": "Always",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "configMap": {
+                  "defaultMode": 420,
+                  "name": "coredns-lan-config"
+                },
+                "name": "config"
+              }
+            ]
+          }
+        },
+        "updateStrategy": {
+          "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": 1
+          },
+          "type": "RollingUpdate"
+        }
+      },
+      "status": {
+        "currentNumberScheduled": 3,
+        "desiredNumberScheduled": 3,
+        "numberAvailable": 3,
+        "numberMisscheduled": 0,
+        "numberReady": 3,
+        "observedGeneration": 5,
+        "updatedNumberScheduled": 3
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "DaemonSet",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "csi-driver-nfs",
+          "meta.helm.sh/release-namespace": "kube-system"
+        },
+        "creationTimestamp": "2026-07-31T23:39:28Z",
+        "generation": 1,
+        "labels": {
+          "app.kubernetes.io/instance": "csi-driver-nfs",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "csi-driver-nfs",
+          "app.kubernetes.io/version": "4.13.4",
+          "helm.sh/chart": "csi-driver-nfs-4.13.4"
+        },
+        "name": "csi-nfs-node",
+        "namespace": "kube-system",
+        "resourceVersion": "26959309",
+        "uid": "9ec22d04-bbb5-4fea-931c-dbeebb6ea96b"
+      },
+      "spec": {
+        "revisionHistoryLimit": 10,
+        "selector": {
+          "matchLabels": {
+            "app": "csi-nfs-node"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "csi-nfs-node",
+              "app.kubernetes.io/instance": "csi-driver-nfs",
+              "app.kubernetes.io/managed-by": "Helm",
+              "app.kubernetes.io/name": "csi-driver-nfs",
+              "app.kubernetes.io/version": "4.13.4",
+              "helm.sh/chart": "csi-driver-nfs-4.13.4"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "image": "registry.k8s.io/sig-storage/livenessprobe:v2.19.0",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "liveness-probe",
+                "resources": {
+                  "limits": {
+                    "memory": "100Mi"
+                  },
+                  "requests": {
+                    "cpu": "10m",
+                    "memory": "20Mi"
+                  }
+                },
+                "securityContext": {
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  },
+                  "readOnlyRootFilesystem": true
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/csi",
+                    "name": "socket-dir"
+                  }
+                ]
+              },
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "DRIVER_REG_SOCK_PATH",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "KUBE_NODE_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "spec.nodeName"
+                      }
+                    }
+                  }
+                ],
+                "image": "registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.17.0",
+                "imagePullPolicy": "IfNotPresent",
+                "livenessProbe": {
+                  "failureThreshold": 2,
+                  "httpGet": {
+                    "host": "localhost",
+                    "path": "/healthz",
+                    "port": "healthz",
+                    "scheme": "HTTP"
+                  },
+                  "initialDelaySeconds": 20,
+                  "periodSeconds": 5,
+                  "successThreshold": 1,
+                  "timeoutSeconds": 10
+                },
+                "name": "node-driver-registrar",
+                "ports": [
+                  {
+                    "containerPort": 19809,
+                    "name": "healthz",
+                    "protocol": "TCP"
+                  }
+                ],
+                "resources": {
+                  "limits": {
+                    "memory": "100Mi"
+                  },
+                  "requests": {
+                    "cpu": "10m",
+                    "memory": "20Mi"
+                  }
+                },
+                "securityContext": {
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/csi",
+                    "name": "socket-dir"
+                  },
+                  {
+                    "mountPath": "/registration",
+                    "name": "registration-dir"
+                  }
+                ]
+              },
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "NODE_ID",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "spec.nodeName"
+                      }
+                    }
+                  },
+                  {
+                    "name": "CSI_ENDPOINT",
+                    "value": "REDACTED"
+                  }
+                ],
+                "image": "registry.k8s.io/sig-storage/nfsplugin:v4.13.4",
+                "imagePullPolicy": "IfNotPresent",
+                "livenessProbe": {
+                  "failureThreshold": 5,
+                  "httpGet": {
+                    "host": "localhost",
+                    "path": "/healthz",
+                    "port": 29653,
+                    "scheme": "HTTP"
+                  },
+                  "initialDelaySeconds": 30,
+                  "periodSeconds": 30,
+                  "successThreshold": 1,
+                  "timeoutSeconds": 10
+                },
+                "name": "nfs",
+                "resources": {
+                  "limits": {
+                    "memory": "300Mi"
+                  },
+                  "requests": {
+                    "cpu": "10m",
+                    "memory": "20Mi"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": true,
+                  "capabilities": {
+                    "add": [
+                      "SYS_ADMIN"
+                    ],
+                    "drop": [
+                      "ALL"
+                    ]
+                  },
+                  "privileged": true
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/csi",
+                    "name": "socket-dir"
+                  },
+                  {
+                    "mountPath": "/var/lib/kubelet/pods",
+                    "mountPropagation": "Bidirectional",
+                    "name": "pods-mount-dir"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirstWithHostNet",
+            "hostNetwork": true,
+            "nodeSelector": {
+              "kubernetes.io/os": "linux"
+            },
+            "priorityClassName": "system-cluster-critical",
+            "restartPolicy": "Always",
+            "schedulerName": "default-scheduler",
+            "securityContext": {
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "serviceAccount": "csi-nfs-node-sa",
+            "serviceAccountName": "csi-nfs-node-sa",
+            "terminationGracePeriodSeconds": 30,
+            "tolerations": [
+              {
+                "operator": "Exists"
+              }
+            ],
+            "volumes": [
+              {
+                "hostPath": {
+                  "path": "/var/lib/kubelet/plugins/csi-nfsplugin",
+                  "type": "DirectoryOrCreate"
+                },
+                "name": "socket-dir"
+              },
+              {
+                "hostPath": {
+                  "path": "/var/lib/kubelet/pods",
+                  "type": "Directory"
+                },
+                "name": "pods-mount-dir"
+              },
+              {
+                "hostPath": {
+                  "path": "/var/lib/kubelet/plugins_registry",
+                  "type": "Directory"
+                },
+                "name": "registration-dir"
+              }
+            ]
+          }
+        },
+        "updateStrategy": {
+          "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": 1
+          },
+          "type": "RollingUpdate"
+        }
+      },
+      "status": {
+        "currentNumberScheduled": 3,
+        "desiredNumberScheduled": 3,
+        "numberAvailable": 3,
+        "numberMisscheduled": 0,
+        "numberReady": 3,
+        "observedGeneration": 1,
+        "updatedNumberScheduled": 3
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "DaemonSet",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-07-31T23:24:42Z",
+        "generation": 1,
+        "name": "nvidia-device-plugin-daemonset",
+        "namespace": "kube-system",
+        "resourceVersion": "26959460",
+        "uid": "9ac9db6f-9dd4-4b28-afa3-8e4bb9e8fa1e"
+      },
+      "spec": {
+        "revisionHistoryLimit": 10,
+        "selector": {
+          "matchLabels": {
+            "name": "nvidia-device-plugin-ds"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "name": "nvidia-device-plugin-ds"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "env": [
+                  {
+                    "name": "FAIL_ON_INIT_ERROR",
+                    "value": "REDACTED"
+                  }
+                ],
+                "image": "nvcr.io/nvidia/k8s-device-plugin:v0.16.2",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "nvidia-device-plugin-ctr",
+                "resources": {},
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/var/lib/kubelet/device-plugins",
+                    "name": "device-plugin"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "priorityClassName": "system-node-critical",
+            "restartPolicy": "Always",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "terminationGracePeriodSeconds": 30,
+            "tolerations": [
+              {
+                "effect": "NoSchedule",
+                "key": "nvidia.com/gpu",
+                "operator": "Exists"
+              }
+            ],
+            "volumes": [
+              {
+                "hostPath": {
+                  "path": "/var/lib/kubelet/device-plugins",
+                  "type": ""
+                },
+                "name": "device-plugin"
+              }
+            ]
+          }
+        },
+        "updateStrategy": {
+          "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": 1
+          },
+          "type": "RollingUpdate"
+        }
+      },
+      "status": {
+        "currentNumberScheduled": 3,
+        "desiredNumberScheduled": 3,
+        "numberAvailable": 3,
+        "numberMisscheduled": 0,
+        "numberReady": 3,
+        "observedGeneration": 1,
+        "updatedNumberScheduled": 3
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "DaemonSet",
+      "metadata": {
+        "annotations": {
+          "objectset.rio.cattle.io/applied": "REDACTED",
+          "objectset.rio.cattle.io/id": "",
+          "objectset.rio.cattle.io/owner-gvk": "/v1, Kind=Service",
+          "objectset.rio.cattle.io/owner-name": "traefik",
+          "objectset.rio.cattle.io/owner-namespace": "kube-system"
+        },
+        "creationTimestamp": "2026-07-31T23:25:33Z",
+        "generation": 1,
+        "labels": {
+          "objectset.rio.cattle.io/hash": "836fcbce022d5dae5b36694fe1eaf389c93af7dc",
+          "svccontroller.k3s.cattle.io/nodeselector": "false",
+          "svccontroller.k3s.cattle.io/svcname": "traefik",
+          "svccontroller.k3s.cattle.io/svcnamespace": "kube-system"
+        },
+        "name": "svclb-traefik-d082328f",
+        "namespace": "kube-system",
+        "resourceVersion": "26959405",
+        "uid": "07318edd-4484-41dd-b3ea-064cae9ba4c8"
+      },
+      "spec": {
+        "revisionHistoryLimit": 10,
+        "selector": {
+          "matchLabels": {
+            "app": "svclb-traefik-d082328f"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "svclb-traefik-d082328f",
+              "svccontroller.k3s.cattle.io/svcname": "traefik",
+              "svccontroller.k3s.cattle.io/svcnamespace": "kube-system"
+            }
+          },
+          "spec": {
+            "automountServiceAccountToken": false,
+            "containers": [
+              {
+                "env": [
+                  {
+                    "name": "SRC_PORT",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "SRC_RANGES",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "DEST_PROTO",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "DEST_PORT",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "DEST_IPS",
+                    "value": "REDACTED"
+                  }
+                ],
+                "image": "rancher/klipper-lb:v0.4.17",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "lb-tcp-80",
+                "ports": [
+                  {
+                    "containerPort": 80,
+                    "hostPort": 80,
+                    "name": "lb-tcp-80",
+                    "protocol": "TCP"
+                  }
+                ],
+                "resources": {},
+                "securityContext": {
+                  "capabilities": {
+                    "add": [
+                      "NET_ADMIN"
+                    ]
+                  }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File"
+              },
+              {
+                "env": [
+                  {
+                    "name": "SRC_PORT",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "SRC_RANGES",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "DEST_PROTO",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "DEST_PORT",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "DEST_IPS",
+                    "value": "REDACTED"
+                  }
+                ],
+                "image": "rancher/klipper-lb:v0.4.17",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "lb-tcp-443",
+                "ports": [
+                  {
+                    "containerPort": 443,
+                    "hostPort": 443,
+                    "name": "lb-tcp-443",
+                    "protocol": "TCP"
+                  }
+                ],
+                "resources": {},
+                "securityContext": {
+                  "capabilities": {
+                    "add": [
+                      "NET_ADMIN"
+                    ]
+                  }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File"
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "priorityClassName": "system-node-critical",
+            "restartPolicy": "Always",
+            "schedulerName": "default-scheduler",
+            "securityContext": {
+              "sysctls": [
+                {
+                  "name": "net.ipv4.ip_forward",
+                  "value": "1"
+                }
+              ]
+            },
+            "serviceAccount": "svclb",
+            "serviceAccountName": "svclb",
+            "terminationGracePeriodSeconds": 30,
+            "tolerations": [
+              {
+                "effect": "NoSchedule",
+                "key": "node-role.kubernetes.io/control-plane",
+                "operator": "Exists"
+              },
+              {
+                "key": "CriticalAddonsOnly",
+                "operator": "Exists"
+              }
+            ]
+          }
+        },
+        "updateStrategy": {
+          "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": 1
+          },
+          "type": "RollingUpdate"
+        }
+      },
+      "status": {
+        "currentNumberScheduled": 3,
+        "desiredNumberScheduled": 3,
+        "numberAvailable": 3,
+        "numberMisscheduled": 0,
+        "numberReady": 3,
+        "observedGeneration": 1,
+        "updatedNumberScheduled": 3
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "DaemonSet",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/last-applied-tolerations": "[]"
+        },
+        "creationTimestamp": "2026-08-29T00:17:41Z",
+        "generation": 1,
+        "labels": {
+          "longhorn.io/component": "engine-image",
+          "longhorn.io/engine-image": "ei-493e04e7",
+          "longhorn.io/managed-by": "longhorn-manager"
+        },
+        "name": "engine-image-ei-493e04e7",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "blockOwnerDeletion": true,
+            "kind": "EngineImage",
+            "name": "ei-493e04e7",
+            "uid": "7eb2a798-2937-4133-9413-b352af679d2a"
+          }
+        ],
+        "resourceVersion": "26959544",
+        "uid": "d8daef6a-c519-4391-b593-bf71fb772a44"
+      },
+      "spec": {
+        "revisionHistoryLimit": 10,
+        "selector": {
+          "matchLabels": {
+            "longhorn.io/component": "engine-image",
+            "longhorn.io/engine-image": "ei-493e04e7"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "longhorn.io/component": "engine-image",
+              "longhorn.io/engine-image": "ei-493e04e7"
+            },
+            "name": "engine-image-ei-493e04e7",
+            "ownerReferences": [
+              {
+                "apiVersion": "longhorn.io/v1beta2",
+                "blockOwnerDeletion": true,
+                "kind": "EngineImage",
+                "name": "ei-493e04e7",
+                "uid": "7eb2a798-2937-4133-9413-b352af679d2a"
+              }
+            ]
+          },
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "command": [
+                  "REDACTED"
+                ],
+                "image": "docker.io/longhornio/longhorn-engine:v1.12.1",
+                "imagePullPolicy": "IfNotPresent",
+                "livenessProbe": {
+                  "exec": {
+                    "command": [
+                      "REDACTED"
+                    ]
+                  },
+                  "failureThreshold": 3,
+                  "initialDelaySeconds": 3,
+                  "periodSeconds": 5,
+                  "successThreshold": 1,
+                  "timeoutSeconds": 4
+                },
+                "name": "engine-image-ei-493e04e7",
+                "readinessProbe": {
+                  "exec": {
+                    "command": [
+                      "REDACTED"
+                    ]
+                  },
+                  "failureThreshold": 3,
+                  "initialDelaySeconds": 3,
+                  "periodSeconds": 5,
+                  "successThreshold": 1,
+                  "timeoutSeconds": 4
+                },
+                "resources": {},
+                "securityContext": {
+                  "privileged": true
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/data/",
+                    "name": "data"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "priorityClassName": "longhorn-critical",
+            "restartPolicy": "Always",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "serviceAccount": "longhorn-service-account",
+            "serviceAccountName": "longhorn-service-account",
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "hostPath": {
+                  "path": "/var/lib/longhorn/engine-binaries/docker.io-longhornio-longhorn-engine-v1.12.1",
+                  "type": ""
+                },
+                "name": "data"
+              }
+            ]
+          }
+        },
+        "updateStrategy": {
+          "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": "100%"
+          },
+          "type": "RollingUpdate"
+        }
+      },
+      "status": {
+        "currentNumberScheduled": 3,
+        "desiredNumberScheduled": 3,
+        "numberAvailable": 3,
+        "numberMisscheduled": 0,
+        "numberReady": 3,
+        "observedGeneration": 1,
+        "updatedNumberScheduled": 3
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "DaemonSet",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/last-applied-tolerations": "[]"
+        },
+        "creationTimestamp": "2026-08-29T00:18:57Z",
+        "generation": 1,
+        "labels": {
+          "longhorn.io/managed-by": "longhorn-manager"
+        },
+        "name": "longhorn-csi-plugin",
+        "namespace": "longhorn-system",
+        "resourceVersion": "26959663",
+        "uid": "7653370d-0309-49a6-8c27-93f3b11efc0f"
+      },
+      "spec": {
+        "revisionHistoryLimit": 10,
+        "selector": {
+          "matchLabels": {
+            "app": "longhorn-csi-plugin"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "longhorn-csi-plugin"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "ADDRESS",
+                    "value": "REDACTED"
+                  }
+                ],
+                "image": "docker.io/longhornio/csi-node-driver-registrar:v2.17.0",
+                "imagePullPolicy": "IfNotPresent",
+                "lifecycle": {
+                  "preStop": {
+                    "exec": {
+                      "command": [
+                        "REDACTED"
+                      ]
+                    }
+                  }
+                },
+                "name": "node-driver-registrar",
+                "resources": {},
+                "securityContext": {
+                  "privileged": true
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/csi/",
+                    "name": "socket-dir"
+                  },
+                  {
+                    "mountPath": "/registration",
+                    "name": "registration-dir"
+                  }
+                ]
+              },
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "image": "docker.io/longhornio/livenessprobe:v2.19.0",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "longhorn-liveness-probe",
+                "resources": {},
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/csi/",
+                    "name": "socket-dir"
+                  }
+                ]
+              },
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "NODE_ID",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "spec.nodeName"
+                      }
+                    }
+                  },
+                  {
+                    "name": "CSI_ENDPOINT",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "POD_NAMESPACE",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.namespace"
+                      }
+                    }
+                  }
+                ],
+                "image": "docker.io/longhornio/longhorn-manager:v1.12.1",
+                "imagePullPolicy": "IfNotPresent",
+                "lifecycle": {
+                  "preStop": {
+                    "exec": {
+                      "command": [
+                        "REDACTED"
+                      ]
+                    }
+                  }
+                },
+                "livenessProbe": {
+                  "failureThreshold": 3,
+                  "httpGet": {
+                    "path": "/healthz",
+                    "port": 9808,
+                    "scheme": "HTTP"
+                  },
+                  "initialDelaySeconds": 3,
+                  "periodSeconds": 5,
+                  "successThreshold": 1,
+                  "timeoutSeconds": 4
+                },
+                "name": "longhorn-csi-plugin",
+                "ports": [
+                  {
+                    "containerPort": 9808,
+                    "protocol": "TCP"
+                  }
+                ],
+                "resources": {},
+                "securityContext": {
+                  "allowPrivilegeEscalation": true,
+                  "capabilities": {
+                    "add": [
+                      "SYS_ADMIN"
+                    ]
+                  },
+                  "privileged": true
+                },
+                "startupProbe": {
+                  "failureThreshold": 36,
+                  "httpGet": {
+                    "path": "/healthz",
+                    "port": 9808,
+                    "scheme": "HTTP"
+                  },
+                  "initialDelaySeconds": 3,
+                  "periodSeconds": 5,
+                  "successThreshold": 1,
+                  "timeoutSeconds": 4
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/csi/",
+                    "name": "socket-dir"
+                  },
+                  {
+                    "mountPath": "/var/lib/kubelet/plugins/kubernetes.io/csi",
+                    "mountPropagation": "Bidirectional",
+                    "name": "kubernetes-csi-dir"
+                  },
+                  {
+                    "mountPath": "/var/lib/kubelet/pods",
+                    "mountPropagation": "Bidirectional",
+                    "name": "pods-mount-dir"
+                  },
+                  {
+                    "mountPath": "/dev",
+                    "name": "host-dev"
+                  },
+                  {
+                    "mountPath": "/host/proc",
+                    "name": "host-proc"
+                  },
+                  {
+                    "mountPath": "/sys",
+                    "name": "host-sys"
+                  },
+                  {
+                    "mountPath": "/lib/modules",
+                    "name": "lib-modules",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "priorityClassName": "longhorn-critical",
+            "restartPolicy": "Always",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "serviceAccount": "longhorn-service-account",
+            "serviceAccountName": "longhorn-service-account",
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "hostPath": {
+                  "path": "/var/lib/kubelet/plugins/kubernetes.io/csi",
+                  "type": "DirectoryOrCreate"
+                },
+                "name": "kubernetes-csi-dir"
+              },
+              {
+                "hostPath": {
+                  "path": "/var/lib/kubelet/plugins_registry",
+                  "type": "DirectoryOrCreate"
+                },
+                "name": "registration-dir"
+              },
+              {
+                "hostPath": {
+                  "path": "/var/lib/kubelet/plugins/driver.longhorn.io",
+                  "type": "DirectoryOrCreate"
+                },
+                "name": "socket-dir"
+              },
+              {
+                "hostPath": {
+                  "path": "/var/lib/kubelet/pods",
+                  "type": "DirectoryOrCreate"
+                },
+                "name": "pods-mount-dir"
+              },
+              {
+                "hostPath": {
+                  "path": "/dev",
+                  "type": ""
+                },
+                "name": "host-dev"
+              },
+              {
+                "hostPath": {
+                  "path": "/proc",
+                  "type": ""
+                },
+                "name": "host-proc"
+              },
+              {
+                "hostPath": {
+                  "path": "/sys",
+                  "type": ""
+                },
+                "name": "host-sys"
+              },
+              {
+                "hostPath": {
+                  "path": "/lib/modules",
+                  "type": ""
+                },
+                "name": "lib-modules"
+              }
+            ]
+          }
+        },
+        "updateStrategy": {
+          "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": 1
+          },
+          "type": "RollingUpdate"
+        }
+      },
+      "status": {
+        "currentNumberScheduled": 3,
+        "desiredNumberScheduled": 3,
+        "numberAvailable": 3,
+        "numberMisscheduled": 0,
+        "numberReady": 3,
+        "observedGeneration": 1,
+        "updatedNumberScheduled": 3
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "DaemonSet",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "longhorn",
+          "meta.helm.sh/release-namespace": "longhorn-system"
+        },
+        "creationTimestamp": "2026-08-29T00:16:31Z",
+        "generation": 1,
+        "labels": {
+          "app": "longhorn-manager",
+          "app.kubernetes.io/instance": "longhorn",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "longhorn",
+          "app.kubernetes.io/version": "v1.12.1",
+          "helm.sh/chart": "longhorn-1.12.1"
+        },
+        "name": "longhorn-manager",
+        "namespace": "longhorn-system",
+        "resourceVersion": "26959681",
+        "uid": "113f9b9b-2e3f-4bfd-a20a-076965554a8b"
+      },
+      "spec": {
+        "revisionHistoryLimit": 10,
+        "selector": {
+          "matchLabels": {
+            "app": "longhorn-manager"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "longhorn-manager",
+              "app.kubernetes.io/instance": "longhorn",
+              "app.kubernetes.io/managed-by": "Helm",
+              "app.kubernetes.io/name": "longhorn",
+              "app.kubernetes.io/version": "v1.12.1",
+              "helm.sh/chart": "longhorn-1.12.1"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "command": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "POD_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.name"
+                      }
+                    }
+                  },
+                  {
+                    "name": "POD_NAMESPACE",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.namespace"
+                      }
+                    }
+                  },
+                  {
+                    "name": "POD_IP",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "status.podIP"
+                      }
+                    }
+                  },
+                  {
+                    "name": "NODE_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "spec.nodeName"
+                      }
+                    }
+                  },
+                  {
+                    "name": "LONGHORN_DISTRO",
+                    "value": "REDACTED"
+                  }
+                ],
+                "image": "docker.io/longhornio/longhorn-manager:v1.12.1",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "longhorn-manager",
+                "ports": [
+                  {
+                    "containerPort": 9500,
+                    "name": "manager",
+                    "protocol": "TCP"
+                  },
+                  {
+                    "containerPort": 9502,
+                    "name": "admission-wh",
+                    "protocol": "TCP"
+                  },
+                  {
+                    "containerPort": 9503,
+                    "name": "recov-backend",
+                    "protocol": "TCP"
+                  }
+                ],
+                "readinessProbe": {
+                  "failureThreshold": 3,
+                  "httpGet": {
+                    "path": "/v1/healthz",
+                    "port": 9502,
+                    "scheme": "HTTPS"
+                  },
+                  "periodSeconds": 10,
+                  "successThreshold": 1,
+                  "timeoutSeconds": 1
+                },
+                "resources": {},
+                "securityContext": {
+                  "privileged": true
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/host/boot/",
+                    "name": "boot",
+                    "readOnly": true
+                  },
+                  {
+                    "mountPath": "/host/dev/",
+                    "name": "dev"
+                  },
+                  {
+                    "mountPath": "/host/proc/",
+                    "name": "proc",
+                    "readOnly": true
+                  },
+                  {
+                    "mountPath": "/host/etc/",
+                    "name": "etc",
+                    "readOnly": true
+                  },
+                  {
+                    "mountPath": "/var/lib/longhorn/",
+                    "mountPropagation": "Bidirectional",
+                    "name": "longhorn"
+                  },
+                  {
+                    "mountPath": "/tls-files/",
+                    "name": "longhorn-grpc-tls"
+                  }
+                ]
+              },
+              {
+                "command": [
+                  "REDACTED"
+                ],
+                "image": "docker.io/longhornio/longhorn-share-manager:v1.12.1",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "pre-pull-share-manager-image",
+                "resources": {},
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File"
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "priorityClassName": "longhorn-critical",
+            "restartPolicy": "Always",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "serviceAccount": "longhorn-service-account",
+            "serviceAccountName": "longhorn-service-account",
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "hostPath": {
+                  "path": "/boot/",
+                  "type": ""
+                },
+                "name": "boot"
+              },
+              {
+                "hostPath": {
+                  "path": "/dev/",
+                  "type": ""
+                },
+                "name": "dev"
+              },
+              {
+                "hostPath": {
+                  "path": "/proc/",
+                  "type": ""
+                },
+                "name": "proc"
+              },
+              {
+                "hostPath": {
+                  "path": "/etc/",
+                  "type": ""
+                },
+                "name": "etc"
+              },
+              {
+                "hostPath": {
+                  "path": "/var/lib/longhorn/",
+                  "type": ""
+                },
+                "name": "longhorn"
+              },
+              {
+                "name": "longhorn-grpc-tls",
+                "secret": {
+                  "defaultMode": 420,
+                  "optional": true,
+                  "secretName": "longhorn-grpc-tls"
+                }
+              }
+            ]
+          }
+        },
+        "updateStrategy": {
+          "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": "100%"
+          },
+          "type": "RollingUpdate"
+        }
+      },
+      "status": {
+        "currentNumberScheduled": 3,
+        "desiredNumberScheduled": 3,
+        "numberAvailable": 3,
+        "numberMisscheduled": 0,
+        "numberReady": 3,
+        "observedGeneration": 1,
+        "updatedNumberScheduled": 3
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "DaemonSet",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "metallb",
+          "meta.helm.sh/release-namespace": "metallb-system"
+        },
+        "creationTimestamp": "2026-10-05T22:44:37Z",
+        "generation": 2,
+        "labels": {
+          "app.kubernetes.io/component": "speaker",
+          "app.kubernetes.io/instance": "metallb",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "metallb",
+          "app.kubernetes.io/version": "v0.16.1",
+          "helm.sh/chart": "metallb-0.16.1"
+        },
+        "name": "metallb-speaker",
+        "namespace": "metallb-system",
+        "resourceVersion": "26959823",
+        "uid": "4a1a7fed-682a-4873-906e-cc6da21fa9bf"
+      },
+      "spec": {
+        "revisionHistoryLimit": 10,
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/component": "speaker",
+            "app.kubernetes.io/instance": "metallb",
+            "app.kubernetes.io/name": "metallb"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/component": "speaker",
+              "app.kubernetes.io/instance": "metallb",
+              "app.kubernetes.io/name": "metallb"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "REDACTED"
+                ],
+                "env": [
+                  {
+                    "name": "METALLB_NODE_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "spec.nodeName"
+                      }
+                    }
+                  },
+                  {
+                    "name": "METALLB_HOST",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "status.hostIP"
+                      }
+                    }
+                  },
+                  {
+                    "name": "METALLB_ML_BIND_ADDR",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "status.podIP"
+                      }
+                    }
+                  },
+                  {
+                    "name": "METALLB_ML_LABELS",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "METALLB_ML_BIND_PORT",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "METALLB_ML_SECRET_KEY_PATH",
+                    "value": "REDACTED"
+                  },
+                  {
+                    "name": "METALLB_POD_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.name"
+                      }
+                    }
+                  }
+                ],
+                "image": "quay.io/metallb/speaker:v0.16.1",
+                "imagePullPolicy": "IfNotPresent",
+                "livenessProbe": {
+                  "failureThreshold": 3,
+                  "httpGet": {
+                    "host": "127.0.0.1",
+                    "path": "/healthz",
+                    "port": 17472,
+                    "scheme": "HTTP"
+                  },
+                  "initialDelaySeconds": 10,
+                  "periodSeconds": 10,
+                  "successThreshold": 1,
+                  "timeoutSeconds": 1
+                },
+                "name": "speaker",
+                "ports": [
+                  {
+                    "containerPort": 9120,
+                    "name": "metricshttps",
+                    "protocol": "TCP"
+                  },
+                  {
+                    "containerPort": 7946,
+                    "name": "memberlist-tcp",
+                    "protocol": "TCP"
+                  },
+                  {
+                    "containerPort": 7946,
+                    "name": "memberlist-udp",
+                    "protocol": "UDP"
+                  }
+                ],
+                "readinessProbe": {
+                  "failureThreshold": 3,
+                  "httpGet": {
+                    "host": "127.0.0.1",
+                    "path": "/readyz",
+                    "port": 17472,
+                    "scheme": "HTTP"
+                  },
+                  "initialDelaySeconds": 10,
+                  "periodSeconds": 10,
+                  "successThreshold": 1,
+                  "timeoutSeconds": 1
+                },
+                "resources": {},
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "add": [
+                      "NET_RAW"
+                    ],
+                    "drop": [
+                      "ALL"
+                    ]
+                  },
+                  "readOnlyRootFilesystem": true
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/etc/metallb/memberlist",
+                    "name": "memberlist-config",
+                    "readOnly": true
+                  },
+                  {
+                    "mountPath": "/etc/ml_secret_key",
+                    "name": "memberlist"
+                  },
+                  {
+                    "mountPath": "/etc/metallb",
+                    "name": "metallb-excludel2"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "hostNetwork": true,
+            "nodeSelector": {
+              "kubernetes.io/os": "linux"
+            },
+            "restartPolicy": "Always",
+            "schedulerName": "default-scheduler",
+            "securityContext": {},
+            "serviceAccount": "metallb-speaker",
+            "serviceAccountName": "metallb-speaker",
+            "terminationGracePeriodSeconds": 0,
+            "tolerations": [
+              {
+                "effect": "NoSchedule",
+                "key": "node-role.kubernetes.io/master",
+                "operator": "Exists"
+              },
+              {
+                "effect": "NoSchedule",
+                "key": "node-role.kubernetes.io/control-plane",
+                "operator": "Exists"
+              }
+            ],
+            "volumes": [
+              {
+                "name": "memberlist",
+                "secret": {
+                  "defaultMode": 420,
+                  "secretName": "metallb-memberlist"
+                }
+              },
+              {
+                "configMap": {
+                  "defaultMode": 256,
+                  "name": "metallb-excludel2"
+                },
+                "name": "metallb-excludel2"
+              },
+              {
+                "configMap": {
+                  "defaultMode": 420,
+                  "name": "metallb-memberlist-config",
+                  "optional": true
+                },
+                "name": "memberlist-config"
+              }
+            ]
+          }
+        },
+        "updateStrategy": {
+          "rollingUpdate": {
+            "maxSurge": 0,
+            "maxUnavailable": 1
+          },
+          "type": "RollingUpdate"
+        }
+      },
+      "status": {
+        "currentNumberScheduled": 3,
+        "desiredNumberScheduled": 3,
+        "numberAvailable": 3,
+        "numberMisscheduled": 0,
+        "numberReady": 3,
+        "observedGeneration": 2,
+        "updatedNumberScheduled": 3
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

@@ -1,0 +1,143 @@
+name: install-test
+
+on:
+  pull_request:
+    paths:
+      - install.sh
+      - scripts/install/**
+      - chart/**
+      - Dockerfile
+      - .github/workflows/install-test.yml
+  push:
+    branches: [main]
+    paths:
+      - install.sh
+      - scripts/install/**
+      - chart/**
+      - Dockerfile
+      - .github/workflows/install-test.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: install-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck install.sh scripts/install/*.sh
+      - if: ${{ !cancelled() }}
+        run: scripts/install/check-pins.sh install.sh
+
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - id: names
+        run: echo "image=$(jq -r '.imageRegistry + "/" + .imageName' product.json)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: ${{ steps.names.outputs.image }}:ci
+          build-args: GIT_SHA=${{ github.sha }}
+          outputs: type=docker,dest=${{ runner.temp }}/image.tar
+          cache-from: type=gha
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image
+          path: ${{ runner.temp }}/image.tar
+          retention-days: 1
+
+  # A runner with no cluster: the installer installs k3s and Helm itself.
+  k3s:
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: image
+          path: ${{ runner.temp }}
+      - name: Names and a clean host
+        run: |
+          echo "NS=$(jq -r .defaultNamespace product.json)" >> "$GITHUB_ENV"
+          echo "RELEASE=$(jq -r .slug product.json)" >> "$GITHUB_ENV"
+          # k3s imports these at start, so the pod never pulls from a registry.
+          sudo mkdir -p /var/lib/rancher/k3s/agent/images
+          sudo cp "$RUNNER_TEMP/image.tar" /var/lib/rancher/k3s/agent/images/
+          sudo rm -f "$(command -v helm)"
+          ! kubectl get --raw /readyz --request-timeout=5s
+      - name: First install, piped as curl | sh would
+        run: |
+          # The log keeps the password out of the job output, which is public with the repo.
+          cat install.sh | sh -s -- --yes --chart ./chart --image-tag ci > "$RUNNER_TEMP/first.log" \
+            || { sed 's/^Password: .*/Password: (redacted)/' "$RUNNER_TEMP/first.log"; exit 1; }
+          sed 's/^Password: .*/Password: (redacted)/' "$RUNNER_TEMP/first.log"
+          password=$(sed -n 's/^Password: //p' "$RUNNER_TEMP/first.log")
+          [ -n "$password" ] || { echo "first install printed no password"; exit 1; }
+          echo "::add-mask::$password"
+          echo "PASSWORD=$password" >> "$GITHUB_ENV"
+          scripts/install/assert-install.sh "$RUNNER_TEMP/first.log" "$password"
+          sudo k3s kubectl -n "$NS" get secret "$RELEASE-secrets" -o jsonpath='{.metadata.uid}{.data}' > "$RUNNER_TEMP/secret.before"
+      - name: Re-run upgrades in place and keeps the password
+        run: |
+          sh install.sh --yes --chart ./chart | tee "$RUNNER_TEMP/second.log"
+          ! grep -q '^Password:' "$RUNNER_TEMP/second.log" || { echo "re-run printed the password"; exit 1; }
+          sudo k3s kubectl -n "$NS" get secret "$RELEASE-secrets" -o jsonpath='{.metadata.uid}{.data}' > "$RUNNER_TEMP/secret.after"
+          cmp -s "$RUNNER_TEMP/secret.before" "$RUNNER_TEMP/secret.after" || { echo "re-run changed the Secret"; exit 1; }
+          [ "$(sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml history "$RELEASE" -n "$NS" -o json | jq length)" = 2 ]
+          scripts/install/assert-install.sh "$RUNNER_TEMP/second.log" "$PASSWORD"
+      - name: Uninstall removes the release and leaves k3s
+        run: |
+          sh install.sh --yes --uninstall
+          ! sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml status "$RELEASE" -n "$NS"
+          systemctl is-active k3s
+          sudo k3s kubectl -n "$NS" get secret "$RELEASE-secrets" > /dev/null
+      - name: Diagnostics
+        if: failure()
+        run: |
+          sudo k3s kubectl get nodes,pods -A -o wide || true
+          sudo k3s kubectl -n "$NS" get all,pvc,events || true
+          sudo k3s kubectl -n "$NS" logs "deploy/$RELEASE" --tail=100 || true
+          sudo journalctl -u k3s --no-pager | tail -n 50 || true
+
+  # An existing cluster: the installer uses the current context and skips k3s.
+  kind:
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: image
+          path: ${{ runner.temp }}
+      - uses: helm/kind-action@v1
+        with:
+          version: v0.24.0
+          cluster_name: kind
+      - name: Install into kind
+        run: |
+          echo "NS=$(jq -r .defaultNamespace product.json)" >> "$GITHUB_ENV"
+          echo "RELEASE=$(jq -r .slug product.json)" >> "$GITHUB_ENV"
+          kind load image-archive "$RUNNER_TEMP/image.tar"
+          ./install.sh --no-k3s --yes --chart ./chart --image-tag ci > "$RUNNER_TEMP/kind.log" \
+            || { sed 's/^Password: .*/Password: (redacted)/' "$RUNNER_TEMP/kind.log"; exit 1; }
+          sed 's/^Password: .*/Password: (redacted)/' "$RUNNER_TEMP/kind.log"
+          ! grep -qi 'installing k3s' "$RUNNER_TEMP/kind.log"
+          password=$(sed -n 's/^Password: //p' "$RUNNER_TEMP/kind.log")
+          echo "::add-mask::$password"
+          scripts/install/assert-install.sh "$RUNNER_TEMP/kind.log" "$password"
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl -n "$NS" get all,pvc,events || true
+          kubectl -n "$NS" logs "deploy/$RELEASE" --tail=100 || true

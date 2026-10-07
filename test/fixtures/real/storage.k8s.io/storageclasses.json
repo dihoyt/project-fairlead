@@ -1,0 +1,107 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "storage.k8s.io/v1",
+      "kind": "StorageClass",
+      "metadata": {
+        "annotations": {
+          "objectset.rio.cattle.io/applied": "REDACTED",
+          "objectset.rio.cattle.io/id": "",
+          "objectset.rio.cattle.io/owner-gvk": "k3s.cattle.io/v1, Kind=Addon",
+          "objectset.rio.cattle.io/owner-name": "local-storage",
+          "objectset.rio.cattle.io/owner-namespace": "kube-system"
+        },
+        "creationTimestamp": "2026-07-31T23:24:45Z",
+        "labels": {
+          "objectset.rio.cattle.io/hash": "183f35c65ffbc3064603f43f1580d8c68a2dabd4"
+        },
+        "name": "local-path",
+        "resourceVersion": "26391952",
+        "uid": "f5fd124a-c643-4e5e-9ea6-21a6cb8d268a"
+      },
+      "provisioner": "rancher.io/local-path",
+      "reclaimPolicy": "Delete",
+      "volumeBindingMode": "WaitForFirstConsumer"
+    },
+    {
+      "allowVolumeExpansion": true,
+      "apiVersion": "storage.k8s.io/v1",
+      "kind": "StorageClass",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/last-applied-configmap": "kind: StorageClass\napiVersion: storage.k8s.io/v1\nmetadata:\n  name: longhorn\n  annotations:\n    storageclass.kubernetes.io/is-default-class: \"false\"\nprovisioner: driver.longhorn.io\nallowVolumeExpansion: true\nreclaimPolicy: \"Delete\"\nvolumeBindingMode: Immediate\nparameters:\n  numberOfReplicas: \"2\"\n  staleReplicaTimeout: \"30\"\n  fromBackup: \"\"\n  fsType: \"ext4\"\n  dataLocality: \"disabled\"\n  unmapMarkSnapChainRemoved: \"ignored\"\n  disableRevisionCounter: \"true\"\n  dataEngine: \"v1\"\n  backupTargetName: \"default\"\n"
+        },
+        "creationTimestamp": "2026-08-29T00:17:22Z",
+        "name": "longhorn",
+        "resourceVersion": "11078364",
+        "uid": "d1db69a8-ec0b-4346-9ed0-eece3d938989"
+      },
+      "parameters": {
+        "backupTargetName": "default",
+        "dataEngine": "v1",
+        "dataLocality": "disabled",
+        "disableRevisionCounter": "true",
+        "fromBackup": "",
+        "fsType": "ext4",
+        "numberOfReplicas": "2",
+        "staleReplicaTimeout": "30",
+        "unmapMarkSnapChainRemoved": "ignored"
+      },
+      "provisioner": "driver.longhorn.io",
+      "reclaimPolicy": "Delete",
+      "volumeBindingMode": "Immediate"
+    },
+    {
+      "allowVolumeExpansion": true,
+      "apiVersion": "storage.k8s.io/v1",
+      "kind": "StorageClass",
+      "metadata": {
+        "creationTimestamp": "2026-08-29T00:17:44Z",
+        "name": "longhorn-static",
+        "resourceVersion": "10208184",
+        "uid": "1f1c2f49-9be6-4555-ba0e-1784351b1219"
+      },
+      "parameters": {
+        "staleReplicaTimeout": "30"
+      },
+      "provisioner": "driver.longhorn.io",
+      "reclaimPolicy": "Delete",
+      "volumeBindingMode": "Immediate"
+    },
+    {
+      "apiVersion": "storage.k8s.io/v1",
+      "kind": "StorageClass",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-cluster",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-cluster-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-07-31T23:39:28Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5e41e808bd1d95404613184e02821a42c92698bb"
+        },
+        "name": "nfs-nas",
+        "resourceVersion": "11096495",
+        "uid": "441e9542-98c8-4493-8151-15a8b01566b0"
+      },
+      "mountOptions": [
+        "nfsvers=4.0"
+      ],
+      "parameters": {
+        "server": "nas.example.lan",
+        "share": "/volume1/k3s",
+        "subDir": "${pvc.metadata.namespace}-${pvc.metadata.name}"
+      },
+      "provisioner": "nfs.csi.k8s.io",
+      "reclaimPolicy": "Retain",
+      "volumeBindingMode": "Immediate"
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

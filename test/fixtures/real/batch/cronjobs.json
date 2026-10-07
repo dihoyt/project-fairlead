@@ -1,0 +1,396 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "fleet",
+          "meta.helm.sh/release-namespace": "cattle-fleet-system"
+        },
+        "creationTimestamp": "2026-08-01T00:17:36Z",
+        "generation": 1,
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm"
+        },
+        "name": "fleet-cleanup-gitrepo-jobs",
+        "namespace": "cattle-fleet-system",
+        "resourceVersion": "26826059",
+        "uid": "b8fb1736-657d-4ee4-83e5-4c88f81bae3c"
+      },
+      "spec": {
+        "concurrencyPolicy": "Forbid",
+        "failedJobsHistoryLimit": 1,
+        "jobTemplate": {
+          "metadata": {},
+          "spec": {
+            "backoffLimit": 1,
+            "template": {
+              "metadata": {
+                "labels": {
+                  "app": "fleet-job"
+                }
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "args": [
+                      "REDACTED"
+                    ],
+                    "image": "rancher/fleet:v0.16.0",
+                    "imagePullPolicy": "IfNotPresent",
+                    "name": "cleanup",
+                    "resources": {},
+                    "securityContext": {
+                      "allowPrivilegeEscalation": false,
+                      "capabilities": {
+                        "drop": [
+                          "ALL"
+                        ]
+                      },
+                      "privileged": false,
+                      "readOnlyRootFilesystem": false
+                    },
+                    "terminationMessagePath": "/dev/termination-log",
+                    "terminationMessagePolicy": "File"
+                  }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "nodeSelector": {
+                  "kubernetes.io/os": "linux"
+                },
+                "restartPolicy": "Never",
+                "schedulerName": "default-scheduler",
+                "securityContext": {
+                  "runAsGroup": 1000,
+                  "runAsNonRoot": true,
+                  "runAsUser": 1000
+                },
+                "serviceAccount": "gitjob",
+                "serviceAccountName": "gitjob",
+                "terminationGracePeriodSeconds": 30,
+                "tolerations": [
+                  {
+                    "effect": "NoSchedule",
+                    "key": "cattle.io/os",
+                    "operator": "Equal",
+                    "value": "linux"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "schedule": "@daily",
+        "successfulJobsHistoryLimit": 0,
+        "suspend": false
+      },
+      "status": {
+        "lastScheduleTime": "2026-10-07T00:00:00Z",
+        "lastSuccessfulTime": "2026-10-07T00:00:03Z"
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "metadata": {
+        "annotations": {
+          "objectset.rio.cattle.io/applied": "REDACTED",
+          "objectset.rio.cattle.io/id": "rke2-machine-config-cleanup"
+        },
+        "creationTimestamp": "2026-08-01T01:03:48Z",
+        "generation": 4,
+        "labels": {
+          "objectset.rio.cattle.io/hash": "dd9dbcfd7c38885d30e78acb65a58e5962640802"
+        },
+        "name": "rke2-machineconfig-cleanup-cronjob",
+        "namespace": "fleet-local",
+        "resourceVersion": "26827807",
+        "uid": "c77d142b-33c2-4f3e-81eb-5afacac6b560"
+      },
+      "spec": {
+        "concurrencyPolicy": "Allow",
+        "failedJobsHistoryLimit": 1,
+        "jobTemplate": {
+          "metadata": {},
+          "spec": {
+            "backoffLimit": 10,
+            "template": {
+              "metadata": {},
+              "spec": {
+                "containers": [
+                  {
+                    "args": [
+                      "REDACTED"
+                    ],
+                    "command": [
+                      "REDACTED"
+                    ],
+                    "env": [
+                      {
+                        "name": "CATTLE_SERVER",
+                        "value": "REDACTED"
+                      },
+                      {
+                        "name": "CATTLE_CA_CHECKSUM"
+                      },
+                      {
+                        "name": "CATTLE_TOKEN",
+                        "value": "REDACTED"
+                      }
+                    ],
+                    "image": "rancher/rancher-agent:v2.15.0",
+                    "imagePullPolicy": "IfNotPresent",
+                    "name": "rke2-machineconfig-cleanup-pod",
+                    "resources": {},
+                    "securityContext": {
+                      "runAsGroup": 65534,
+                      "runAsUser": 65534
+                    },
+                    "terminationMessagePath": "/dev/termination-log",
+                    "terminationMessagePolicy": "File",
+                    "volumeMounts": [
+                      {
+                        "mountPath": "/helper",
+                        "name": "config-volume"
+                      }
+                    ]
+                  }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "restartPolicy": "Never",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "serviceAccount": "rke2-machineconfig-cleanup-sa",
+                "serviceAccountName": "rke2-machineconfig-cleanup-sa",
+                "terminationGracePeriodSeconds": 30,
+                "volumes": [
+                  {
+                    "configMap": {
+                      "defaultMode": 420,
+                      "name": "rke2-machineconfig-cleanup-script"
+                    },
+                    "name": "config-volume"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "schedule": "5 0 * * *",
+        "successfulJobsHistoryLimit": 3,
+        "suspend": false
+      },
+      "status": {
+        "lastScheduleTime": "2026-10-07T00:05:00Z",
+        "lastSuccessfulTime": "2026-10-07T00:05:34Z"
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/last-applied-cronjob-spec": "{\"schedule\":\"0 10 * * *\",\"concurrencyPolicy\":\"Forbid\",\"jobTemplate\":{\"metadata\":{},\"spec\":{\"backoffLimit\":3,\"template\":{\"metadata\":{\"name\":\"nightly-backups\",\"labels\":{\"longhorn.io/managed-by\":\"longhorn-manager\",\"recurring-job.longhorn.io\":\"nightly-backups\"}},\"spec\":{\"volumes\":[{\"name\":\"engine-binaries\",\"hostPath\":{\"path\":\"/var/lib/longhorn/engine-binaries/\"}}],\"containers\":[{\"name\":\"nightly-backups\",\"image\":\"docker.io/longhornio/longhorn-manager:v1.12.1\",\"command\":[\"longhorn-manager\",\"-d\",\"recurring-job\",\"nightly-backups\",\"--manager-url\",\"http://longhorn-backend:9500/v1\"],\"env\":[{\"name\":\"POD_NAMESPACE\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.namespace\"}}}],\"resources\":{},\"volumeMounts\":[{\"name\":\"engine-binaries\",\"mountPath\":\"/var/lib/longhorn/engine-binaries/\"}]}],\"restartPolicy\":\"OnFailure\",\"serviceAccountName\":\"longhorn-service-account\",\"priorityClassName\":\"longhorn-critical\"}}}},\"successfulJobsHistoryLimit\":1,\"failedJobsHistoryLimit\":1}"
+        },
+        "creationTimestamp": "2026-10-07T07:34:25Z",
+        "generation": 1,
+        "labels": {
+          "longhorn.io/managed-by": "longhorn-manager",
+          "recurring-job.longhorn.io": "nightly-backups"
+        },
+        "name": "nightly-backups",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "RecurringJob",
+            "name": "nightly-backups",
+            "uid": "a02fad34-53c6-417f-b93f-ce67a2756aeb"
+          }
+        ],
+        "resourceVersion": "27033814",
+        "uid": "d5aa6aab-4afd-452f-94d4-ec16e052215d"
+      },
+      "spec": {
+        "concurrencyPolicy": "Forbid",
+        "failedJobsHistoryLimit": 1,
+        "jobTemplate": {
+          "metadata": {},
+          "spec": {
+            "backoffLimit": 3,
+            "template": {
+              "metadata": {
+                "labels": {
+                  "longhorn.io/managed-by": "longhorn-manager",
+                  "recurring-job.longhorn.io": "nightly-backups"
+                },
+                "name": "nightly-backups"
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "command": [
+                      "REDACTED"
+                    ],
+                    "env": [
+                      {
+                        "name": "POD_NAMESPACE",
+                        "valueFrom": {
+                          "fieldRef": {
+                            "apiVersion": "v1",
+                            "fieldPath": "metadata.namespace"
+                          }
+                        }
+                      }
+                    ],
+                    "image": "docker.io/longhornio/longhorn-manager:v1.12.1",
+                    "imagePullPolicy": "IfNotPresent",
+                    "name": "nightly-backups",
+                    "resources": {},
+                    "terminationMessagePath": "/dev/termination-log",
+                    "terminationMessagePolicy": "File",
+                    "volumeMounts": [
+                      {
+                        "mountPath": "/var/lib/longhorn/engine-binaries/",
+                        "name": "engine-binaries"
+                      }
+                    ]
+                  }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "priorityClassName": "longhorn-critical",
+                "restartPolicy": "OnFailure",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "serviceAccount": "longhorn-service-account",
+                "serviceAccountName": "longhorn-service-account",
+                "terminationGracePeriodSeconds": 30,
+                "volumes": [
+                  {
+                    "hostPath": {
+                      "path": "/var/lib/longhorn/engine-binaries/",
+                      "type": ""
+                    },
+                    "name": "engine-binaries"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "schedule": "0 10 * * *",
+        "successfulJobsHistoryLimit": 1,
+        "suspend": false
+      },
+      "status": {
+        "lastScheduleTime": "2026-10-07T10:00:00Z",
+        "lastSuccessfulTime": "2026-10-07T10:02:32Z"
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "metadata": {
+        "annotations": {
+          "longhorn.io/last-applied-cronjob-spec": "{\"schedule\":\"0 8 * * 0\",\"concurrencyPolicy\":\"Forbid\",\"jobTemplate\":{\"metadata\":{},\"spec\":{\"backoffLimit\":3,\"template\":{\"metadata\":{\"name\":\"weekly-system-backup\",\"labels\":{\"longhorn.io/managed-by\":\"longhorn-manager\",\"recurring-job.longhorn.io\":\"weekly-system-backup\"}},\"spec\":{\"volumes\":[{\"name\":\"engine-binaries\",\"hostPath\":{\"path\":\"/var/lib/longhorn/engine-binaries/\"}}],\"containers\":[{\"name\":\"weekly-system-backup\",\"image\":\"docker.io/longhornio/longhorn-manager:v1.12.1\",\"command\":[\"longhorn-manager\",\"-d\",\"recurring-job\",\"weekly-system-backup\",\"--manager-url\",\"http://longhorn-backend:9500/v1\"],\"env\":[{\"name\":\"POD_NAMESPACE\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.namespace\"}}}],\"resources\":{},\"volumeMounts\":[{\"name\":\"engine-binaries\",\"mountPath\":\"/var/lib/longhorn/engine-binaries/\"}]}],\"restartPolicy\":\"OnFailure\",\"serviceAccountName\":\"longhorn-service-account\",\"priorityClassName\":\"longhorn-critical\"}}}},\"successfulJobsHistoryLimit\":1,\"failedJobsHistoryLimit\":1}"
+        },
+        "creationTimestamp": "2026-10-07T07:35:31Z",
+        "generation": 2,
+        "labels": {
+          "longhorn.io/managed-by": "longhorn-manager",
+          "recurring-job.longhorn.io": "weekly-system-backup"
+        },
+        "name": "weekly-system-backup",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "RecurringJob",
+            "name": "weekly-system-backup",
+            "uid": "116a0ce1-3dc4-4549-85d9-a2dfec0342ea"
+          }
+        ],
+        "resourceVersion": "26978854",
+        "uid": "0d0bcf0d-608f-408f-b38e-c09e3d081f13"
+      },
+      "spec": {
+        "concurrencyPolicy": "Forbid",
+        "failedJobsHistoryLimit": 1,
+        "jobTemplate": {
+          "metadata": {},
+          "spec": {
+            "backoffLimit": 3,
+            "template": {
+              "metadata": {
+                "labels": {
+                  "longhorn.io/managed-by": "longhorn-manager",
+                  "recurring-job.longhorn.io": "weekly-system-backup"
+                },
+                "name": "weekly-system-backup"
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "command": [
+                      "REDACTED"
+                    ],
+                    "env": [
+                      {
+                        "name": "POD_NAMESPACE",
+                        "valueFrom": {
+                          "fieldRef": {
+                            "apiVersion": "v1",
+                            "fieldPath": "metadata.namespace"
+                          }
+                        }
+                      }
+                    ],
+                    "image": "docker.io/longhornio/longhorn-manager:v1.12.1",
+                    "imagePullPolicy": "IfNotPresent",
+                    "name": "weekly-system-backup",
+                    "resources": {},
+                    "terminationMessagePath": "/dev/termination-log",
+                    "terminationMessagePolicy": "File",
+                    "volumeMounts": [
+                      {
+                        "mountPath": "/var/lib/longhorn/engine-binaries/",
+                        "name": "engine-binaries"
+                      }
+                    ]
+                  }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "priorityClassName": "longhorn-critical",
+                "restartPolicy": "OnFailure",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "serviceAccount": "longhorn-service-account",
+                "serviceAccountName": "longhorn-service-account",
+                "terminationGracePeriodSeconds": 30,
+                "volumes": [
+                  {
+                    "hostPath": {
+                      "path": "/var/lib/longhorn/engine-binaries/",
+                      "type": ""
+                    },
+                    "name": "engine-binaries"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "schedule": "0 8 * * 0",
+        "successfulJobsHistoryLimit": 1,
+        "suspend": false
+      },
+      "status": {}
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

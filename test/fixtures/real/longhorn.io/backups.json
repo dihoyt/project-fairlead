@@ -1,0 +1,1861 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:00:17Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55"
+        },
+        "name": "backup-1ed6296d37e34540",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55-1b73fc15",
+            "uid": "612347b1-12a0-4a86-a681-9ca284502f5f"
+          }
+        ],
+        "resourceVersion": "27032624",
+        "uid": "cc783f8a-6847-406c-a409-0aa5e9aeed2f"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-f7bc5aaf-aade-4283-9da8-48df27349b55\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"sonarr-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"sonarr-549d9bc996-j4c6k\",\"podStatus\":\"Running\",\"workloadName\":\"sonarr-549d9bc996\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--893d3b48-ee38-4eef-a936-aadba504e5ec",
+        "syncRequestedAt": "2026-10-07T10:00:22Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:00:20Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-f7bc5aaf-aade-4283-9da8-48df27349b55\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"sonarr-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"sonarr-549d9bc996-j4c6k\",\"podStatus\":\"Running\",\"workloadName\":\"sonarr-549d9bc996\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:00:22Z",
+        "messages": null,
+        "newlyUploadDataSize": "12176502",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.1.248:10070",
+        "size": "578813952",
+        "snapshotCreatedAt": "2026-10-07T10:00:18Z",
+        "snapshotName": "nightly--893d3b48-ee38-4eef-a936-aadba504e5ec",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-1ed6296d37e34540&volume=pvc-f7bc5aaf-aade-4283-9da8-48df27349b55",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:18Z",
+        "volumeName": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:01:19Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6"
+        },
+        "name": "backup-37a6a2813d6c4d7b",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6-5b41048f",
+            "uid": "aa3a87c8-abc5-4d86-aaa3-8d8f949cd0e8"
+          }
+        ],
+        "resourceVersion": "27033243",
+        "uid": "6533f6d1-97d5-4d7c-95f6-1a3f584ce757"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"prowlarr-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"prowlarr-5999999cbb-4qplp\",\"podStatus\":\"Running\",\"workloadName\":\"prowlarr-5999999cbb\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--83151f2c-1ea2-47d4-8ed9-1d3a143344b5",
+        "syncRequestedAt": "2026-10-07T10:01:23Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:01:21Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"prowlarr-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"prowlarr-5999999cbb-4qplp\",\"podStatus\":\"Running\",\"workloadName\":\"prowlarr-5999999cbb\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:01:23Z",
+        "messages": null,
+        "newlyUploadDataSize": "2891968",
+        "ownerID": "agent-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.1.248:10060",
+        "size": "320864256",
+        "snapshotCreatedAt": "2026-10-07T10:01:19Z",
+        "snapshotName": "nightly--83151f2c-1ea2-47d4-8ed9-1d3a143344b5",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-37a6a2813d6c4d7b&volume=pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:07Z",
+        "volumeName": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:02:25Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d"
+        },
+        "name": "backup-4e5d607e06a84bfc",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d-8cc7f9f9",
+            "uid": "4425bdf3-077c-4371-99e7-5b5710aa9c20"
+          }
+        ],
+        "resourceVersion": "27033787",
+        "uid": "2c7b776c-c2a1-4651-8b39-424a91c442e9"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-eb37313f-85fe-48ae-81aa-9a398777345d\",\"pvStatus\":\"Bound\",\"namespace\":\"games\",\"pvcName\":\"game-panel-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"game-panel-b8b4c4cb9-vqvtt\",\"podStatus\":\"Running\",\"workloadName\":\"game-panel-b8b4c4cb9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--51bf8e6c-1d18-4655-8075-548d0374f090",
+        "syncRequestedAt": "2026-10-07T10:02:30Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:02:28Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-eb37313f-85fe-48ae-81aa-9a398777345d\",\"pvStatus\":\"Bound\",\"namespace\":\"games\",\"pvcName\":\"game-panel-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"game-panel-b8b4c4cb9-vqvtt\",\"podStatus\":\"Running\",\"workloadName\":\"game-panel-b8b4c4cb9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:02:30Z",
+        "messages": null,
+        "newlyUploadDataSize": "326500",
+        "ownerID": "agent-2",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10030",
+        "size": "207618048",
+        "snapshotCreatedAt": "2026-10-07T10:02:25Z",
+        "snapshotName": "nightly--51bf8e6c-1d18-4655-8075-548d0374f090",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-4e5d607e06a84bfc&volume=pvc-eb37313f-85fe-48ae-81aa-9a398777345d",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:48:05Z",
+        "volumeName": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:01:54Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1"
+        },
+        "name": "backup-8a3a880a00f1440d",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1-6095e2a1",
+            "uid": "43ac467a-6861-47bb-ba06-fa4cc7157e2f"
+          }
+        ],
+        "resourceVersion": "27033531",
+        "uid": "0843f81c-8091-4b08-96c3-e7c7fd6062a7"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"plex-private-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"plex-private-86d6f8cb88-s59b2\",\"podStatus\":\"Running\",\"workloadName\":\"plex-private-86d6f8cb88\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--d5e058d5-77dd-47bf-8de3-88bb0cfb4e85",
+        "syncRequestedAt": "2026-10-07T10:01:59Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:01:58Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"plex-private-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"plex-private-86d6f8cb88-s59b2\",\"podStatus\":\"Running\",\"workloadName\":\"plex-private-86d6f8cb88\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:01:59Z",
+        "messages": null,
+        "newlyUploadDataSize": "70126535",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.0.44:10000",
+        "size": "17775460352",
+        "snapshotCreatedAt": "2026-10-07T10:01:55Z",
+        "snapshotName": "nightly--d5e058d5-77dd-47bf-8de3-88bb0cfb4e85",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-8a3a880a00f1440d&volume=pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:11Z",
+        "volumeName": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1",
+        "volumeSize": "26843545600"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:00:53Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36"
+        },
+        "name": "backup-8efde3e340ce4f27",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36-00fbad8d",
+            "uid": "bc4c4076-235a-46c0-b5ab-3499a4d93d10"
+          }
+        ],
+        "resourceVersion": "27033032",
+        "uid": "b3e0613e-47b0-42b5-89c7-708e5988cf68"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36\",\"pvStatus\":\"Bound\",\"namespace\":\"games\",\"pvcName\":\"valheim-valheim-fresh-2-files\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"valheim-valheim-fresh-2-679c546cf9-fpfkg\",\"podStatus\":\"Succeeded\",\"workloadName\":\"valheim-valheim-fresh-2-679c546cf9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"2026-10-07T04:15:04Z\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--ad503731-2c8c-4d53-8ee1-15b4ceec34f5",
+        "syncRequestedAt": "2026-10-07T10:01:03Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:01:01Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36\",\"pvStatus\":\"Bound\",\"namespace\":\"games\",\"pvcName\":\"valheim-valheim-fresh-2-files\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"valheim-valheim-fresh-2-679c546cf9-fpfkg\",\"podStatus\":\"Succeeded\",\"workloadName\":\"valheim-valheim-fresh-2-679c546cf9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"2026-10-07T04:15:04Z\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:01:03Z",
+        "messages": null,
+        "newlyUploadDataSize": "0",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10154",
+        "size": "4789895168",
+        "snapshotCreatedAt": "2026-10-07T10:00:58Z",
+        "snapshotName": "nightly--ad503731-2c8c-4d53-8ee1-15b4ceec34f5",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-8efde3e340ce4f27&volume=pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:48:04Z",
+        "volumeName": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36",
+        "volumeSize": "10737418240"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:01:29Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e"
+        },
+        "name": "backup-a8d762c4ec854119",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e-965a36fd",
+            "uid": "d2c59914-d3ae-4961-8282-cc5ed768aad9"
+          }
+        ],
+        "resourceVersion": "27033332",
+        "uid": "75de1966-820f-48bc-9c32-a7143c908795"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e\",\"pvStatus\":\"Bound\",\"namespace\":\"games\",\"pvcName\":\"dragonwilds-files\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"dragonwilds-747cb6cdc8-jv9wx\",\"podStatus\":\"Running\",\"workloadName\":\"dragonwilds-747cb6cdc8\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--41d3f0e4-6aba-4027-ade8-18b437786e8d",
+        "syncRequestedAt": "2026-10-07T10:01:33Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:01:32Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e\",\"pvStatus\":\"Bound\",\"namespace\":\"games\",\"pvcName\":\"dragonwilds-files\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"dragonwilds-747cb6cdc8-jv9wx\",\"podStatus\":\"Running\",\"workloadName\":\"dragonwilds-747cb6cdc8\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:01:33Z",
+        "messages": null,
+        "newlyUploadDataSize": "7966458",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10103",
+        "size": "6046089216",
+        "snapshotCreatedAt": "2026-10-07T10:01:29Z",
+        "snapshotName": "nightly--41d3f0e4-6aba-4027-ade8-18b437786e8d",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-a8d762c4ec854119&volume=pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:47:48Z",
+        "volumeName": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e",
+        "volumeSize": "16106127360"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:02:15Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-b851930a-e9a2-4361-ba3d-78756102e777"
+        },
+        "name": "backup-c041050c5842478a",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-b851930a-e9a2-4361-ba3d-78756102e777-b0be7e39",
+            "uid": "c520e0a7-e2ba-4780-b981-ffe3103da231"
+          }
+        ],
+        "resourceVersion": "27033698",
+        "uid": "9a725350-865d-4a45-80e3-ed9bfc96c307"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-b851930a-e9a2-4361-ba3d-78756102e777\",\"pvStatus\":\"Bound\",\"namespace\":\"ci\",\"pvcName\":\"registry-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"registry-7cc64dcc69-64tk2\",\"podStatus\":\"Running\",\"workloadName\":\"registry-7cc64dcc69\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--6032c12a-bf02-4769-a36b-69aef1bb22f5",
+        "syncRequestedAt": "2026-10-07T10:02:20Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:02:18Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-b851930a-e9a2-4361-ba3d-78756102e777\",\"pvStatus\":\"Bound\",\"namespace\":\"ci\",\"pvcName\":\"registry-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"registry-7cc64dcc69-64tk2\",\"podStatus\":\"Running\",\"workloadName\":\"registry-7cc64dcc69\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:02:20Z",
+        "messages": null,
+        "newlyUploadDataSize": "51872428",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10070",
+        "size": "1145044992",
+        "snapshotCreatedAt": "2026-10-07T10:02:15Z",
+        "snapshotName": "nightly--6032c12a-bf02-4769-a36b-69aef1bb22f5",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-c041050c5842478a&volume=pvc-b851930a-e9a2-4361-ba3d-78756102e777",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:48:20Z",
+        "volumeName": "pvc-b851930a-e9a2-4361-ba3d-78756102e777",
+        "volumeSize": "21474836480"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:01:08Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-6997df0f-3cae-403f-b07f-7526fa445635"
+        },
+        "name": "backup-c9cd03f42e2d4220",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-6997df0f-3cae-403f-b07f-7526fa445635-94a6f646",
+            "uid": "ea0d7824-5453-4f84-b228-187dc43578a6"
+          }
+        ],
+        "resourceVersion": "27033145",
+        "uid": "e0beac28-de91-4fad-ab10-2ada9036f51f"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-6997df0f-3cae-403f-b07f-7526fa445635\",\"pvStatus\":\"Bound\",\"namespace\":\"coder-workspaces\",\"pvcName\":\"ws-2-home\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"ws-2-6cfdcc99f9-q7cvl\",\"podStatus\":\"Running\",\"workloadName\":\"ws-2-6cfdcc99f9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--64188bff-4f8d-448f-8bde-9a65adb2c6ab",
+        "syncRequestedAt": "2026-10-07T10:01:13Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:01:11Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-6997df0f-3cae-403f-b07f-7526fa445635\",\"pvStatus\":\"Bound\",\"namespace\":\"coder-workspaces\",\"pvcName\":\"ws-2-home\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"ws-2-6cfdcc99f9-q7cvl\",\"podStatus\":\"Running\",\"workloadName\":\"ws-2-6cfdcc99f9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:01:13Z",
+        "messages": null,
+        "newlyUploadDataSize": "252382",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.1.248:10131",
+        "size": "270532608",
+        "snapshotCreatedAt": "2026-10-07T10:01:09Z",
+        "snapshotName": "nightly--64188bff-4f8d-448f-8bde-9a65adb2c6ab",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-c9cd03f42e2d4220&volume=pvc-6997df0f-3cae-403f-b07f-7526fa445635",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T10:01:09Z",
+        "volumeName": "pvc-6997df0f-3cae-403f-b07f-7526fa445635",
+        "volumeSize": "10737418240"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:00:07Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8"
+        },
+        "name": "backup-ce0c95cff7ad4a0e",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8-33be10ff",
+            "uid": "6cec3c5a-1bac-4a53-af26-3e8eb0f1c361"
+          }
+        ],
+        "resourceVersion": "27032548",
+        "uid": "bd122804-9181-443d-934e-f54d8cc58815"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"plex-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"plex-f5d9cfcd9-gf4ss\",\"podStatus\":\"Running\",\"workloadName\":\"plex-f5d9cfcd9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--164454a9-5ec6-47ce-bc3e-0d39364374e0",
+        "syncRequestedAt": "2026-10-07T10:00:12Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:00:11Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"plex-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"plex-f5d9cfcd9-gf4ss\",\"podStatus\":\"Running\",\"workloadName\":\"plex-f5d9cfcd9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:00:12Z",
+        "messages": null,
+        "newlyUploadDataSize": "42440954",
+        "ownerID": "agent-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10090",
+        "size": "4355784704",
+        "snapshotCreatedAt": "2026-10-07T10:00:07Z",
+        "snapshotName": "nightly--164454a9-5ec6-47ce-bc3e-0d39364374e0",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-ce0c95cff7ad4a0e&volume=pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:06Z",
+        "volumeName": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8",
+        "volumeSize": "10737418240"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:00:27Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01"
+        },
+        "name": "backup-d2bf9bdcfeb74e7c",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01-7471cc50",
+            "uid": "33d55452-1325-4329-a5b8-9844fe9830a2"
+          }
+        ],
+        "resourceVersion": "27032716",
+        "uid": "2069c1a8-dbba-4ffd-bb5f-b820aad7a9c7"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01\",\"pvStatus\":\"Bound\",\"namespace\":\"ci\",\"pvcName\":\"act-runner-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"act-runner-5964754f7d-j75h8\",\"podStatus\":\"Running\",\"workloadName\":\"act-runner-5964754f7d\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--7f094ace-35eb-4e89-aa77-f8ed78ed825c",
+        "syncRequestedAt": "2026-10-07T10:00:32Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:00:30Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01\",\"pvStatus\":\"Bound\",\"namespace\":\"ci\",\"pvcName\":\"act-runner-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"act-runner-5964754f7d-j75h8\",\"podStatus\":\"Running\",\"workloadName\":\"act-runner-5964754f7d\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:00:32Z",
+        "messages": null,
+        "newlyUploadDataSize": "0",
+        "ownerID": "agent-2",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10010",
+        "size": "65011712",
+        "snapshotCreatedAt": "2026-10-07T10:00:28Z",
+        "snapshotName": "nightly--7f094ace-35eb-4e89-aa77-f8ed78ed825c",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-d2bf9bdcfeb74e7c&volume=pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:48:26Z",
+        "volumeName": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01",
+        "volumeSize": "1073741824"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:01:39Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff"
+        },
+        "name": "backup-d3155ba8a3df4fa7",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff-f65469b3",
+            "uid": "0b2965c8-e1ee-400f-aaf4-d2739e7c8aa9"
+          }
+        ],
+        "resourceVersion": "27033426",
+        "uid": "d18f51e8-3211-4e92-a9a9-fbe985a43fc6"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-e89ab022-400f-4cb2-a222-f172dc1604ff\",\"pvStatus\":\"Bound\",\"namespace\":\"firefox\",\"pvcName\":\"firefox-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"firefox-59c99c59f-2rwbc\",\"podStatus\":\"Running\",\"workloadName\":\"firefox-59c99c59f\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--c1c26280-c52d-4622-81de-42e5bc361bfb",
+        "syncRequestedAt": "2026-10-07T10:01:46Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:01:44Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-e89ab022-400f-4cb2-a222-f172dc1604ff\",\"pvStatus\":\"Bound\",\"namespace\":\"firefox\",\"pvcName\":\"firefox-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"firefox-59c99c59f-2rwbc\",\"podStatus\":\"Running\",\"workloadName\":\"firefox-59c99c59f\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:01:46Z",
+        "messages": null,
+        "newlyUploadDataSize": "135884977",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.1.248:10030",
+        "size": "1881145344",
+        "snapshotCreatedAt": "2026-10-07T10:01:39Z",
+        "snapshotName": "nightly--c1c26280-c52d-4622-81de-42e5bc361bfb",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-d3155ba8a3df4fa7&volume=pvc-e89ab022-400f-4cb2-a222-f172dc1604ff",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:13Z",
+        "volumeName": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:00:38Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1"
+        },
+        "name": "backup-d3d99b6636524d04",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1-bbe967d0",
+            "uid": "a4fb99b3-ada5-4b70-b5f4-b3f713e1b6ad"
+          }
+        ],
+        "resourceVersion": "27032802",
+        "uid": "0eec1312-0f53-4afa-9e0e-3492d44ef88d"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1\",\"pvStatus\":\"Bound\",\"namespace\":\"portal\",\"pvcName\":\"homarr-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"homarr-fd8977556-kwjm4\",\"podStatus\":\"Running\",\"workloadName\":\"homarr-fd8977556\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--5efbd4a2-4551-4486-8037-8b76b42e5c02",
+        "syncRequestedAt": "2026-10-07T10:00:42Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:00:40Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1\",\"pvStatus\":\"Bound\",\"namespace\":\"portal\",\"pvcName\":\"homarr-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"homarr-fd8977556-kwjm4\",\"podStatus\":\"Running\",\"workloadName\":\"homarr-fd8977556\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:00:42Z",
+        "messages": null,
+        "newlyUploadDataSize": "436120",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10020",
+        "size": "150994944",
+        "snapshotCreatedAt": "2026-10-07T10:00:38Z",
+        "snapshotName": "nightly--5efbd4a2-4551-4486-8037-8b76b42e5c02",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-d3d99b6636524d04&volume=pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:47:46Z",
+        "volumeName": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1",
+        "volumeSize": "2147483648"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:02:05Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-9b71d068-c678-4ae1-956f-d528a247c277"
+        },
+        "name": "backup-d57f0e2323014fbd",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-9b71d068-c678-4ae1-956f-d528a247c277-01641074",
+            "uid": "d903ea57-6857-4413-b589-e63fedcddf15"
+          }
+        ],
+        "resourceVersion": "27033610",
+        "uid": "bbb87185-9e48-431c-af6e-29300bf8914d"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-9b71d068-c678-4ae1-956f-d528a247c277\",\"pvStatus\":\"Bound\",\"namespace\":\"coder-console\",\"pvcName\":\"coder-console-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"coder-console-7d6d49c56c-rmndm\",\"podStatus\":\"Running\",\"workloadName\":\"coder-console-7d6d49c56c\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "nightly--371edb4b-6c96-4483-8da1-3e9fd5c0ec9c",
+        "syncRequestedAt": "2026-10-07T10:02:09Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T10:02:07Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-9b71d068-c678-4ae1-956f-d528a247c277\",\"pvStatus\":\"Bound\",\"namespace\":\"coder-console\",\"pvcName\":\"coder-console-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"coder-console-7d6d49c56c-rmndm\",\"podStatus\":\"Running\",\"workloadName\":\"coder-console-7d6d49c56c\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T10:02:09Z",
+        "messages": null,
+        "newlyUploadDataSize": "176926",
+        "ownerID": "agent-2",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10060",
+        "size": "188743680",
+        "snapshotCreatedAt": "2026-10-07T10:02:05Z",
+        "snapshotName": "nightly--371edb4b-6c96-4483-8da1-3e9fd5c0ec9c",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=backup-d57f0e2323014fbd&volume=pvc-9b71d068-c678-4ae1-956f-d528a247c277",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:48:30Z",
+        "volumeName": "pvc-9b71d068-c678-4ae1-956f-d528a247c277",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-08-31T22:18:18Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55"
+        },
+        "name": "system-backup-02978e48765d4e19",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55-1b73fc15",
+            "uid": "612347b1-12a0-4a86-a681-9ca284502f5f"
+          }
+        ],
+        "resourceVersion": "26286862",
+        "uid": "1db85c50-ef7c-4687-9ee5-632600c12fb7"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-02978e48765d4e19",
+        "syncRequestedAt": "2026-08-31T22:18:45Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-08-31T22:18:42Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-08-31T22:18:45Z",
+        "messages": null,
+        "newlyUploadDataSize": "57171323",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.24:10101",
+        "size": "406847488",
+        "snapshotCreatedAt": "2026-08-31T22:18:18Z",
+        "snapshotName": "system-backup-02978e48765d4e19",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-02978e48765d4e19&volume=pvc-f7bc5aaf-aade-4283-9da8-48df27349b55",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:18Z",
+        "volumeName": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:47:40Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8"
+        },
+        "name": "system-backup-1382c0851ca44565",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8-33be10ff",
+            "uid": "6cec3c5a-1bac-4a53-af26-3e8eb0f1c361"
+          }
+        ],
+        "resourceVersion": "26984256",
+        "uid": "350f3f19-ad22-405f-905f-ff1215e8d6fa"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-1382c0851ca44565",
+        "syncRequestedAt": "2026-10-07T07:48:23Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:48:21Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:48:23Z",
+        "messages": null,
+        "newlyUploadDataSize": "1326903514",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10090",
+        "size": "4355784704",
+        "snapshotCreatedAt": "2026-10-07T07:47:40Z",
+        "snapshotName": "system-backup-1382c0851ca44565",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-1382c0851ca44565&volume=pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:06Z",
+        "volumeName": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8",
+        "volumeSize": "10737418240"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:20Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-b851930a-e9a2-4361-ba3d-78756102e777"
+        },
+        "name": "system-backup-1719fd851da5485f",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-b851930a-e9a2-4361-ba3d-78756102e777-b0be7e39",
+            "uid": "c520e0a7-e2ba-4780-b981-ffe3103da231"
+          }
+        ],
+        "resourceVersion": "26984579",
+        "uid": "0880d4db-de33-4c0a-9eb7-1dc47b509c05"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-1719fd851da5485f",
+        "syncRequestedAt": "2026-10-07T07:48:47Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:48:46Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:48:47Z",
+        "messages": null,
+        "newlyUploadDataSize": "524923490",
+        "ownerID": "agent-2",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10070",
+        "size": "1075838976",
+        "snapshotCreatedAt": "2026-10-07T07:48:20Z",
+        "snapshotName": "system-backup-1719fd851da5485f",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-1719fd851da5485f&volume=pvc-b851930a-e9a2-4361-ba3d-78756102e777",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:48:20Z",
+        "volumeName": "pvc-b851930a-e9a2-4361-ba3d-78756102e777",
+        "volumeSize": "21474836480"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:30Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-9b71d068-c678-4ae1-956f-d528a247c277"
+        },
+        "name": "system-backup-26ed8d0096d94c8f",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-9b71d068-c678-4ae1-956f-d528a247c277-01641074",
+            "uid": "d903ea57-6857-4413-b589-e63fedcddf15"
+          }
+        ],
+        "resourceVersion": "26984488",
+        "uid": "c036959b-a2cd-4f6a-8e8c-e8c5d6aec9b3"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-26ed8d0096d94c8f",
+        "syncRequestedAt": "2026-10-07T07:48:37Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:48:35Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:48:37Z",
+        "messages": null,
+        "newlyUploadDataSize": "741086",
+        "ownerID": "agent-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10060",
+        "size": "186646528",
+        "snapshotCreatedAt": "2026-10-07T07:48:30Z",
+        "snapshotName": "system-backup-26ed8d0096d94c8f",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-26ed8d0096d94c8f&volume=pvc-9b71d068-c678-4ae1-956f-d528a247c277",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:48:30Z",
+        "volumeName": "pvc-9b71d068-c678-4ae1-956f-d528a247c277",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:25Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01"
+        },
+        "name": "system-backup-2a218d3a5ccb4f57",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01-7471cc50",
+            "uid": "33d55452-1325-4329-a5b8-9844fe9830a2"
+          }
+        ],
+        "resourceVersion": "26984398",
+        "uid": "3e69ec47-663c-42ca-99a6-f13a8caa19a9"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-2a218d3a5ccb4f57",
+        "syncRequestedAt": "2026-10-07T07:48:31Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:48:29Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:48:31Z",
+        "messages": null,
+        "newlyUploadDataSize": "93340",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10010",
+        "size": "65011712",
+        "snapshotCreatedAt": "2026-10-07T07:48:26Z",
+        "snapshotName": "system-backup-2a218d3a5ccb4f57",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-2a218d3a5ccb4f57&volume=pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:48:26Z",
+        "volumeName": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01",
+        "volumeSize": "1073741824"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-08-31T22:18:06Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8"
+        },
+        "name": "system-backup-36aedcf1e99544f5",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8-33be10ff",
+            "uid": "6cec3c5a-1bac-4a53-af26-3e8eb0f1c361"
+          }
+        ],
+        "resourceVersion": "26286861",
+        "uid": "a4aeafe6-efb8-4d5e-9c55-2b73e57b966c"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-36aedcf1e99544f5",
+        "syncRequestedAt": "2026-08-31T22:20:01Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-08-31T22:20:00Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-08-31T22:20:01Z",
+        "messages": null,
+        "newlyUploadDataSize": "2483426770",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.24:10121",
+        "size": "3103784960",
+        "snapshotCreatedAt": "2026-08-31T22:18:06Z",
+        "snapshotName": "system-backup-36aedcf1e99544f5",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-36aedcf1e99544f5&volume=pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:06Z",
+        "volumeName": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8",
+        "volumeSize": "10737418240"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:47:45Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1"
+        },
+        "name": "system-backup-37ac9e35e05b4b22",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1-bbe967d0",
+            "uid": "a4fb99b3-ada5-4b70-b5f4-b3f713e1b6ad"
+          }
+        ],
+        "resourceVersion": "26983682",
+        "uid": "19dafeb1-8b7c-44aa-8279-944a235b5890"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-37ac9e35e05b4b22",
+        "syncRequestedAt": "2026-10-07T07:47:50Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:47:49Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:47:50Z",
+        "messages": null,
+        "newlyUploadDataSize": "6636742",
+        "ownerID": "agent-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10020",
+        "size": "150994944",
+        "snapshotCreatedAt": "2026-10-07T07:47:46Z",
+        "snapshotName": "system-backup-37ac9e35e05b4b22",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-37ac9e35e05b4b22&volume=pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:47:46Z",
+        "volumeName": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1",
+        "volumeSize": "2147483648"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:47:59Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36"
+        },
+        "name": "system-backup-3fc55507da3e4bcd",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36-00fbad8d",
+            "uid": "bc4c4076-235a-46c0-b5ab-3499a4d93d10"
+          }
+        ],
+        "resourceVersion": "26984912",
+        "uid": "b6e27fc0-12ff-4546-876d-1b75c747b3bb"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-3fc55507da3e4bcd",
+        "syncRequestedAt": "2026-10-07T07:49:27Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:49:25Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:49:27Z",
+        "messages": null,
+        "newlyUploadDataSize": "2431330813",
+        "ownerID": "agent-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10124",
+        "size": "4789895168",
+        "snapshotCreatedAt": "2026-10-07T07:48:04Z",
+        "snapshotName": "system-backup-3fc55507da3e4bcd",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-3fc55507da3e4bcd&volume=pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:48:04Z",
+        "volumeName": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36",
+        "volumeSize": "10737418240"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:47:48Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e"
+        },
+        "name": "system-backup-6939240324014cfd",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e-965a36fd",
+            "uid": "d2c59914-d3ae-4961-8282-cc5ed768aad9"
+          }
+        ],
+        "resourceVersion": "26985032",
+        "uid": "605cf679-02ea-48c8-af26-89651be47759"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-6939240324014cfd",
+        "syncRequestedAt": "2026-10-07T07:49:40Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:49:40Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:49:40Z",
+        "messages": null,
+        "newlyUploadDataSize": "2645708929",
+        "ownerID": "agent-2",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10103",
+        "size": "6046089216",
+        "snapshotCreatedAt": "2026-10-07T07:47:48Z",
+        "snapshotName": "system-backup-6939240324014cfd",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-6939240324014cfd&volume=pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:47:48Z",
+        "volumeName": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e",
+        "volumeSize": "16106127360"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:10Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1"
+        },
+        "name": "system-backup-79c3bbc2daaa4357",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1-6095e2a1",
+            "uid": "43ac467a-6861-47bb-ba06-fa4cc7157e2f"
+          }
+        ],
+        "resourceVersion": "26984725",
+        "uid": "b5633282-6723-4553-a27a-83c566771d4b"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-79c3bbc2daaa4357",
+        "syncRequestedAt": "2026-10-07T07:49:01Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:49:01Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:49:01Z",
+        "messages": null,
+        "newlyUploadDataSize": "1525460803",
+        "ownerID": "agent-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.0.44:10000",
+        "size": "17760780288",
+        "snapshotCreatedAt": "2026-10-07T07:48:10Z",
+        "snapshotName": "system-backup-79c3bbc2daaa4357",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-79c3bbc2daaa4357&volume=pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:11Z",
+        "volumeName": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1",
+        "volumeSize": "26843545600"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:04Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d"
+        },
+        "name": "system-backup-929ef774f1a948d2",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d-8cc7f9f9",
+            "uid": "4425bdf3-077c-4371-99e7-5b5710aa9c20"
+          }
+        ],
+        "resourceVersion": "26984109",
+        "uid": "95c41825-3ddc-44f8-9f93-11725dcd8961"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-929ef774f1a948d2",
+        "syncRequestedAt": "2026-10-07T07:48:13Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:48:10Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:48:14Z",
+        "messages": null,
+        "newlyUploadDataSize": "1254034",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.240:10030",
+        "size": "207618048",
+        "snapshotCreatedAt": "2026-10-07T07:48:05Z",
+        "snapshotName": "system-backup-929ef774f1a948d2",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-929ef774f1a948d2&volume=pvc-eb37313f-85fe-48ae-81aa-9a398777345d",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-10-07T07:48:05Z",
+        "volumeName": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-08-31T22:18:07Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6"
+        },
+        "name": "system-backup-9ab50b8063124e4e",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6-5b41048f",
+            "uid": "aa3a87c8-abc5-4d86-aaa3-8d8f949cd0e8"
+          }
+        ],
+        "resourceVersion": "26286863",
+        "uid": "1922041e-1f9e-408b-836f-d3a3f4bb8bbe"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-9ab50b8063124e4e",
+        "syncRequestedAt": "2026-08-31T22:18:16Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-08-31T22:18:15Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-08-31T22:18:16Z",
+        "messages": null,
+        "newlyUploadDataSize": "9956315",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.1.172:10020",
+        "size": "245366784",
+        "snapshotCreatedAt": "2026-08-31T22:18:07Z",
+        "snapshotName": "system-backup-9ab50b8063124e4e",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-9ab50b8063124e4e&volume=pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:07Z",
+        "volumeName": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:47:50Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55"
+        },
+        "name": "system-backup-a0235faeff9a432f",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55-1b73fc15",
+            "uid": "612347b1-12a0-4a86-a681-9ca284502f5f"
+          }
+        ],
+        "resourceVersion": "26983805",
+        "uid": "75b0e196-a593-46e3-a63d-5578b289b921"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-a0235faeff9a432f",
+        "syncRequestedAt": "2026-10-07T07:47:59Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:47:58Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:47:59Z",
+        "messages": null,
+        "newlyUploadDataSize": "68735928",
+        "ownerID": "agent-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.1.248:10070",
+        "size": "578813952",
+        "snapshotCreatedAt": "2026-10-07T07:47:50Z",
+        "snapshotName": "system-backup-a0235faeff9a432f",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-a0235faeff9a432f&volume=pvc-f7bc5aaf-aade-4283-9da8-48df27349b55",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:18Z",
+        "volumeName": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-08-31T22:18:10Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1"
+        },
+        "name": "system-backup-bb63b301edb44893",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1-6095e2a1",
+            "uid": "43ac467a-6861-47bb-ba06-fa4cc7157e2f"
+          }
+        ],
+        "resourceVersion": "26286860",
+        "uid": "bb6f40c4-9e7f-4dce-abf0-b24273cc90c9"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-bb63b301edb44893",
+        "syncRequestedAt": "2026-08-31T22:24:13Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-08-31T22:24:12Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-08-31T22:24:13Z",
+        "messages": null,
+        "newlyUploadDataSize": "11615459286",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.2.24:10111",
+        "size": "16158556160",
+        "snapshotCreatedAt": "2026-08-31T22:18:11Z",
+        "snapshotName": "system-backup-bb63b301edb44893",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-bb63b301edb44893&volume=pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:11Z",
+        "volumeName": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1",
+        "volumeSize": "26843545600"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:15Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6"
+        },
+        "name": "system-backup-d2c7bddc183a4e68",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6-5b41048f",
+            "uid": "aa3a87c8-abc5-4d86-aaa3-8d8f949cd0e8"
+          }
+        ],
+        "resourceVersion": "26984274",
+        "uid": "b991b9b1-7d6c-4671-b691-cf351f6fb2e6"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-d2c7bddc183a4e68",
+        "syncRequestedAt": "2026-10-07T07:48:24Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:48:22Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:48:24Z",
+        "messages": null,
+        "newlyUploadDataSize": "20873445",
+        "ownerID": "agent-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.1.248:10060",
+        "size": "320864256",
+        "snapshotCreatedAt": "2026-10-07T07:48:15Z",
+        "snapshotName": "system-backup-d2c7bddc183a4e68",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-d2c7bddc183a4e68&volume=pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:07Z",
+        "volumeName": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-08-31T22:18:13Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff"
+        },
+        "name": "system-backup-fc6ca38a567e47dc",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff-f65469b3",
+            "uid": "0b2965c8-e1ee-400f-aaf4-d2739e7c8aa9"
+          }
+        ],
+        "resourceVersion": "26286859",
+        "uid": "5e5938f4-1150-4d63-95ae-92771f15b494"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-fc6ca38a567e47dc",
+        "syncRequestedAt": "2026-08-31T22:18:48Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-08-31T22:18:47Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-08-31T22:18:48Z",
+        "messages": null,
+        "newlyUploadDataSize": "330591993",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.0.196:10000",
+        "size": "864026624",
+        "snapshotCreatedAt": "2026-08-31T22:18:13Z",
+        "snapshotName": "system-backup-fc6ca38a567e47dc",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-fc6ca38a567e47dc&volume=pvc-e89ab022-400f-4cb2-a222-f172dc1604ff",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:13Z",
+        "volumeName": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff",
+        "volumeSize": "5368709120"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Backup",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:00Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 2,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff"
+        },
+        "name": "system-backup-fd808577368e4803",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupVolume",
+            "name": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff-f65469b3",
+            "uid": "0b2965c8-e1ee-400f-aaf4-d2739e7c8aa9"
+          }
+        ],
+        "resourceVersion": "26984460",
+        "uid": "92938a1d-4394-4e76-8ef2-fd1721157ed8"
+      },
+      "spec": {
+        "backupBlockSize": "2097152",
+        "backupMode": "incremental",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "snapshotName": "system-backup-fd808577368e4803",
+        "syncRequestedAt": "2026-10-07T07:48:35Z"
+      },
+      "status": {
+        "backupCreatedAt": "2026-10-07T07:48:33Z",
+        "backupTargetName": "default",
+        "compressionMethod": "lz4",
+        "labels": {
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastSyncedAt": "2026-10-07T07:48:35Z",
+        "messages": null,
+        "newlyUploadDataSize": "745259736",
+        "ownerID": "server-1",
+        "progress": 100,
+        "reUploadedDataSize": "0",
+        "replicaAddress": "tcp://10.42.1.248:10030",
+        "size": "1828716544",
+        "snapshotCreatedAt": "2026-10-07T07:48:00Z",
+        "snapshotName": "system-backup-fd808577368e4803",
+        "state": "Completed",
+        "url": "nfs://nas.example.lan:/volume1/backups?backup=system-backup-fd808577368e4803&volume=pvc-e89ab022-400f-4cb2-a222-f172dc1604ff",
+        "volumeBackingImageName": "",
+        "volumeCreated": "2026-08-31T22:18:13Z",
+        "volumeName": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff",
+        "volumeSize": "5368709120"
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

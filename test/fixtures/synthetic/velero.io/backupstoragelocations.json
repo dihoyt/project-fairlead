@@ -1,0 +1,57 @@
+{
+  "apiVersion": "velero.io/v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "velero.io/v1",
+      "kind": "BackupStorageLocation",
+      "metadata": {
+        "name": "default",
+        "namespace": "velero",
+        "uid": "0008c602-a5e9-987a-1a95-57add9c15b62",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "finalizers": ["velero.io/bsl-controller-finalizer"]
+      },
+      "spec": {
+        "accessMode": "ReadWrite",
+        "config": { "region": "minio", "s3ForcePathStyle": "true", "s3Url": "http://nas.example.lan:9000" },
+        "default": true,
+        "objectStorage": { "bucket": "velero", "prefix": "cluster" },
+        "provider": "aws"
+      },
+      "status": {
+        "phase": "Available",
+        "lastSyncedTime": "2026-10-07T11:59:00.000Z",
+        "lastValidationTime": "2026-10-07T11:59:00.000Z",
+        "accessMode": "ReadWrite"
+      }
+    },
+    {
+      "apiVersion": "velero.io/v1",
+      "kind": "BackupStorageLocation",
+      "metadata": {
+        "name": "offsite",
+        "namespace": "velero",
+        "uid": "82c30f89-ca09-445d-f4d5-4933f570b6d1",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "finalizers": ["velero.io/bsl-controller-finalizer"]
+      },
+      "spec": {
+        "accessMode": "ReadWrite",
+        "config": { "region": "eu-west-1" },
+        "default": false,
+        "objectStorage": { "bucket": "offsite-velero", "prefix": "cluster" },
+        "provider": "aws"
+      },
+      "status": {
+        "phase": "Unavailable",
+        "lastSyncedTime": "2026-10-05T12:00:00.000Z",
+        "lastValidationTime": "2026-10-07T11:59:00.000Z",
+        "message": "BackupStorageLocation \"offsite\" is unavailable: rpc error: code = Unknown desc = RequestError: send request failed caused by: Get \"https://s3.eu-west-1.amazonaws.com/offsite-velero\": dial tcp: i/o timeout"
+      }
+    }
+  ]
+}

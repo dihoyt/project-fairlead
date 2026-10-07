@@ -1,0 +1,1910 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "GitRepo",
+      "metadata": {
+        "annotations": {
+          "fleet.cattle.io/client-secret-hash": "REDACTED"
+        },
+        "creationTimestamp": "2026-08-01T18:38:04Z",
+        "finalizers": [
+          "fleet.cattle.io/gitrepo-finalizer"
+        ],
+        "generation": 6,
+        "name": "scripts",
+        "namespace": "fleet-local",
+        "resourceVersion": "27252204",
+        "uid": "d459d722-f599-4766-a932-e27f76ec593b"
+      },
+      "spec": {
+        "branch": "staging",
+        "clientSecretName": "gitea-fleet-creds",
+        "paths": [
+          "k3s/manifests/cattle-system",
+          "k3s/manifests/cluster",
+          "k3s/manifests/code-server",
+          "k3s/manifests/deluge",
+          "k3s/manifests/dns-resolver",
+          "k3s/manifests/firefox",
+          "k3s/manifests/git",
+          "k3s/manifests/headlamp",
+          "k3s/manifests/media",
+          "k3s/manifests/nas",
+          "k3s/manifests/portainer",
+          "k3s/manifests/portal",
+          "k3s/manifests/proxmox",
+          "k3s/manifests/termix",
+          "k3s/manifests/unifi"
+        ],
+        "paused": false,
+        "repo": "http://gitea-http.git.svc.cluster.local:3000/admin/scripts.git"
+      },
+      "status": {
+        "commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-10-07T06:50:41Z",
+            "status": "True",
+            "type": "Ready"
+          },
+          {
+            "lastUpdateTime": "2026-10-07T06:47:20Z",
+            "status": "True",
+            "type": "GitPolling"
+          },
+          {
+            "lastUpdateTime": "2026-08-01T18:38:06Z",
+            "status": "False",
+            "type": "Reconciling"
+          },
+          {
+            "lastUpdateTime": "2026-10-07T06:47:19Z",
+            "status": "False",
+            "type": "Stalled"
+          },
+          {
+            "lastUpdateTime": "2026-08-01T18:38:06Z",
+            "status": "True",
+            "type": "Accepted"
+          }
+        ],
+        "desiredReadyClusters": 1,
+        "display": {
+          "readyBundleDeployments": "15/15"
+        },
+        "gitJobStatus": "Current",
+        "lastPollingTriggered": "2026-10-07T20:10:22Z",
+        "observedGeneration": 6,
+        "perClusterResourceCounts": {
+          "fleet-local/local": {
+            "desiredReady": 126,
+            "missing": 0,
+            "modified": 0,
+            "notReady": 0,
+            "orphaned": 0,
+            "ready": 126,
+            "unknown": 0,
+            "waitApplied": 0
+          }
+        },
+        "pollingCommit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+        "readyClusters": 1,
+        "resourceCounts": {
+          "desiredReady": 126,
+          "missing": 0,
+          "modified": 0,
+          "notReady": 0,
+          "orphaned": 0,
+          "ready": 126,
+          "unknown": 0,
+          "waitApplied": 0
+        },
+        "resources": [
+          {
+            "apiVersion": "apps/v1",
+            "id": "dns-resolver/coredns-lan",
+            "kind": "DaemonSet",
+            "name": "coredns-lan",
+            "namespace": "dns-resolver",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.daemonset"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "code-server/code-server",
+            "kind": "Deployment",
+            "name": "code-server",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "code-server/oauth2-proxy",
+            "kind": "Deployment",
+            "name": "oauth2-proxy",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "code-server/project-launcher",
+            "kind": "Deployment",
+            "name": "project-launcher",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "deluge/oauth2-proxy",
+            "kind": "Deployment",
+            "name": "oauth2-proxy",
+            "namespace": "deluge",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "firefox/firefox",
+            "kind": "Deployment",
+            "name": "firefox",
+            "namespace": "firefox",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "firefox/oauth2-proxy",
+            "kind": "Deployment",
+            "name": "oauth2-proxy",
+            "namespace": "firefox",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "headlamp/headlamp",
+            "kind": "Deployment",
+            "name": "headlamp",
+            "namespace": "headlamp",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "headlamp/oauth2-proxy",
+            "kind": "Deployment",
+            "name": "oauth2-proxy",
+            "namespace": "headlamp",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "media/plex",
+            "incompleteState": true,
+            "kind": "Deployment",
+            "name": "plex",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "media/plex-private",
+            "incompleteState": true,
+            "kind": "Deployment",
+            "name": "plex-private",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "media/prowlarr",
+            "incompleteState": true,
+            "kind": "Deployment",
+            "name": "prowlarr",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "media/sonarr",
+            "incompleteState": true,
+            "kind": "Deployment",
+            "name": "sonarr",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "nas/oauth2-proxy",
+            "kind": "Deployment",
+            "name": "oauth2-proxy",
+            "namespace": "nas",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "portainer/oauth2-proxy",
+            "kind": "Deployment",
+            "name": "oauth2-proxy",
+            "namespace": "portainer",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "portal/homarr",
+            "incompleteState": true,
+            "kind": "Deployment",
+            "name": "homarr",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "portal/homepage-admin",
+            "incompleteState": true,
+            "kind": "Deployment",
+            "name": "homepage-admin",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "portal/homepage-router",
+            "incompleteState": true,
+            "kind": "Deployment",
+            "name": "homepage-router",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "portal/homepage-user",
+            "incompleteState": true,
+            "kind": "Deployment",
+            "name": "homepage-user",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "portal/moonlight-web",
+            "incompleteState": true,
+            "kind": "Deployment",
+            "name": "moonlight-web",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "portal/oauth2-proxy",
+            "incompleteState": true,
+            "kind": "Deployment",
+            "name": "oauth2-proxy",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "portal/wake-desktop",
+            "incompleteState": true,
+            "kind": "Deployment",
+            "name": "wake-desktop",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "proxmox/oauth2-proxy",
+            "kind": "Deployment",
+            "name": "oauth2-proxy",
+            "namespace": "proxmox",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "termix/oauth2-proxy",
+            "kind": "Deployment",
+            "name": "oauth2-proxy",
+            "namespace": "termix",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "termix/termix",
+            "kind": "Deployment",
+            "name": "termix",
+            "namespace": "termix",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "apps/v1",
+            "id": "unifi/oauth2-proxy",
+            "kind": "Deployment",
+            "name": "oauth2-proxy",
+            "namespace": "unifi",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "apps.deployment"
+          },
+          {
+            "apiVersion": "cert-manager.io/v1",
+            "id": "cattle-system/tls-rancher-ingress",
+            "kind": "Certificate",
+            "name": "tls-rancher-ingress",
+            "namespace": "cattle-system",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "cert-manager.io.certificate"
+          },
+          {
+            "apiVersion": "cert-manager.io/v1",
+            "id": "kube-system/wildcard-tls",
+            "kind": "Certificate",
+            "name": "wildcard-tls",
+            "namespace": "kube-system",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "cert-manager.io.certificate"
+          },
+          {
+            "apiVersion": "cert-manager.io/v1",
+            "id": "letsencrypt-prod",
+            "kind": "ClusterIssuer",
+            "name": "letsencrypt-prod",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "cert-manager.io.clusterissuer"
+          },
+          {
+            "apiVersion": "cert-manager.io/v1",
+            "id": "letsencrypt-staging",
+            "kind": "ClusterIssuer",
+            "name": "letsencrypt-staging",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "cert-manager.io.clusterissuer"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "code-server/code-server-vscode-icons",
+            "kind": "ConfigMap",
+            "name": "code-server-vscode-icons",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "configmap"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "code-server/project-baseline-claude-md",
+            "kind": "ConfigMap",
+            "name": "project-baseline-claude-md",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "configmap"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "code-server/project-launcher-app",
+            "kind": "ConfigMap",
+            "name": "project-launcher-app",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "configmap"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "dns-resolver/coredns-lan-config",
+            "kind": "ConfigMap",
+            "name": "coredns-lan-config",
+            "namespace": "dns-resolver",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "configmap"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/homepage-admin-config",
+            "incompleteState": true,
+            "kind": "ConfigMap",
+            "name": "homepage-admin-config",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "configmap"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/homepage-router-config",
+            "incompleteState": true,
+            "kind": "ConfigMap",
+            "name": "homepage-router-config",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "configmap"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/homepage-user-config",
+            "incompleteState": true,
+            "kind": "ConfigMap",
+            "name": "homepage-user-config",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "configmap"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/wake-desktop-app",
+            "incompleteState": true,
+            "kind": "ConfigMap",
+            "name": "wake-desktop-app",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "configmap"
+          },
+          {
+            "apiVersion": "discovery.k8s.io/v1",
+            "id": "portal/guacamole-external",
+            "incompleteState": true,
+            "kind": "EndpointSlice",
+            "name": "guacamole-external",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "discovery.k8s.io.endpointslice"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "code-server",
+            "kind": "Namespace",
+            "name": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "deluge",
+            "kind": "Namespace",
+            "name": "deluge",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "dns-resolver",
+            "kind": "Namespace",
+            "name": "dns-resolver",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "firefox",
+            "kind": "Namespace",
+            "name": "firefox",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "headlamp",
+            "kind": "Namespace",
+            "name": "headlamp",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "media",
+            "incompleteState": true,
+            "kind": "Namespace",
+            "name": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "nas",
+            "kind": "Namespace",
+            "name": "nas",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portainer",
+            "kind": "Namespace",
+            "name": "portainer",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal",
+            "incompleteState": true,
+            "kind": "Namespace",
+            "name": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "proxmox",
+            "kind": "Namespace",
+            "name": "proxmox",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "termix",
+            "kind": "Namespace",
+            "name": "termix",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "unifi",
+            "kind": "Namespace",
+            "name": "unifi",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "namespace"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "code-server/code-server",
+            "kind": "Ingress",
+            "name": "code-server",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "code-server/project-launcher",
+            "kind": "Ingress",
+            "name": "project-launcher",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "deluge/deluge",
+            "kind": "Ingress",
+            "name": "deluge",
+            "namespace": "deluge",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "firefox/firefox",
+            "kind": "Ingress",
+            "name": "firefox",
+            "namespace": "firefox",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "git/gitea",
+            "kind": "Ingress",
+            "name": "gitea",
+            "namespace": "git",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "headlamp/headlamp",
+            "kind": "Ingress",
+            "name": "headlamp",
+            "namespace": "headlamp",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "media/prowlarr",
+            "incompleteState": true,
+            "kind": "Ingress",
+            "name": "prowlarr",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "media/sonarr",
+            "incompleteState": true,
+            "kind": "Ingress",
+            "name": "sonarr",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "nas/nas",
+            "kind": "Ingress",
+            "name": "nas",
+            "namespace": "nas",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "portainer/portainer",
+            "kind": "Ingress",
+            "name": "portainer",
+            "namespace": "portainer",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "portal/guacamole",
+            "incompleteState": true,
+            "kind": "Ingress",
+            "name": "guacamole",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "portal/guacamole-api",
+            "incompleteState": true,
+            "kind": "Ingress",
+            "name": "guacamole-api",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "portal/moonlight-web",
+            "incompleteState": true,
+            "kind": "Ingress",
+            "name": "moonlight-web",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "portal/portal",
+            "incompleteState": true,
+            "kind": "Ingress",
+            "name": "portal",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "portal/wake-desktop",
+            "incompleteState": true,
+            "kind": "Ingress",
+            "name": "wake-desktop",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "proxmox/proxmox",
+            "kind": "Ingress",
+            "name": "proxmox",
+            "namespace": "proxmox",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "termix/termix",
+            "kind": "Ingress",
+            "name": "termix",
+            "namespace": "termix",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "id": "unifi/unifi",
+            "kind": "Ingress",
+            "name": "unifi",
+            "namespace": "unifi",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "networking.k8s.io.ingress"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "nas-backups",
+            "kind": "PersistentVolume",
+            "name": "nas-backups",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolume"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "nas-downloads",
+            "kind": "PersistentVolume",
+            "name": "nas-downloads",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolume"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "nas-private",
+            "kind": "PersistentVolume",
+            "name": "nas-private",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolume"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "nas-public",
+            "kind": "PersistentVolume",
+            "name": "nas-public",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolume"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "code-server/code-server-workspace",
+            "kind": "PersistentVolumeClaim",
+            "name": "code-server-workspace",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "firefox/firefox-config",
+            "kind": "PersistentVolumeClaim",
+            "name": "firefox-config",
+            "namespace": "firefox",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "media/nas-downloads",
+            "incompleteState": true,
+            "kind": "PersistentVolumeClaim",
+            "name": "nas-downloads",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "media/nas-private",
+            "incompleteState": true,
+            "kind": "PersistentVolumeClaim",
+            "name": "nas-private",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "media/nas-public",
+            "incompleteState": true,
+            "kind": "PersistentVolumeClaim",
+            "name": "nas-public",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "media/plex-config",
+            "incompleteState": true,
+            "kind": "PersistentVolumeClaim",
+            "name": "plex-config",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "media/plex-private-config",
+            "incompleteState": true,
+            "kind": "PersistentVolumeClaim",
+            "name": "plex-private-config",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "media/prowlarr-config",
+            "incompleteState": true,
+            "kind": "PersistentVolumeClaim",
+            "name": "prowlarr-config",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "media/sonarr-config",
+            "incompleteState": true,
+            "kind": "PersistentVolumeClaim",
+            "name": "sonarr-config",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/homarr-data",
+            "incompleteState": true,
+            "kind": "PersistentVolumeClaim",
+            "name": "homarr-data",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/moonlight-web-data",
+            "incompleteState": true,
+            "kind": "PersistentVolumeClaim",
+            "name": "moonlight-web-data",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "termix/termix-data",
+            "kind": "PersistentVolumeClaim",
+            "name": "termix-data",
+            "namespace": "termix",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "persistentvolumeclaim"
+          },
+          {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "id": "headlamp",
+            "kind": "ClusterRoleBinding",
+            "name": "headlamp",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "rbac.authorization.k8s.io.clusterrolebinding"
+          },
+          {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "id": "code-server/project-launcher",
+            "kind": "Role",
+            "name": "project-launcher",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "rbac.authorization.k8s.io.role"
+          },
+          {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "id": "code-server/project-launcher",
+            "kind": "RoleBinding",
+            "name": "project-launcher",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "rbac.authorization.k8s.io.rolebinding"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "code-server/code-server",
+            "kind": "Service",
+            "name": "code-server",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "code-server/oauth2-proxy",
+            "kind": "Service",
+            "name": "oauth2-proxy",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "code-server/project-launcher",
+            "kind": "Service",
+            "name": "project-launcher",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "deluge/oauth2-proxy",
+            "kind": "Service",
+            "name": "oauth2-proxy",
+            "namespace": "deluge",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "firefox/firefox",
+            "kind": "Service",
+            "name": "firefox",
+            "namespace": "firefox",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "firefox/oauth2-proxy",
+            "kind": "Service",
+            "name": "oauth2-proxy",
+            "namespace": "firefox",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "headlamp/headlamp",
+            "kind": "Service",
+            "name": "headlamp",
+            "namespace": "headlamp",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "headlamp/oauth2-proxy",
+            "kind": "Service",
+            "name": "oauth2-proxy",
+            "namespace": "headlamp",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "media/prowlarr",
+            "incompleteState": true,
+            "kind": "Service",
+            "name": "prowlarr",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "media/sonarr",
+            "incompleteState": true,
+            "kind": "Service",
+            "name": "sonarr",
+            "namespace": "media",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "nas/oauth2-proxy",
+            "kind": "Service",
+            "name": "oauth2-proxy",
+            "namespace": "nas",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portainer/oauth2-proxy",
+            "kind": "Service",
+            "name": "oauth2-proxy",
+            "namespace": "portainer",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/guacamole",
+            "incompleteState": true,
+            "kind": "Service",
+            "name": "guacamole",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/homarr",
+            "incompleteState": true,
+            "kind": "Service",
+            "name": "homarr",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/homepage-admin",
+            "incompleteState": true,
+            "kind": "Service",
+            "name": "homepage-admin",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/homepage-router",
+            "incompleteState": true,
+            "kind": "Service",
+            "name": "homepage-router",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/homepage-user",
+            "incompleteState": true,
+            "kind": "Service",
+            "name": "homepage-user",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/moonlight-web",
+            "incompleteState": true,
+            "kind": "Service",
+            "name": "moonlight-web",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/oauth2-proxy",
+            "incompleteState": true,
+            "kind": "Service",
+            "name": "oauth2-proxy",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "portal/wake-desktop",
+            "incompleteState": true,
+            "kind": "Service",
+            "name": "wake-desktop",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "proxmox/oauth2-proxy",
+            "kind": "Service",
+            "name": "oauth2-proxy",
+            "namespace": "proxmox",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "termix/oauth2-proxy",
+            "kind": "Service",
+            "name": "oauth2-proxy",
+            "namespace": "termix",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "termix/termix",
+            "kind": "Service",
+            "name": "termix",
+            "namespace": "termix",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "unifi/oauth2-proxy",
+            "kind": "Service",
+            "name": "oauth2-proxy",
+            "namespace": "unifi",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "service"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "code-server/project-launcher",
+            "kind": "ServiceAccount",
+            "name": "project-launcher",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "serviceaccount"
+          },
+          {
+            "apiVersion": "v1",
+            "id": "headlamp/headlamp",
+            "kind": "ServiceAccount",
+            "name": "headlamp",
+            "namespace": "headlamp",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "serviceaccount"
+          },
+          {
+            "apiVersion": "storage.k8s.io/v1",
+            "id": "nfs-nas",
+            "kind": "StorageClass",
+            "name": "nfs-nas",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "storage.k8s.io.storageclass"
+          },
+          {
+            "apiVersion": "traefik.io/v1alpha1",
+            "id": "code-server/oauth2-forwardauth",
+            "kind": "Middleware",
+            "name": "oauth2-forwardauth",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "traefik.io.middleware"
+          },
+          {
+            "apiVersion": "traefik.io/v1alpha1",
+            "id": "code-server/oauth2-forwardauth-errors",
+            "kind": "Middleware",
+            "name": "oauth2-forwardauth-errors",
+            "namespace": "code-server",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "traefik.io.middleware"
+          },
+          {
+            "apiVersion": "traefik.io/v1alpha1",
+            "id": "git/gitea-stripprefix",
+            "kind": "Middleware",
+            "name": "gitea-stripprefix",
+            "namespace": "git",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "traefik.io.middleware"
+          },
+          {
+            "apiVersion": "traefik.io/v1alpha1",
+            "id": "git/oauth2-forwardauth",
+            "kind": "Middleware",
+            "name": "oauth2-forwardauth",
+            "namespace": "git",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "traefik.io.middleware"
+          },
+          {
+            "apiVersion": "traefik.io/v1alpha1",
+            "id": "headlamp/strip-identity-headers",
+            "kind": "Middleware",
+            "name": "strip-identity-headers",
+            "namespace": "headlamp",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "traefik.io.middleware"
+          },
+          {
+            "apiVersion": "traefik.io/v1alpha1",
+            "id": "portal/guacamole-trailing-slash",
+            "incompleteState": true,
+            "kind": "Middleware",
+            "name": "guacamole-trailing-slash",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "traefik.io.middleware"
+          },
+          {
+            "apiVersion": "traefik.io/v1alpha1",
+            "id": "portal/moonlight-trailing-slash",
+            "incompleteState": true,
+            "kind": "Middleware",
+            "name": "moonlight-trailing-slash",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "traefik.io.middleware"
+          },
+          {
+            "apiVersion": "traefik.io/v1alpha1",
+            "id": "portal/oauth2-forwardauth",
+            "incompleteState": true,
+            "kind": "Middleware",
+            "name": "oauth2-forwardauth",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "traefik.io.middleware"
+          },
+          {
+            "apiVersion": "traefik.io/v1alpha1",
+            "id": "portal/oauth2-forwardauth-errors",
+            "incompleteState": true,
+            "kind": "Middleware",
+            "name": "oauth2-forwardauth-errors",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "traefik.io.middleware"
+          },
+          {
+            "apiVersion": "traefik.io/v1alpha1",
+            "id": "portal/strip-identity-headers",
+            "incompleteState": true,
+            "kind": "Middleware",
+            "name": "strip-identity-headers",
+            "namespace": "portal",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "traefik.io.middleware"
+          },
+          {
+            "apiVersion": "traefik.io/v1alpha1",
+            "id": "kube-system/default",
+            "kind": "TLSStore",
+            "name": "default",
+            "namespace": "kube-system",
+            "perClusterState": {
+              "ready": [
+                "fleet-local/local"
+              ]
+            },
+            "state": "Ready",
+            "type": "traefik.io.tlsstore"
+          }
+        ],
+        "summary": {
+          "desiredReady": 15,
+          "ready": 15
+        }
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

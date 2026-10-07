@@ -1,0 +1,241 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "web-7d9f8b6c5d",
+        "namespace": "default",
+        "uid": "e3c6839c-2b9c-fe17-1988-fa25a0948e0e",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "labels": { "app": "web", "pod-template-hash": "7d9f8b6c5d" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "web",
+            "uid": "7f9faa24-a5a9-f88f-c53c-8ea3257f2d55",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": { "replicas": 2, "selector": { "matchLabels": { "app": "web", "pod-template-hash": "7d9f8b6c5d" } } },
+      "status": { "replicas": 2, "readyReplicas": 2, "availableReplicas": 2, "observedGeneration": 1 }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "coredns-5d78c9869d",
+        "namespace": "kube-system",
+        "uid": "d2616808-04b0-6aa7-4ebb-6180f2729127",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "labels": { "app": "coredns", "pod-template-hash": "5d78c9869d" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "coredns",
+            "uid": "f95ad5fa-93b1-9014-4767-548dfd40e404",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": { "replicas": 1, "selector": { "matchLabels": { "app": "coredns", "pod-template-hash": "5d78c9869d" } } },
+      "status": { "replicas": 1, "readyReplicas": 1, "availableReplicas": 1, "observedGeneration": 1 }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "metrics-server-6f4c6675d5",
+        "namespace": "kube-system",
+        "uid": "d0219ad9-7081-23a0-5c91-899ebcb6085a",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "labels": { "app": "metrics-server", "pod-template-hash": "6f4c6675d5" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "metrics-server",
+            "uid": "92af345f-3909-c2ce-21bd-ad10a4d5bc99",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "metrics-server", "pod-template-hash": "6f4c6675d5" } }
+      },
+      "status": { "replicas": 1, "readyReplicas": 1, "availableReplicas": 1, "observedGeneration": 1 }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "velero-7c9d5f6b8",
+        "namespace": "velero",
+        "uid": "2c541a5f-355c-4b9e-fe8e-8af84bec23d3",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "labels": { "app": "velero", "pod-template-hash": "7c9d5f6b8" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "velero",
+            "uid": "12bd0424-1bf4-c8f7-27f4-700b5d01fcb4",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": { "replicas": 1, "selector": { "matchLabels": { "app": "velero", "pod-template-hash": "7c9d5f6b8" } } },
+      "status": { "replicas": 1, "readyReplicas": 1, "availableReplicas": 1, "observedGeneration": 1 }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "fleet-controller-6d7f8c9b5",
+        "namespace": "cattle-fleet-system",
+        "uid": "da57be93-f468-418d-bbbc-04fa1877ca4f",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "labels": { "app": "fleet-controller", "pod-template-hash": "6d7f8c9b5" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "fleet-controller",
+            "uid": "30c35e58-ecf7-d82a-31aa-23f231671e6f",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "fleet-controller", "pod-template-hash": "6d7f8c9b5" } }
+      },
+      "status": { "replicas": 1, "readyReplicas": 1, "availableReplicas": 1, "observedGeneration": 1 }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "cert-manager-8b9c7d6f5",
+        "namespace": "cert-manager",
+        "uid": "ec9902e3-b977-3e9a-2d12-a8f5bb90e53e",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "labels": { "app": "cert-manager", "pod-template-hash": "8b9c7d6f5" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "cert-manager",
+            "uid": "daa31d31-5a18-be69-75d3-d5f41a38909c",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "cert-manager", "pod-template-hash": "8b9c7d6f5" } }
+      },
+      "status": { "replicas": 1, "readyReplicas": 1, "availableReplicas": 1, "observedGeneration": 1 }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "report-worker-6c8d7f9b4",
+        "namespace": "default",
+        "uid": "1bd51e09-849f-a059-7841-8eac30367ee3",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "labels": { "app": "report-worker", "pod-template-hash": "6c8d7f9b4" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "report-worker",
+            "uid": "9bc3b251-026a-6960-cb3d-b2f64b4ebaa1",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "report-worker", "pod-template-hash": "6c8d7f9b4" } }
+      },
+      "status": { "replicas": 1, "observedGeneration": 1 }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "batch-import-5b7c9d8f6",
+        "namespace": "default",
+        "uid": "bb16e286-efef-4b23-44e4-c3e586001568",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "labels": { "app": "batch-import", "pod-template-hash": "5b7c9d8f6" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "batch-import",
+            "uid": "d5c52973-07a4-6714-3bd3-ecc998ad25ed",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "batch-import", "pod-template-hash": "5b7c9d8f6" } }
+      },
+      "status": { "replicas": 1, "observedGeneration": 1 }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "legacy-app-84f6d5c7b9",
+        "namespace": "default",
+        "uid": "d42d0f0e-bf0e-e481-a7db-1547ae5f8ea6",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-17T12:00:00.000Z",
+        "labels": { "app": "legacy-app", "pod-template-hash": "84f6d5c7b9" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "legacy-app",
+            "uid": "c63b35f0-0b56-9a93-75ac-2ecb198937ba",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": { "matchLabels": { "app": "legacy-app", "pod-template-hash": "84f6d5c7b9" } }
+      },
+      "status": { "replicas": 1, "observedGeneration": 1 }
+    }
+  ]
+}

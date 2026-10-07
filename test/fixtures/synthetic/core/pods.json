@@ -1,0 +1,1096 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "web-7d9f8b6c5d-x2k4q",
+        "namespace": "default",
+        "uid": "6d93005c-2e31-6b52-0223-40435dda4540",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-02T12:00:00.000Z",
+        "labels": { "app": "web", "pod-template-hash": "7d9f8b6c5d" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "web-7d9f8b6c5d",
+            "uid": "e3c6839c-2b9c-fe17-1988-fa25a0948e0e",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "web",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.12",
+        "podIP": "10.42.1.108",
+        "startTime": "2026-10-02T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "web",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:ad86af55fdc1d67050b425e813c8367bad86af55fdc1d67050b425e813c8367b",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "web-7d9f8b6c5d-p8l3z",
+        "namespace": "default",
+        "uid": "8cb68b51-9c44-72c4-5239-351a3803b00b",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-02T12:00:00.000Z",
+        "labels": { "app": "web", "pod-template-hash": "7d9f8b6c5d" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "web-7d9f8b6c5d",
+            "uid": "e3c6839c-2b9c-fe17-1988-fa25a0948e0e",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "cp-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "web",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.11",
+        "podIP": "10.42.1.66",
+        "startTime": "2026-10-02T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "web",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:ffb35563948f3c10580ce3a1b4c39869ffb35563948f3c10580ce3a1b4c39869",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "report-worker-6c8d7f9b4-m5v2n",
+        "namespace": "default",
+        "uid": "f52f3703-6ff6-7dc2-3311-60338ec53bab",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-02T12:00:00.000Z",
+        "labels": { "app": "report" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "report-worker-6c8d7f9b4",
+            "uid": "1bd51e09-849f-a059-7841-8eac30367ee3",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "report",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "False", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "False", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.12",
+        "podIP": "10.42.1.108",
+        "startTime": "2026-10-02T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "report",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:02bd2a34bb0660073255c6501fb0ec2f02bd2a34bb0660073255c6501fb0ec2f",
+            "ready": false,
+            "started": false,
+            "restartCount": 27,
+            "state": {
+              "waiting": {
+                "reason": "CrashLoopBackOff",
+                "message": "back-off 5m0s restarting failed container=report-worker pod=report-worker-6c8d7f9b4-m5v2n_default(2e0f)"
+              }
+            },
+            "lastState": {
+              "terminated": {
+                "exitCode": 1,
+                "reason": "Error",
+                "startedAt": "2026-10-07T11:51:00.000Z",
+                "finishedAt": "2026-10-07T11:51:04.000Z",
+                "containerID": "containerd://6f1d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "batch-import-5b7c9d8f6-q9w8e",
+        "namespace": "default",
+        "uid": "3d89d822-f7ed-7498-6fe4-7c5c52861271",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T11:13:00.000Z",
+        "labels": { "app": "batch" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "batch-import-5b7c9d8f6",
+            "uid": "bb16e286-efef-4b23-44e4-c3e586001568",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "batch",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Pending",
+        "conditions": [
+          {
+            "type": "PodScheduled",
+            "status": "False",
+            "reason": "Unschedulable",
+            "message": "0/3 nodes are available: 1 node(s) had untolerated taint {node.kubernetes.io/unreachable: }, 2 Insufficient memory. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod.",
+            "lastTransitionTime": "2026-10-07T11:13:00.000Z"
+          }
+        ],
+        "startTime": "2026-10-07T11:13:00.000Z"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "legacy-app-84f6d5c7b9-t4r6y",
+        "namespace": "default",
+        "uid": "9c700d6a-98a4-9164-12f6-ac97c29f1020",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T10:00:00.000Z",
+        "labels": { "app": "legacy" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "legacy-app-84f6d5c7b9",
+            "uid": "d42d0f0e-bf0e-e481-a7db-1547ae5f8ea6",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "legacy",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Pending",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "False", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "False", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.12",
+        "podIP": "10.42.1.60",
+        "startTime": "2026-10-07T10:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "legacy",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:34841058b7bf3ff8f52ca472c0fbb18e34841058b7bf3ff8f52ca472c0fbb18e",
+            "ready": false,
+            "started": false,
+            "restartCount": 0,
+            "state": {
+              "waiting": {
+                "reason": "ImagePullBackOff",
+                "message": "Back-off pulling image \"registry.example.lan/apps/legacy:0.9\""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "nightly-db-dump-29326800-8h2kd",
+        "namespace": "default",
+        "uid": "aa882f28-d9c2-aaba-051a-084e2d10bed7",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T03:00:00.000Z",
+        "labels": { "app": "nightly" },
+        "ownerReferences": [
+          {
+            "apiVersion": "batch/v1",
+            "kind": "Job",
+            "name": "nightly-db-dump-29326800",
+            "uid": "4794e828-fa34-5b28-fc39-9dacf926c4da",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-1",
+        "restartPolicy": "OnFailure",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "nightly",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Succeeded",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "False", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "False", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.12",
+        "podIP": "10.42.1.109",
+        "startTime": "2026-10-07T03:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "nightly",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:f40f5e6377355ff0c7628a7dc4fa5330f40f5e6377355ff0c7628a7dc4fa5330",
+            "ready": false,
+            "started": false,
+            "restartCount": 0,
+            "state": {
+              "terminated": {
+                "exitCode": 0,
+                "reason": "Completed",
+                "startedAt": "2026-10-07T03:00:00.000Z",
+                "finishedAt": "2026-10-07T03:00:41.000Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "postgres-0",
+        "namespace": "databases",
+        "uid": "6a140db3-ad4f-57a5-f3a4-94ecd72b8b02",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "labels": { "app": "postgres" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "postgres",
+            "uid": "7b8ce612-1841-326e-5969-420401e52592",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "postgres",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ],
+        "volumes": [{ "name": "data", "persistentVolumeClaim": { "claimName": "data-postgres-0" } }]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.12",
+        "podIP": "10.42.1.64",
+        "startTime": "2026-09-07T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "postgres",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:5e4485b862cf9536fa137ff70b90f8b35e4485b862cf9536fa137ff70b90f8b3",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "jellyfin-0",
+        "namespace": "media",
+        "uid": "596d1d28-dc91-2332-e242-5bf6db806481",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "labels": { "app": "jellyfin" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "jellyfin",
+            "uid": "8f203cb4-84fe-18af-4a3b-f3c2ce9e8eb0",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "jellyfin",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ],
+        "volumes": [{ "name": "data", "persistentVolumeClaim": { "claimName": "media-library" } }]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.12",
+        "podIP": "10.42.1.109",
+        "startTime": "2026-09-07T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "jellyfin",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:083c8462e7be476a93cb192cc090e654083c8462e7be476a93cb192cc090e654",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "uploads-api-5c6d8f7b9-n2m4k",
+        "namespace": "default",
+        "uid": "b8a5a5f6-3e99-3e01-2f8f-0ccde09aa949",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-02T12:00:00.000Z",
+        "labels": { "app": "uploads" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "uploads-api-5c6d8f7b9",
+            "uid": "5f396fc4-3891-c37f-a05d-60f9d3e5a538",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "cp-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "uploads",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ],
+        "volumes": [{ "name": "data", "persistentVolumeClaim": { "claimName": "uploads" } }]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.11",
+        "podIP": "10.42.1.111",
+        "startTime": "2026-10-02T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "uploads",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:c804abce67cfc26c989319befd614820c804abce67cfc26c989319befd614820",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "coredns-5d78c9869d-v7k2j",
+        "namespace": "kube-system",
+        "uid": "0c721fd3-be37-5348-a7a1-7f3476a94c10",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": { "app": "coredns" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "coredns-5d78c9869d",
+            "uid": "d2616808-04b0-6aa7-4ebb-6180f2729127",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "cp-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "coredns",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.11",
+        "podIP": "10.42.1.112",
+        "startTime": "2026-08-08T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "coredns",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:c1f9b3ba918036be87c49572b7c94d71c1f9b3ba918036be87c49572b7c94d71",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "metrics-server-6f4c6675d5-c8b9w",
+        "namespace": "kube-system",
+        "uid": "7f7373cc-fba1-f325-9506-00a5e88f6f89",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": { "app": "metrics" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "metrics-server-6f4c6675d5",
+            "uid": "d0219ad9-7081-23a0-5c91-899ebcb6085a",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "cp-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "metrics",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.11",
+        "podIP": "10.42.1.111",
+        "startTime": "2026-08-08T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "metrics",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:ef37b8b80369d018deed9cea8f927c7aef37b8b80369d018deed9cea8f927c7a",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "longhorn-manager-4qk7d",
+        "namespace": "longhorn-system",
+        "uid": "2141ad55-e6e7-3707-6d88-02ca8d1f0b67",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-02T12:00:00.000Z",
+        "labels": { "app": "longhorn" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "DaemonSet",
+            "name": "longhorn-manager",
+            "uid": "74dd951b-c739-2d43-8ccc-5bcb7e3ddbf3",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "cp-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "longhorn",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.11",
+        "podIP": "10.42.1.64",
+        "startTime": "2026-10-02T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "longhorn",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:cb10d33eb4eb764da1a327576d802fd0cb10d33eb4eb764da1a327576d802fd0",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "longhorn-manager-9vx2m",
+        "namespace": "longhorn-system",
+        "uid": "6e9e0d18-3e1a-8ba1-d93b-794d39e29224",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-02T12:00:00.000Z",
+        "labels": { "app": "longhorn" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "DaemonSet",
+            "name": "longhorn-manager",
+            "uid": "74dd951b-c739-2d43-8ccc-5bcb7e3ddbf3",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "longhorn",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.12",
+        "podIP": "10.42.1.64",
+        "startTime": "2026-10-02T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "longhorn",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:2eac000dcf68f3c44e37e8635d68782a2eac000dcf68f3c44e37e8635d68782a",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "longhorn-manager-h6tz8",
+        "namespace": "longhorn-system",
+        "uid": "a6827e0f-659e-a2ac-88e2-dad6999b21f8",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-02T12:00:00.000Z",
+        "labels": { "app": "longhorn" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "DaemonSet",
+            "name": "longhorn-manager",
+            "uid": "74dd951b-c739-2d43-8ccc-5bcb7e3ddbf3",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-2",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "longhorn",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "False", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "False", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.13",
+        "podIP": "10.42.2.63",
+        "startTime": "2026-10-02T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "longhorn",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:b3a38e6faf2786a91ce3b0559e7ba1bdb3a38e6faf2786a91ce3b0559e7ba1bd",
+            "ready": false,
+            "started": false,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "velero-7c9d5f6b8-zq4x7",
+        "namespace": "velero",
+        "uid": "6eaad3d3-1f42-2bf5-40fa-4a8a01e47a45",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-02T12:00:00.000Z",
+        "labels": { "app": "velero" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "velero-7c9d5f6b8",
+            "uid": "2c541a5f-355c-4b9e-fe8e-8af84bec23d3",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "velero",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.12",
+        "podIP": "10.42.1.112",
+        "startTime": "2026-10-02T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "velero",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:dd94f8f0ec5d1a14b80e1e943f790e49dd94f8f0ec5d1a14b80e1e943f790e49",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "fleet-controller-6d7f8c9b5-j5h2l",
+        "namespace": "cattle-fleet-system",
+        "uid": "d5d287f6-8c09-ad55-f43d-0345759171e8",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-02T12:00:00.000Z",
+        "labels": { "app": "fleet" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "fleet-controller-6d7f8c9b5",
+            "uid": "da57be93-f468-418d-bbbc-04fa1877ca4f",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "cp-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "fleet",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.11",
+        "podIP": "10.42.1.111",
+        "startTime": "2026-10-02T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "fleet",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:97634fd3b9a95d982eb439bf1e59ea6497634fd3b9a95d982eb439bf1e59ea64",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "cert-manager-8b9c7d6f5-w2n4p",
+        "namespace": "cert-manager",
+        "uid": "40e0c817-ac4e-b71d-176b-180e8be52208",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-02T12:00:00.000Z",
+        "labels": { "app": "cert" },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "cert-manager-8b9c7d6f5",
+            "uid": "ec9902e3-b977-3e9a-2d12-a8f5bb90e53e",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "cp-1",
+        "restartPolicy": "Always",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "cert",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "command": ["REDACTED"],
+            "args": ["REDACTED"],
+            "env": [
+              { "name": "DATABASE_URL", "value": "REDACTED" },
+              { "name": "LOG_LEVEL", "value": "REDACTED" }
+            ],
+            "resources": { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "memory": "512Mi" } }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          { "type": "Initialized", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "Ready", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "ContainersReady", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" },
+          { "type": "PodScheduled", "status": "True", "lastTransitionTime": "2026-10-02T12:00:00.000Z" }
+        ],
+        "hostIP": "192.168.10.11",
+        "podIP": "10.42.1.63",
+        "startTime": "2026-10-02T12:00:00.000Z",
+        "containerStatuses": [
+          {
+            "name": "cert",
+            "image": "registry.example.lan/apps/app:1.4.2",
+            "imageID": "registry.example.lan/apps/app@sha256:cdac0acc9cb981adc4b9b11b8249f842cdac0acc9cb981adc4b9b11b8249f842",
+            "ready": true,
+            "started": true,
+            "restartCount": 0,
+            "state": { "running": { "startedAt": "2026-10-02T12:00:00.000Z" } }
+          }
+        ]
+      }
+    }
+  ]
+}

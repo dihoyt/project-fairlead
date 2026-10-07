@@ -1,0 +1,1186 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-28T22:42:30Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "beszel"
+        },
+        "name": "beszel",
+        "resourceVersion": "10185019",
+        "uid": "dec41072-3ac4-4a20-909f-ff49a9ab4685"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T01:33:11Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "c-abc12"
+        },
+        "name": "c-abc12",
+        "resourceVersion": "19264",
+        "uid": "cc77b7ef-9ad4-4eb8-bb3f-71e5a8a668e7"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T01:33:11Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "c-abc12-p-2d2fx"
+        },
+        "name": "c-abc12-p-2d2fx",
+        "resourceVersion": "19295",
+        "uid": "bf6cb9ac-c673-4ed0-a14c-dae5b4081e7b"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T01:33:11Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "c-abc12-p-fp4gp"
+        },
+        "name": "c-abc12-p-fp4gp",
+        "resourceVersion": "19302",
+        "uid": "c772d14a-9ee4-4049-8c42-95a2b2eb1fb4"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "rancher-turtles",
+          "meta.helm.sh/release-namespace": "cattle-turtles-system"
+        },
+        "creationTimestamp": "2026-08-01T01:03:23Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "cattle-capi-system"
+        },
+        "name": "cattle-capi-system",
+        "resourceVersion": "10716",
+        "uid": "6ab8ede1-1c5d-42f1-b2d7-001bf3bd23b1"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "objectset.rio.cattle.io/applied": "REDACTED",
+          "objectset.rio.cattle.io/id": "fleet-bootstrap-data"
+        },
+        "creationTimestamp": "2026-08-01T00:17:46Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "cattle-fleet-clusters-system",
+          "objectset.rio.cattle.io/hash": "4510303f19b6cbafc9031148b1866f16c2be7aaa"
+        },
+        "name": "cattle-fleet-clusters-system",
+        "resourceVersion": "6227",
+        "uid": "075490a9-97c9-4764-8f3c-3661e2bbfdfc"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "objectset.rio.cattle.io/applied": "REDACTED",
+          "objectset.rio.cattle.io/id": "fleet-agent-bootstrap-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T00:18:26Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "cattle-fleet-local-system",
+          "objectset.rio.cattle.io/hash": "362023f752e7f1989d8b652e029bd2c658ae7c44"
+        },
+        "name": "cattle-fleet-local-system",
+        "resourceVersion": "6695",
+        "uid": "f5f46458-dcb6-40d9-bbc2-34d3f089e917"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "objectset.rio.cattle.io/applied": "REDACTED",
+          "objectset.rio.cattle.io/id": "fleet-bootstrap-data"
+        },
+        "creationTimestamp": "2026-08-01T00:17:11Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "cattle-fleet-system",
+          "objectset.rio.cattle.io/hash": "4510303f19b6cbafc9031148b1866f16c2be7aaa"
+        },
+        "name": "cattle-fleet-system",
+        "resourceVersion": "6157",
+        "uid": "443975c8-2eeb-49dd-9018-9a72052b1828"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T00:14:17Z",
+        "labels": {
+          "cattle.io/creator": "norman",
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "cattle-global-data"
+        },
+        "name": "cattle-global-data",
+        "resourceVersion": "5603",
+        "uid": "e7ce5fbb-f52a-423c-be24-65a13f51086d"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T00:15:49Z",
+        "labels": {
+          "authz.cluster.cattle.io/impersonator": "true",
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "cattle-impersonation-system"
+        },
+        "name": "cattle-impersonation-system",
+        "resourceVersion": "5706",
+        "uid": "dbec471d-14f3-4b54-bea0-801fa287be2c"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T00:14:01Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "cattle-local-user-passwords"
+        },
+        "name": "cattle-local-user-passwords",
+        "resourceVersion": "5663",
+        "uid": "66a95f62-11b0-4e56-8ba1-056995d64ae8"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T00:09:33Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "cattle-system"
+        },
+        "name": "cattle-system",
+        "resourceVersion": "5595",
+        "uid": "fca73395-e8d0-4c37-ab44-0ec9accece65"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T01:03:17Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "cattle-turtles-system"
+        },
+        "name": "cattle-turtles-system",
+        "resourceVersion": "10651",
+        "uid": "18f6890f-b903-4370-a6ac-c3165007da5a"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T00:13:46Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "rancher",
+          "kubernetes.io/metadata.name": "cattle-ui-plugin-system"
+        },
+        "name": "cattle-ui-plugin-system",
+        "resourceVersion": "5471",
+        "uid": "e702e662-af32-462a-9555-9e4903d178d9"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-07-31T23:44:02Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "cert-manager",
+          "name": "cert-manager"
+        },
+        "name": "cert-manager",
+        "resourceVersion": "5605",
+        "uid": "af29894c-6698-4b44-be2f-e7b0c854570e"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-06T00:44:50Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "ci"
+        },
+        "name": "ci",
+        "resourceVersion": "26383266",
+        "uid": "758ad715-badc-48c6-ba6a-e191a841093f"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-07-31T23:59:16Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "cloudflare-tunnel"
+        },
+        "name": "cloudflare-tunnel",
+        "resourceVersion": "5470",
+        "uid": "e5433804-9978-49ab-b390-06f7c5fff75b"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "fleet.cattle.io/cluster": "local",
+          "fleet.cattle.io/cluster-namespace": "fleet-local"
+        },
+        "creationTimestamp": "2026-08-01T00:18:23Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "fleet.cattle.io/managed": "true",
+          "kubernetes.io/metadata.name": "cluster-fleet-local-local-1a3d67d0a899"
+        },
+        "name": "cluster-fleet-local-local-1a3d67d0a899",
+        "resourceVersion": "6595",
+        "uid": "2a557e66-374a-486b-90e4-66869700cee6"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-code-server",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-code-server-cattle-fleet-lo-d80fd"
+        },
+        "creationTimestamp": "2026-08-01T10:38:07Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "code-server",
+          "objectset.rio.cattle.io/hash": "ef4cf55657bab2fb560df69a60557f64999e7baa"
+        },
+        "name": "code-server",
+        "resourceVersion": "330833",
+        "uid": "ee4d027d-a307-402a-88e4-88d5e2d52507"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-06T18:24:30Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "coder-console"
+        },
+        "name": "coder-console",
+        "resourceVersion": "26719104",
+        "uid": "2140f5ed-cb01-466c-a65b-38bda79fb63f"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "coder-console",
+          "meta.helm.sh/release-namespace": "coder-console"
+        },
+        "creationTimestamp": "2026-10-06T20:16:32Z",
+        "labels": {
+          "app.kubernetes.io/instance": "coder-console",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "coder-console",
+          "app.kubernetes.io/version": "latest",
+          "helm.sh/chart": "coder-console-0.2.0",
+          "kubernetes.io/metadata.name": "coder-workspaces",
+          "pod-security.kubernetes.io/audit": "restricted",
+          "pod-security.kubernetes.io/enforce": "restricted",
+          "pod-security.kubernetes.io/warn": "restricted"
+        },
+        "name": "coder-workspaces",
+        "resourceVersion": "26755078",
+        "uid": "d68e5834-187c-4cd2-af25-c6d3bac631fb"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-07-31T23:24:39Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-vqb6d",
+          "kubernetes.io/metadata.name": "default",
+          "name": "default"
+        },
+        "name": "default",
+        "resourceVersion": "321496",
+        "uid": "dd2d725d-f9b0-4a1b-986c-8702d58ab9e6"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-deluge",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-deluge-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T15:50:56Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "deluge",
+          "objectset.rio.cattle.io/hash": "3afa247015b4fac9aea2abcee1f12e0d50e7e86e"
+        },
+        "name": "deluge",
+        "resourceVersion": "325056",
+        "uid": "d4651ffb-1a62-45d3-a9d0-5ad2c354bfd6"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-dns-resolver",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-dns-resolver-cattle-fleet-l-10be2"
+        },
+        "creationTimestamp": "2026-08-01T04:29:06Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "dns-resolver",
+          "objectset.rio.cattle.io/hash": "a0282b209b35d1e40b5c3a93d07845e3b275e85e"
+        },
+        "name": "dns-resolver",
+        "resourceVersion": "330817",
+        "uid": "70fef746-d70a-486d-b35a-9e8c141a6c81"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-firefox",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-firefox-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-12T21:26:38Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "firefox",
+          "objectset.rio.cattle.io/hash": "1d8f54792a4f7d1ccb0bfecf7518dc62a258e0ea"
+        },
+        "name": "firefox",
+        "resourceVersion": "10217513",
+        "uid": "3056e40f-bb38-480d-b333-4003a626c262"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "objectset.rio.cattle.io/applied": "REDACTED",
+          "objectset.rio.cattle.io/id": "workspace",
+          "objectset.rio.cattle.io/owner-gvk": "management.cattle.io/v3, Kind=FleetWorkspace",
+          "objectset.rio.cattle.io/owner-name": "fleet-default",
+          "objectset.rio.cattle.io/owner-namespace": ""
+        },
+        "creationTimestamp": "2026-08-01T00:14:18Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "fleet-default",
+          "objectset.rio.cattle.io/hash": "7e7ea272a8ed59a1ca6ea1587cb55d693b393102"
+        },
+        "name": "fleet-default",
+        "resourceVersion": "5670",
+        "uid": "a68ebd65-8057-4c72-998c-5f022a458a38"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T00:13:46Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "rancher",
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "fleet-local"
+        },
+        "name": "fleet-local",
+        "resourceVersion": "5702",
+        "uid": "433c989a-a8bc-4da3-b6f6-db58881815ca"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-02T04:50:34Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "games"
+        },
+        "name": "games",
+        "resourceVersion": "24702189",
+        "uid": "e024dcff-f2e0-46b4-ae4e-7f90cdb7f31e"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T04:33:47Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "git"
+        },
+        "name": "git",
+        "resourceVersion": "68470",
+        "uid": "fe2460fb-5f1c-4948-a60a-afa2fc6c90d5"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-headlamp",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-headlamp-cattle-fleet-local-c504e"
+        },
+        "creationTimestamp": "2026-08-14T09:01:59Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "headlamp",
+          "objectset.rio.cattle.io/hash": "966a1656af920505e866ce518a1658676440ad27"
+        },
+        "name": "headlamp",
+        "resourceVersion": "5120595",
+        "uid": "565fb263-423d-423a-ab6d-fccda0847892"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-07-31T23:24:39Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "kube-node-lease"
+        },
+        "name": "kube-node-lease",
+        "resourceVersion": "5667",
+        "uid": "52068e2e-0699-45f8-84f3-d8158023e869"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-07-31T23:24:39Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "kube-public"
+        },
+        "name": "kube-public",
+        "resourceVersion": "5664",
+        "uid": "70f07cc2-77cd-43e0-9875-14d0a184d91e"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-07-31T23:24:39Z",
+        "labels": {
+          "field.cattle.io/projectId": "p-6fz7c",
+          "kubernetes.io/metadata.name": "kube-system"
+        },
+        "name": "kube-system",
+        "resourceVersion": "5601",
+        "uid": "f632d6f8-119a-48df-858c-af4f4636f2f9"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T00:14:15Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "local"
+        },
+        "name": "local",
+        "ownerReferences": [
+          {
+            "apiVersion": "management.cattle.io/v3",
+            "kind": "Cluster",
+            "name": "local",
+            "uid": "825beb9c-ff95-4195-bfa8-99243d659efb"
+          }
+        ],
+        "resourceVersion": "5472",
+        "uid": "48d07def-8eb2-4e86-bb94-37bd4448485e"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-29T00:16:30Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "longhorn-system",
+          "name": "longhorn-system"
+        },
+        "name": "longhorn-system",
+        "resourceVersion": "10207311",
+        "uid": "614daea7-899d-417f-8072-bbac4b0c36ba"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-media",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-media-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T18:38:17Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "media",
+          "objectset.rio.cattle.io/hash": "5768aa22afa2880734d02c41d2d62a29ad2c2d00"
+        },
+        "name": "media",
+        "resourceVersion": "10217511",
+        "uid": "01ac65f6-338b-4a4d-b3e8-0575dd99a140"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-10-05T22:44:37Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "metallb-system",
+          "name": "metallb-system"
+        },
+        "name": "metallb-system",
+        "resourceVersion": "26340432",
+        "uid": "3434f0c6-7ab9-4cb0-a039-327189647913"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-nas",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-nas-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T15:50:56Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "nas",
+          "objectset.rio.cattle.io/hash": "0ffd1054f06ea878d46aca57a0da38f73b44be74"
+        },
+        "name": "nas",
+        "resourceVersion": "325184",
+        "uid": "59dfc8fc-8d84-44f8-a29a-39ab6b901dac"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T00:15:38Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "p-6fz7c"
+        },
+        "name": "p-6fz7c",
+        "resourceVersion": "5428",
+        "uid": "b1ac9c3f-59c7-4854-804d-93d603376bce"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T00:15:38Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "p-vqb6d"
+        },
+        "name": "p-vqb6d",
+        "resourceVersion": "5487",
+        "uid": "6bfcdb91-914d-47a8-b9a4-15758b64250a"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-portainer",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-portainer-cattle-fleet-loca-10820"
+        },
+        "creationTimestamp": "2026-08-01T17:36:16Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "portainer",
+          "objectset.rio.cattle.io/hash": "1c5a1bf5cd3ed398e4d3163fe01c5b9801b0e6be"
+        },
+        "name": "portainer",
+        "resourceVersion": "325211",
+        "uid": "a06b5ed2-70bb-4b10-9215-b360c9db24a2"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-portal",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-portal-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T02:28:34Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "portal",
+          "objectset.rio.cattle.io/hash": "5dd03d96be7a81ba10d2b602f13fc6084e73862c"
+        },
+        "name": "portal",
+        "resourceVersion": "325254",
+        "uid": "b9046813-a9ab-4a32-8212-75ba0e85f2af"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-proxmox",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-proxmox-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T16:59:55Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "proxmox",
+          "objectset.rio.cattle.io/hash": "9e7fd8c23d62dd85df619cbb903b7ccc61931de4"
+        },
+        "name": "proxmox",
+        "resourceVersion": "324819",
+        "uid": "4083797a-e6e6-44ac-bfa0-62dd6b82608b"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T19:23:59Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "sftp"
+        },
+        "name": "sftp",
+        "resourceVersion": "335604",
+        "uid": "5cb3c9ac-065f-4d85-b0f5-c66e5c689246"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-termix",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-termix-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T13:30:52Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "termix",
+          "objectset.rio.cattle.io/hash": "d18dff21322c350a966ca8002a5521c32276f1f2"
+        },
+        "name": "termix",
+        "resourceVersion": "325270",
+        "uid": "bba4f6dd-60e7-4b0d-98ee-f5063e31d042"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-unifi",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-unifi-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-08-01T15:31:59Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "kubernetes.io/metadata.name": "unifi",
+          "objectset.rio.cattle.io/hash": "e50a35ab3b3ab91562570ec91abb1415abc34126"
+        },
+        "name": "unifi",
+        "resourceVersion": "325327",
+        "uid": "dc0bc9c1-b1a3-46cf-9fed-33dd1fcbe29e"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "annotations": {},
+        "creationTimestamp": "2026-08-01T00:16:20Z",
+        "labels": {
+          "kubernetes.io/metadata.name": "user-gjl56"
+        },
+        "name": "user-gjl56",
+        "resourceVersion": "5768",
+        "uid": "e5e66c50-32e6-4bbb-a657-240dd72839bd"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

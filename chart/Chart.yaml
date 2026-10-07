@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fairlead # brand:generated chartName
+description: Self-hosted Kubernetes health, backup and recovery console
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

@@ -1,0 +1,97 @@
+image:
+  repository: ghcr.io/dihoyt/fairlead # brand:generated imageRepository
+  # Defaults to the chart's appVersion; deploys set it to a commit sha.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Names of existing docker-registry Secrets, needed while the image is private.
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Single replica: the database is SQLite on a ReadWriteOnce volume.
+replicaCount: 1
+
+config:
+  # The externally visible origin, e.g. https://cluster.example.test
+  publicOrigin: ""
+  trustedProxies: ""
+  clientIpHeader: ""
+  # Must stay below terminationGracePeriodSeconds.
+  drainMs: 600000
+
+# Extra container environment, as Kubernetes EnvVar objects.
+extraEnv: []
+
+secrets:
+  # An existing Secret holding SECRETS_KEY and BOOTSTRAP_ADMIN_PASSWORD.
+  existingSecret: ""
+  # Creates a Secret from `values` when existingSecret is empty. Convenient
+  # for tests; real installs use existingSecret so values stay out of Helm state.
+  create: false
+  values: {}
+
+terminationGracePeriodSeconds: 630
+
+# During a rollout the old and new pod overlap for a few seconds; a
+# ReadWriteOnce volume only allows that on one node.
+rollout:
+  sameNode: true
+
+persistence:
+  enabled: true
+  existingClaim: ""
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 1Gi
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  # - host: cluster.example.test
+  #   path: /
+  #   pathType: Prefix
+  tls: []
+
+networkPolicy:
+  enabled: false
+  # Peers allowed to reach the pod, as NetworkPolicyPeer objects. Empty
+  # allows any source to the service port.
+  ingressFrom: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Read-only access to what Milestone A observes. No write verbs.
+rbac:
+  create: true
+  # Kubelet stats through the API server proxy (container and node metrics).
+  # nodes/proxy can also reach the kubelet's exec endpoints on some versions,
+  # so some admins turn it off; metrics then fall back to metrics-server.
+  nodesProxy: true
+  # TLS certificate expiry from Secrets. RBAC cannot grant metadata only:
+  # this grants read of Secret contents. Empty `namespaces` means cluster-wide.
+  secrets:
+    enabled: false
+    namespaces: []
+
+podAnnotations: {}
+podLabels: {}
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+nodeSelector: {}
+tolerations: []
+affinity: {}

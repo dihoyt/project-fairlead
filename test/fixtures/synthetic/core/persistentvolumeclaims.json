@@ -1,0 +1,126 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "data-postgres-0",
+        "namespace": "databases",
+        "uid": "ded170fe-8423-ca5f-fdc0-2de6d0a1a8f4",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "accessModes": ["ReadWriteOnce"],
+        "resources": { "requests": { "storage": "10Gi" } },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-3f1c6a52-0b7e-4d0a-9a55-1d2b8c9e7a01"
+      },
+      "status": { "phase": "Bound", "accessModes": ["ReadWriteOnce"], "capacity": { "storage": "10Gi" } }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "media-library",
+        "namespace": "media",
+        "uid": "6d2345ea-d0b0-c3f7-9983-6c402c2c3848",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "accessModes": ["ReadWriteOnce"],
+        "resources": { "requests": { "storage": "100Gi" } },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-9a4d2e17-6c3b-4f85-8e20-5b7a1c0d3e02"
+      },
+      "status": { "phase": "Bound", "accessModes": ["ReadWriteOnce"], "capacity": { "storage": "100Gi" } }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "uploads",
+        "namespace": "default",
+        "uid": "2c0633aa-6c60-2ec3-3362-8929bb52b4e2",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "accessModes": ["ReadWriteOnce"],
+        "resources": { "requests": { "storage": "20Gi" } },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-c71e5b93-2d48-41a6-b3f9-8a6d0e4c2f03"
+      },
+      "status": { "phase": "Bound", "accessModes": ["ReadWriteOnce"], "capacity": { "storage": "20Gi" } }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "scratch",
+        "namespace": "default",
+        "uid": "24776edc-559b-a188-76c3-a20eafacd7e4",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "accessModes": ["ReadWriteOnce"],
+        "resources": { "requests": { "storage": "5Gi" } },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-5e8a0c24-7f19-4b3d-a6c2-3d9e1b7f5a04"
+      },
+      "status": { "phase": "Bound", "accessModes": ["ReadWriteOnce"], "capacity": { "storage": "5Gi" } }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "cache",
+        "namespace": "default",
+        "uid": "c1ecadb9-4717-4a95-bc9c-84ff73e0a01e",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "accessModes": ["ReadWriteOnce"],
+        "resources": { "requests": { "storage": "2Gi" } },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem",
+        "volumeName": "pvc-b2d9f604-1a85-4c7e-9d31-6e0c8a2b4f05"
+      },
+      "status": { "phase": "Bound", "accessModes": ["ReadWriteOnce"], "capacity": { "storage": "2Gi" } }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "reports-archive",
+        "namespace": "default",
+        "uid": "61c00a02-9807-8003-1156-b2ef27f67165",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "accessModes": ["ReadWriteOnce"],
+        "resources": { "requests": { "storage": "50Gi" } },
+        "storageClassName": "longhorn",
+        "volumeMode": "Filesystem"
+      },
+      "status": { "phase": "Pending" }
+    }
+  ]
+}

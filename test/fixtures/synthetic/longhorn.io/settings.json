@@ -1,0 +1,59 @@
+{
+  "apiVersion": "longhorn.io/v1beta2",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "name": "backup-target",
+        "namespace": "longhorn-system",
+        "uid": "d2567476-5f2b-3730-e326-8b9aa4ee3a90",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z"
+      },
+      "value": "nfs://nas.example.lan:/volume1/longhorn",
+      "status": { "applied": true }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "name": "default-replica-count",
+        "namespace": "longhorn-system",
+        "uid": "675b544f-e42c-6fdc-1f9e-9435e9c98004",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z"
+      },
+      "value": "{\"v1\":\"2\",\"v2\":\"2\"}",
+      "status": { "applied": true }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "name": "storage-minimal-available-percentage",
+        "namespace": "longhorn-system",
+        "uid": "712af380-b23b-d6ad-7ffb-a92dfa8055d2",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z"
+      },
+      "value": "25",
+      "status": { "applied": true }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Setting",
+      "metadata": {
+        "name": "backupstore-poll-interval",
+        "namespace": "longhorn-system",
+        "uid": "6fcf87ce-9309-9c99-f16f-7df0196876b7",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z"
+      },
+      "value": "300",
+      "status": { "applied": true }
+    }
+  ]
+}

@@ -1,0 +1,1255 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "annotations": {
+          "objectset.rio.cattle.io/applied": "REDACTED",
+          "objectset.rio.cattle.io/id": "fleet-manage-agent",
+          "objectset.rio.cattle.io/owner-gvk": "/v1, Kind=Namespace",
+          "objectset.rio.cattle.io/owner-name": "fleet-local",
+          "objectset.rio.cattle.io/owner-namespace": ""
+        },
+        "creationTimestamp": "2026-08-01T00:18:31Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 9,
+        "labels": {
+          "objectset.rio.cattle.io/hash": "2c708c6974cf00d8ca0d5c0f1706ab63548b55d2"
+        },
+        "name": "fleet-agent-local",
+        "namespace": "fleet-local",
+        "ownerReferences": [
+          {
+            "apiVersion": "v1",
+            "blockOwnerDeletion": false,
+            "controller": false,
+            "kind": "Namespace",
+            "name": "fleet-local",
+            "uid": "433c989a-a8bc-4da3-b6f6-db58881815ca"
+          }
+        ],
+        "resourceVersion": "26934998",
+        "uid": "8192454b-bec2-4832-a640-5f65a0ddfaca"
+      },
+      "spec": {
+        "defaultNamespace": "cattle-fleet-local-system",
+        "helm": {
+          "takeOwnership": true
+        },
+        "resources": [
+          {
+            "name": "agent.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targets": [
+          {
+            "clusterName": "local",
+            "clusterSelector": {
+              "matchExpressions": [
+                {
+                  "key": "fleet.cattle.io/non-managed-agent",
+                  "operator": "DoesNotExist"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-10-07T05:29:25Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 9,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "8485a5dc16708bb7c6c863f3d8b5710a8fba51dfddb8712ac22b4c69b6fca708",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 5,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-cattle-system",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960701",
+        "uid": "e34bc2f3-b43a-46f2-9875-89ee762c6b2e"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "rancher-certificate.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-08-01T18:52:24Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 5,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "b45f063c250321212bfbd1b916da8fea40d930e2f32dbdeb93ff10b73144acca",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 8,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-cluster",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960702",
+        "uid": "685c6a23-a43c-457b-a1db-643ebbab8f53"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "clusterissuer-letsencrypt.yaml"
+          },
+          {
+            "name": "pv-nas-media.yaml"
+          },
+          {
+            "name": "storageclass-nfs.yaml"
+          },
+          {
+            "name": "traefik-tlsstore.yaml"
+          },
+          {
+            "name": "wildcard-cert.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-10-05T19:59:41Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 8,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "656fc9d0bfe704584418289c4798713a77bf722edfde1475349dd90c38eddec2",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 30,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-code-server",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960744",
+        "uid": "a92b976d-2825-4ef8-9a2c-f7af952a43d3"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "code-server.yaml"
+          },
+          {
+            "name": "namespace.yaml"
+          },
+          {
+            "name": "oauth2-proxy.yaml"
+          },
+          {
+            "name": "project-launcher.yaml"
+          },
+          {
+            "name": "vscode-icons-configmap.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-10-07T05:29:27Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 30,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "7b1a430f70d735a74e9be58b284da82b685ec9b1d4652dc6c694c140b8719d00",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 5,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-deluge",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960705",
+        "uid": "6a4b04fa-a8c3-4cce-88ff-37165af0c9b8"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "namespace.yaml"
+          },
+          {
+            "name": "oauth2-proxy.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-08-02T03:25:54Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 5,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "8d28202cfde379dba061b207dd2441032e00ed5fa51b8e7e5c08c6f70d983e63",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 14,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-dns-resolver",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960709",
+        "uid": "3b566740-63e1-41a6-870f-97e0b776bdbd"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "coredns.yaml"
+          },
+          {
+            "name": "namespace.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-10-05T19:59:16Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 14,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "7d6ef77957194c5a7d9850200a4ca82169317397c7e1e851d7bc9463bd2bcbad",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-12T22:00:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 8,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-firefox",
+        "namespace": "fleet-local",
+        "resourceVersion": "26961955",
+        "uid": "57ba923a-7205-44ff-9252-faa7e6482d01"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "firefox.yaml"
+          },
+          {
+            "name": "namespace.yaml"
+          },
+          {
+            "name": "oauth2-proxy.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-10-07T06:49:44Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 8,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "4c625a3e3c3776a695e99bb6bb4abfc85e7c9d373b01846190ffbbaf65404138",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 8,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-git",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960713",
+        "uid": "4871c2b3-123a-4a69-8707-19eb1721dcc3"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "gitea-ingress.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-09-03T00:33:09Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 8,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "7e0398571f5a4f4b31aa3e9243577edafd04c7d0d75f2826d3db92c03fca45a4",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-14T09:01:57Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 4,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-headlamp",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960720",
+        "uid": "6ce6e054-3b4c-4f55-a41a-31504b4c40f3"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "headlamp.yaml"
+          },
+          {
+            "name": "namespace.yaml"
+          },
+          {
+            "name": "oauth2-proxy.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-08-31T05:19:16Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 4,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "e2bffef371a9739a621eedc4f4678693cc5c47b2a48409f03f9ba25179cac51a",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 8,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-media",
+        "namespace": "fleet-local",
+        "resourceVersion": "26962308",
+        "uid": "1828470d-d9fa-4b52-92a2-569c35564043"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "deploy.sh"
+          },
+          {
+            "name": "namespace.yaml"
+          },
+          {
+            "name": "nas-shares.yaml"
+          },
+          {
+            "name": "plex-private.yaml"
+          },
+          {
+            "name": "plex.yaml"
+          },
+          {
+            "name": "prowlarr.yaml"
+          },
+          {
+            "name": "sonarr.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-10-07T06:50:38Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 8,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "99007c0cb16949bd0d8262f9a49cf0575f71913d95828b048964f7c1e91b6036",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 6,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-nas",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960724",
+        "uid": "67d0de04-5ef5-4883-b67e-5e67cdb01369"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "namespace.yaml"
+          },
+          {
+            "name": "oauth2-proxy.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-08-31T05:19:04Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 6,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "077d7a160bc184764f614f9a8a095a8988205249b71ce35f91d3846c50c5a4a9",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 5,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-portainer",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960726",
+        "uid": "4f6102da-822e-44b6-8fc9-7dbb70534df2"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "namespace.yaml"
+          },
+          {
+            "name": "oauth2-proxy.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-10-05T20:20:59Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 5,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "e4b1e5bd9f0a4a56f7a2209bfb3df8a78f0c495c75c476d5d1c6cf981de59a20",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 17,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-portal",
+        "namespace": "fleet-local",
+        "resourceVersion": "26961228",
+        "uid": "ed73b4b2-6025-416a-bf07-d1cf7d190809"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "guacamole.yaml"
+          },
+          {
+            "name": "homarr.yaml"
+          },
+          {
+            "name": "homepage-router.yaml"
+          },
+          {
+            "name": "homepage.yaml"
+          },
+          {
+            "name": "install.sh"
+          },
+          {
+            "name": "moonlight-web.yaml"
+          },
+          {
+            "name": "namespace.yaml"
+          },
+          {
+            "name": "oauth2-proxy.yaml"
+          },
+          {
+            "name": "seed-homarr.sh"
+          },
+          {
+            "name": "wake-desktop.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-10-07T06:48:04Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 17,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "caa908a0b189f3bc5d7739d721e5336821a8b57a778200ce552e199087a1a185",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:13Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 5,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-proxmox",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960729",
+        "uid": "4ed48720-94dd-4eb2-a20f-622181e1d6c6"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "namespace.yaml"
+          },
+          {
+            "name": "oauth2-proxy.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-08-31T05:19:04Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 5,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "44adf032e784a14c84e32d28ea4d89573e96a7497d646663faaad51fe0167db3",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 5,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-termix",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960728",
+        "uid": "da5505fa-caaf-4bd0-b454-c4044212774d"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "namespace.yaml"
+          },
+          {
+            "name": "oauth2-proxy.yaml"
+          },
+          {
+            "name": "termix.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-10-05T20:21:33Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 5,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "7c05f917a98ad5c9e477c7d2c5ced5ebf1b48b7e484af0466287b460c720addb",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    },
+    {
+      "apiVersion": "fleet.cattle.io/v1alpha1",
+      "kind": "Bundle",
+      "metadata": {
+        "creationTimestamp": "2026-08-01T18:38:12Z",
+        "finalizers": [
+          "fleet.cattle.io/bundle-finalizer"
+        ],
+        "generation": 5,
+        "labels": {
+          "fleet.cattle.io/commit": "b4a1296eada3a2eb24b87687dfc5848782f6a576",
+          "fleet.cattle.io/repo-name": "scripts"
+        },
+        "name": "scripts-k3s-manifests-unifi",
+        "namespace": "fleet-local",
+        "resourceVersion": "26960730",
+        "uid": "8e9eb004-8188-40bb-9953-4a57f9b8f56b"
+      },
+      "spec": {
+        "resources": [
+          {
+            "name": "namespace.yaml"
+          },
+          {
+            "name": "oauth2-proxy.yaml"
+          }
+        ],
+        "targetCustomizationMode": "FirstMatch",
+        "targetRestrictions": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ],
+        "targets": [
+          {
+            "clusterGroup": "default",
+            "name": "default"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastUpdateTime": "2026-08-31T05:19:04Z",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "display": {
+          "readyClusters": "1/1"
+        },
+        "maxUnavailable": 1,
+        "observedGeneration": 5,
+        "partitions": [
+          {
+            "count": 1,
+            "maxUnavailable": 1,
+            "name": "All",
+            "summary": {
+              "desiredReady": 1,
+              "ready": 1
+            }
+          }
+        ],
+        "resourcesSha256Sum": "f12b79962c434978a349e011bef90186583d4a0381c4caed1f613582ce6fac9a",
+        "summary": {
+          "desiredReady": 1,
+          "ready": 1
+        },
+        "unavailable": 0
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

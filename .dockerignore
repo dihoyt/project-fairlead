@@ -1,0 +1,16 @@
+.git
+.github
+node_modules
+client/node_modules
+dist
+public
+data
+.env
+*.db
+*.db-shm
+*.db-wal
+fixtures-*.tar.gz
+chart
+deploy
+docs
+test

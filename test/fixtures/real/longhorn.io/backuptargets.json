@@ -1,0 +1,45 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupTarget",
+      "metadata": {
+        "creationTimestamp": "2026-08-29T00:17:02Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 17112,
+        "name": "default",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27252002",
+        "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+      },
+      "spec": {
+        "backupTargetURL": "nfs://nas.example.lan:/volume1/backups",
+        "credentialSecret": "",
+        "pollInterval": "5m0s",
+        "syncRequestedAt": "2026-10-07T20:09:47Z"
+      },
+      "status": {
+        "available": true,
+        "conditions": [
+          {
+            "lastProbeTime": "",
+            "lastTransitionTime": "2026-08-31T22:16:13Z",
+            "message": "",
+            "reason": "",
+            "status": "False",
+            "type": "Unavailable"
+          }
+        ],
+        "lastSyncedAt": "2026-10-07T20:09:47Z",
+        "ownerID": "server-1"
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

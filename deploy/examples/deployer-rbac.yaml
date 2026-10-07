@@ -1,0 +1,58 @@
+# One-time setup for the ServiceAccount the deploy workflow's kubeconfig uses.
+#   NAMESPACE=console RELEASE=console envsubst < deployer-rbac.yaml | kubectl apply -f -
+# It administers its own namespace. The chart's cluster-scoped read-only role
+# is the one thing a namespace cannot hold, so the deployer may manage exactly
+# the cluster role and binding named "<namespace>-<release>"; because it can
+# only create RBAC it holds itself, it is also granted `escalate` and `bind`
+# on that one name. That is the widest thing this grants: review it.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${NAMESPACE}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployer
+  namespace: ${NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: deployer
+  namespace: ${NAMESPACE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+  - kind: ServiceAccount
+    name: deployer
+    namespace: ${NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ${NAMESPACE}-${RELEASE}-deployer
+rules:
+  # create cannot be limited by name; the other verbs can.
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [clusterroles, clusterrolebindings]
+    verbs: [create]
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [clusterroles, clusterrolebindings]
+    resourceNames: ["${NAMESPACE}-${RELEASE}"]
+    verbs: [get, update, patch, delete, escalate, bind]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ${NAMESPACE}-${RELEASE}-deployer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ${NAMESPACE}-${RELEASE}-deployer
+subjects:
+  - kind: ServiceAccount
+    name: deployer
+    namespace: ${NAMESPACE}

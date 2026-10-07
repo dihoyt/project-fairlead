@@ -1,0 +1,73 @@
+{
+  "apiVersion": "longhorn.io/v1beta2",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupTarget",
+      "metadata": {
+        "name": "default",
+        "namespace": "longhorn-system",
+        "uid": "308e9906-f02e-34c7-6572-c4115e84eead",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "finalizers": ["longhorn.io"]
+      },
+      "spec": {
+        "backupTargetURL": "nfs://nas.example.lan:/volume1/longhorn",
+        "credentialSecret": "",
+        "pollInterval": "5m0s",
+        "syncRequestedAt": null
+      },
+      "status": {
+        "available": true,
+        "lastSyncedAt": "2026-10-07T11:58:00.000Z",
+        "ownerID": "cp-1",
+        "conditions": [
+          {
+            "type": "Unavailable",
+            "status": "False",
+            "reason": "",
+            "message": "",
+            "lastTransitionTime": "2026-08-08T12:00:00.000Z",
+            "lastProbeTime": ""
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupTarget",
+      "metadata": {
+        "name": "offsite",
+        "namespace": "longhorn-system",
+        "uid": "d0bddd61-96da-f4aa-fc0b-4c46b3dcbaa7",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "finalizers": ["longhorn.io"]
+      },
+      "spec": {
+        "backupTargetURL": "s3://offsite-backups@eu-west-1/longhorn",
+        "credentialSecret": "offsite-credentials",
+        "pollInterval": "5m0s",
+        "syncRequestedAt": null
+      },
+      "status": {
+        "available": false,
+        "lastSyncedAt": "2026-10-06T12:00:00.000Z",
+        "ownerID": "cp-1",
+        "conditions": [
+          {
+            "type": "Unavailable",
+            "status": "True",
+            "reason": "BackupTargetError",
+            "message": "failed to execute: /engine-binaries/longhorn [backup ls], output Error: AWS Error: AccessDenied status code: 403",
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z",
+            "lastProbeTime": ""
+          }
+        ]
+      }
+    }
+  ]
+}

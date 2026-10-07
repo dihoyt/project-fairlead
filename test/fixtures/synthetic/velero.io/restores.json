@@ -1,0 +1,32 @@
+{
+  "apiVersion": "velero.io/v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "velero.io/v1",
+      "kind": "Restore",
+      "metadata": {
+        "name": "restore-databases-20260930",
+        "namespace": "velero",
+        "uid": "2b382123-4818-87e0-49b6-e9cbfc05a276",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-30T12:00:00.000Z",
+        "finalizers": ["restores.velero.io/external-resources-finalizer"]
+      },
+      "spec": {
+        "backupName": "daily-databases-20260929-020011",
+        "includedNamespaces": ["databases"],
+        "itemOperationTimeout": "4h0m0s",
+        "namespaceMapping": { "databases": "databases-restore-test" }
+      },
+      "status": {
+        "phase": "Completed",
+        "startTimestamp": "2026-09-30T12:00:00.000Z",
+        "completionTimestamp": "2026-09-30T12:05:00.000Z",
+        "progress": { "totalItems": 64, "itemsRestored": 64 },
+        "warnings": 2
+      }
+    }
+  ]
+}

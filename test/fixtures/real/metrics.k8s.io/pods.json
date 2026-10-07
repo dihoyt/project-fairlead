@@ -1,0 +1,2572 @@
+{
+  "kind": "PodMetricsList",
+  "apiVersion": "metrics.k8s.io/v1beta1",
+  "metadata": {},
+  "items": [
+    {
+      "metadata": {
+        "name": "beszel-75d4c746b7-rdjd7",
+        "namespace": "beszel",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "beszel",
+          "pod-template-hash": "75d4c746b7"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:20Z",
+      "window": "12.34s",
+      "containers": [
+        {
+          "name": "beszel",
+          "usage": {
+            "cpu": "433792n",
+            "memory": "47296Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-64457dfc9-v9zhs",
+        "namespace": "beszel",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "64457dfc9"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:12Z",
+      "window": "15.467s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "24439n",
+            "memory": "9708Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "capi-controller-manager-754dcdb8b9-5zbj7",
+        "namespace": "cattle-capi-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "cluster.x-k8s.io/provider": "cluster-api",
+          "control-plane": "controller-manager",
+          "pod-template-hash": "754dcdb8b9"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:22Z",
+      "window": "19.538s",
+      "containers": [
+        {
+          "name": "manager",
+          "usage": {
+            "cpu": "3972310n",
+            "memory": "61780Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "fleet-agent-5cdb98c6fc-7cqjb",
+        "namespace": "cattle-fleet-local-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "fleet-agent",
+          "pod-template-hash": "5cdb98c6fc"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:13Z",
+      "window": "18.47s",
+      "containers": [
+        {
+          "name": "fleet-agent",
+          "usage": {
+            "cpu": "749539n",
+            "memory": "59Mi"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "fleet-controller-785f8cff97-ggcb6",
+        "namespace": "cattle-fleet-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "fleet-controller",
+          "fleet.cattle.io/shard-default": "true",
+          "fleet.cattle.io/shard-id": "",
+          "pod-template-hash": "785f8cff97"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:13Z",
+      "window": "10.324s",
+      "containers": [
+        {
+          "name": "fleet-agentmanagement",
+          "usage": {
+            "cpu": "1540646n",
+            "memory": "44292Ki"
+          }
+        },
+        {
+          "name": "fleet-cleanup",
+          "usage": {
+            "cpu": "1097345n",
+            "memory": "38208Ki"
+          }
+        },
+        {
+          "name": "fleet-controller",
+          "usage": {
+            "cpu": "1211687n",
+            "memory": "61160Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "gitjob-6c65d4f7fd-6k2j2",
+        "namespace": "cattle-fleet-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "gitjob",
+          "fleet.cattle.io/shard-default": "true",
+          "fleet.cattle.io/shard-id": "",
+          "pod-template-hash": "6c65d4f7fd"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:15Z",
+      "window": "15.134s",
+      "containers": [
+        {
+          "name": "gitjob",
+          "usage": {
+            "cpu": "1812210n",
+            "memory": "77288Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "helmops-568b8774b8-6zfmm",
+        "namespace": "cattle-fleet-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "helmops",
+          "fleet.cattle.io/shard-default": "true",
+          "fleet.cattle.io/shard-id": "",
+          "pod-template-hash": "568b8774b8"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:21Z",
+      "window": "13.905s",
+      "containers": [
+        {
+          "name": "helmops",
+          "usage": {
+            "cpu": "898885n",
+            "memory": "42568Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "rancher-78759786b9-j2pcf",
+        "namespace": "cattle-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "rancher",
+          "pod-template-hash": "78759786b9",
+          "release": "rancher"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:12Z",
+      "window": "15.102s",
+      "containers": [
+        {
+          "name": "rancher",
+          "usage": {
+            "cpu": "25693616n",
+            "memory": "1100936Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "rancher-webhook-7f8fd7c7c7-j7sjc",
+        "namespace": "cattle-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "rancher-webhook",
+          "pod-template-hash": "7f8fd7c7c7"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:15Z",
+      "window": "12.139s",
+      "containers": [
+        {
+          "name": "rancher-webhook",
+          "usage": {
+            "cpu": "1258423n",
+            "memory": "83432Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "system-upgrade-controller-5dc7c44677-kmtkt",
+        "namespace": "cattle-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app.kubernetes.io/component": "controller",
+          "app.kubernetes.io/name": "system-upgrade-controller",
+          "pod-template-hash": "5dc7c44677",
+          "upgrade.cattle.io/controller": "system-upgrade-controller"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:21Z",
+      "window": "19.247s",
+      "containers": [
+        {
+          "name": "system-upgrade-controller",
+          "usage": {
+            "cpu": "671741n",
+            "memory": "57740Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "rancher-turtles-controller-manager-bcc676864-bwqgh",
+        "namespace": "cattle-turtles-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "control-plane": "controller-manager",
+          "pod-template-hash": "bcc676864"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:15Z",
+      "window": "18.42s",
+      "containers": [
+        {
+          "name": "manager",
+          "usage": {
+            "cpu": "9314006n",
+            "memory": "94760Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "cert-manager-689c4c5575-v79xz",
+        "namespace": "cert-manager",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "cert-manager",
+          "app.kubernetes.io/component": "controller",
+          "app.kubernetes.io/instance": "cert-manager",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "cert-manager",
+          "app.kubernetes.io/version": "v1.21.1",
+          "helm.sh/chart": "cert-manager-v1.21.1",
+          "pod-template-hash": "689c4c5575"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:17Z",
+      "window": "10.848s",
+      "containers": [
+        {
+          "name": "cert-manager-controller",
+          "usage": {
+            "cpu": "597529n",
+            "memory": "95448Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "cert-manager-cainjector-6fbb9c8cd6-26smh",
+        "namespace": "cert-manager",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "cainjector",
+          "app.kubernetes.io/component": "cainjector",
+          "app.kubernetes.io/instance": "cert-manager",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "cainjector",
+          "app.kubernetes.io/version": "v1.21.1",
+          "helm.sh/chart": "cert-manager-v1.21.1",
+          "pod-template-hash": "6fbb9c8cd6"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:11Z",
+      "window": "18.453s",
+      "containers": [
+        {
+          "name": "cert-manager-cainjector",
+          "usage": {
+            "cpu": "844632n",
+            "memory": "61032Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "cert-manager-webhook-646c95c5ff-6bbcr",
+        "namespace": "cert-manager",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "webhook",
+          "app.kubernetes.io/component": "webhook",
+          "app.kubernetes.io/instance": "cert-manager",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "webhook",
+          "app.kubernetes.io/version": "v1.21.1",
+          "helm.sh/chart": "cert-manager-v1.21.1",
+          "pod-template-hash": "646c95c5ff"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:23Z",
+      "window": "23.137s",
+      "containers": [
+        {
+          "name": "cert-manager-webhook",
+          "usage": {
+            "cpu": "751998n",
+            "memory": "66592Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "act-runner-5964754f7d-j75h8",
+        "namespace": "ci",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "act-runner",
+          "pod-template-hash": "5964754f7d"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:08Z",
+      "window": "26.357s",
+      "containers": [
+        {
+          "name": "runner",
+          "usage": {
+            "cpu": "263308n",
+            "memory": "8584Ki"
+          }
+        },
+        {
+          "name": "dind",
+          "usage": {
+            "cpu": "577190n",
+            "memory": "911760Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "registry-7cc64dcc69-64tk2",
+        "namespace": "ci",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "registry",
+          "pod-template-hash": "7cc64dcc69"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:20Z",
+      "window": "21.114s",
+      "containers": [
+        {
+          "name": "registry",
+          "usage": {
+            "cpu": "203514n",
+            "memory": "23036Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "cloudflared-5466b97877-d946v",
+        "namespace": "cloudflare-tunnel",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "cloudflared",
+          "pod-template-hash": "5466b97877"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:22Z",
+      "window": "20.888s",
+      "containers": [
+        {
+          "name": "cloudflared",
+          "usage": {
+            "cpu": "11175411n",
+            "memory": "58020Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "code-server-7d6cf6fbc9-mk54j",
+        "namespace": "code-server",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "code-server",
+          "pod-template-hash": "7d6cf6fbc9"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:17Z",
+      "window": "16.283s",
+      "containers": [
+        {
+          "name": "code-server",
+          "usage": {
+            "cpu": "69729779n",
+            "memory": "2087728Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-7467699d4b-j7mf5",
+        "namespace": "code-server",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "7467699d4b"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:15Z",
+      "window": "11.52s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "805989n",
+            "memory": "9948Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "project-launcher-bc77f6f4d-2m6t6",
+        "namespace": "code-server",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "project-launcher",
+          "pod-template-hash": "bc77f6f4d"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:14Z",
+      "window": "19.408s",
+      "containers": [
+        {
+          "name": "project-launcher",
+          "usage": {
+            "cpu": "141900n",
+            "memory": "18660Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "coder-console-b488f7867-94b9d",
+        "namespace": "coder-console",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app.kubernetes.io/instance": "coder-console",
+          "app.kubernetes.io/name": "coder-console",
+          "pod-template-hash": "b488f7867"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:11Z",
+      "window": "19.334s",
+      "containers": [
+        {
+          "name": "coder-console",
+          "usage": {
+            "cpu": "849746n",
+            "memory": "80032Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "ws-2-69597cbb7c-pr5lj",
+        "namespace": "coder-workspaces",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app.kubernetes.io/managed-by": "coder-console",
+          "app.kubernetes.io/name": "coder-workspace",
+          "coder-console.io/owner": "owner.example.com",
+          "coder-console.io/workspace": "ws-2",
+          "pod-template-hash": "69597cbb7c"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:13Z",
+      "window": "15.696s",
+      "containers": [
+        {
+          "name": "workspace",
+          "usage": {
+            "cpu": "179503886n",
+            "memory": "1717580Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-8799c948b-zsd5d",
+        "namespace": "deluge",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "8799c948b"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:11Z",
+      "window": "15.948s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "0",
+            "memory": "8248Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "coredns-lan-gm6z9",
+        "namespace": "dns-resolver",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "coredns-lan",
+          "controller-revision-hash": "6bbcbcc56",
+          "pod-template-generation": "5"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:19Z",
+      "window": "14.307s",
+      "containers": [
+        {
+          "name": "coredns",
+          "usage": {
+            "cpu": "255329n",
+            "memory": "65572Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "coredns-lan-lwm7x",
+        "namespace": "dns-resolver",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "coredns-lan",
+          "controller-revision-hash": "6bbcbcc56",
+          "pod-template-generation": "5"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:11Z",
+      "window": "12.86s",
+      "containers": [
+        {
+          "name": "coredns",
+          "usage": {
+            "cpu": "208087n",
+            "memory": "66388Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "coredns-lan-pmcs9",
+        "namespace": "dns-resolver",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "coredns-lan",
+          "controller-revision-hash": "6bbcbcc56",
+          "pod-template-generation": "5"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:05Z",
+      "window": "16.126s",
+      "containers": [
+        {
+          "name": "coredns",
+          "usage": {
+            "cpu": "182190n",
+            "memory": "25164Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "firefox-59c99c59f-2rwbc",
+        "namespace": "firefox",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "firefox",
+          "pod-template-hash": "59c99c59f"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:12Z",
+      "window": "12.364s",
+      "containers": [
+        {
+          "name": "firefox",
+          "usage": {
+            "cpu": "65405127n",
+            "memory": "1727820Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-65cb954f85-vvvnd",
+        "namespace": "firefox",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "65cb954f85"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:13Z",
+      "window": "16.354s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "0",
+            "memory": "8676Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "dragonwilds-747cb6cdc8-jv9wx",
+        "namespace": "games",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "dragonwilds",
+          "pod-template-hash": "747cb6cdc8"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:13Z",
+      "window": "16.956s",
+      "containers": [
+        {
+          "name": "dragonwilds",
+          "usage": {
+            "cpu": "68447334n",
+            "memory": "1484008Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "game-panel-6c579979b8-kq4tv",
+        "namespace": "games",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "game-panel",
+          "pod-template-hash": "6c579979b8"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:21Z",
+      "window": "15.523s",
+      "containers": [
+        {
+          "name": "game-panel",
+          "usage": {
+            "cpu": "5055401n",
+            "memory": "101428Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "noip-duc-f557b7867-jr5sk",
+        "namespace": "games",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "noip-duc",
+          "pod-template-hash": "f557b7867"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:14Z",
+      "window": "16.365s",
+      "containers": [
+        {
+          "name": "noip-duc",
+          "usage": {
+            "cpu": "0",
+            "memory": "6332Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "gitea-6c8cf9c545-nv9td",
+        "namespace": "git",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "gitea",
+          "app.kubernetes.io/instance": "gitea",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "gitea",
+          "app.kubernetes.io/version": "1.27.0",
+          "helm.sh/chart": "gitea-12.7.0",
+          "pod-template-hash": "6c8cf9c545",
+          "version": "1.27.0"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:21Z",
+      "window": "14.32s",
+      "containers": [
+        {
+          "name": "gitea",
+          "usage": {
+            "cpu": "9883729n",
+            "memory": "175916Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "gitea-valkey-cluster-0",
+        "namespace": "git",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app.kubernetes.io/instance": "gitea",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "valkey-cluster",
+          "app.kubernetes.io/version": "8.1.3",
+          "apps.kubernetes.io/pod-index": "0",
+          "controller-revision-hash": "gitea-valkey-cluster-75b9b7667b",
+          "helm.sh/chart": "valkey-cluster-3.0.24",
+          "statefulset.kubernetes.io/pod-name": "gitea-valkey-cluster-0"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:21Z",
+      "window": "13.387s",
+      "containers": [
+        {
+          "name": "gitea-valkey-cluster",
+          "usage": {
+            "cpu": "31510943n",
+            "memory": "20416Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "gitea-valkey-cluster-1",
+        "namespace": "git",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app.kubernetes.io/instance": "gitea",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "valkey-cluster",
+          "app.kubernetes.io/version": "8.1.3",
+          "apps.kubernetes.io/pod-index": "1",
+          "controller-revision-hash": "gitea-valkey-cluster-75b9b7667b",
+          "helm.sh/chart": "valkey-cluster-3.0.24",
+          "statefulset.kubernetes.io/pod-name": "gitea-valkey-cluster-1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:20Z",
+      "window": "27.651s",
+      "containers": [
+        {
+          "name": "gitea-valkey-cluster",
+          "usage": {
+            "cpu": "25515026n",
+            "memory": "12208Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "gitea-valkey-cluster-2",
+        "namespace": "git",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app.kubernetes.io/instance": "gitea",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "valkey-cluster",
+          "app.kubernetes.io/version": "8.1.3",
+          "apps.kubernetes.io/pod-index": "2",
+          "controller-revision-hash": "gitea-valkey-cluster-75b9b7667b",
+          "helm.sh/chart": "valkey-cluster-3.0.24",
+          "statefulset.kubernetes.io/pod-name": "gitea-valkey-cluster-2"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:21Z",
+      "window": "19.518s",
+      "containers": [
+        {
+          "name": "gitea-valkey-cluster",
+          "usage": {
+            "cpu": "26530484n",
+            "memory": "13068Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "headlamp-644dd5544b-r59zx",
+        "namespace": "headlamp",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "headlamp",
+          "pod-template-hash": "644dd5544b"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:21Z",
+      "window": "13.709s",
+      "containers": [
+        {
+          "name": "headlamp",
+          "usage": {
+            "cpu": "219563n",
+            "memory": "22016Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-7ddcd654cf-95p9g",
+        "namespace": "headlamp",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "7ddcd654cf"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:07Z",
+      "window": "27.558s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "0",
+            "memory": "7612Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "coredns-5f5694d56b-7546s",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "k8s-app": "kube-dns",
+          "pod-template-hash": "5f5694d56b"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:13Z",
+      "window": "10.307s",
+      "containers": [
+        {
+          "name": "coredns",
+          "usage": {
+            "cpu": "2527602n",
+            "memory": "80900Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-nfs-controller-784c4495cc-6k6m5",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-nfs-controller",
+          "app.kubernetes.io/instance": "csi-driver-nfs",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "csi-driver-nfs",
+          "app.kubernetes.io/version": "4.13.4",
+          "helm.sh/chart": "csi-driver-nfs-4.13.4",
+          "pod-template-hash": "784c4495cc"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:17Z",
+      "window": "17.199s",
+      "containers": [
+        {
+          "name": "nfs",
+          "usage": {
+            "cpu": "76082n",
+            "memory": "10424Ki"
+          }
+        },
+        {
+          "name": "csi-provisioner",
+          "usage": {
+            "cpu": "2651607n",
+            "memory": "73892Ki"
+          }
+        },
+        {
+          "name": "csi-resizer",
+          "usage": {
+            "cpu": "2351894n",
+            "memory": "66968Ki"
+          }
+        },
+        {
+          "name": "csi-snapshotter",
+          "usage": {
+            "cpu": "2846314n",
+            "memory": "33252Ki"
+          }
+        },
+        {
+          "name": "liveness-probe",
+          "usage": {
+            "cpu": "150145n",
+            "memory": "7680Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-nfs-node-fwz8t",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-nfs-node",
+          "app.kubernetes.io/instance": "csi-driver-nfs",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "csi-driver-nfs",
+          "app.kubernetes.io/version": "4.13.4",
+          "controller-revision-hash": "5fd459c695",
+          "helm.sh/chart": "csi-driver-nfs-4.13.4",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:12Z",
+      "window": "18.748s",
+      "containers": [
+        {
+          "name": "liveness-probe",
+          "usage": {
+            "cpu": "176018n",
+            "memory": "21412Ki"
+          }
+        },
+        {
+          "name": "nfs",
+          "usage": {
+            "cpu": "353167n",
+            "memory": "47108Ki"
+          }
+        },
+        {
+          "name": "node-driver-registrar",
+          "usage": {
+            "cpu": "793224n",
+            "memory": "10788Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-nfs-node-rw5pt",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-nfs-node",
+          "app.kubernetes.io/instance": "csi-driver-nfs",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "csi-driver-nfs",
+          "app.kubernetes.io/version": "4.13.4",
+          "controller-revision-hash": "5fd459c695",
+          "helm.sh/chart": "csi-driver-nfs-4.13.4",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:11Z",
+      "window": "13.894s",
+      "containers": [
+        {
+          "name": "liveness-probe",
+          "usage": {
+            "cpu": "240373n",
+            "memory": "21116Ki"
+          }
+        },
+        {
+          "name": "nfs",
+          "usage": {
+            "cpu": "160036n",
+            "memory": "45348Ki"
+          }
+        },
+        {
+          "name": "node-driver-registrar",
+          "usage": {
+            "cpu": "669353n",
+            "memory": "21984Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-nfs-node-zh9xv",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-nfs-node",
+          "app.kubernetes.io/instance": "csi-driver-nfs",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "csi-driver-nfs",
+          "app.kubernetes.io/version": "4.13.4",
+          "controller-revision-hash": "5fd459c695",
+          "helm.sh/chart": "csi-driver-nfs-4.13.4",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:06Z",
+      "window": "29.133s",
+      "containers": [
+        {
+          "name": "liveness-probe",
+          "usage": {
+            "cpu": "34149n",
+            "memory": "17648Ki"
+          }
+        },
+        {
+          "name": "nfs",
+          "usage": {
+            "cpu": "264064n",
+            "memory": "24732Ki"
+          }
+        },
+        {
+          "name": "node-driver-registrar",
+          "usage": {
+            "cpu": "1113035n",
+            "memory": "20248Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "local-path-provisioner-58d557dc48-chkkr",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "local-path-provisioner",
+          "pod-template-hash": "58d557dc48"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:19Z",
+      "window": "17.972s",
+      "containers": [
+        {
+          "name": "local-path-provisioner",
+          "usage": {
+            "cpu": "84409n",
+            "memory": "52436Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "metrics-server-7c86f97b8d-mp4hm",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "k8s-app": "metrics-server",
+          "pod-template-hash": "7c86f97b8d"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:22Z",
+      "window": "16.765s",
+      "containers": [
+        {
+          "name": "metrics-server",
+          "usage": {
+            "cpu": "6610020n",
+            "memory": "86308Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "nvidia-device-plugin-daemonset-2k2zv",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "controller-revision-hash": "79f775944c",
+          "name": "nvidia-device-plugin-ds",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:13Z",
+      "window": "16.262s",
+      "containers": [
+        {
+          "name": "nvidia-device-plugin-ctr",
+          "usage": {
+            "cpu": "5103n",
+            "memory": "20944Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "nvidia-device-plugin-daemonset-qrmcj",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "controller-revision-hash": "79f775944c",
+          "name": "nvidia-device-plugin-ds",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:22Z",
+      "window": "36.942s",
+      "containers": [
+        {
+          "name": "nvidia-device-plugin-ctr",
+          "usage": {
+            "cpu": "7146n",
+            "memory": "13376Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "nvidia-device-plugin-daemonset-srgm6",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "controller-revision-hash": "79f775944c",
+          "name": "nvidia-device-plugin-ds",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:07Z",
+      "window": "19.069s",
+      "containers": [
+        {
+          "name": "nvidia-device-plugin-ctr",
+          "usage": {
+            "cpu": "0",
+            "memory": "21064Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "svclb-traefik-d082328f-2cppr",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "svclb-traefik-d082328f",
+          "controller-revision-hash": "685664b578",
+          "pod-template-generation": "1",
+          "svccontroller.k3s.cattle.io/svcname": "traefik",
+          "svccontroller.k3s.cattle.io/svcnamespace": "kube-system"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:02Z",
+      "window": "15.608s",
+      "containers": [
+        {
+          "name": "lb-tcp-443",
+          "usage": {
+            "cpu": "0",
+            "memory": "320Ki"
+          }
+        },
+        {
+          "name": "lb-tcp-80",
+          "usage": {
+            "cpu": "0",
+            "memory": "2076Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "svclb-traefik-d082328f-mhx7d",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "svclb-traefik-d082328f",
+          "controller-revision-hash": "685664b578",
+          "pod-template-generation": "1",
+          "svccontroller.k3s.cattle.io/svcname": "traefik",
+          "svccontroller.k3s.cattle.io/svcnamespace": "kube-system"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:06Z",
+      "window": "15.261s",
+      "containers": [
+        {
+          "name": "lb-tcp-80",
+          "usage": {
+            "cpu": "0",
+            "memory": "1260Ki"
+          }
+        },
+        {
+          "name": "lb-tcp-443",
+          "usage": {
+            "cpu": "0",
+            "memory": "1152Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "svclb-traefik-d082328f-nzm4t",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "svclb-traefik-d082328f",
+          "controller-revision-hash": "685664b578",
+          "pod-template-generation": "1",
+          "svccontroller.k3s.cattle.io/svcname": "traefik",
+          "svccontroller.k3s.cattle.io/svcnamespace": "kube-system"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:13Z",
+      "window": "21.052s",
+      "containers": [
+        {
+          "name": "lb-tcp-443",
+          "usage": {
+            "cpu": "0",
+            "memory": "484Ki"
+          }
+        },
+        {
+          "name": "lb-tcp-80",
+          "usage": {
+            "cpu": "0",
+            "memory": "1628Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "traefik-6cd8c7cd89-2slfr",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app.kubernetes.io/instance": "traefik-kube-system",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "traefik",
+          "helm.sh/chart": "traefik-40.1.3_up40.1.0",
+          "pod-template-hash": "6cd8c7cd89"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:19Z",
+      "window": "26.827s",
+      "containers": [
+        {
+          "name": "traefik",
+          "usage": {
+            "cpu": "5380325n",
+            "memory": "50624Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-attacher-866df4b764-fgfzw",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-attacher",
+          "pod-template-hash": "866df4b764"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:21Z",
+      "window": "13.973s",
+      "containers": [
+        {
+          "name": "csi-attacher",
+          "usage": {
+            "cpu": "886996n",
+            "memory": "42916Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-attacher-866df4b764-phdns",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-attacher",
+          "pod-template-hash": "866df4b764"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:13Z",
+      "window": "15.492s",
+      "containers": [
+        {
+          "name": "csi-attacher",
+          "usage": {
+            "cpu": "775174n",
+            "memory": "64108Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-attacher-866df4b764-qdk7d",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-attacher",
+          "pod-template-hash": "866df4b764"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:11Z",
+      "window": "15.724s",
+      "containers": [
+        {
+          "name": "csi-attacher",
+          "usage": {
+            "cpu": "638323n",
+            "memory": "37704Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-provisioner-5c696f97cd-76wzd",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-provisioner",
+          "pod-template-hash": "5c696f97cd"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:20Z",
+      "window": "18.989s",
+      "containers": [
+        {
+          "name": "csi-provisioner",
+          "usage": {
+            "cpu": "1537416n",
+            "memory": "63512Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-provisioner-5c696f97cd-nkkg6",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-provisioner",
+          "pod-template-hash": "5c696f97cd"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:05Z",
+      "window": "30.955s",
+      "containers": [
+        {
+          "name": "csi-provisioner",
+          "usage": {
+            "cpu": "1472879n",
+            "memory": "34920Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-provisioner-5c696f97cd-nw4qn",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-provisioner",
+          "pod-template-hash": "5c696f97cd"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:10Z",
+      "window": "17.051s",
+      "containers": [
+        {
+          "name": "csi-provisioner",
+          "usage": {
+            "cpu": "1271069n",
+            "memory": "32608Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-resizer-7dd456f456-68j49",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-resizer",
+          "pod-template-hash": "7dd456f456"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:23Z",
+      "window": "16.729s",
+      "containers": [
+        {
+          "name": "csi-resizer",
+          "usage": {
+            "cpu": "651622n",
+            "memory": "61500Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-resizer-7dd456f456-jt2q2",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-resizer",
+          "pod-template-hash": "7dd456f456"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:23Z",
+      "window": "17.186s",
+      "containers": [
+        {
+          "name": "csi-resizer",
+          "usage": {
+            "cpu": "677179n",
+            "memory": "39280Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-resizer-7dd456f456-ls75h",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-resizer",
+          "pod-template-hash": "7dd456f456"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:11Z",
+      "window": "16.915s",
+      "containers": [
+        {
+          "name": "csi-resizer",
+          "usage": {
+            "cpu": "487496n",
+            "memory": "40060Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-snapshotter-7997dc5fcd-4qdv7",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-snapshotter",
+          "pod-template-hash": "7997dc5fcd"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:23Z",
+      "window": "25.86s",
+      "containers": [
+        {
+          "name": "csi-snapshotter",
+          "usage": {
+            "cpu": "598762n",
+            "memory": "64292Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-snapshotter-7997dc5fcd-78z9l",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-snapshotter",
+          "pod-template-hash": "7997dc5fcd"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:23Z",
+      "window": "15.869s",
+      "containers": [
+        {
+          "name": "csi-snapshotter",
+          "usage": {
+            "cpu": "502426n",
+            "memory": "10984Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "csi-snapshotter-7997dc5fcd-fmpbk",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "csi-snapshotter",
+          "pod-template-hash": "7997dc5fcd"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:11Z",
+      "window": "17.24s",
+      "containers": [
+        {
+          "name": "csi-snapshotter",
+          "usage": {
+            "cpu": "3067401n",
+            "memory": "12616Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "engine-image-ei-493e04e7-cbxrx",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "controller-revision-hash": "d5bcd54dc",
+          "longhorn.io/component": "engine-image",
+          "longhorn.io/engine-image": "ei-493e04e7",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:12Z",
+      "window": "14.421s",
+      "containers": [
+        {
+          "name": "engine-image-ei-493e04e7",
+          "usage": {
+            "cpu": "10723805n",
+            "memory": "16548Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "engine-image-ei-493e04e7-l94jw",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "controller-revision-hash": "d5bcd54dc",
+          "longhorn.io/component": "engine-image",
+          "longhorn.io/engine-image": "ei-493e04e7",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:23Z",
+      "window": "17.313s",
+      "containers": [
+        {
+          "name": "engine-image-ei-493e04e7",
+          "usage": {
+            "cpu": "13761566n",
+            "memory": "5180Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "engine-image-ei-493e04e7-njpgm",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "controller-revision-hash": "d5bcd54dc",
+          "longhorn.io/component": "engine-image",
+          "longhorn.io/engine-image": "ei-493e04e7",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:11Z",
+      "window": "14.082s",
+      "containers": [
+        {
+          "name": "engine-image-ei-493e04e7",
+          "usage": {
+            "cpu": "14907257n",
+            "memory": "9720Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "instance-manager-1cb8fe1a0184c7343879db7b95e229d8",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "longhorn.io/component": "instance-manager",
+          "longhorn.io/data-engine": "v1",
+          "longhorn.io/instance-manager-image": "imi-663c32a8",
+          "longhorn.io/instance-manager-type": "aio",
+          "longhorn.io/managed-by": "longhorn-manager",
+          "longhorn.io/node": "server-1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:08Z",
+      "window": "26.601s",
+      "containers": [
+        {
+          "name": "instance-manager",
+          "usage": {
+            "cpu": "63703432n",
+            "memory": "193844Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "instance-manager-682a7484bdb6bb8fef80dc39e5641ccf",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "longhorn.io/component": "instance-manager",
+          "longhorn.io/data-engine": "v1",
+          "longhorn.io/instance-manager-image": "imi-663c32a8",
+          "longhorn.io/instance-manager-type": "aio",
+          "longhorn.io/managed-by": "longhorn-manager",
+          "longhorn.io/node": "agent-2"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:09Z",
+      "window": "11.49s",
+      "containers": [
+        {
+          "name": "instance-manager",
+          "usage": {
+            "cpu": "66402001n",
+            "memory": "431624Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "instance-manager-7fbf968b5ce8579e304df7e6edccb5d5",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "longhorn.io/component": "instance-manager",
+          "longhorn.io/data-engine": "v1",
+          "longhorn.io/instance-manager-image": "imi-663c32a8",
+          "longhorn.io/instance-manager-type": "aio",
+          "longhorn.io/managed-by": "longhorn-manager",
+          "longhorn.io/node": "agent-1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:11Z",
+      "window": "18.314s",
+      "containers": [
+        {
+          "name": "instance-manager",
+          "usage": {
+            "cpu": "34328928n",
+            "memory": "338560Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "longhorn-csi-plugin-4zszr",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "longhorn-csi-plugin",
+          "controller-revision-hash": "77687c6f65",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:17Z",
+      "window": "11.068s",
+      "containers": [
+        {
+          "name": "longhorn-csi-plugin",
+          "usage": {
+            "cpu": "464017n",
+            "memory": "49700Ki"
+          }
+        },
+        {
+          "name": "longhorn-liveness-probe",
+          "usage": {
+            "cpu": "651595n",
+            "memory": "14236Ki"
+          }
+        },
+        {
+          "name": "node-driver-registrar",
+          "usage": {
+            "cpu": "40296n",
+            "memory": "12724Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "longhorn-csi-plugin-bvcs2",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "longhorn-csi-plugin",
+          "controller-revision-hash": "77687c6f65",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:15Z",
+      "window": "14.112s",
+      "containers": [
+        {
+          "name": "longhorn-liveness-probe",
+          "usage": {
+            "cpu": "643990n",
+            "memory": "14420Ki"
+          }
+        },
+        {
+          "name": "node-driver-registrar",
+          "usage": {
+            "cpu": "29790n",
+            "memory": "4668Ki"
+          }
+        },
+        {
+          "name": "longhorn-csi-plugin",
+          "usage": {
+            "cpu": "294324n",
+            "memory": "31876Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "longhorn-csi-plugin-qm978",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "longhorn-csi-plugin",
+          "controller-revision-hash": "77687c6f65",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:10Z",
+      "window": "15.048s",
+      "containers": [
+        {
+          "name": "longhorn-liveness-probe",
+          "usage": {
+            "cpu": "473245n",
+            "memory": "14032Ki"
+          }
+        },
+        {
+          "name": "node-driver-registrar",
+          "usage": {
+            "cpu": "39578n",
+            "memory": "4636Ki"
+          }
+        },
+        {
+          "name": "longhorn-csi-plugin",
+          "usage": {
+            "cpu": "268407n",
+            "memory": "23572Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "longhorn-driver-deployer-8688565869-wnt5p",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "longhorn-driver-deployer",
+          "app.kubernetes.io/instance": "longhorn",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "longhorn",
+          "app.kubernetes.io/version": "v1.12.1",
+          "helm.sh/chart": "longhorn-1.12.1",
+          "pod-template-hash": "8688565869"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:08Z",
+      "window": "24.341s",
+      "containers": [
+        {
+          "name": "longhorn-driver-deployer",
+          "usage": {
+            "cpu": "203278n",
+            "memory": "10144Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "longhorn-manager-7xt9h",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "longhorn-manager",
+          "app.kubernetes.io/instance": "longhorn",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "longhorn",
+          "app.kubernetes.io/version": "v1.12.1",
+          "controller-revision-hash": "5679f9c8fd",
+          "helm.sh/chart": "longhorn-1.12.1",
+          "longhorn.io/admission-webhook": "longhorn-admission-webhook",
+          "longhorn.io/recovery-backend": "longhorn-recovery-backend",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:16Z",
+      "window": "14.258s",
+      "containers": [
+        {
+          "name": "longhorn-manager",
+          "usage": {
+            "cpu": "35410281n",
+            "memory": "149664Ki"
+          }
+        },
+        {
+          "name": "pre-pull-share-manager-image",
+          "usage": {
+            "cpu": "0",
+            "memory": "1884Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "longhorn-manager-8s79c",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "longhorn-manager",
+          "app.kubernetes.io/instance": "longhorn",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "longhorn",
+          "app.kubernetes.io/version": "v1.12.1",
+          "controller-revision-hash": "5679f9c8fd",
+          "helm.sh/chart": "longhorn-1.12.1",
+          "longhorn.io/admission-webhook": "longhorn-admission-webhook",
+          "longhorn.io/recovery-backend": "longhorn-recovery-backend",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:15Z",
+      "window": "13.016s",
+      "containers": [
+        {
+          "name": "pre-pull-share-manager-image",
+          "usage": {
+            "cpu": "0",
+            "memory": "448Ki"
+          }
+        },
+        {
+          "name": "longhorn-manager",
+          "usage": {
+            "cpu": "15156038n",
+            "memory": "182396Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "longhorn-manager-p9tkl",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "longhorn-manager",
+          "app.kubernetes.io/instance": "longhorn",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "longhorn",
+          "app.kubernetes.io/version": "v1.12.1",
+          "controller-revision-hash": "5679f9c8fd",
+          "helm.sh/chart": "longhorn-1.12.1",
+          "longhorn.io/admission-webhook": "longhorn-admission-webhook",
+          "longhorn.io/recovery-backend": "longhorn-recovery-backend",
+          "pod-template-generation": "1"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:17Z",
+      "window": "16.162s",
+      "containers": [
+        {
+          "name": "longhorn-manager",
+          "usage": {
+            "cpu": "24270016n",
+            "memory": "164600Ki"
+          }
+        },
+        {
+          "name": "pre-pull-share-manager-image",
+          "usage": {
+            "cpu": "0",
+            "memory": "4332Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "longhorn-ui-79b9b8cbdc-5z4bh",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "longhorn-ui",
+          "app.kubernetes.io/instance": "longhorn",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "longhorn",
+          "app.kubernetes.io/version": "v1.12.1",
+          "helm.sh/chart": "longhorn-1.12.1",
+          "pod-template-hash": "79b9b8cbdc"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:16Z",
+      "window": "11.242s",
+      "containers": [
+        {
+          "name": "longhorn-ui",
+          "usage": {
+            "cpu": "0",
+            "memory": "16024Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "longhorn-ui-79b9b8cbdc-b9gbw",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "longhorn-ui",
+          "app.kubernetes.io/instance": "longhorn",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "longhorn",
+          "app.kubernetes.io/version": "v1.12.1",
+          "helm.sh/chart": "longhorn-1.12.1",
+          "pod-template-hash": "79b9b8cbdc"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:08Z",
+      "window": "24.408s",
+      "containers": [
+        {
+          "name": "longhorn-ui",
+          "usage": {
+            "cpu": "0",
+            "memory": "3128Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-b9cfb4dfc-d79mw",
+        "namespace": "longhorn-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "b9cfb4dfc"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:19Z",
+      "window": "24.834s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "0",
+            "memory": "9640Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "plex-f5d9cfcd9-gf4ss",
+        "namespace": "media",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "plex",
+          "pod-template-hash": "f5d9cfcd9"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:20Z",
+      "window": "17.709s",
+      "containers": [
+        {
+          "name": "plex",
+          "usage": {
+            "cpu": "2977638n",
+            "memory": "249244Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "plex-private-86d6f8cb88-s59b2",
+        "namespace": "media",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "plex-private",
+          "pod-template-hash": "86d6f8cb88"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:22Z",
+      "window": "24.507s",
+      "containers": [
+        {
+          "name": "plex-private",
+          "usage": {
+            "cpu": "3290202n",
+            "memory": "211824Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "prowlarr-5999999cbb-4qplp",
+        "namespace": "media",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "prowlarr",
+          "pod-template-hash": "5999999cbb"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:10Z",
+      "window": "15.754s",
+      "containers": [
+        {
+          "name": "prowlarr",
+          "usage": {
+            "cpu": "940015n",
+            "memory": "119348Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "sonarr-549d9bc996-j4c6k",
+        "namespace": "media",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "sonarr",
+          "pod-template-hash": "549d9bc996"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:18Z",
+      "window": "17.712s",
+      "containers": [
+        {
+          "name": "sonarr",
+          "usage": {
+            "cpu": "1091971n",
+            "memory": "167488Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "metallb-controller-866fb6786f-ghj97",
+        "namespace": "metallb-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app.kubernetes.io/component": "controller",
+          "app.kubernetes.io/instance": "metallb",
+          "app.kubernetes.io/name": "metallb",
+          "pod-template-hash": "866fb6786f"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:10Z",
+      "window": "16.845s",
+      "containers": [
+        {
+          "name": "controller",
+          "usage": {
+            "cpu": "1787592n",
+            "memory": "89640Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "metallb-speaker-27hrl",
+        "namespace": "metallb-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app.kubernetes.io/component": "speaker",
+          "app.kubernetes.io/instance": "metallb",
+          "app.kubernetes.io/name": "metallb",
+          "controller-revision-hash": "c455987dc",
+          "pod-template-generation": "2"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:22Z",
+      "window": "27.818s",
+      "containers": [
+        {
+          "name": "speaker",
+          "usage": {
+            "cpu": "4241785n",
+            "memory": "52712Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "metallb-speaker-59wdp",
+        "namespace": "metallb-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app.kubernetes.io/component": "speaker",
+          "app.kubernetes.io/instance": "metallb",
+          "app.kubernetes.io/name": "metallb",
+          "controller-revision-hash": "c455987dc",
+          "pod-template-generation": "2"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:14Z",
+      "window": "14.876s",
+      "containers": [
+        {
+          "name": "speaker",
+          "usage": {
+            "cpu": "3898359n",
+            "memory": "39388Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "metallb-speaker-jj6kz",
+        "namespace": "metallb-system",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app.kubernetes.io/component": "speaker",
+          "app.kubernetes.io/instance": "metallb",
+          "app.kubernetes.io/name": "metallb",
+          "controller-revision-hash": "c455987dc",
+          "pod-template-generation": "2"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:22Z",
+      "window": "24.144s",
+      "containers": [
+        {
+          "name": "speaker",
+          "usage": {
+            "cpu": "5187541n",
+            "memory": "49356Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-67487f7fb5-cgp66",
+        "namespace": "nas",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "67487f7fb5"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:18Z",
+      "window": "19.406s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "0",
+            "memory": "9284Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-c898b8894-jr4pk",
+        "namespace": "portainer",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "c898b8894"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:06Z",
+      "window": "17.051s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "0",
+            "memory": "8116Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "homarr-fd8977556-kwjm4",
+        "namespace": "portal",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "homarr",
+          "pod-template-hash": "fd8977556"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:15Z",
+      "window": "17.331s",
+      "containers": [
+        {
+          "name": "homarr",
+          "usage": {
+            "cpu": "2523051n",
+            "memory": "154896Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "homepage-admin-6bbddf9cc4-7jc2x",
+        "namespace": "portal",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "homepage-admin",
+          "pod-template-hash": "6bbddf9cc4"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:13Z",
+      "window": "11.669s",
+      "containers": [
+        {
+          "name": "homepage",
+          "usage": {
+            "cpu": "0",
+            "memory": "133868Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "homepage-router-59995d5566-cx8t4",
+        "namespace": "portal",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "homepage-router",
+          "pod-template-hash": "59995d5566"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:17Z",
+      "window": "10.363s",
+      "containers": [
+        {
+          "name": "nginx",
+          "usage": {
+            "cpu": "0",
+            "memory": "10380Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "homepage-user-5ff9cd8c44-6kqjx",
+        "namespace": "portal",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "homepage-user",
+          "pod-template-hash": "5ff9cd8c44"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:17Z",
+      "window": "27.703s",
+      "containers": [
+        {
+          "name": "homepage",
+          "usage": {
+            "cpu": "6930n",
+            "memory": "131704Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "moonlight-web-7697677fbc-r2r25",
+        "namespace": "portal",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "moonlight-web",
+          "pod-template-hash": "7697677fbc"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:14Z",
+      "window": "11.951s",
+      "containers": [
+        {
+          "name": "moonlight-web",
+          "usage": {
+            "cpu": "1263157n",
+            "memory": "3320Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-79d4664cf9-54r5g",
+        "namespace": "portal",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "79d4664cf9"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:09Z",
+      "window": "10.005s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "0",
+            "memory": "8704Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "wake-desktop-6f9cffbb9-m2jrg",
+        "namespace": "portal",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "wake-desktop",
+          "pod-template-hash": "6f9cffbb9"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:08Z",
+      "window": "16.085s",
+      "containers": [
+        {
+          "name": "wake-desktop",
+          "usage": {
+            "cpu": "139446n",
+            "memory": "29348Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-54f6774997-hwzqh",
+        "namespace": "proxmox",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "54f6774997"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:22Z",
+      "window": "20.727s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "0",
+            "memory": "10116Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "sftpgo-6ddcc58874-ckh2p",
+        "namespace": "sftp",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "sftpgo",
+          "pod-template-hash": "6ddcc58874"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:19Z",
+      "window": "15.143s",
+      "containers": [
+        {
+          "name": "sftpgo",
+          "usage": {
+            "cpu": "43716n",
+            "memory": "66812Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-6bcb964b44-t2gbr",
+        "namespace": "termix",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "6bcb964b44"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:11Z",
+      "window": "18.843s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "5572891n",
+            "memory": "16580Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "termix-568947496d-hwb9r",
+        "namespace": "termix",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "termix",
+          "pod-template-hash": "568947496d"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:16Z",
+      "window": "17.741s",
+      "containers": [
+        {
+          "name": "termix",
+          "usage": {
+            "cpu": "46427089n",
+            "memory": "202420Ki"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "oauth2-proxy-745f948b95-mlv5n",
+        "namespace": "unifi",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "app": "oauth2-proxy",
+          "pod-template-hash": "745f948b95"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:08Z",
+      "window": "17.357s",
+      "containers": [
+        {
+          "name": "oauth2-proxy",
+          "usage": {
+            "cpu": "0",
+            "memory": "8468Ki"
+          }
+        }
+      ]
+    }
+  ]
+}

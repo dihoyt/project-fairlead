@@ -1,0 +1,46 @@
+{
+  "kind": "APIGroupList",
+  "apiVersion": "v1",
+  "groups": [
+    {
+      "name": "apps",
+      "versions": [{ "groupVersion": "apps/v1", "version": "v1" }],
+      "preferredVersion": { "groupVersion": "apps/v1", "version": "v1" }
+    },
+    {
+      "name": "batch",
+      "versions": [{ "groupVersion": "batch/v1", "version": "v1" }],
+      "preferredVersion": { "groupVersion": "batch/v1", "version": "v1" }
+    },
+    {
+      "name": "storage.k8s.io",
+      "versions": [{ "groupVersion": "storage.k8s.io/v1", "version": "v1" }],
+      "preferredVersion": { "groupVersion": "storage.k8s.io/v1", "version": "v1" }
+    },
+    {
+      "name": "metrics.k8s.io",
+      "versions": [{ "groupVersion": "metrics.k8s.io/v1beta1", "version": "v1beta1" }],
+      "preferredVersion": { "groupVersion": "metrics.k8s.io/v1beta1", "version": "v1beta1" }
+    },
+    {
+      "name": "longhorn.io",
+      "versions": [{ "groupVersion": "longhorn.io/v1beta2", "version": "v1beta2" }],
+      "preferredVersion": { "groupVersion": "longhorn.io/v1beta2", "version": "v1beta2" }
+    },
+    {
+      "name": "velero.io",
+      "versions": [{ "groupVersion": "velero.io/v1", "version": "v1" }],
+      "preferredVersion": { "groupVersion": "velero.io/v1", "version": "v1" }
+    },
+    {
+      "name": "fleet.cattle.io",
+      "versions": [{ "groupVersion": "fleet.cattle.io/v1alpha1", "version": "v1alpha1" }],
+      "preferredVersion": { "groupVersion": "fleet.cattle.io/v1alpha1", "version": "v1alpha1" }
+    },
+    {
+      "name": "cert-manager.io",
+      "versions": [{ "groupVersion": "cert-manager.io/v1", "version": "v1" }],
+      "preferredVersion": { "groupVersion": "cert-manager.io/v1", "version": "v1" }
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "cert-manager.io/v1",
+      "kind": "Certificate",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-cattle-system",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-cattle-system-cattle-fleet-34b882"
+        },
+        "creationTimestamp": "2026-08-01T00:09:33Z",
+        "generation": 2,
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "c80384211982f87835e65ed68708b245e62f52ec"
+        },
+        "name": "tls-rancher-ingress",
+        "namespace": "cattle-system",
+        "resourceVersion": "23837263",
+        "uid": "e657b1f4-18a6-4069-97d4-8af0ac10f09a"
+      },
+      "spec": {
+        "dnsNames": [
+          "rancher.example.com"
+        ],
+        "issuerRef": {
+          "kind": "ClusterIssuer",
+          "name": "letsencrypt-prod"
+        },
+        "secretName": "tls-rancher-ingress"
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastTransitionTime": "2026-08-01T05:58:59Z",
+            "message": "Certificate is up to date and has not expired",
+            "observedGeneration": 2,
+            "reason": "Ready",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "notAfter": "2026-12-29T04:03:13Z",
+        "notBefore": "2026-09-30T04:03:14Z",
+        "renewalTime": "2026-11-29T04:03:13Z",
+        "revision": 3
+      }
+    },
+    {
+      "apiVersion": "cert-manager.io/v1",
+      "kind": "Certificate",
+      "metadata": {
+        "annotations": {
+          "meta.helm.sh/release-name": "scripts-k3s-manifests-cluster",
+          "meta.helm.sh/release-namespace": "default",
+          "objectset.rio.cattle.io/id": "default-scripts-k3s-manifests-cluster-cattle-fleet-local-system"
+        },
+        "creationTimestamp": "2026-07-31T23:45:03Z",
+        "generation": 1,
+        "labels": {
+          "app.kubernetes.io/managed-by": "Helm",
+          "objectset.rio.cattle.io/hash": "5e41e808bd1d95404613184e02821a42c92698bb"
+        },
+        "name": "wildcard-tls",
+        "namespace": "kube-system",
+        "resourceVersion": "23724915",
+        "uid": "5b3e9551-ebfd-4e5d-9929-40fa4230716f"
+      },
+      "spec": {
+        "dnsNames": [
+          "*.k3s.example.com"
+        ],
+        "issuerRef": {
+          "kind": "ClusterIssuer",
+          "name": "letsencrypt-prod"
+        },
+        "secretName": "wildcard-tls"
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastTransitionTime": "2026-07-31T23:46:34Z",
+            "message": "Certificate is up to date and has not expired",
+            "observedGeneration": 1,
+            "reason": "Ready",
+            "status": "True",
+            "type": "Ready"
+          }
+        ],
+        "notAfter": "2026-12-28T21:50:45Z",
+        "notBefore": "2026-09-29T21:50:46Z",
+        "renewalTime": "2026-11-28T21:50:45Z",
+        "revision": 2
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

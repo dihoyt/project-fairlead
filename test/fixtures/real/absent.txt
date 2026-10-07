@@ -1,0 +1,4 @@
+backups.velero.io: error: the server doesn't have a resource type "backups" 
+schedules.velero.io: error: the server doesn't have a resource type "schedules" 
+restores.velero.io: error: the server doesn't have a resource type "restores" 
+backupstoragelocations.velero.io: error: the server doesn't have a resource type "backupstoragelocations" 

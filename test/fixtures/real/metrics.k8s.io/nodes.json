@@ -1,0 +1,89 @@
+{
+  "kind": "NodeMetricsList",
+  "apiVersion": "metrics.k8s.io/v1beta1",
+  "metadata": {},
+  "items": [
+    {
+      "metadata": {
+        "name": "agent-1",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "beta.kubernetes.io/arch": "amd64",
+          "beta.kubernetes.io/instance-type": "k3s",
+          "beta.kubernetes.io/os": "linux",
+          "kubernetes.io/arch": "amd64",
+          "kubernetes.io/hostname": "agent-1",
+          "kubernetes.io/os": "linux",
+          "node.kubernetes.io/instance-type": "k3s",
+          "plan.cattle.io/cluster-group": "management.cattle.io",
+          "plan.cattle.io/cluster-kind": "Cluster",
+          "plan.cattle.io/cluster-name": "local",
+          "plan.cattle.io/machine-group": "management.cattle.io",
+          "plan.cattle.io/machine-kind": "Node",
+          "plan.cattle.io/machine-name": "machine-4chcp"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:16Z",
+      "window": "10.182s",
+      "usage": {
+        "cpu": "915878216n",
+        "memory": "5035784Ki"
+      }
+    },
+    {
+      "metadata": {
+        "name": "agent-2",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "beta.kubernetes.io/arch": "amd64",
+          "beta.kubernetes.io/instance-type": "k3s",
+          "beta.kubernetes.io/os": "linux",
+          "kubernetes.io/arch": "amd64",
+          "kubernetes.io/hostname": "agent-2",
+          "kubernetes.io/os": "linux",
+          "node.kubernetes.io/instance-type": "k3s",
+          "plan.cattle.io/cluster-group": "management.cattle.io",
+          "plan.cattle.io/cluster-kind": "Cluster",
+          "plan.cattle.io/cluster-name": "local",
+          "plan.cattle.io/machine-group": "management.cattle.io",
+          "plan.cattle.io/machine-kind": "Node",
+          "plan.cattle.io/machine-name": "machine-zrnhj"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:14Z",
+      "window": "10.081s",
+      "usage": {
+        "cpu": "388106338n",
+        "memory": "4038756Ki"
+      }
+    },
+    {
+      "metadata": {
+        "name": "server-1",
+        "creationTimestamp": "2026-10-07T20:10:26Z",
+        "labels": {
+          "beta.kubernetes.io/arch": "amd64",
+          "beta.kubernetes.io/instance-type": "k3s",
+          "beta.kubernetes.io/os": "linux",
+          "kubernetes.io/arch": "amd64",
+          "kubernetes.io/hostname": "server-1",
+          "kubernetes.io/os": "linux",
+          "node-role.kubernetes.io/control-plane": "true",
+          "node.kubernetes.io/instance-type": "k3s",
+          "plan.cattle.io/cluster-group": "management.cattle.io",
+          "plan.cattle.io/cluster-kind": "Cluster",
+          "plan.cattle.io/cluster-name": "local",
+          "plan.cattle.io/machine-group": "management.cattle.io",
+          "plan.cattle.io/machine-kind": "Node",
+          "plan.cattle.io/machine-name": "machine-8npkm"
+        }
+      },
+      "timestamp": "2026-10-07T20:10:22Z",
+      "window": "20.132s",
+      "usage": {
+        "cpu": "1264088118n",
+        "memory": "8626024Ki"
+      }
+    }
+  ]
+}

@@ -1,0 +1,1931 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "action": "Binding",
+      "apiVersion": "v1",
+      "eventTime": "2026-10-07T19:17:22.293204Z",
+      "firstTimestamp": null,
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "ws-2-58455647bf-5bqnt",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232814",
+        "uid": "86d4c9e0-8e71-4d3d-8bb1-15ba181cb109"
+      },
+      "kind": "Event",
+      "lastTimestamp": null,
+      "message": "Successfully assigned coder-workspaces/ws-2-58455647bf-5bqnt to server-1",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:17:22Z",
+        "name": "ws-2-58455647bf-5bqnt.18dc5564964b366c",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232820",
+        "uid": "b6a55bf5-6431-42db-ae80-21b421f7e77a"
+      },
+      "reason": "Scheduled",
+      "reportingComponent": "default-scheduler",
+      "reportingInstance": "default-scheduler-server-1",
+      "source": {},
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:17:28Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-58455647bf-5bqnt",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232818",
+        "uid": "86d4c9e0-8e71-4d3d-8bb1-15ba181cb109"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:17:28Z",
+      "message": "Pulling image \"registry.ci.svc.cluster.local:5000/coder-workspace:ee11fe9\"",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:17:28Z",
+        "name": "ws-2-58455647bf-5bqnt.18dc556620d410d9",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232876",
+        "uid": "bcb138a3-9de5-416d-a62a-090bba6eec24"
+      },
+      "reason": "Pulling",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:17:29Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-58455647bf-5bqnt",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232818",
+        "uid": "86d4c9e0-8e71-4d3d-8bb1-15ba181cb109"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:17:29Z",
+      "message": "Successfully pulled image \"registry.ci.svc.cluster.local:5000/coder-workspace:ee11fe9\" in 1.027s (1.027s including waiting). Image size: 408378516 bytes.",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:17:29Z",
+        "name": "ws-2-58455647bf-5bqnt.18dc55665e134cb6",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232881",
+        "uid": "3ff0d441-12f0-40fb-98ce-afd2684692e3"
+      },
+      "reason": "Pulled",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:17:29Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-58455647bf-5bqnt",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232818",
+        "uid": "86d4c9e0-8e71-4d3d-8bb1-15ba181cb109"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:17:29Z",
+      "message": "Container created",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:17:29Z",
+        "name": "ws-2-58455647bf-5bqnt.18dc55665fe4ec75",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232882",
+        "uid": "064e5a9b-a7b6-43cc-9a5c-a66337f0a759"
+      },
+      "reason": "Created",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:17:30Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-58455647bf-5bqnt",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232818",
+        "uid": "86d4c9e0-8e71-4d3d-8bb1-15ba181cb109"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:17:30Z",
+      "message": "Container started",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:17:30Z",
+        "name": "ws-2-58455647bf-5bqnt.18dc55666695b93d",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232884",
+        "uid": "d73b0dbd-7a63-44bc-a0fc-592a2fa5f1f8"
+      },
+      "reason": "Started",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:31:21Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-58455647bf-5bqnt",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232818",
+        "uid": "86d4c9e0-8e71-4d3d-8bb1-15ba181cb109"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:31:21Z",
+      "message": "Stopping container workspace",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:21Z",
+        "name": "ws-2-58455647bf-5bqnt.18dc5628057bcb87",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237828",
+        "uid": "dfeae6f1-912b-4270-8a80-f59a9f12bc50"
+      },
+      "reason": "Killing",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:17:22Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "ReplicaSet",
+        "name": "ws-2-58455647bf",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232806",
+        "uid": "d26b7cf6-517d-495c-acc4-2453de068ea0"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:17:22Z",
+      "message": "Created pod: ws-2-58455647bf-5bqnt",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:17:22Z",
+        "name": "ws-2-58455647bf.18dc556495f2e8b1",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232816",
+        "uid": "76652384-de2f-4483-b3c3-6430db3c7867"
+      },
+      "reason": "SuccessfulCreate",
+      "reportingComponent": "replicaset-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "replicaset-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "action": "Scheduling",
+      "apiVersion": "v1",
+      "eventTime": "2026-10-07T19:33:27.618574Z",
+      "firstTimestamp": null,
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pr5lj",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238772",
+        "uid": "8f007ccb-8773-42f8-9bf9-bcd3ea432614"
+      },
+      "kind": "Event",
+      "lastTimestamp": null,
+      "message": "0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. not found",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:27Z",
+        "name": "ws-2-69597cbb7c-pr5lj.18dc5645582b5ca6",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238776",
+        "uid": "17ddc4aa-df95-4b80-985d-08cc661c0a2b"
+      },
+      "reason": "FailedScheduling",
+      "reportingComponent": "default-scheduler",
+      "reportingInstance": "default-scheduler-server-1",
+      "source": {},
+      "type": "Warning"
+    },
+    {
+      "action": "Scheduling",
+      "apiVersion": "v1",
+      "eventTime": "2026-10-07T19:33:27.809581Z",
+      "firstTimestamp": null,
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pr5lj",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238779",
+        "uid": "8f007ccb-8773-42f8-9bf9-bcd3ea432614"
+      },
+      "kind": "Event",
+      "lastTimestamp": null,
+      "message": "0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. not found",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:27Z",
+        "name": "ws-2-69597cbb7c-pr5lj.18dc5645638dd70f",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27242404",
+        "uid": "f9c803a5-7095-4fca-80ac-db142d301013"
+      },
+      "reason": "FailedScheduling",
+      "reportingComponent": "default-scheduler",
+      "reportingInstance": "default-scheduler-server-1",
+      "series": {
+        "count": 5,
+        "lastObservedTime": "2026-10-07T19:33:29.733563Z"
+      },
+      "source": {},
+      "type": "Warning"
+    },
+    {
+      "action": "Binding",
+      "apiVersion": "v1",
+      "eventTime": "2026-10-07T19:33:29.748340Z",
+      "firstTimestamp": null,
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pr5lj",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238779",
+        "uid": "8f007ccb-8773-42f8-9bf9-bcd3ea432614"
+      },
+      "kind": "Event",
+      "lastTimestamp": null,
+      "message": "Successfully assigned coder-workspaces/ws-2-69597cbb7c-pr5lj to server-1",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:29Z",
+        "name": "ws-2-69597cbb7c-pr5lj.18dc5645d71cf7ad",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238860",
+        "uid": "8e916ce0-ff2a-494f-b813-10412e7a63c8"
+      },
+      "reason": "Scheduled",
+      "reportingComponent": "default-scheduler",
+      "reportingInstance": "default-scheduler-server-1",
+      "source": {},
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:40Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pr5lj",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238859",
+        "uid": "8f007ccb-8773-42f8-9bf9-bcd3ea432614"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:40Z",
+      "message": "AttachVolume.Attach succeeded for volume \"pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632\" ",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:40Z",
+        "name": "ws-2-69597cbb7c-pr5lj.18dc56484409d0aa",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238959",
+        "uid": "0a368047-aab9-436b-800f-5331c44f2158"
+      },
+      "reason": "SuccessfulAttachVolume",
+      "reportingComponent": "attachdetach-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "attachdetach-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:41Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pr5lj",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238859",
+        "uid": "8f007ccb-8773-42f8-9bf9-bcd3ea432614"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:41Z",
+      "message": "Container image \"registry.ci.svc.cluster.local:5000/coder-workspace:ee11fe9\" already present on machine and can be accessed by the pod",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:41Z",
+        "name": "ws-2-69597cbb7c-pr5lj.18dc56488ca18cbc",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238967",
+        "uid": "bed6afc9-f813-4db6-9b07-f66aea987fde"
+      },
+      "reason": "Pulled",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:41Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pr5lj",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238859",
+        "uid": "8f007ccb-8773-42f8-9bf9-bcd3ea432614"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:41Z",
+      "message": "Container created",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:41Z",
+        "name": "ws-2-69597cbb7c-pr5lj.18dc56488e24a246",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238970",
+        "uid": "264aa15a-7ac1-4c14-82c2-272838df6e77"
+      },
+      "reason": "Created",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:41Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pr5lj",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238859",
+        "uid": "8f007ccb-8773-42f8-9bf9-bcd3ea432614"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:41Z",
+      "message": "Container started",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:41Z",
+        "name": "ws-2-69597cbb7c-pr5lj.18dc564894a6249c",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238973",
+        "uid": "33f0cc50-5287-44f1-9452-415dffe15b81"
+      },
+      "reason": "Started",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 5,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:46Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pr5lj",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238859",
+        "uid": "8f007ccb-8773-42f8-9bf9-bcd3ea432614"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:34:06Z",
+      "message": "Startup probe failed: Get \"http://10.42.0.72:8080/healthz\": dial tcp 10.42.0.72:8080: connect: connection refused",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:46Z",
+        "name": "ws-2-69597cbb7c-pr5lj.18dc5649aa83bb2e",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27239135",
+        "uid": "b99f015f-ba12-4138-a95e-6ea5b58100df"
+      },
+      "reason": "Unhealthy",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Warning"
+    },
+    {
+      "action": "Binding",
+      "apiVersion": "v1",
+      "eventTime": "2026-10-07T19:31:34.248328Z",
+      "firstTimestamp": null,
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pzc8f",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237954",
+        "uid": "2350eb6d-d4ff-44e6-977b-7deac262d2aa"
+      },
+      "kind": "Event",
+      "lastTimestamp": null,
+      "message": "Successfully assigned coder-workspaces/ws-2-69597cbb7c-pzc8f to server-1",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:34Z",
+        "name": "ws-2-69597cbb7c-pzc8f.18dc562af2c6b695",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237959",
+        "uid": "3ded51ba-2a1e-4680-868e-e2e056f8eb9f"
+      },
+      "reason": "Scheduled",
+      "reportingComponent": "default-scheduler",
+      "reportingInstance": "default-scheduler-server-1",
+      "source": {},
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:31:44Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pzc8f",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237956",
+        "uid": "2350eb6d-d4ff-44e6-977b-7deac262d2aa"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:31:44Z",
+      "message": "AttachVolume.Attach succeeded for volume \"pvc-c117e8d8-264d-4389-9a7f-82639b99a878\" ",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:44Z",
+        "name": "ws-2-69597cbb7c-pzc8f.18dc562d5d5e9c80",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238061",
+        "uid": "042e7d76-49a3-4a77-827c-6afecf6eb197"
+      },
+      "reason": "SuccessfulAttachVolume",
+      "reportingComponent": "attachdetach-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "attachdetach-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:31:45Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pzc8f",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237956",
+        "uid": "2350eb6d-d4ff-44e6-977b-7deac262d2aa"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:31:45Z",
+      "message": "Container image \"registry.ci.svc.cluster.local:5000/coder-workspace:ee11fe9\" already present on machine and can be accessed by the pod",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:45Z",
+        "name": "ws-2-69597cbb7c-pzc8f.18dc562d9482685b",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238068",
+        "uid": "37df2915-86e2-4cf7-b601-13c015f4803e"
+      },
+      "reason": "Pulled",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:31:45Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pzc8f",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237956",
+        "uid": "2350eb6d-d4ff-44e6-977b-7deac262d2aa"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:31:45Z",
+      "message": "Container created",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:45Z",
+        "name": "ws-2-69597cbb7c-pzc8f.18dc562d95bb4d2d",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238070",
+        "uid": "cdf3cd85-5e64-406a-a344-41f9740b405a"
+      },
+      "reason": "Created",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:31:45Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pzc8f",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237956",
+        "uid": "2350eb6d-d4ff-44e6-977b-7deac262d2aa"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:31:45Z",
+      "message": "Container started",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:45Z",
+        "name": "ws-2-69597cbb7c-pzc8f.18dc562d9c3723a6",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238071",
+        "uid": "5dbc4f90-4c79-402e-8bc8-1514fbe29b3a"
+      },
+      "reason": "Started",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:09Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-69597cbb7c-pzc8f",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237956",
+        "uid": "2350eb6d-d4ff-44e6-977b-7deac262d2aa"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:09Z",
+      "message": "Stopping container workspace",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:09Z",
+        "name": "ws-2-69597cbb7c-pzc8f.18dc56411c6adcc3",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238596",
+        "uid": "1abebdea-fc08-4db8-ab34-8bed82fe3721"
+      },
+      "reason": "Killing",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:31:34Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "ReplicaSet",
+        "name": "ws-2-69597cbb7c",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237949",
+        "uid": "747c0f31-762a-4b31-b92b-9e12abee115e"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:31:34Z",
+      "message": "Created pod: ws-2-69597cbb7c-pzc8f",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:34Z",
+        "name": "ws-2-69597cbb7c.18dc562af2729963",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237955",
+        "uid": "ab3010ef-f082-455b-bf7c-32a8a54daf38"
+      },
+      "reason": "SuccessfulCreate",
+      "reportingComponent": "replicaset-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "replicaset-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:09Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "ReplicaSet",
+        "name": "ws-2-69597cbb7c",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238587",
+        "uid": "747c0f31-762a-4b31-b92b-9e12abee115e"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:09Z",
+      "message": "Deleted pod: ws-2-69597cbb7c-pzc8f",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:09Z",
+        "name": "ws-2-69597cbb7c.18dc56411be1c169",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238591",
+        "uid": "e7310d0c-107f-49b5-88be-3d924ce68da9"
+      },
+      "reason": "SuccessfulDelete",
+      "reportingComponent": "replicaset-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "replicaset-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:27Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "ReplicaSet",
+        "name": "ws-2-69597cbb7c",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238769",
+        "uid": "2bc35733-dc5f-4249-8b23-ff491253eaf2"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:27Z",
+      "message": "Created pod: ws-2-69597cbb7c-pr5lj",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:27Z",
+        "name": "ws-2-69597cbb7c.18dc564557fcc4da",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238775",
+        "uid": "80c2e679-1f6b-497f-ab65-e17e53a1191b"
+      },
+      "reason": "SuccessfulCreate",
+      "reportingComponent": "replicaset-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "replicaset-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:17:21Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{workspace}",
+        "kind": "Pod",
+        "name": "ws-2-6cfdcc99f9-h5wd4",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27192593",
+        "uid": "505c522c-f4ca-4615-a58f-e73b5997e373"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:17:21Z",
+      "message": "Stopping container workspace",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:17:21Z",
+        "name": "ws-2-6cfdcc99f9-h5wd4.18dc556479c4826e",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232797",
+        "uid": "1bdc5dde-164f-42f2-b904-d7c6941c6b62"
+      },
+      "reason": "Killing",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "server-1",
+      "source": {
+        "component": "kubelet",
+        "host": "server-1"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:17:21Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "ReplicaSet",
+        "name": "ws-2-6cfdcc99f9",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232792",
+        "uid": "b4dbe204-70d4-4dce-91f9-6b0632a8f3bb"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:17:21Z",
+      "message": "Deleted pod: ws-2-6cfdcc99f9-h5wd4",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:17:21Z",
+        "name": "ws-2-6cfdcc99f9.18dc556479913871",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232796",
+        "uid": "d753b353-f3b8-4a91-97e0-4c320f4dbe18"
+      },
+      "reason": "SuccessfulDelete",
+      "reportingComponent": "replicaset-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "replicaset-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 4,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:27Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolumeClaim",
+        "name": "ws-2-home",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238760",
+        "uid": "c46ad0bc-26fe-4f12-86bc-339a644fc632"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:29Z",
+      "message": "Waiting for a volume to be created either by the external provisioner 'driver.longhorn.io' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:27Z",
+        "name": "ws-2-home.18dc564555f78207",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238850",
+        "uid": "1c3b2b13-eff9-4a56-9c58-05bca473a1c1"
+      },
+      "reason": "ExternalProvisioning",
+      "reportingComponent": "persistentvolume-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "persistentvolume-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:27Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolumeClaim",
+        "name": "ws-2-home",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238760",
+        "uid": "c46ad0bc-26fe-4f12-86bc-339a644fc632"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:27Z",
+      "message": "External provisioner is provisioning volume for claim \"coder-workspaces/ws-2-home\"",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:27Z",
+        "name": "ws-2-home.18dc564555fd750b",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238763",
+        "uid": "cf5c3d18-55cf-42be-b984-9e91611ba418"
+      },
+      "reason": "Provisioning",
+      "reportingComponent": "driver.longhorn.io_csi-provisioner-5c696f97cd-76wzd_9a3f2b3e-473d-4188-8428-072c573b1b3a",
+      "reportingInstance": "",
+      "source": {
+        "component": "driver.longhorn.io_csi-provisioner-5c696f97cd-76wzd_9a3f2b3e-473d-4188-8428-072c573b1b3a"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:29Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolumeClaim",
+        "name": "ws-2-home",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238760",
+        "uid": "c46ad0bc-26fe-4f12-86bc-339a644fc632"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:29Z",
+      "message": "Successfully provisioned volume pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:29Z",
+        "name": "ws-2-home.18dc5645d57c2a96",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238852",
+        "uid": "5f6ff584-d530-4428-9057-4a38f5b5ced6"
+      },
+      "reason": "ProvisioningSucceeded",
+      "reportingComponent": "driver.longhorn.io_csi-provisioner-5c696f97cd-76wzd_9a3f2b3e-473d-4188-8428-072c573b1b3a",
+      "reportingInstance": "",
+      "source": {
+        "component": "driver.longhorn.io_csi-provisioner-5c696f97cd-76wzd_9a3f2b3e-473d-4188-8428-072c573b1b3a"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:17:21Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "ws-2",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232791",
+        "uid": "c3b254e2-4878-42c6-b801-bceb803e9857"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:17:21Z",
+      "message": "Scaled down replica set ws-2-6cfdcc99f9 from 1 to 0",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:17:21Z",
+        "name": "ws-2.18dc556479350458",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232793",
+        "uid": "2741d558-c717-467b-8eff-7aa39907e418"
+      },
+      "reason": "ScalingReplicaSet",
+      "reportingComponent": "deployment-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "deployment-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:17:22Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "ws-2",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232803",
+        "uid": "c3b254e2-4878-42c6-b801-bceb803e9857"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:17:22Z",
+      "message": "Scaled up replica set ws-2-58455647bf from 0 to 1",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:17:22Z",
+        "name": "ws-2.18dc55648c4aedcd",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27232809",
+        "uid": "1bc72c3c-960d-4451-baa8-4c3090650629"
+      },
+      "reason": "ScalingReplicaSet",
+      "reportingComponent": "deployment-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "deployment-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:31:33Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "ws-2",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237948",
+        "uid": "7d4893ed-64d9-45dd-96cc-ae5bf36e660d"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:31:33Z",
+      "message": "Scaled up replica set ws-2-69597cbb7c from 0 to 1",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:33Z",
+        "name": "ws-2.18dc562adb76cbfb",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27237950",
+        "uid": "dd4871fa-1630-4a50-8605-643f2454499c"
+      },
+      "reason": "ScalingReplicaSet",
+      "reportingComponent": "deployment-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "deployment-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:09Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "ws-2",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238586",
+        "uid": "7d4893ed-64d9-45dd-96cc-ae5bf36e660d"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:09Z",
+      "message": "Scaled down replica set ws-2-69597cbb7c from 1 to 0",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:09Z",
+        "name": "ws-2.18dc56411b055250",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238588",
+        "uid": "3c2d9e41-7414-4847-88a8-97bafdf0322a"
+      },
+      "reason": "ScalingReplicaSet",
+      "reportingComponent": "deployment-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "deployment-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:27Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "ws-2",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238768",
+        "uid": "4cbab0df-ccd0-42aa-a705-82265551e2c0"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:27Z",
+      "message": "Scaled up replica set ws-2-69597cbb7c from 0 to 1",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:27Z",
+        "name": "ws-2.18dc564557922cc0",
+        "namespace": "coder-workspaces",
+        "resourceVersion": "27238771",
+        "uid": "b18d2e04-80c9-4242-b566-1fcf82bc9f00"
+      },
+      "reason": "ScalingReplicaSet",
+      "reportingComponent": "deployment-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "deployment-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 4,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:12Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolume",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878",
+        "resourceVersion": "27238631",
+        "uid": "a8b0f85d-afd8-4624-9291-0d48d06d00d5"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:19Z",
+      "message": "persistentvolume pvc-c117e8d8-264d-4389-9a7f-82639b99a878 is still attached to node server-1",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:12Z",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878.18dc5641d9554d1a",
+        "namespace": "default",
+        "resourceVersion": "27238710",
+        "uid": "90b723c5-fb4b-4732-a6b3-132d3b4a7e8f"
+      },
+      "reason": "VolumeFailedDelete",
+      "reportingComponent": "driver.longhorn.io_csi-provisioner-5c696f97cd-76wzd_9a3f2b3e-473d-4188-8428-072c573b1b3a",
+      "reportingInstance": "",
+      "source": {
+        "component": "driver.longhorn.io_csi-provisioner-5c696f97cd-76wzd_9a3f2b3e-473d-4188-8428-072c573b1b3a"
+      },
+      "type": "Warning"
+    },
+    {
+      "action": "Binding",
+      "apiVersion": "v1",
+      "eventTime": "2026-10-07T19:10:45.560549Z",
+      "firstTimestamp": null,
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "game-panel-6c579979b8-kq4tv",
+        "namespace": "games",
+        "resourceVersion": "27230393",
+        "uid": "81d3634f-fa9b-4ee5-9c42-c17257036a4d"
+      },
+      "kind": "Event",
+      "lastTimestamp": null,
+      "message": "Successfully assigned games/game-panel-6c579979b8-kq4tv to agent-2",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:10:45Z",
+        "name": "game-panel-6c579979b8-kq4tv.18dc5508372f4d7f",
+        "namespace": "games",
+        "resourceVersion": "27230397",
+        "uid": "cc88fedd-f289-4fbb-a79c-3738dfe83cb1"
+      },
+      "reason": "Scheduled",
+      "reportingComponent": "default-scheduler",
+      "reportingInstance": "default-scheduler-server-1",
+      "source": {},
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:10:46Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{game-panel}",
+        "kind": "Pod",
+        "name": "game-panel-6c579979b8-kq4tv",
+        "namespace": "games",
+        "resourceVersion": "27230395",
+        "uid": "81d3634f-fa9b-4ee5-9c42-c17257036a4d"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:10:46Z",
+      "message": "Pulling image \"registry.ci.svc.cluster.local:5000/game-panel:4826903\"",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:10:46Z",
+        "name": "game-panel-6c579979b8-kq4tv.18dc550855ac74c9",
+        "namespace": "games",
+        "resourceVersion": "27230403",
+        "uid": "87bd07e4-1185-4ff9-88ce-6d818ea1e343"
+      },
+      "reason": "Pulling",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "agent-2",
+      "source": {
+        "component": "kubelet",
+        "host": "agent-2"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:10:49Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{game-panel}",
+        "kind": "Pod",
+        "name": "game-panel-6c579979b8-kq4tv",
+        "namespace": "games",
+        "resourceVersion": "27230395",
+        "uid": "81d3634f-fa9b-4ee5-9c42-c17257036a4d"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:10:49Z",
+      "message": "Successfully pulled image \"registry.ci.svc.cluster.local:5000/game-panel:4826903\" in 3.697s (3.697s including waiting). Image size: 88975684 bytes.",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:10:49Z",
+        "name": "game-panel-6c579979b8-kq4tv.18dc55093214acd2",
+        "namespace": "games",
+        "resourceVersion": "27230430",
+        "uid": "b3f66e07-28d5-4557-8322-0d0b4e385bed"
+      },
+      "reason": "Pulled",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "agent-2",
+      "source": {
+        "component": "kubelet",
+        "host": "agent-2"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:10:49Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{game-panel}",
+        "kind": "Pod",
+        "name": "game-panel-6c579979b8-kq4tv",
+        "namespace": "games",
+        "resourceVersion": "27230395",
+        "uid": "81d3634f-fa9b-4ee5-9c42-c17257036a4d"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:10:49Z",
+      "message": "Container created",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:10:49Z",
+        "name": "game-panel-6c579979b8-kq4tv.18dc5509347d4e7a",
+        "namespace": "games",
+        "resourceVersion": "27230434",
+        "uid": "638015bb-150f-4eda-8ab8-4f84b47bbca3"
+      },
+      "reason": "Created",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "agent-2",
+      "source": {
+        "component": "kubelet",
+        "host": "agent-2"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:10:49Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{game-panel}",
+        "kind": "Pod",
+        "name": "game-panel-6c579979b8-kq4tv",
+        "namespace": "games",
+        "resourceVersion": "27230395",
+        "uid": "81d3634f-fa9b-4ee5-9c42-c17257036a4d"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:10:49Z",
+      "message": "Container started",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:10:49Z",
+        "name": "game-panel-6c579979b8-kq4tv.18dc5509394c7bf5",
+        "namespace": "games",
+        "resourceVersion": "27230435",
+        "uid": "def11e1a-df14-4663-a662-5ac600f72bf4"
+      },
+      "reason": "Started",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "agent-2",
+      "source": {
+        "component": "kubelet",
+        "host": "agent-2"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 3,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:10:49Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{game-panel}",
+        "kind": "Pod",
+        "name": "game-panel-6c579979b8-kq4tv",
+        "namespace": "games",
+        "resourceVersion": "27230395",
+        "uid": "81d3634f-fa9b-4ee5-9c42-c17257036a4d"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:10:51Z",
+      "message": "Readiness probe failed: Get \"http://10.42.2.251:8080/healthz\": dial tcp 10.42.2.251:8080: connect: connection refused",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:10:49Z",
+        "name": "game-panel-6c579979b8-kq4tv.18dc55093996f8c7",
+        "namespace": "games",
+        "resourceVersion": "27230452",
+        "uid": "e6867339-345c-4dbd-8d6c-32acf6fd6907"
+      },
+      "reason": "Unhealthy",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "agent-2",
+      "source": {
+        "component": "kubelet",
+        "host": "agent-2"
+      },
+      "type": "Warning"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:10:45Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "ReplicaSet",
+        "name": "game-panel-6c579979b8",
+        "namespace": "games",
+        "resourceVersion": "27230385",
+        "uid": "73a8d4a0-d079-4441-bd39-545d254aefd1"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:10:45Z",
+      "message": "Created pod: game-panel-6c579979b8-kq4tv",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:10:45Z",
+        "name": "game-panel-6c579979b8.18dc550836af1f70",
+        "namespace": "games",
+        "resourceVersion": "27230394",
+        "uid": "1d2056d3-f132-4548-8741-974addaf3e67"
+      },
+      "reason": "SuccessfulCreate",
+      "reportingComponent": "replicaset-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "replicaset-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:10:54Z",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "fieldPath": "spec.containers{game-panel}",
+        "kind": "Pod",
+        "name": "game-panel-b8b4c4cb9-vqvtt",
+        "namespace": "games",
+        "resourceVersion": "26960124",
+        "uid": "beb0f15d-146b-476c-b670-381879f70d58"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:10:54Z",
+      "message": "Stopping container game-panel",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:10:54Z",
+        "name": "game-panel-b8b4c4cb9-vqvtt.18dc550a576bb7ff",
+        "namespace": "games",
+        "resourceVersion": "27230477",
+        "uid": "33c32c0b-f6e7-4f1a-91f9-281666ab95e7"
+      },
+      "reason": "Killing",
+      "reportingComponent": "kubelet",
+      "reportingInstance": "agent-2",
+      "source": {
+        "component": "kubelet",
+        "host": "agent-2"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:10:54Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "ReplicaSet",
+        "name": "game-panel-b8b4c4cb9",
+        "namespace": "games",
+        "resourceVersion": "27230470",
+        "uid": "9a4be9a9-fa0f-4981-a6b1-a2eba50e1a66"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:10:54Z",
+      "message": "Deleted pod: game-panel-b8b4c4cb9-vqvtt",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:10:54Z",
+        "name": "game-panel-b8b4c4cb9.18dc550a576ed2cf",
+        "namespace": "games",
+        "resourceVersion": "27230474",
+        "uid": "1665a366-c111-4dd7-910e-f856dc2b2818"
+      },
+      "reason": "SuccessfulDelete",
+      "reportingComponent": "replicaset-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "replicaset-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:10:45Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "game-panel",
+        "namespace": "games",
+        "resourceVersion": "27230384",
+        "uid": "2603bcba-01d5-4ebd-a5a4-0ad514f5961e"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:10:45Z",
+      "message": "Scaled up replica set game-panel-6c579979b8 from 0 to 1",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:10:45Z",
+        "name": "game-panel.18dc55081d18f067",
+        "namespace": "games",
+        "resourceVersion": "27230386",
+        "uid": "e0579545-24a2-4ad6-9303-1988aa288ae3"
+      },
+      "reason": "ScalingReplicaSet",
+      "reportingComponent": "deployment-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "deployment-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:10:54Z",
+      "involvedObject": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "game-panel",
+        "namespace": "games",
+        "resourceVersion": "27230402",
+        "uid": "2603bcba-01d5-4ebd-a5a4-0ad514f5961e"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:10:54Z",
+      "message": "Scaled down replica set game-panel-b8b4c4cb9 from 1 to 0",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:10:54Z",
+        "name": "game-panel.18dc550a5704ae9d",
+        "namespace": "games",
+        "resourceVersion": "27230471",
+        "uid": "06de48fe-c5a2-4064-a225-1849660b8d67"
+      },
+      "reason": "ScalingReplicaSet",
+      "reportingComponent": "deployment-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "deployment-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 2,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T17:25:25Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Engine",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-e-0",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27237988",
+        "uid": "b2c534f8-1a75-41ab-a6be-43414795e0f0"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:31:35Z",
+      "message": "Starts pvc-c117e8d8-264d-4389-9a7f-82639b99a878-e-0",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:35Z",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-e-0.18dc4f489abe704b",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27237994",
+        "uid": "503063c2-d620-4c5a-9e11-bb2dd2aaa8ec"
+      },
+      "reason": "Start",
+      "reportingComponent": "longhorn-engine-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-engine-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 6,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:31:25Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Engine",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-e-0",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27237868",
+        "uid": "b2c534f8-1a75-41ab-a6be-43414795e0f0"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:17Z",
+      "message": "Stops pvc-c117e8d8-264d-4389-9a7f-82639b99a878-e-0",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:25Z",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-e-0.18dc5628f7397794",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238677",
+        "uid": "84e12afd-b6d3-4b1e-9f0f-af34bb65bee0"
+      },
+      "reason": "Stop",
+      "reportingComponent": "longhorn-engine-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-engine-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 2,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T17:25:23Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Replica",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-24329433",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27237970",
+        "uid": "d9297d3e-b6d0-4480-8f8e-dee2fdf36863"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:31:34Z",
+      "message": "Starts pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-24329433",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:34Z",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-24329433.18dc4f485276d325",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27237974",
+        "uid": "7b839ce4-618f-4cd5-81cd-12cae3438c6f"
+      },
+      "reason": "Start",
+      "reportingComponent": "longhorn-replica-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-replica-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 4,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:31:26Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Replica",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-24329433",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27237888",
+        "uid": "d9297d3e-b6d0-4480-8f8e-dee2fdf36863"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:18Z",
+      "message": "Stops pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-24329433",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:26Z",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-24329433.18dc56293816d38b",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238697",
+        "uid": "a855a494-cfae-406f-a8bc-0fec60ce1e92"
+      },
+      "reason": "Stop",
+      "reportingComponent": "longhorn-replica-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-replica-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 2,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T17:25:23Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Replica",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-8a5587d7",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27237967",
+        "uid": "8eb07b4c-ab0f-4ce8-b09d-bb0986b908b2"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:31:34Z",
+      "message": "Starts pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-8a5587d7",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:34Z",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-8a5587d7.18dc4f484c24ec4f",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27237972",
+        "uid": "b347398a-3060-4d48-adde-64fb8f66b953"
+      },
+      "reason": "Start",
+      "reportingComponent": "longhorn-replica-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-replica-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 6,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:31:26Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Replica",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-8a5587d7",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27237883",
+        "uid": "8eb07b4c-ab0f-4ce8-b09d-bb0986b908b2"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:18Z",
+      "message": "Stops pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-8a5587d7",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:26Z",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878-r-8a5587d7.18dc562931402d0a",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238698",
+        "uid": "512449e8-5fb6-454b-ac20-418c629642cf"
+      },
+      "reason": "Stop",
+      "reportingComponent": "longhorn-replica-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-replica-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 3,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T17:25:23Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Volume",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27237873",
+        "uid": "998c669b-fd7e-4c7c-8bb7-8c45ae0f4feb"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:19Z",
+      "message": "volume pvc-c117e8d8-264d-4389-9a7f-82639b99a878 has been detached",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:27Z",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878.18dc4f482a584af7",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238714",
+        "uid": "37631951-da39-4f27-a03b-cc3daf3cd8dc"
+      },
+      "reason": "Detached",
+      "reportingComponent": "longhorn-volume-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-volume-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 2,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T17:25:27Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Volume",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27237973",
+        "uid": "998c669b-fd7e-4c7c-8bb7-8c45ae0f4feb"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:31:38Z",
+      "message": "volume pvc-c117e8d8-264d-4389-9a7f-82639b99a878 has been attached to server-1",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:31:38Z",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878.18dc4f493889dd8f",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238010",
+        "uid": "c7bc3abb-397a-43c7-a29b-a7f34425db78"
+      },
+      "reason": "Attached",
+      "reportingComponent": "longhorn-volume-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-volume-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:27Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Volume",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238782",
+        "uid": "998c669b-fd7e-4c7c-8bb7-8c45ae0f4feb"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:27Z",
+      "message": "Deleting volume pvc-c117e8d8-264d-4389-9a7f-82639b99a878",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:27Z",
+        "name": "pvc-c117e8d8-264d-4389-9a7f-82639b99a878.18dc56455fa2f081",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238788",
+        "uid": "fd4142ff-e46c-4468-9041-1c93b70f7e85"
+      },
+      "reason": "Delete",
+      "reportingComponent": "longhorn-volume-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-volume-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:31Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Engine",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632-e-0",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238888",
+        "uid": "f3e2523e-be25-4eee-b95d-ba568b5a2023"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:31Z",
+      "message": "Starts pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632-e-0",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:31Z",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632-e-0.18dc564638166213",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238890",
+        "uid": "83cffcdd-58b5-455f-aaeb-07f424c92dc7"
+      },
+      "reason": "Start",
+      "reportingComponent": "longhorn-engine-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-engine-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:30Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Replica",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632-r-f05149ab",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238869",
+        "uid": "4fa9e407-ae54-45a8-892c-c06d508f2454"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:30Z",
+      "message": "Starts pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632-r-f05149ab",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:30Z",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632-r-f05149ab.18dc5645ea3d199c",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238872",
+        "uid": "d823ad58-da6e-43ed-9574-4d4877cc2dec"
+      },
+      "reason": "Start",
+      "reportingComponent": "longhorn-replica-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-replica-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:30Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Replica",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632-r-f1153b9d",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238871",
+        "uid": "65b14633-9d3d-43de-ac02-fc73d6006640"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:30Z",
+      "message": "Starts pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632-r-f1153b9d",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:30Z",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632-r-f1153b9d.18dc5645f1004048",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238877",
+        "uid": "832baf58-9d3e-47bf-92e6-06cdbec2d01c"
+      },
+      "reason": "Start",
+      "reportingComponent": "longhorn-replica-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-replica-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:28Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Volume",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238829",
+        "uid": "6af3afde-ee25-4389-9283-a200874513db"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:28Z",
+      "message": "volume pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632 has been detached",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:28Z",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632.18dc564596e0b0dc",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238830",
+        "uid": "88497b11-db31-48f0-b3c8-3a46813f62a1"
+      },
+      "reason": "Detached",
+      "reportingComponent": "longhorn-volume-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-volume-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:29Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Volume",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238831",
+        "uid": "6af3afde-ee25-4389-9283-a200874513db"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:29Z",
+      "message": "Persistent Volume pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632 started to use/reuse Longhorn volume pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:29Z",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632.18dc5645d5805be3",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238853",
+        "uid": "b818d7d2-cd08-4f78-aa53-74016b9d1751"
+      },
+      "reason": "Start",
+      "reportingComponent": "longhorn-kubernetes-pv-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-kubernetes-pv-controller"
+      },
+      "type": "Normal"
+    },
+    {
+      "apiVersion": "v1",
+      "count": 1,
+      "eventTime": null,
+      "firstTimestamp": "2026-10-07T19:33:33Z",
+      "involvedObject": {
+        "apiVersion": "longhorn.io/v1beta2",
+        "kind": "Volume",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238876",
+        "uid": "6af3afde-ee25-4389-9283-a200874513db"
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-10-07T19:33:33Z",
+      "message": "volume pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632 has been attached to server-1",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T19:33:33Z",
+        "name": "pvc-c46ad0bc-26fe-4f12-86bc-339a644fc632.18dc5646c1d46a7c",
+        "namespace": "longhorn-system",
+        "resourceVersion": "27238906",
+        "uid": "cc18ffde-3e9b-42c2-8f58-c9decaa3a255"
+      },
+      "reason": "Attached",
+      "reportingComponent": "longhorn-volume-controller",
+      "reportingInstance": "",
+      "source": {
+        "component": "longhorn-volume-controller"
+      },
+      "type": "Normal"
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

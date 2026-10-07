@@ -1,0 +1,103 @@
+{
+  "apiVersion": "longhorn.io/v1beta2",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Snapshot",
+      "metadata": {
+        "name": "snapshot-1b2c3d4e5f607182",
+        "namespace": "longhorn-system",
+        "uid": "5d15ec78-63c9-d82d-9614-7c2b90e48ccf",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T02:00:00.000Z",
+        "labels": { "longhornvolume": "pvc-3f1c6a52-0b7e-4d0a-9a55-1d2b8c9e7a01" },
+        "finalizers": ["longhorn.io"]
+      },
+      "spec": {
+        "volume": "pvc-3f1c6a52-0b7e-4d0a-9a55-1d2b8c9e7a01",
+        "createSnapshot": true,
+        "labels": { "RecurringJob": "hourly-snap" }
+      },
+      "status": {
+        "parent": "",
+        "children": { "volumeHead": true },
+        "markRemoved": false,
+        "userCreated": false,
+        "creationTime": "2026-10-07T02:00:00.000Z",
+        "size": "2147483648",
+        "labels": { "RecurringJob": "hourly-snap" },
+        "readyToUse": true,
+        "restoreSize": 21474836480,
+        "checksum": "",
+        "error": "",
+        "ownerID": "cp-1"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Snapshot",
+      "metadata": {
+        "name": "snapshot-0a1b2c3d4e5f6071",
+        "namespace": "longhorn-system",
+        "uid": "10b40540-5ee3-0968-4061-19865c9839e3",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-28T12:00:00.000Z",
+        "labels": { "longhornvolume": "pvc-9a4d2e17-6c3b-4f85-8e20-5b7a1c0d3e02" },
+        "finalizers": ["longhorn.io"]
+      },
+      "spec": {
+        "volume": "pvc-9a4d2e17-6c3b-4f85-8e20-5b7a1c0d3e02",
+        "createSnapshot": true,
+        "labels": { "RecurringJob": "hourly-snap" }
+      },
+      "status": {
+        "parent": "",
+        "children": { "volumeHead": true },
+        "markRemoved": false,
+        "userCreated": false,
+        "creationTime": "2026-09-28T12:00:00.000Z",
+        "size": "2147483648",
+        "labels": { "RecurringJob": "hourly-snap" },
+        "readyToUse": true,
+        "restoreSize": 21474836480,
+        "checksum": "",
+        "error": "",
+        "ownerID": "cp-1"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "Snapshot",
+      "metadata": {
+        "name": "snapshot-99ce1f2e3f415c67",
+        "namespace": "longhorn-system",
+        "uid": "31f5dbec-ce66-1c77-0c74-f22131177239",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-10-07T06:00:00.000Z",
+        "labels": { "longhornvolume": "pvc-c71e5b93-2d48-41a6-b3f9-8a6d0e4c2f03" },
+        "finalizers": ["longhorn.io"]
+      },
+      "spec": {
+        "volume": "pvc-c71e5b93-2d48-41a6-b3f9-8a6d0e4c2f03",
+        "createSnapshot": true,
+        "labels": { "RecurringJob": "hourly-snap" }
+      },
+      "status": {
+        "parent": "",
+        "children": { "volumeHead": true },
+        "markRemoved": false,
+        "userCreated": false,
+        "creationTime": "",
+        "size": "0",
+        "labels": { "RecurringJob": "hourly-snap" },
+        "readyToUse": false,
+        "restoreSize": 0,
+        "checksum": "",
+        "error": "failed to take snapshot: cannot create snapshot, volume is faulted: no healthy replica",
+        "ownerID": "cp-1"
+      }
+    }
+  ]
+}

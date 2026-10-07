@@ -1,0 +1,15 @@
+{
+  "major": "1",
+  "minor": "36",
+  "emulationMajor": "1",
+  "emulationMinor": "36",
+  "minCompatibilityMajor": "1",
+  "minCompatibilityMinor": "35",
+  "gitVersion": "v1.36.2+k3s1",
+  "gitCommit": "01b6f04aaa69e8b09303f0393d4b4f1811da23aa",
+  "gitTreeState": "clean",
+  "buildDate": "2026-06-24T22:52:31Z",
+  "goVersion": "go1.26.4",
+  "compiler": "gc",
+  "platform": "linux/amd64"
+}

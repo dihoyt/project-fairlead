@@ -1,0 +1,113 @@
+import type { Request, Express } from "express";
+import type { Server } from "node:http";
+import type { ZodType } from "zod";
+import type { Database } from "better-sqlite3";
+import type { Migration } from "./runtime.js";
+
+// Everything in this file is implemented by the platform (S2, src/platform/).
+// S1 ships placeholders behind the same interfaces so modules can be built
+// and tested before S2 lands.
+
+export type SignInMethod = "password" | "oidc";
+
+export interface User {
+  // The username: stable for the life of the account, so anything owned by
+  // or recorded against a person keys off it.
+  id: string;
+  name: string;
+  email: string;
+  groups: string[];
+  admin: boolean;
+  source: SignInMethod | "dev-bypass";
+  mustChangePassword: boolean;
+  mustEnrollTotp?: boolean;
+  orgId: string;
+}
+
+// Tenancy A: "read" is any signed-in user; "write" and "admin" are admins.
+// S2 may refine "write" with roles; the three names are the contract.
+export type Action = "read" | "write" | "admin";
+
+export interface SettingSpec<T> {
+  // "<moduleId>.<name>"; the context refuses a key outside the module's prefix.
+  key: string;
+  label: string;
+  help?: string;
+  schema: ZodType<T>;
+  default: T;
+  // Environment variable that overrides the default (the UI override wins
+  // over it unless envOnly). No product prefix.
+  env?: string;
+  // Bootstrap and security settings: env or default only, shown read-only.
+  envOnly?: boolean;
+}
+
+export interface Setting<T> {
+  key: string;
+  // Read fresh on every call; never cache across requests.
+  get(): T;
+  source(): "ui" | "env" | "default";
+}
+
+export interface SettingsRegistry {
+  declare<T>(spec: SettingSpec<T>): Setting<T>;
+}
+
+export interface SecretStore {
+  // scope is the module id, or "<moduleId>:<sub>"; the context refuses any
+  // other scope. Values are encrypted at rest with SECRETS_KEY.
+  get(scope: string, id: string): Promise<string | null>;
+  has(scope: string, id: string): Promise<boolean>;
+  put(scope: string, id: string, value: string): Promise<void>;
+  delete(scope: string, id: string): Promise<void>;
+}
+
+export type AuditResult = "ok" | "denied" | "error";
+
+export interface AuditEntry {
+  // Username, or "system" for scheduled work.
+  actor: string;
+  // "<moduleId>.<verb>": "hosts.create", "backups.mark-restore-tested".
+  action: string;
+  target?: string;
+  detail?: string;
+  ip?: string;
+  result?: AuditResult;
+}
+
+export interface AuditLog {
+  // Never throws: a failed audit write must not turn a completed action
+  // into an error the caller sees.
+  record(entry: AuditEntry): void;
+}
+
+export interface Platform {
+  // Its own tables, applied as module "platform" before any module's.
+  migrations: readonly Migration[];
+  // Mounted first, ahead of the body parser: the drain guard.
+  early(app: Express): void;
+  // Mounted after the body parser and before module routers: session lookup,
+  // origin guard, /api/auth, /api/admin, /api/me, /auth/oidc/*. Every /api
+  // request that reaches a module router after this has an identity.
+  install(app: Express): void;
+  identify(req: Request): User | null;
+  can(user: User, action: Action): boolean;
+  settings: SettingsRegistry;
+  secrets: SecretStore;
+  audit: AuditLog;
+  // True once a drain has begun; /healthz answers 503 while it is.
+  draining(): boolean;
+  // Wires SIGTERM/SIGINT: drain, then stop() (scheduler, DB), then exit.
+  handleSignals(server: Server, stop: () => Promise<void>): void;
+}
+
+export interface PlatformDeps {
+  db: Database;
+  dataDir: string;
+  orgId: string;
+  // Tests only: replaces session lookup so a test can put an identity on a
+  // request without signing in. The server entrypoint never passes it.
+  identify?: (req: Request) => User | null;
+}
+
+export type CreatePlatform = (deps: PlatformDeps) => Platform;

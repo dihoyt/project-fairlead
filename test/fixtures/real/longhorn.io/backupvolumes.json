@@ -1,0 +1,685 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-08-31T22:18:16Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 17112,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8"
+        },
+        "name": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8-33be10ff",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251978",
+        "uid": "6cec3c5a-1bac-4a53-af26-3e8eb0f1c361"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-08-31T22:18:06Z",
+        "dataStored": "4974444544",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-015d2a5a-b086-40c5-a5fe-818b2206bca8\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"plex-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"plex-f5d9cfcd9-gf4ss\",\"podStatus\":\"Running\",\"workloadName\":\"plex-f5d9cfcd9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:00:07Z",
+        "lastBackupName": "backup-ce0c95cff7ad4a0e",
+        "lastModificationTime": "2026-10-07T10:00:11Z",
+        "lastSyncedAt": "2026-10-07T20:09:47Z",
+        "messages": {},
+        "ownerID": "server-1",
+        "size": "10737418240",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:31Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 152,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01"
+        },
+        "name": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01-7471cc50",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251995",
+        "uid": "33d55452-1325-4329-a5b8-9844fe9830a2"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-10-07T07:48:26Z",
+        "dataStored": "20971520",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-0cddb8b9-bf40-41a5-bfff-160a0aea8f01\",\"pvStatus\":\"Bound\",\"namespace\":\"ci\",\"pvcName\":\"act-runner-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"act-runner-5964754f7d-j75h8\",\"podStatus\":\"Running\",\"workloadName\":\"act-runner-5964754f7d\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:00:28Z",
+        "lastBackupName": "backup-d2bf9bdcfeb74e7c",
+        "lastModificationTime": "2026-10-07T10:00:30Z",
+        "lastSyncedAt": "2026-10-07T20:09:48Z",
+        "messages": {},
+        "ownerID": "server-1",
+        "size": "1073741824",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:47:50Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 154,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1"
+        },
+        "name": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1-bbe967d0",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251997",
+        "uid": "a4fb99b3-ada5-4b70-b5f4-b3f713e1b6ad"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-10-07T07:47:46Z",
+        "dataStored": "155189248",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-1b3cc1b7-8540-4741-95a3-ac5aee9e38f1\",\"pvStatus\":\"Bound\",\"namespace\":\"portal\",\"pvcName\":\"homarr-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"homarr-fd8977556-kwjm4\",\"podStatus\":\"Running\",\"workloadName\":\"homarr-fd8977556\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:00:38Z",
+        "lastBackupName": "backup-d3d99b6636524d04",
+        "lastModificationTime": "2026-10-07T10:00:40Z",
+        "lastSyncedAt": "2026-10-07T20:09:48Z",
+        "messages": {},
+        "ownerID": "server-1",
+        "size": "2147483648",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:13Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 154,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36"
+        },
+        "name": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36-00fbad8d",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251990",
+        "uid": "bc4c4076-235a-46c0-b5ab-3499a4d93d10"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-10-07T07:48:04Z",
+        "dataStored": "2724200448",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-4c2c9f3b-add8-4d07-b5db-9a70a921bc36\",\"pvStatus\":\"Bound\",\"namespace\":\"games\",\"pvcName\":\"valheim-valheim-fresh-2-files\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"valheim-valheim-fresh-2-679c546cf9-fpfkg\",\"podStatus\":\"Succeeded\",\"workloadName\":\"valheim-valheim-fresh-2-679c546cf9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"2026-10-07T04:15:04Z\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:00:58Z",
+        "lastBackupName": "backup-8efde3e340ce4f27",
+        "lastModificationTime": "2026-10-07T10:01:01Z",
+        "lastSyncedAt": "2026-10-07T20:09:48Z",
+        "messages": {},
+        "ownerID": "server-1",
+        "size": "10737418240",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T10:01:13Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 123,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-6997df0f-3cae-403f-b07f-7526fa445635"
+        },
+        "name": "pvc-6997df0f-3cae-403f-b07f-7526fa445635-94a6f646",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251975",
+        "uid": "ea0d7824-5453-4f84-b228-187dc43578a6"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-6997df0f-3cae-403f-b07f-7526fa445635"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-10-07T10:01:09Z",
+        "dataStored": "46137344",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-6997df0f-3cae-403f-b07f-7526fa445635\",\"pvStatus\":\"Bound\",\"namespace\":\"coder-workspaces\",\"pvcName\":\"ws-2-home\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"ws-2-6cfdcc99f9-q7cvl\",\"podStatus\":\"Running\",\"workloadName\":\"ws-2-6cfdcc99f9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:01:09Z",
+        "lastBackupName": "backup-c9cd03f42e2d4220",
+        "lastModificationTime": "2026-10-07T10:01:11Z",
+        "lastSyncedAt": "2026-10-07T20:09:47Z",
+        "messages": {},
+        "ownerID": "agent-1",
+        "size": "10737418240",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-08-31T22:18:16Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 17111,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6"
+        },
+        "name": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6-5b41048f",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251980",
+        "uid": "aa3a87c8-abc5-4d86-aaa3-8d8f949cd0e8"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-08-31T22:18:07Z",
+        "dataStored": "369098752",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-739c938e-25a5-4369-aaf4-ec112eeb5ca6\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"prowlarr-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"prowlarr-5999999cbb-4qplp\",\"podStatus\":\"Running\",\"workloadName\":\"prowlarr-5999999cbb\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:01:19Z",
+        "lastBackupName": "backup-37a6a2813d6c4d7b",
+        "lastModificationTime": "2026-10-07T10:01:21Z",
+        "lastSyncedAt": "2026-10-07T20:09:48Z",
+        "messages": {},
+        "ownerID": "server-1",
+        "size": "5368709120",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:47:50Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 155,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e"
+        },
+        "name": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e-965a36fd",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251982",
+        "uid": "d2c59914-d3ae-4961-8282-cc5ed768aad9"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-10-07T07:47:48Z",
+        "dataStored": "5848956928",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-82366cb4-05a0-457b-88f4-e58b3eb7901e\",\"pvStatus\":\"Bound\",\"namespace\":\"games\",\"pvcName\":\"dragonwilds-files\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"dragonwilds-747cb6cdc8-jv9wx\",\"podStatus\":\"Running\",\"workloadName\":\"dragonwilds-747cb6cdc8\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:01:29Z",
+        "lastBackupName": "backup-a8d762c4ec854119",
+        "lastModificationTime": "2026-10-07T10:01:32Z",
+        "lastSyncedAt": "2026-10-07T20:09:48Z",
+        "messages": {},
+        "ownerID": "agent-1",
+        "size": "16106127360",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-08-31T22:18:16Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 17113,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1"
+        },
+        "name": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1-6095e2a1",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251984",
+        "uid": "43ac467a-6861-47bb-ba06-fa4cc7157e2f"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-08-31T22:18:11Z",
+        "dataStored": "18087936000",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-8966ce73-9ed1-4a11-8154-3a8d19e6a3f1\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"plex-private-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"plex-private-86d6f8cb88-s59b2\",\"podStatus\":\"Running\",\"workloadName\":\"plex-private-86d6f8cb88\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:01:55Z",
+        "lastBackupName": "backup-8a3a880a00f1440d",
+        "lastModificationTime": "2026-10-07T10:01:58Z",
+        "lastSyncedAt": "2026-10-07T20:09:48Z",
+        "messages": {},
+        "ownerID": "server-1",
+        "size": "26843545600",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:30Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 153,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-9b71d068-c678-4ae1-956f-d528a247c277"
+        },
+        "name": "pvc-9b71d068-c678-4ae1-956f-d528a247c277-01641074",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251992",
+        "uid": "d903ea57-6857-4413-b589-e63fedcddf15"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-9b71d068-c678-4ae1-956f-d528a247c277"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-10-07T07:48:30Z",
+        "dataStored": "94371840",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-9b71d068-c678-4ae1-956f-d528a247c277\",\"pvStatus\":\"Bound\",\"namespace\":\"coder-console\",\"pvcName\":\"coder-console-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"coder-console-7d6d49c56c-rmndm\",\"podStatus\":\"Running\",\"workloadName\":\"coder-console-7d6d49c56c\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:02:05Z",
+        "lastBackupName": "backup-d57f0e2323014fbd",
+        "lastModificationTime": "2026-10-07T10:02:07Z",
+        "lastSyncedAt": "2026-10-07T20:09:48Z",
+        "messages": {},
+        "ownerID": "agent-2",
+        "size": "5368709120",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:30Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 153,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-b851930a-e9a2-4361-ba3d-78756102e777"
+        },
+        "name": "pvc-b851930a-e9a2-4361-ba3d-78756102e777-b0be7e39",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251986",
+        "uid": "c520e0a7-e2ba-4780-b981-ffe3103da231"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-b851930a-e9a2-4361-ba3d-78756102e777"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-10-07T07:48:20Z",
+        "dataStored": "761266176",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-b851930a-e9a2-4361-ba3d-78756102e777\",\"pvStatus\":\"Bound\",\"namespace\":\"ci\",\"pvcName\":\"registry-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"registry-7cc64dcc69-64tk2\",\"podStatus\":\"Running\",\"workloadName\":\"registry-7cc64dcc69\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:02:15Z",
+        "lastBackupName": "backup-c041050c5842478a",
+        "lastModificationTime": "2026-10-07T10:02:18Z",
+        "lastSyncedAt": "2026-10-07T20:09:48Z",
+        "messages": {},
+        "ownerID": "agent-1",
+        "size": "21474836480",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-08-31T22:18:17Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 17113,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff"
+        },
+        "name": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff-f65469b3",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27252001",
+        "uid": "0b2965c8-e1ee-400f-aaf4-d2739e7c8aa9"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-e89ab022-400f-4cb2-a222-f172dc1604ff"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-08-31T22:18:13Z",
+        "dataStored": "2254438400",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-e89ab022-400f-4cb2-a222-f172dc1604ff\",\"pvStatus\":\"Bound\",\"namespace\":\"firefox\",\"pvcName\":\"firefox-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"firefox-59c99c59f-2rwbc\",\"podStatus\":\"Running\",\"workloadName\":\"firefox-59c99c59f\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:01:39Z",
+        "lastBackupName": "backup-d3155ba8a3df4fa7",
+        "lastModificationTime": "2026-10-07T10:01:44Z",
+        "lastSyncedAt": "2026-10-07T20:09:49Z",
+        "messages": {},
+        "ownerID": "server-1",
+        "size": "5368709120",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-10-07T07:48:13Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 153,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d"
+        },
+        "name": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d-8cc7f9f9",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251999",
+        "uid": "4425bdf3-077c-4371-99e7-5b5710aa9c20"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-eb37313f-85fe-48ae-81aa-9a398777345d"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-10-07T07:48:05Z",
+        "dataStored": "155189248",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-eb37313f-85fe-48ae-81aa-9a398777345d\",\"pvStatus\":\"Bound\",\"namespace\":\"games\",\"pvcName\":\"game-panel-data\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"game-panel-b8b4c4cb9-vqvtt\",\"podStatus\":\"Running\",\"workloadName\":\"game-panel-b8b4c4cb9\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:02:25Z",
+        "lastBackupName": "backup-4e5d607e06a84bfc",
+        "lastModificationTime": "2026-10-07T10:02:28Z",
+        "lastSyncedAt": "2026-10-07T20:09:49Z",
+        "messages": {},
+        "ownerID": "agent-2",
+        "size": "5368709120",
+        "storageClassName": "longhorn"
+      }
+    },
+    {
+      "apiVersion": "longhorn.io/v1beta2",
+      "kind": "BackupVolume",
+      "metadata": {
+        "creationTimestamp": "2026-08-31T22:18:45Z",
+        "finalizers": [
+          "longhorn.io"
+        ],
+        "generation": 17111,
+        "labels": {
+          "backup-target": "default",
+          "backup-volume": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55"
+        },
+        "name": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55-1b73fc15",
+        "namespace": "longhorn-system",
+        "ownerReferences": [
+          {
+            "apiVersion": "longhorn.io/v1beta2",
+            "kind": "BackupTarget",
+            "name": "default",
+            "uid": "9c26a121-df2c-4a2b-bedf-154f4e5c5a2f"
+          }
+        ],
+        "resourceVersion": "27251988",
+        "uid": "612347b1-12a0-4a86-a681-9ca284502f5f"
+      },
+      "spec": {
+        "backupTargetName": "default",
+        "syncRequestedAt": "2026-10-07T20:09:47Z",
+        "volumeName": "pvc-f7bc5aaf-aade-4283-9da8-48df27349b55"
+      },
+      "status": {
+        "backingImageChecksum": "",
+        "backingImageName": "",
+        "createdAt": "2026-08-31T22:18:18Z",
+        "dataStored": "882900992",
+        "labels": {
+          "KubernetesStatus": "{\"pvName\":\"pvc-f7bc5aaf-aade-4283-9da8-48df27349b55\",\"pvStatus\":\"Bound\",\"namespace\":\"media\",\"pvcName\":\"sonarr-config\",\"lastPVCRefAt\":\"\",\"workloadsStatus\":[{\"podName\":\"sonarr-549d9bc996-j4c6k\",\"podStatus\":\"Running\",\"workloadName\":\"sonarr-549d9bc996\",\"workloadType\":\"ReplicaSet\"}],\"lastPodRefAt\":\"\"}",
+          "RecurringJob": "nightly-backups",
+          "VolumeRecurringJobInfo": "{\"nightly-backups\":{\"jobSpec\":{\"name\":\"nightly-backups\",\"groups\":[\"default\"],\"task\":\"backup\",\"cron\":\"0 10 * * *\",\"retain\":7,\"concurrency\":1},\"fromGroup\":[\"default\"],\"fromJob\":false}}",
+          "longhorn.io/volume-access-mode": "rwo"
+        },
+        "lastBackupAt": "2026-10-07T10:00:18Z",
+        "lastBackupName": "backup-1ed6296d37e34540",
+        "lastModificationTime": "2026-10-07T10:00:20Z",
+        "lastSyncedAt": "2026-10-07T20:09:48Z",
+        "messages": {},
+        "ownerID": "server-1",
+        "size": "5368709120",
+        "storageClassName": "longhorn"
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": ""
+  }
+}

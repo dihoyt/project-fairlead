@@ -1,0 +1,220 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Node",
+      "metadata": {
+        "name": "cp-1",
+        "uid": "46baf7e9-5615-5a4c-5ffd-0aa92156b41a",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": {
+          "kubernetes.io/hostname": "cp-1",
+          "kubernetes.io/os": "linux",
+          "kubernetes.io/arch": "amd64",
+          "node-role.kubernetes.io/control-plane": "true"
+        }
+      },
+      "spec": { "podCIDR": "10.42.0.0/24", "providerID": "k3s://cp-1" },
+      "status": {
+        "addresses": [
+          { "type": "InternalIP", "address": "192.168.10.11" },
+          { "type": "Hostname", "address": "cp-1" }
+        ],
+        "allocatable": { "cpu": "4", "ephemeral-storage": "98831908074", "memory": "16263064Ki", "pods": "110" },
+        "capacity": { "cpu": "4", "ephemeral-storage": "101590516Ki", "memory": "16263064Ki", "pods": "110" },
+        "conditions": [
+          {
+            "type": "MemoryPressure",
+            "status": "False",
+            "lastHeartbeatTime": "2026-10-07T11:59:00.000Z",
+            "lastTransitionTime": "2026-09-17T12:00:00.000Z",
+            "reason": "KubeletHasSufficientMemory",
+            "message": "kubelet is posting ready status"
+          },
+          {
+            "type": "DiskPressure",
+            "status": "False",
+            "lastHeartbeatTime": "2026-10-07T11:59:00.000Z",
+            "lastTransitionTime": "2026-09-17T12:00:00.000Z",
+            "reason": "KubeletHasNoDiskPressure",
+            "message": "kubelet is posting ready status"
+          },
+          {
+            "type": "PIDPressure",
+            "status": "False",
+            "lastHeartbeatTime": "2026-10-07T11:59:00.000Z",
+            "lastTransitionTime": "2026-09-17T12:00:00.000Z",
+            "reason": "KubeletHasSufficientPID",
+            "message": "kubelet is posting ready status"
+          },
+          {
+            "type": "Ready",
+            "status": "True",
+            "lastHeartbeatTime": "2026-10-07T11:59:00.000Z",
+            "lastTransitionTime": "2026-09-17T12:00:00.000Z",
+            "reason": "KubeletReady",
+            "message": "kubelet is posting ready status"
+          }
+        ],
+        "daemonEndpoints": { "kubeletEndpoint": { "Port": 10250 } },
+        "nodeInfo": {
+          "architecture": "amd64",
+          "containerRuntimeVersion": "containerd://1.7.23-k3s2",
+          "kernelVersion": "6.8.0-48-generic",
+          "kubeProxyVersion": "v1.31.4+k3s1",
+          "kubeletVersion": "v1.31.4+k3s1",
+          "machineID": "5d6de42794099fa564eafc40cd91031e",
+          "operatingSystem": "linux",
+          "osImage": "Ubuntu 24.04.1 LTS",
+          "systemUUID": "2cb72158-87f2-7b12-cb83-a0878a436855"
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Node",
+      "metadata": {
+        "name": "worker-1",
+        "uid": "2eb2e2df-98e8-461b-5235-b343a01111f8",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": {
+          "kubernetes.io/hostname": "worker-1",
+          "kubernetes.io/os": "linux",
+          "kubernetes.io/arch": "amd64",
+          "node-role.kubernetes.io/worker": "true"
+        }
+      },
+      "spec": { "podCIDR": "10.42.0.0/24", "providerID": "k3s://worker-1" },
+      "status": {
+        "addresses": [
+          { "type": "InternalIP", "address": "192.168.10.12" },
+          { "type": "Hostname", "address": "worker-1" }
+        ],
+        "allocatable": { "cpu": "4", "ephemeral-storage": "98831908074", "memory": "16263064Ki", "pods": "110" },
+        "capacity": { "cpu": "4", "ephemeral-storage": "101590516Ki", "memory": "16263064Ki", "pods": "110" },
+        "conditions": [
+          {
+            "type": "MemoryPressure",
+            "status": "True",
+            "lastHeartbeatTime": "2026-10-07T11:59:00.000Z",
+            "lastTransitionTime": "2026-10-07T11:38:00.000Z",
+            "reason": "KubeletHasInsufficientMemory",
+            "message": "kubelet is posting ready status"
+          },
+          {
+            "type": "DiskPressure",
+            "status": "False",
+            "lastHeartbeatTime": "2026-10-07T11:59:00.000Z",
+            "lastTransitionTime": "2026-09-17T12:00:00.000Z",
+            "reason": "KubeletHasNoDiskPressure",
+            "message": "kubelet is posting ready status"
+          },
+          {
+            "type": "PIDPressure",
+            "status": "False",
+            "lastHeartbeatTime": "2026-10-07T11:59:00.000Z",
+            "lastTransitionTime": "2026-09-17T12:00:00.000Z",
+            "reason": "KubeletHasSufficientPID",
+            "message": "kubelet is posting ready status"
+          },
+          {
+            "type": "Ready",
+            "status": "True",
+            "lastHeartbeatTime": "2026-10-07T11:59:00.000Z",
+            "lastTransitionTime": "2026-09-17T12:00:00.000Z",
+            "reason": "KubeletReady",
+            "message": "kubelet is posting ready status"
+          }
+        ],
+        "daemonEndpoints": { "kubeletEndpoint": { "Port": 10250 } },
+        "nodeInfo": {
+          "architecture": "amd64",
+          "containerRuntimeVersion": "containerd://1.7.23-k3s2",
+          "kernelVersion": "6.8.0-48-generic",
+          "kubeProxyVersion": "v1.31.4+k3s1",
+          "kubeletVersion": "v1.31.4+k3s1",
+          "machineID": "b176a88771d6f51e1c83d28c38774b3a",
+          "operatingSystem": "linux",
+          "osImage": "Ubuntu 24.04.1 LTS",
+          "systemUUID": "58ee9c86-79a9-e780-5ecc-250b915eb998"
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Node",
+      "metadata": {
+        "name": "worker-2",
+        "uid": "4fddedeb-04f5-4acf-21ba-8f73d9086275",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-08-08T12:00:00.000Z",
+        "labels": {
+          "kubernetes.io/hostname": "worker-2",
+          "kubernetes.io/os": "linux",
+          "kubernetes.io/arch": "amd64",
+          "node-role.kubernetes.io/worker": "true"
+        }
+      },
+      "spec": { "podCIDR": "10.42.0.0/24", "providerID": "k3s://worker-2" },
+      "status": {
+        "addresses": [
+          { "type": "InternalIP", "address": "192.168.10.13" },
+          { "type": "Hostname", "address": "worker-2" }
+        ],
+        "allocatable": { "cpu": "4", "ephemeral-storage": "98831908074", "memory": "16263064Ki", "pods": "110" },
+        "capacity": { "cpu": "4", "ephemeral-storage": "101590516Ki", "memory": "16263064Ki", "pods": "110" },
+        "conditions": [
+          {
+            "type": "MemoryPressure",
+            "status": "Unknown",
+            "lastHeartbeatTime": "2026-10-07T11:38:00.000Z",
+            "lastTransitionTime": "2026-10-07T11:38:00.000Z",
+            "reason": "NodeStatusUnknown",
+            "message": "Kubelet stopped posting node status."
+          },
+          {
+            "type": "DiskPressure",
+            "status": "Unknown",
+            "lastHeartbeatTime": "2026-10-07T11:38:00.000Z",
+            "lastTransitionTime": "2026-10-07T11:38:00.000Z",
+            "reason": "NodeStatusUnknown",
+            "message": "Kubelet stopped posting node status."
+          },
+          {
+            "type": "PIDPressure",
+            "status": "Unknown",
+            "lastHeartbeatTime": "2026-10-07T11:38:00.000Z",
+            "lastTransitionTime": "2026-10-07T11:38:00.000Z",
+            "reason": "NodeStatusUnknown",
+            "message": "Kubelet stopped posting node status."
+          },
+          {
+            "type": "Ready",
+            "status": "Unknown",
+            "lastHeartbeatTime": "2026-10-07T11:38:00.000Z",
+            "lastTransitionTime": "2026-10-07T11:38:00.000Z",
+            "reason": "NodeStatusUnknown",
+            "message": "Kubelet stopped posting node status."
+          }
+        ],
+        "daemonEndpoints": { "kubeletEndpoint": { "Port": 10250 } },
+        "nodeInfo": {
+          "architecture": "amd64",
+          "containerRuntimeVersion": "containerd://1.7.23-k3s2",
+          "kernelVersion": "6.8.0-48-generic",
+          "kubeProxyVersion": "v1.31.4+k3s1",
+          "kubeletVersion": "v1.31.4+k3s1",
+          "machineID": "4013f6d89ba229acfb9172a9065e1bc4",
+          "operatingSystem": "linux",
+          "osImage": "Ubuntu 24.04.1 LTS",
+          "systemUUID": "67669aa0-676b-de40-9243-84ae2fe4727c"
+        }
+      }
+    }
+  ]
+}

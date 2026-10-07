@@ -1,0 +1,45 @@
+{
+  "name": "hall-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "DEV_AUTH=1 tsx watch src/index.ts",
+    "build": "tsc -p .",
+    "build:client": "npm --prefix client run build",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p . --noEmit && tsc -p tsconfig.test.json",
+    "typecheck:client": "npm --prefix client run typecheck",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "lint": "oxlint --deny-warnings src client/src test scripts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "brand": "node scripts/brand.mjs",
+    "brand:check": "node scripts/brand-check.mjs",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run typecheck:client && npm test && npm run test:client && npm run brand:check",
+    "test:client": "npm --prefix client test"
+  },
+  "dependencies": {
+    "@kubernetes/client-node": "^2.0.0",
+    "better-sqlite3": "^12.11.1",
+    "drizzle-orm": "^0.45.3",
+    "express": "^4.22.3",
+    "ssh2": "^1.17.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^4.17.25",
+    "@types/node": "^22.20.5",
+    "@types/ssh2": "^1.15.6",
+    "oxlint": "^1.87.0",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3"
+  }
+}

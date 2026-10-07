@@ -1,0 +1,49 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "StatefulSet",
+      "metadata": {
+        "name": "postgres",
+        "namespace": "databases",
+        "uid": "7b8ce612-1841-326e-5969-420401e52592",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "labels": { "app": "postgres" }
+      },
+      "spec": { "replicas": 1, "serviceName": "postgres", "selector": { "matchLabels": { "app": "postgres" } } },
+      "status": {
+        "replicas": 1,
+        "readyReplicas": 1,
+        "currentReplicas": 1,
+        "updatedReplicas": 1,
+        "availableReplicas": 1,
+        "observedGeneration": 1
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "StatefulSet",
+      "metadata": {
+        "name": "jellyfin",
+        "namespace": "media",
+        "uid": "8f203cb4-84fe-18af-4a3b-f3c2ce9e8eb0",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-09-07T12:00:00.000Z",
+        "labels": { "app": "jellyfin" }
+      },
+      "spec": { "replicas": 1, "serviceName": "jellyfin", "selector": { "matchLabels": { "app": "jellyfin" } } },
+      "status": {
+        "replicas": 1,
+        "readyReplicas": 1,
+        "currentReplicas": 1,
+        "updatedReplicas": 1,
+        "availableReplicas": 1,
+        "observedGeneration": 1
+      }
+    }
+  ]
+}

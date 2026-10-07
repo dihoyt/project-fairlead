@@ -1,0 +1,117 @@
+import type { Migration } from "../contracts/runtime.js";
+import { DEFAULT_ORG_ID } from "../runtime/migrations.js";
+
+// The platform's own state: who may sign in, their sessions, what an admin
+// changed in the UI, encrypted secrets, and the audit trail. Table names are
+// code-console's. Append only and additive: during a rollout the old pod
+// keeps running its queries against the new schema until it exits.
+const org = `org_id TEXT NOT NULL DEFAULT '${DEFAULT_ORG_ID}' REFERENCES orgs(id)`;
+
+export const platformMigrations: readonly Migration[] = [
+  {
+    version: 1,
+    name: "auth, settings, secrets, audit",
+    up: `
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ${org},
+        -- The stable key anything owned by a person hangs off, so it never
+        -- changes once created. Compared case-insensitively at sign-in.
+        username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        display_name TEXT NOT NULL DEFAULT '',
+        email TEXT NOT NULL DEFAULT '',
+        -- NULL for an account that can only sign in through OIDC.
+        password_hash TEXT,
+        role TEXT NOT NULL CHECK (role IN ('admin', 'user')),
+        disabled INTEGER NOT NULL DEFAULT 0,
+        must_change_password INTEGER NOT NULL DEFAULT 0,
+        -- JSON array of CIDRs. Empty means this user has no rule of their own.
+        allowed_networks TEXT NOT NULL DEFAULT '[]',
+        created_at INTEGER NOT NULL,
+        last_login_at INTEGER,
+        -- Sealed with SECRETS_KEY; recovery codes are a JSON array of hashes.
+        totp_secret TEXT,
+        totp_enabled_at INTEGER,
+        recovery_codes TEXT NOT NULL DEFAULT '[]'
+      );
+
+      CREATE TABLE identities (
+        -- The issuer URL, so two providers can never collide on a subject.
+        provider TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        ${org},
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        email TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        last_used_at INTEGER,
+        PRIMARY KEY (provider, subject)
+      );
+
+      CREATE TABLE sessions (
+        -- SHA-256 of the cookie value. The cookie itself is never stored, so
+        -- a copy of this file signs nobody in.
+        id_hash TEXT PRIMARY KEY,
+        ${org},
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        method TEXT NOT NULL CHECK (method IN ('password', 'oidc')),
+        -- Groups as the provider stated them at sign-in, so admin groups
+        -- apply for the life of the session without asking again.
+        groups TEXT NOT NULL DEFAULT '[]',
+        created_at INTEGER NOT NULL,
+        last_seen_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        ip TEXT NOT NULL DEFAULT '',
+        user_agent TEXT NOT NULL DEFAULT '',
+        -- When an OIDC session last went back through the provider.
+        oidc_checked_at INTEGER
+      );
+      CREATE INDEX sessions_user ON sessions(user_id);
+
+      -- One row per OIDC sign-in in progress, between the redirect out and
+      -- the callback. In the database rather than a cookie so the callback
+      -- can land on either pod during a rollout.
+      CREATE TABLE oidc_states (
+        state TEXT PRIMARY KEY,
+        ${org},
+        nonce TEXT NOT NULL,
+        verifier TEXT NOT NULL,
+        return_to TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+      );
+
+      -- UI overrides of the settings registry. A row present means "set in
+      -- the UI"; deleting it falls back to the environment's value.
+      CREATE TABLE settings (
+        key TEXT PRIMARY KEY,
+        ${org},
+        value TEXT NOT NULL,
+        updated_by TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE secrets (
+        scope TEXT NOT NULL,
+        id TEXT NOT NULL,
+        ${org},
+        ciphertext TEXT NOT NULL,
+        updated_by TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (scope, id)
+      );
+
+      CREATE TABLE audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ${org},
+        ts INTEGER NOT NULL,
+        -- Denormalised so the log still reads after the user is deleted.
+        username TEXT NOT NULL DEFAULT '',
+        ip TEXT NOT NULL DEFAULT '',
+        action TEXT NOT NULL,
+        target TEXT NOT NULL DEFAULT '',
+        detail TEXT NOT NULL DEFAULT '',
+        result TEXT NOT NULL CHECK (result IN ('ok', 'denied', 'error'))
+      );
+      CREATE INDEX audit_ts ON audit_log(ts);
+    `,
+  },
+];

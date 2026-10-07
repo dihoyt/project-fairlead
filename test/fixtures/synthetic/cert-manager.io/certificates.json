@@ -1,0 +1,108 @@
+{
+  "apiVersion": "cert-manager.io/v1",
+  "kind": "List",
+  "metadata": { "resourceVersion": "" },
+  "items": [
+    {
+      "apiVersion": "cert-manager.io/v1",
+      "kind": "Certificate",
+      "metadata": {
+        "name": "web-tls",
+        "namespace": "default",
+        "uid": "24b157ce-19c6-dc32-4852-1310bd2556f5",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-07-19T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "secretName": "web-tls",
+        "dnsNames": ["web.example.lan"],
+        "issuerRef": { "name": "letsencrypt", "kind": "ClusterIssuer", "group": "cert-manager.io" },
+        "duration": "2160h0m0s",
+        "renewBefore": "720h0m0s"
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Ready",
+            "status": "True",
+            "reason": "Ready",
+            "message": "Certificate is up to date and has not expired",
+            "observedGeneration": 1,
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ],
+        "notBefore": "2026-09-08T12:00:00.000Z",
+        "notAfter": "2026-12-07T12:00:00.000Z",
+        "renewalTime": "2026-11-07T12:00:00.000Z",
+        "revision": 3
+      }
+    },
+    {
+      "apiVersion": "cert-manager.io/v1",
+      "kind": "Certificate",
+      "metadata": {
+        "name": "grafana-tls",
+        "namespace": "default",
+        "uid": "77378544-e154-a207-03ff-52d399e41171",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-07-19T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "secretName": "grafana-tls",
+        "dnsNames": ["grafana.example.lan"],
+        "issuerRef": { "name": "letsencrypt", "kind": "ClusterIssuer", "group": "cert-manager.io" },
+        "duration": "2160h0m0s",
+        "renewBefore": "720h0m0s"
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Ready",
+            "status": "True",
+            "reason": "Ready",
+            "message": "Certificate is up to date and has not expired",
+            "observedGeneration": 1,
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ],
+        "notBefore": "2026-07-14T12:00:00.000Z",
+        "notAfter": "2026-10-12T12:00:00.000Z",
+        "renewalTime": "2026-09-12T12:00:00.000Z",
+        "revision": 3
+      }
+    },
+    {
+      "apiVersion": "cert-manager.io/v1",
+      "kind": "Certificate",
+      "metadata": {
+        "name": "legacy-tls",
+        "namespace": "default",
+        "uid": "22957bb1-e450-6899-9f54-de7ba24e19db",
+        "resourceVersion": "1",
+        "creationTimestamp": "2026-07-19T12:00:00.000Z",
+        "annotations": {}
+      },
+      "spec": {
+        "secretName": "legacy-tls",
+        "dnsNames": ["legacy.example.lan"],
+        "issuerRef": { "name": "letsencrypt", "kind": "ClusterIssuer", "group": "cert-manager.io" },
+        "duration": "2160h0m0s",
+        "renewBefore": "720h0m0s"
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Ready",
+            "status": "False",
+            "reason": "DoesNotExist",
+            "message": "Issuing certificate as Secret does not exist",
+            "observedGeneration": 1,
+            "lastTransitionTime": "2026-10-06T12:00:00.000Z"
+          }
+        ]
+      }
+    }
+  ]
+}

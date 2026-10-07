@@ -1,0 +1,13 @@
+{
+  "displayName": "Fairlead",
+  "slug": "fairlead",
+  "tagline": "Kubernetes, healthy and recoverable",
+  "imageRegistry": "ghcr.io/dihoyt",
+  "imageName": "fairlead",
+  "chartName": "fairlead",
+  "defaultNamespace": "fairlead",
+  "cookiePrefix": "fairlead",
+  "dbFile": "fairlead.db",
+  "ownerMarker": { "labelDomain": "fairlead", "externalPrefix": "fairlead-", "externalTag": "managed-by:fairlead" },
+  "legacyOwnerMarkers": []
+}
