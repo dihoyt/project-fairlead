@@ -5,11 +5,20 @@ import { apiRequest, useApi } from "../../../ui";
 import { putSetting, settingOf, stringSetting } from "../settings";
 import { AppOffer, useDiscovery } from "../discovery";
 import { StepFrame, useAction, type StepProps } from "../shared";
+import { AuthentikWire, authentikAddresses } from "./AuthentikWire";
 
-// Offered when there is no identity provider yet. Deploying it installs
-// Authentik only; the OAuth2 provider and application inside it are made in
-// Authentik's own UI.
-function SignInOffers({ onDeployed }: { onDeployed: () => void }) {
+// Offered when there is no identity provider yet. Once Authentik is in the
+// cluster, wiring it creates the provider and application inside it through
+// its API.
+function SignInOffers({
+  onDeployed,
+  onWired,
+  onOpenAccess,
+}: {
+  onDeployed: () => void;
+  onWired: (issuer: string, discoveryOk: boolean) => void;
+  onOpenAccess?: () => void;
+}) {
   const discovery = useDiscovery();
   const offers = discovery.inSlot("sign-in");
   return (
@@ -26,19 +35,30 @@ function SignInOffers({ onDeployed }: { onDeployed: () => void }) {
               onDeployed();
             }}
           />
-          {app.id === "authentik" && app.detected.state === "installed" ? (
-            <Text size="xs" c="dimmed">
-              In Authentik, create an OAuth2/OpenID provider and an application for it with the redirect URI below. Its
-              issuer looks like {app.detected.urls[0] ?? "https://auth.example.com"}/application/o/&lt;slug&gt;/.
-            </Text>
-          ) : null}
+          {app.id === "authentik" && app.detected.state === "installed"
+            ? (() => {
+                const at = authentikAddresses(app, discovery.report?.ingressHosts);
+                return at ? (
+                  <AuthentikWire
+                    publicUrl={at.publicUrl}
+                    apiUrl={at.apiUrl}
+                    onWired={(result) => onWired(result.issuer, result.discovery.ok)}
+                    onOpenAccess={onOpenAccess}
+                  />
+                ) : (
+                  <Text size="xs" c="dimmed">
+                    Authentik has no address yet; give it a host on the Access step, then wire it up here.
+                  </Text>
+                );
+              })()
+            : null}
         </Stack>
       ))}
     </Stack>
   );
 }
 
-export function OidcStep({ onFinish }: StepProps) {
+export function OidcStep({ onFinish, onGoTo }: StepProps) {
   const overview = useApi("GET /api/admin/overview");
   const settings = overview.data?.settings;
   const [issuer, setIssuer] = useState("");
@@ -95,7 +115,15 @@ export function OidcStep({ onFinish }: StepProps) {
     >
       {overview.loading && !overview.data ? <Loader size="sm" /> : null}
       {overview.error ? <Alert color="red">{overview.error}</Alert> : null}
-      <SignInOffers onDeployed={overview.reload} />
+      <SignInOffers
+        onDeployed={overview.reload}
+        onWired={(wiredIssuer, ok) => {
+          setLoaded(false);
+          overview.reload();
+          if (ok) setResult({ ok: true, issuer: wiredIssuer });
+        }}
+        onOpenAccess={onGoTo ? () => onGoTo("access") : undefined}
+      />
       {oidc ? (
         <Stack gap="sm">
           <Text size="sm">

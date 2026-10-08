@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Alert, Anchor, Button, Group, Stack, Text } from "@mantine/core";
 import { Link } from "react-router";
+import type { OnboardingStepId } from "@contracts/onboarding";
 import { WhatIsThis } from "../../ui/deploy";
 
 export function errorText(err: unknown): string {
@@ -29,6 +30,8 @@ export function useAction() {
 export interface StepProps {
   // Marks the step done (true) or skipped (false) and moves on.
   onFinish: (done: boolean) => Promise<void>;
+  // Opens another step of the wizard, for a step that depends on it.
+  onGoTo?: (step: OnboardingStepId) => void;
 }
 
 export function StepFrame({

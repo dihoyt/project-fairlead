@@ -16,7 +16,7 @@ describe("OidcStep", () => {
     expect(screen.getByRole("button", { name: "Skip" })).toBeInTheDocument();
   });
 
-  it("points at the installed Authentik instead of offering a deploy", async () => {
+  it("offers to wire up the installed Authentik instead of a deploy", async () => {
     const apps = mockCatalogApps.map((app) =>
       app.id === "authentik"
         ? {
@@ -27,7 +27,7 @@ describe("OidcStep", () => {
     );
     stubApi({ "GET /api/catalog/apps": apps });
     renderWithApp(<OidcStep onFinish={async () => {}} />);
-    expect(await screen.findByText(/https:\/\/auth.example.test\/application\/o\/<slug>\//)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Wire up Authentik" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Deploy Authentik" })).toBeNull();
   });
 });
