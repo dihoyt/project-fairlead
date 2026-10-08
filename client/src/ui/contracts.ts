@@ -1,6 +1,7 @@
 // The shared UI contract: S3 implements these in client/src/ui/, every
 // client module consumes them. Changing one is a contract change.
 import type { ComponentType, ReactNode } from "react";
+import type { DeployJobView } from "@contracts/deploy";
 import type { CheckResult, Status } from "@contracts/health";
 import type { SeriesQuery, SeriesResult } from "@contracts/metrics";
 
@@ -104,4 +105,39 @@ export interface ClientModule {
   // Exported as `firstRun` beside navItems and routes. Modules are checked
   // in folder order and the first pending step wins.
   firstRun?: FirstRunStep;
+}
+
+// --- Deploy from the UI -----------------------------------------------------
+// S3-style shared components in client/src/ui/deploy/, used by the wizard
+// steps, the findings page and the Apps page. Every deploy goes through the
+// same flow: inputs, then the plan preview (POST /api/deploy/plan), then an
+// optional dry run, then the install with its progress and log.
+
+export interface DeployResult {
+  appId: string;
+  jobId: string;
+  url?: string;
+}
+
+export interface DeployButtonProps {
+  appId: string;
+  // Prefilled input values by CatalogInput.key, e.g. a host the step already knows.
+  initial?: Record<string, string | boolean>;
+  // Default "Deploy".
+  label?: string;
+  size?: "xs" | "sm" | "md";
+  // Called once the install job succeeds.
+  onDeployed?: (result: DeployResult) => void;
+}
+
+export interface DeployJobProgressProps {
+  jobId: string;
+  // Follow the log while the job runs. Default true.
+  follow?: boolean;
+  onFinished?: (job: DeployJobView) => void;
+}
+
+// The plain-language line under a step or tool heading.
+export interface WhatIsThisProps {
+  children: ReactNode;
 }

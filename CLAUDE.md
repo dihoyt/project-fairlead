@@ -8,7 +8,7 @@ Every build thread follows these. They come before anything else in this file.
 4. **The product name lives only in `product.json`.** Never hardcode it. Environment variables carry no product prefix.
 5. **One branch and one PR per chunk.** Touch only the paths the chunk owns.
 
-The plan these chunks come from is `/mnt/project-files/product-plan/mvp-build-plan.md` in the project's shared files (not in this repo).
+The plan these chunks come from is `/mnt/project-files/product-plan/mvp-build-plan.md` in the project's shared files (not in this repo); the v0.1.x W chunks come from `/mnt/project-files/product-plan/v0.1.x-wizard-plan.md`.
 
 # What this is
 
@@ -65,8 +65,15 @@ Each chunk may create or edit only its own paths. Everything else is read-only t
 | A13 workloads | `src/modules/workloads/`, `client/src/modules/workloads/` |
 | A14 first run + docs | `src/modules/onboarding/`, `client/src/modules/onboarding/`, `docs/` |
 | A15 installer | `install.sh`, `scripts/install/`, `.github/workflows/install-test.yml` |
+| W1 catalog | `src/modules/catalog/` |
+| W2 deploy | `src/modules/deploy/` |
+| W3 k8s writes | `src/modules/k8s/` |
+| W4 deploy opt-in | `chart/templates/deploy-*.yaml`, the `deploy:` key in `chart/values.yaml`, `install.sh`, `docs/install.md` |
+| W5 deploy UI | `client/src/ui/deploy/`, `client/src/modules/apps/` |
+| W6 wizard deploy | `client/src/modules/onboarding/` except `steps/HostsStep.tsx` |
+| W7 host key pair | `src/modules/hosts/`, `client/src/modules/hosts/`, `client/src/modules/onboarding/steps/HostsStep.tsx` |
 | B1 connectors | `src/modules/connectors/`, `client/src/modules/connectors/`, `src/contracts/connectors.ts`, `src/contracts/mocks/connectors/` |
-| Every module chunk (A1–A15, B1–B5) | also `test/modules/<id>/` for its module's tests |
+| Every module chunk (A1–A15, W1–W7, B1–B5) | also `test/modules/<id>/` for its module's tests |
 | B2–B5 | their own `src/modules/<id>/` and `client/src/modules/<id>/`, plus the chart files the plan names |
 
 **Shared dependencies no worker mutates:** `package.json` and `package-lock.json` (both root and `client/`), `src/contracts/`, `src/runtime/`, `src/app.ts`, `src/modules/index.ts`, `client/src/ui/` (S3 aside), `chart/values.yaml` (S4 aside), `test/support/` (S5 aside). Every dependency Milestone A is known to need is already installed. Needing a new dependency, contract field, route, event, service or shared helper is a blocker for the coordinating session, which changes contracts in their own small PR.

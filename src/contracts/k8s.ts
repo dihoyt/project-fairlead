@@ -52,6 +52,11 @@ export const RESOURCES = {
   fleetGitRepos: ref("fleet.cattle.io", "v1alpha1", "gitrepos", "GitRepo", true),
   fleetBundles: ref("fleet.cattle.io", "v1alpha1", "bundles", "Bundle", true),
   certificates: ref("cert-manager.io", "v1", "certificates", "Certificate", true),
+  // Discovery (catalog module): what is installed and where it is reachable.
+  ingresses: ref("networking.k8s.io", "v1", "ingresses", "Ingress", true),
+  ingressClasses: ref("networking.k8s.io", "v1", "ingressclasses", "IngressClass", false),
+  services: ref("", "v1", "services", "Service", true),
+  clusterIssuers: ref("cert-manager.io", "v1", "clusterissuers", "ClusterIssuer", false),
 } as const satisfies Record<string, ResourceRef>;
 
 export type ResourceName = keyof typeof RESOURCES;
@@ -118,7 +123,8 @@ export interface LogStream {
 }
 
 export interface AccessCheck {
-  verb: "get" | "list" | "watch";
+  // create and delete: the deploy module checks its own namespaced grants.
+  verb: "get" | "list" | "watch" | "create" | "delete";
   group: string;
   resource: string;
   subresource?: string;
@@ -190,6 +196,15 @@ export interface K8sApi {
   // TLS handshake. Optional until the k8s module implements it: callers
   // treat a missing method as "unknown", not as a failure.
   serverInfo?(): Promise<K8sServerInfo>;
+  // Writes, used only by the deploy module for its Jobs and their values
+  // Secrets in this product's own namespace; the chart grants nothing wider
+  // to the product's ServiceAccount. create labels the object with
+  // ownedLabels() before sending it. Optional until the k8s module
+  // implements them: the deploy module reports deploys as unavailable.
+  create?<T extends KubeObject = KubeObject>(ref: ResourceRef, obj: T): Promise<T>;
+  // Foreground propagation, so a Job's pods go with it. A missing object is
+  // not an error.
+  delete?(ref: ResourceRef, name: string, namespace?: string): Promise<void>;
   // Cached; refreshed on an interval and on demand.
   capabilities(refresh?: boolean): Promise<CapabilityReport>;
   can(check: AccessCheck): Promise<boolean>;

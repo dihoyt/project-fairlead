@@ -17,6 +17,17 @@ import {
   mockStaleVolume,
   mockTargets,
 } from "./backups.js";
+import {
+  mockCatalogApps,
+  mockDeployJob,
+  mockDeployLog,
+  mockDeployPlan,
+  mockDeployStatus,
+  mockDiscovery,
+  mockFailedJob,
+  mockHostKeypair,
+  mockRunningJob,
+} from "./catalog.js";
 import { mockCheckResults } from "./health.js";
 import { mockSeriesResults } from "./metrics.js";
 import { DAY, HOUR, MOCK_NOW, isoAgo } from "./time.js";
@@ -491,6 +502,8 @@ export const apiMocks: ApiMocks = {
       { id: "reachable", label: "Reachable", status: "ok", detail: "SSH as monitor, DSM 7.2", observedAt: now },
     ],
   },
+  "GET /api/hosts/keypair": { keypair: mockHostKeypair },
+  "POST /api/hosts/keypair": mockHostKeypair,
 
   "GET /api/checks": [mockCheck, mockInsecureCheck],
   "POST /api/checks": mockCheck,
@@ -574,6 +587,19 @@ export const apiMocks: ApiMocks = {
     { line: "[INF] Starting Jellyfin" },
     { line: "[FTL] Unhandled exception" },
   ],
+
+  "GET /api/catalog/apps": mockCatalogApps,
+  "GET /api/catalog/apps/:id": mockCatalogApps.find((app) => app.id === "headlamp")!,
+  "GET /api/catalog/discovery": mockDiscovery,
+
+  "GET /api/deploy/status": mockDeployStatus,
+  "POST /api/deploy/plan": mockDeployPlan,
+  "POST /api/deploy/jobs": { ...mockRunningJob, appId: "headlamp", release: "headlamp", namespace: "headlamp" },
+  "GET /api/deploy/jobs": [mockRunningJob, mockDeployJob, mockFailedJob],
+  "GET /api/deploy/jobs/:id": mockDeployJob,
+  "GET /api/deploy/jobs/:id/logs": { lines: mockDeployLog, redacted: 0, truncated: false },
+  "GET /api/deploy/jobs/:id/logs/stream": mockDeployLog.map((line) => ({ line })),
+  "POST /api/deploy/jobs/:id/cancel": { ...mockRunningJob, state: "cancelled", finishedAt: now },
 
   "GET /api/onboarding/state": mockOnboarding,
   "POST /api/onboarding/steps/:step": mockOnboarding,

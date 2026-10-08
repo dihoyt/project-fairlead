@@ -26,6 +26,8 @@ export const MODULE_IDS = [
   "metrics-k8s",
   "workloads",
   "onboarding",
+  "catalog",
+  "deploy",
   "connectors",
   "connector-cloudflare",
   "connector-entra",
