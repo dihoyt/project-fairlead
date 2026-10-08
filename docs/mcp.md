@@ -79,12 +79,12 @@ Read (any token):
 | `get_health_category` | Every check in one category, with its links |
 | `list_nodes` | Nodes with readiness, CPU and memory |
 | `list_namespaces` | Namespaces with workload and pod counts |
-| `list_workloads` | Workloads in a namespace |
+| `list_workloads` | Workloads in one namespace or all; finished Jobs only with `includeFinished` |
 | `list_pods` | Pods in a namespace, optionally one workload's |
 | `list_checks` | HTTP/TCP checks with their last result |
 | `list_links` | Links on the category pages |
 | `get_backup_posture` | Every PVC and how it is backed up |
-| `list_catalog_apps` | Deployable apps, their inputs, and whether each is installed |
+| `list_catalog_apps` | Deployable apps, their inputs, and whether each is installed; `detail` for the install source |
 | `get_discovery` | What the cluster already has |
 | `list_deploy_jobs` | Recent deploys |
 | `get_deploy_job_logs` | A deploy's log, secrets redacted |

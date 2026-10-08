@@ -16,6 +16,7 @@ import { createFakeK8s } from "../../../src/contracts/mocks/k8s.js";
 import { createK8sService, type K8sService } from "../../../src/modules/k8s/api.js";
 import mod from "../../../src/modules/workloads/index.js";
 import { ObjectCache } from "../../../src/modules/workloads/cache.js";
+import { workloadView } from "../../../src/modules/workloads/views.js";
 import { MASK, createRedactor, referencedSecrets } from "../../../src/modules/workloads/redact.js";
 import { loadFixtureSet, startFakeApi, type FakeApi } from "../../support/index.js";
 import { listen } from "../../runtime/helpers.js";
@@ -379,4 +380,23 @@ test("usage routes answer without the metrics module, and refuse unknown spaces 
   assert.equal(space.range, "1h");
   await get("/namespaces/nope/usage", 404);
   await get("/usage?range=2h", 400);
+});
+
+const job = (conditions: Array<{ type: string; status: string }>) =>
+  workloadView(
+    {
+      apiVersion: "batch/v1",
+      kind: "Job",
+      metadata: { name: "j", namespace: "a" },
+      status: { succeeded: 1, conditions },
+    },
+    "Job",
+    null
+  );
+
+test("a Job reports finished from its Complete or Failed condition", () => {
+  assert.equal(job([{ type: "Complete", status: "True" }]).finished, "complete");
+  assert.equal(job([{ type: "Failed", status: "True" }]).finished, "failed");
+  assert.equal(job([{ type: "Complete", status: "False" }]).finished, undefined);
+  assert.equal(job([]).ready, "1/1");
 });

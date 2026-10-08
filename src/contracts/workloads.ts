@@ -22,6 +22,10 @@ export interface WorkloadView {
   images: string[];
   managedBy: ManagedBy | null;
   createdAt: string;
+  // Jobs only: finished, every completion succeeded (Complete condition), or
+  // gave up (Failed condition). Absent while it runs. ready counts
+  // succeeded pods for a Job.
+  finished?: "complete" | "failed";
 }
 
 export interface ContainerView {
