@@ -16,6 +16,9 @@ import { applyMigrations } from "../../../src/runtime/migrations.js";
 import checks, { LATENCY_SERIES, createRunner } from "../../../src/modules/checks/index.js";
 import { MAX_BODY_BYTES, judge, parseHostPort, probe, type CheckSpec } from "../../../src/modules/checks/probe.js";
 import { createStore } from "../../../src/modules/checks/store.js";
+import { ACCESS_LINK, ingressHostFor, rateUnresolved, unresolved } from "../../../src/modules/checks/fallback.js";
+import type { IngressHost } from "../../../src/contracts/catalog.js";
+import { createMockCatalogService, mockDiscovery } from "../../../src/contracts/mocks/catalog.js";
 import { migrations as healthMigrations } from "../../../src/modules/health/migrations.js";
 import { startHealth } from "../../../src/modules/health/service.js";
 import { listen } from "../../runtime/helpers.js";
@@ -629,4 +632,74 @@ test("a target going down turns the checks tile red and emits one health change"
   } finally {
     await m.close();
   }
+});
+
+// --- a hostname with no DNS yet ---------------------------------------------
+
+const noDns = { error: { message: "getaddrinfo ENOTFOUND git.example.test", code: "ENOTFOUND" } };
+const gitCheck = (path = "/"): CheckSpec => ({
+  id: "chk_git",
+  label: "Gitea",
+  kind: "http",
+  target: `https://git.example.test${path}`,
+  intervalMs: 60_000,
+  timeoutMs: 2_000,
+  tlsWarnDays: 14,
+  enabled: true,
+});
+const gitHost = (serviceUrl: string, ingressClass = "traefik"): IngressHost => ({
+  host: "git.example.test",
+  url: "https://git.example.test",
+  tls: true,
+  namespace: "gitea",
+  ingress: "gitea",
+  service: "gitea-http",
+  serviceUrl,
+  ingressClass,
+  appId: "gitea",
+});
+
+test("no DNS: only a lookup failure on an http check falls back", () => {
+  assert.equal(unresolved(gitCheck(), noDns), true);
+  assert.equal(unresolved(gitCheck(), { error: { message: "x", code: "EAI_AGAIN" } }), true);
+  assert.equal(unresolved(gitCheck(), { error: { message: "refused", code: "ECONNREFUSED" } }), false);
+  assert.equal(unresolved({ ...gitCheck(), kind: "tcp", target: "git.example.test:22" }, noDns), false);
+});
+
+test("no DNS: the check's host is matched to an Ingress host with a Service URL", async () => {
+  const catalog = createMockCatalogService({
+    discovery: {
+      ...mockDiscovery,
+      ingressHosts: [gitHost(httpUrl), { ...gitHost(""), host: "bare.example.test", serviceUrl: undefined }],
+    },
+  });
+  assert.equal((await ingressHostFor(catalog, "https://GIT.example.test/x"))?.service, "gitea-http");
+  assert.equal(await ingressHostFor(catalog, "https://bare.example.test/"), undefined);
+  assert.equal(await ingressHostFor(undefined, "https://git.example.test/"), undefined);
+});
+
+test("no DNS: up inside the cluster is a warning that links to the Access step", async () => {
+  const { result, inside } = await rateUnresolved(gitCheck("/status/200?x=1"), noDns, gitHost(httpUrl), "now");
+  assert.equal(result.status, "warn");
+  assert.match(
+    result.detail,
+    /^Unreachable: git\.example\.test has no DNS record yet\. The app is up inside the cluster \(200 in \d+ ms\)/
+  );
+  assert.equal(result.deepLink, ACCESS_LINK);
+  assert.equal(inside.httpStatus, 200);
+});
+
+test("no DNS: down inside the cluster too is critical", async () => {
+  const { result } = await rateUnresolved(gitCheck("/status/500"), noDns, gitHost(httpUrl), "now");
+  assert.equal(result.status, "crit");
+  assert.match(result.detail, /does not answer inside the cluster either .*HTTP 500/);
+  const refused = await rateUnresolved(gitCheck(), noDns, gitHost(`http://127.0.0.1:${closedPort}`), "now");
+  assert.equal(refused.result.status, "crit");
+});
+
+test("no DNS on a Tailscale host: the Service is the whole answer", async () => {
+  const { result } = await rateUnresolved(gitCheck(), noDns, gitHost(httpUrl, "tailscale"), "now");
+  assert.equal(result.status, "ok");
+  assert.match(result.detail, /answers on your tailnet only/);
+  assert.equal(result.deepLink, "https://git.example.test/");
 });
