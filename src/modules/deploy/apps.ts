@@ -78,13 +78,16 @@ const tlsSecret = (r: RecipeInput) => `${r.release}-tls`;
 // module's releases().
 const labels = () => deployedLabel();
 
-// Two replicas, or one on a single node: more replicas than nodes leaves
-// every volume degraded. Users raise it in Longhorn as they add nodes.
-const LONGHORN_REPLICAS = 2;
-const longhornReplicas = (r: RecipeInput) => {
+// Two replicas, or one on a single node, where a second copy on the same
+// host buys nothing. Unknown node count keeps two.
+const upToNodes = (r: RecipeInput, wanted: number) => {
   const nodes = r.discovery?.nodeDisks?.length;
-  return nodes ? Math.min(LONGHORN_REPLICAS, nodes) : LONGHORN_REPLICAS;
+  return nodes ? Math.min(wanted, nodes) : wanted;
 };
+// More replicas than nodes leaves every volume degraded. Users raise it in
+// Longhorn as they add nodes.
+const LONGHORN_REPLICAS = 2;
+const longhornReplicas = (r: RecipeInput) => upToNodes(r, LONGHORN_REPLICAS);
 const storageClass = (r: RecipeInput) => r.defaults.storageClass || undefined;
 
 function hasDefaultStorageClass(r: RecipeInput): boolean {
@@ -445,7 +448,8 @@ export const recipes: Record<string, Recipe> = {
   },
 
   cloudflared: {
-    values: (r) => ({ cloudflare: { tunnel_token: str(r.inputs.tunnelToken) } }),
+    // The chart runs two by default; each shows as a separate connector.
+    values: (r) => ({ cloudflare: { tunnel_token: str(r.inputs.tunnelToken) }, replicaCount: upToNodes(r, 2) }),
   },
 
   "tailscale-operator": {
