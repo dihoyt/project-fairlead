@@ -71,6 +71,7 @@ spec:
             - name: CLIENT_IP_HEADER
               value: {{ . | quote }}
             {{- end }}
+            {{- include "app.deployEnv" . | nindent 12 }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

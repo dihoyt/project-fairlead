@@ -31,4 +31,11 @@ export const migrations: readonly Migration[] = [
       );
     `,
   },
+  {
+    version: 2,
+    name: "hosts signing in with the generated key pair",
+    up: `
+      ALTER TABLE hosts_inventory ADD COLUMN generated_key INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];

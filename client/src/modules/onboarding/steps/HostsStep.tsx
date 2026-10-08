@@ -16,6 +16,8 @@ import {
 } from "@mantine/core";
 import type { HostKind, HostRequest, HostTestResult } from "@contracts/hosts";
 import { CheckList, StatusBadge, apiRequest, useApi } from "../../../ui";
+import { GeneratedKey, useKeypair } from "../../hosts/GeneratedKey";
+import { SIGN_IN_OPTIONS } from "../../hosts/HostForm";
 import { StepFrame, useAction, type StepProps } from "../shared";
 
 const KINDS: Array<{ value: HostKind; label: string }> = [
@@ -31,7 +33,8 @@ export function HostsStep({ onFinish }: StepProps) {
   const [address, setAddress] = useState("");
   const [port, setPort] = useState<number>(22);
   const [username, setUsername] = useState("");
-  const [auth, setAuth] = useState<"key" | "password">("key");
+  const keypair = useKeypair();
+  const [signIn, setSignIn] = useState<"generated" | "key" | "password">("generated");
   const [credential, setCredential] = useState("");
   const [kind, setKind] = useState<HostKind>("auto");
   const [paths, setPaths] = useState("");
@@ -43,9 +46,9 @@ export function HostsStep({ onFinish }: StepProps) {
     address: address.trim(),
     port,
     username: username.trim(),
-    auth,
+    auth: signIn === "password" ? "password" : "key",
     kind,
-    credential,
+    ...(signIn === "generated" ? { useGeneratedKey: true } : { credential }),
     backupTargetPaths: paths
       .split("\n")
       .map((p) => p.trim())
@@ -114,17 +117,12 @@ export function HostsStep({ onFinish }: StepProps) {
           <Text size="sm" fw={500}>
             Sign in with
           </Text>
-          <SegmentedControl
-            value={auth}
-            onChange={(v) => setAuth(v as "key" | "password")}
-            data={[
-              { value: "key", label: "Private key" },
-              { value: "password", label: "Password" },
-            ]}
-          />
+          <SegmentedControl value={signIn} onChange={(v) => setSignIn(v as typeof signIn)} data={SIGN_IN_OPTIONS} />
         </Stack>
       </SimpleGrid>
-      {auth === "key" ? (
+      {signIn === "generated" ? (
+        <GeneratedKey resource={keypair} canGenerate />
+      ) : signIn === "key" ? (
         <Textarea
           label="Private key"
           description="OpenSSH or PEM. Stored encrypted."
@@ -165,7 +163,12 @@ export function HostsStep({ onFinish }: StepProps) {
         </Alert>
       ) : null}
       <Group>
-        <Button variant="default" loading={action.busy} disabled={!address || !username || !credential} onClick={test}>
+        <Button
+          variant="default"
+          loading={action.busy}
+          disabled={!address || !username || (signIn === "generated" ? !keypair.data?.keypair : !credential)}
+          onClick={test}
+        >
           Test connection
         </Button>
         <Button loading={action.busy} disabled={!tested?.ok} onClick={add}>

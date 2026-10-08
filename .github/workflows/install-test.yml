@@ -143,6 +143,17 @@ jobs:
           password=$(sed -n 's/^Password: //p' "$RUNNER_TEMP/kind.log")
           echo "::add-mask::$password"
           scripts/install/assert-install.sh "$RUNNER_TEMP/kind.log" "$password"
+      - name: Deploys stay off until --enable-deploy turns them on
+        run: |
+          sa="system:serviceaccount:$NS:$RELEASE"
+          [ "$(kubectl auth can-i create jobs -n "$NS" --as="$sa" || true)" = no ]
+          ./install.sh --no-k3s --yes --chart ./chart --enable-deploy | tee "$RUNNER_TEMP/deploy.log"
+          grep -q '^App deploys are on' "$RUNNER_TEMP/deploy.log"
+          [ "$(kubectl auth can-i create jobs -n "$NS" --as="$sa")" = yes ]
+          kubectl -n "$NS" get serviceaccount "$RELEASE-installer" > /dev/null
+          # A re-run without the flag keeps them on.
+          ./install.sh --no-k3s --yes --chart ./chart > /dev/null
+          [ "$(kubectl auth can-i create jobs -n "$NS" --as="$sa")" = yes ]
       - name: Diagnostics
         if: failure()
         run: |

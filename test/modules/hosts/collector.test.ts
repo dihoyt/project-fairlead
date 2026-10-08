@@ -48,6 +48,7 @@ async function setup(initial: Table, options: { paths?: string[]; pin?: string; 
       kind: "auto",
       backupTargetPaths: options.paths ?? [],
       hostKeyFingerprint: options.pin ?? null,
+      generatedKey: false,
     },
     new Date(T0).toISOString()
   );
@@ -329,6 +330,7 @@ test("health provider: no hosts is absent, a new host waits, stale results turn 
       kind: "auto" as const,
       backupTargetPaths: [],
       hostKeyFingerprint: null,
+      generatedKey: false,
     };
     service.store.insert("host_a", fields, new Date(T0).toISOString());
     const [waiting] = await service.provider.collect();

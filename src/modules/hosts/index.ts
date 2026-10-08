@@ -36,6 +36,7 @@ const hostRequest = z.object({
   kind: z.enum(["auto", "linux", "synology", "truenas"]).optional(),
   backupTargetPaths: z.array(absolutePath).max(16).optional(),
   credential: z.string().max(16_384).optional(),
+  useGeneratedKey: z.boolean().optional(),
   hostKeyFingerprint: z
     .string()
     .trim()
@@ -52,6 +53,10 @@ function parseRequest(body: unknown): ParsedRequest {
     throw new HttpError(400, parsed.error.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; "));
   }
   const req = parsed.data;
+  if (req.useGeneratedKey) {
+    if (req.auth !== "key") throw new HttpError(400, 'useGeneratedKey: only with auth "key".');
+    delete req.credential;
+  }
   // Keys pasted from a browser textarea may carry CRLF or lose the trailing newline.
   if (req.credential !== undefined && req.auth === "key")
     req.credential = `${req.credential.replace(/\r\n/g, "\n").trim()}\n`;
@@ -72,6 +77,7 @@ function fields(req: ParsedRequest, pin: string | null): HostFields {
     kind: req.kind ?? "auto",
     backupTargetPaths: [...new Set(req.backupTargetPaths ?? [])],
     hostKeyFingerprint: pin,
+    generatedKey: !!req.useGeneratedKey,
   };
 }
 
@@ -114,13 +120,17 @@ function register(ctx: ModuleContext): HostsService {
       loadWarnPerCpu: loadWarn.get(),
     }),
   });
-  const { store } = service;
+  const { store, keypair } = service;
 
   ctx.health.addProvider(service.provider);
   service.syncCapacities();
   ctx.scheduler.every("collect", TICK_MS, (signal) => service.collectDue(signal), { timeoutMs: 120_000 });
 
-  const view = async (row: HostRow): Promise<HostView> => toView(row, await ctx.secrets.has("hosts", row.id));
+  const view = async (row: HostRow): Promise<HostView> =>
+    toView(row, row.generated_key ? await keypair.exists() : await ctx.secrets.has("hosts", row.id));
+  const requireKeypair = async () => {
+    if (!(await keypair.exists())) throw new HttpError(400, "useGeneratedKey: generate the key pair first.");
+  };
   const mustGet = (id: string): HostRow => {
     const row = store.get(id);
     if (!row) throw new HttpError(404, "No such host.");
@@ -144,24 +154,49 @@ function register(ctx: ModuleContext): HostsService {
 
   ctx.route("GET /api/hosts", async () => Promise.all(store.list().map(view)));
 
+  // Bound before "/:id" so "keypair" is never read as a host id.
+  ctx.route("GET /api/hosts/keypair", async () => ({ keypair: await keypair.get() }));
+
+  ctx.route("POST /api/hosts/keypair", async (req, res) => {
+    const user = ctx.require(req, res, "write");
+    if (!user) return undefined;
+    const rotate = req.query.rotate === "1";
+    const existed = await keypair.exists();
+    let generated;
+    try {
+      generated = await keypair.generate(rotate);
+    } catch (err) {
+      throw new HttpError(503, `The key pair could not be stored: ${errorMessage(err)}`);
+    }
+    if (!generated) throw new HttpError(409, "A key pair already exists; rotate it to replace it.");
+    if (existed) for (const row of store.list()) if (row.generated_key) service.forget(row.id);
+    ctx.audit.record({
+      actor: user.id,
+      action: existed ? "hosts.rotate-keypair" : "hosts.generate-keypair",
+      target: generated.fingerprint,
+    });
+    return generated;
+  });
+
   ctx.route("GET /api/hosts/:id", async (req) => view(mustGet(req.params.id)));
 
   ctx.route("POST /api/hosts", async (req, res) => {
     const user = ctx.require(req, res, "write");
     if (!user) return undefined;
     const body = parseRequest(req.body);
-    if (!body.credential?.trim())
+    if (body.useGeneratedKey) await requireKeypair();
+    else if (!body.credential?.trim())
       throw new HttpError(400, `credential: a ${body.auth === "key" ? "private key" : "password"} is required.`);
     const id = `host_${randomBytes(8).toString("hex")}`;
     const f = fields(body, body.hostKeyFingerprint || null);
-    await storeCredential(id, body.credential);
+    if (body.credential) await storeCredential(id, body.credential);
     store.insert(id, f, new Date().toISOString());
     service.syncCapacities();
     ctx.audit.record({
       actor: user.id,
       action: "hosts.create",
       target: id,
-      detail: `"${f.label}" ${f.username}@${f.address}:${f.port} (${f.auth})`,
+      detail: `"${f.label}" ${f.username}@${f.address}:${f.port} (${f.auth}${f.generatedKey ? ", generated key" : ""})`,
     });
     kick(id);
     return view(mustGet(id));
@@ -173,8 +208,11 @@ function register(ctx: ModuleContext): HostsService {
     const existing = mustGet(req.params.id);
     const body = parseRequest(req.body);
     const changedAuth = body.auth !== existing.auth;
-    if (changedAuth && !body.credential?.trim()) {
+    if (body.useGeneratedKey) await requireKeypair();
+    else if (changedAuth && !body.credential?.trim()) {
       throw new HttpError(400, "credential: switching between key and password needs the new credential.");
+    } else if (existing.generated_key && !body.credential?.trim()) {
+      throw new HttpError(400, "credential: leaving the generated key needs a private key or password.");
     }
     const draft = fields(body, null);
     const moved = !sameEndpoint(existing, draft);
@@ -188,14 +226,16 @@ function register(ctx: ModuleContext): HostsService {
         ? null
         : existing.host_key_fingerprint;
     const f = { ...draft, hostKeyFingerprint: pin };
-    const credentialChanged = !!body.credential?.trim();
-    if (credentialChanged) await storeCredential(existing.id, body.credential!);
+    const switchedKey = f.generatedKey !== !!existing.generated_key;
+    const credentialChanged = !!body.credential?.trim() || switchedKey;
+    if (body.credential?.trim()) await storeCredential(existing.id, body.credential);
     store.update(
       existing.id,
       f,
       new Date().toISOString(),
       moved || credentialChanged || pin !== existing.host_key_fingerprint
     );
+    if (f.generatedKey) await ctx.secrets.delete("hosts", existing.id);
     if (moved || credentialChanged) service.forget(existing.id);
     service.syncCapacities();
     ctx.audit.record({
@@ -204,7 +244,8 @@ function register(ctx: ModuleContext): HostsService {
       target: existing.id,
       detail:
         `"${f.label}" ${f.username}@${f.address}:${f.port} (${f.auth})` +
-        (credentialChanged ? ", credential changed" : "") +
+        (switchedKey ? (f.generatedKey ? ", now the generated key" : ", own credential") : "") +
+        (credentialChanged && !switchedKey ? ", credential changed" : "") +
         (pin !== existing.host_key_fingerprint ? `, host key ${pin ? `pinned to ${pin}` : "unpinned"}` : ""),
     });
     kick(existing.id);
@@ -233,9 +274,12 @@ function register(ctx: ModuleContext): HostsService {
     const body = parseRequest(req.body);
     const target = fields(body, body.hostKeyFingerprint || null);
     let credential = body.credential?.trim() ? body.credential : undefined;
-    // Testing an edit without re-entering the secret: the stored credential
-    // is only ever used against the endpoint it was saved for.
-    if (!credential) {
+    if (body.useGeneratedKey) {
+      await requireKeypair();
+      credential = (await keypair.privateKey()) ?? undefined;
+    } else if (!credential) {
+      // Testing an edit without re-entering the secret: the stored credential
+      // is only ever used against the endpoint it was saved for.
       const match = store.list().find((row) => sameEndpoint(row, target));
       credential = match ? ((await ctx.secrets.get("hosts", match.id)) ?? undefined) : undefined;
     }

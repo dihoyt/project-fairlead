@@ -5,6 +5,7 @@ import type { HostTestResult } from "../../contracts/hosts.js";
 import type { ModuleContext } from "../../contracts/module.js";
 import { errorMessage } from "../../runtime/log.js";
 import { analyze, gather, unreachableChecks, type HostIdentity, type RateState, type Thresholds } from "./collect.js";
+import { createKeypairStore, type KeypairStore } from "./keypair.js";
 import { filesystemFor } from "./parse.js";
 import { connect, HostKeyMismatch, type SshTarget } from "./ssh.js";
 import { createStore, rowFilesystems, rowPaths, rowResults, type HostRow, type HostStore } from "./store.js";
@@ -69,6 +70,7 @@ export function targetOnPath(row: HostRow, path: string, target: BackupTarget): 
 export function startHosts(ctx: ModuleContext, options: HostsOptions) {
   const now = options.now ?? Date.now;
   const store: HostStore = createStore(ctx.db, ctx.orgId);
+  const keypair: KeypairStore = createKeypairStore(ctx.secrets, now);
   const rates = new Map<string, RateState>();
   const lastAttempt = new Map<string, number>();
   const capacities = new Set<string>();
@@ -93,8 +95,13 @@ export function startHosts(ctx: ModuleContext, options: HostsOptions) {
     let credential: string | null;
     let problem: string | undefined;
     try {
-      credential = await ctx.secrets.get("hosts", row.id);
-      if (!credential) problem = "No credential stored for this host; edit it to add a key or password.";
+      if (row.generated_key) {
+        credential = await keypair.privateKey();
+        if (!credential) problem = "This host signs in with the generated key, but no key pair has been generated.";
+      } else {
+        credential = await ctx.secrets.get("hosts", row.id);
+        if (!credential) problem = "No credential stored for this host; edit it to add a key or password.";
+      }
     } catch (err) {
       credential = null;
       problem = `The stored credential could not be read: ${errorMessage(err)}`;
@@ -296,7 +303,7 @@ export function startHosts(ctx: ModuleContext, options: HostsOptions) {
     lastAttempt.delete(id);
   }
 
-  return { store, provider, collectDue, collectHost, settle, probe, syncCapacities, forget };
+  return { store, keypair, provider, collectDue, collectHost, settle, probe, syncCapacities, forget };
 }
 
 export type HostsService = ReturnType<typeof startHosts>;

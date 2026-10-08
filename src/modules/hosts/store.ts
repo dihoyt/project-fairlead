@@ -14,6 +14,7 @@ export interface HostRow {
   kind: HostKind;
   backup_target_paths: string;
   host_key_fingerprint: string | null;
+  generated_key: 0 | 1;
   created_at: string;
   updated_at: string;
   status: Status;
@@ -35,6 +36,7 @@ export interface HostFields {
   kind: HostKind;
   backupTargetPaths: string[];
   hostKeyFingerprint: string | null;
+  generatedKey: boolean;
 }
 
 export interface CollectionRecord {
@@ -69,8 +71,8 @@ export function createStore(db: Database, orgId: string) {
       db.prepare(
         `INSERT INTO hosts_inventory
            (id, org_id, label, address, port, username, auth, kind, backup_target_paths, host_key_fingerprint,
-            created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            generated_key, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         id,
         orgId,
@@ -82,6 +84,7 @@ export function createStore(db: Database, orgId: string) {
         fields.kind,
         JSON.stringify(fields.backupTargetPaths),
         fields.hostKeyFingerprint,
+        fields.generatedKey ? 1 : 0,
         at,
         at
       );
@@ -92,7 +95,7 @@ export function createStore(db: Database, orgId: string) {
     update(id: string, fields: HostFields, at: string, resetState: boolean): void {
       db.prepare(
         `UPDATE hosts_inventory SET label = ?, address = ?, port = ?, username = ?, auth = ?, kind = ?,
-           backup_target_paths = ?, host_key_fingerprint = ?, updated_at = ?
+           backup_target_paths = ?, host_key_fingerprint = ?, generated_key = ?, updated_at = ?
            ${resetState ? ", status = 'unknown', results = '[]', last_error = NULL, last_collected_at = NULL" : ""}
          WHERE org_id = ? AND id = ?`
       ).run(
@@ -104,6 +107,7 @@ export function createStore(db: Database, orgId: string) {
         fields.kind,
         JSON.stringify(fields.backupTargetPaths),
         fields.hostKeyFingerprint,
+        fields.generatedKey ? 1 : 0,
         at,
         orgId,
         id
@@ -172,6 +176,7 @@ export function toView(row: HostRow, hasCredential: boolean): HostView {
     username: row.username,
     auth: row.auth,
     kind: row.kind,
+    ...(row.generated_key ? { generatedKey: true } : {}),
     ...(row.detected_kind ? { detectedKind: row.detected_kind } : {}),
     hasCredential,
     backupTargetPaths: rowPaths(row),

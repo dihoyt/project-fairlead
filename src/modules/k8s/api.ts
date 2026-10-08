@@ -18,7 +18,7 @@ import { AccessReviewer, buildCapabilityReport, unconfiguredReport } from "./acc
 import { Discovery } from "./discovery.js";
 import { InformerPool, listObjects, type InformerTiming } from "./informer.js";
 import { isOwned, managedBy, ownedLabels } from "./ownership.js";
-import { objectPath, withTypeMeta } from "./paths.js";
+import { apiVersionOf, collectionPath, objectPath, withTypeMeta } from "./paths.js";
 import { serverInfo } from "./serverInfo.js";
 import { K8sError, openRequest, readLines, requestJson, type Connection } from "./transport.js";
 
@@ -112,6 +112,32 @@ export function createK8sService(options: K8sServiceOptions): K8sService {
       } catch (err) {
         if (await absentAfter(err, ref)) return "absent";
         throw err;
+      }
+    },
+
+    async create<T extends KubeObject>(ref: ResourceRef, obj: T): Promise<T> {
+      const namespace = obj.metadata.namespace;
+      if (ref.namespaced && !namespace) {
+        throw new Error(`${ref.kind} "${obj.metadata.name}" is namespaced: a namespace is required.`);
+      }
+      const body = {
+        ...obj,
+        apiVersion: apiVersionOf(ref),
+        kind: ref.kind,
+        metadata: { ...obj.metadata, labels: { ...obj.metadata.labels, ...ownedLabels() } },
+      };
+      const created = await requestJson<T>(kc(), collectionPath(ref, namespace), { method: "POST", body });
+      return withTypeMeta(ref, created);
+    },
+
+    async delete(ref: ResourceRef, name: string, namespace?: string): Promise<void> {
+      try {
+        await requestJson(kc(), objectPath(ref, name, namespace), {
+          method: "DELETE",
+          body: { apiVersion: "v1", kind: "DeleteOptions", propagationPolicy: "Foreground" },
+        });
+      } catch (err) {
+        if (!isNotFound(err)) throw err;
       }
     },
 

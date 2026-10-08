@@ -1,0 +1,27 @@
+{{- if .Values.deploy.enabled }}
+# Deploy Jobs run as this account. Charts such as cert-manager, Longhorn and
+# Rancher create CRDs, ClusterRoles and webhooks, so anything narrower than
+# cluster-admin breaks real installs. Its token is never mounted in the
+# console's own pod; anyone who can create Jobs in this namespace can use it.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "app.installerServiceAccountName" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "app.clusterName" . }}-installer
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "app.installerServiceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
