@@ -1,0 +1,30 @@
+{{- /* Definitions only; renders nothing. */ -}}
+
+{{- define "app.installerServiceAccountName" -}}
+{{- printf "%s-installer" (include "app.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- /* The published chart sits beside the image: <registry>/charts/<chart>. */ -}}
+{{- define "app.chartRef" -}}
+{{- .Values.deploy.chartRef | default (printf "oci://%s/charts/%s" (dir .Values.image.repository) .Chart.Name) -}}
+{{- end -}}
+
+{{- /*
+Container env for the deploy module, set whether or not deploys are on: the
+console shows the image and the command that turns deploys on either way, and
+decides whether they are on from its own access, not from this env.
+*/ -}}
+{{- define "app.deployEnv" -}}
+- name: POD_NAMESPACE
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.namespace
+- name: HELM_RELEASE
+  value: {{ .Release.Name | quote }}
+- name: DEPLOY_CHART
+  value: {{ include "app.chartRef" . | quote }}
+- name: DEPLOY_SERVICE_ACCOUNT
+  value: {{ include "app.installerServiceAccountName" . | quote }}
+- name: DEPLOY_IMAGE
+  value: {{ required "deploy.image is required" .Values.deploy.image | quote }}
+{{- end -}}

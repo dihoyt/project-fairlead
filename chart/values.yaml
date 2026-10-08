@@ -84,6 +84,19 @@ rbac:
     enabled: false
     namespaces: []
 
+# Deploying catalog apps from the console (Apps page, setup wizard). Off by
+# default. On, it creates an installer ServiceAccount bound to cluster-admin
+# that deploy Jobs run as, and lets the console create Jobs and values Secrets
+# in this namespace. Anyone who can create Jobs here can then act as
+# cluster-admin, so this namespace becomes the trust boundary.
+deploy:
+  enabled: false
+  # helm and kubectl, pinned by digest.
+  image: docker.io/alpine/k8s:1.36.5@sha256:094adf64cdc4827377cdbe7ea5747472ce115f9fbc64a4e35970ec66777f9a00
+  # Where this chart is published, for the command that turns deploys on.
+  # Default: oci://<image registry>/charts/<chart name>.
+  chartRef: ""
+
 podAnnotations: {}
 podLabels: {}
 resources:
