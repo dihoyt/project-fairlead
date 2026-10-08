@@ -47,23 +47,21 @@ describe("DeployRolloutProgress", () => {
     expect(screen.getByText(`${done} of ${counted.length} apps installed`)).toBeInTheDocument();
     const waiting = mockBundleRun.steps.find((s) => s.state === "pending");
     if (waiting) expect(within(await row(waiting.appId)).getByText("waiting")).toBeInTheDocument();
-    const skipped = mockBundleRun.steps.find((s) => s.state === "skipped");
-    if (skipped) expect(within(await row(skipped.appId)).getByText("skipped")).toBeInTheDocument();
   });
 
-  it("draws waiting and skipped steps differently, with the skip reason in small print", async () => {
+  it("folds skipped steps into one line that opens to their reasons", async () => {
     stubApi();
     stubEventSource([]);
     renderWithApp(<DeployRolloutProgress runId={mockBundleRun.id} />);
     const waiting = mockBundleRun.steps.find((s) => s.state === "pending")!;
-    const skipped = mockBundleRun.steps.find((s) => s.state === "skipped")!;
-    const w = await badge(waiting.appId, "waiting");
-    const s = await badge(skipped.appId, "skipped");
-    expect(w.getAttribute("data-variant")).not.toBe(s.getAttribute("data-variant"));
-    if (skipped.message) {
-      const reason = within(await row(skipped.appId)).getByText(skipped.message);
-      expect(reason.className).toMatch(/mantine-Text/);
-      expect(reason.getAttribute("data-size")).toBe("xs");
+    const skipped = mockBundleRun.steps.filter((s) => s.state === "skipped");
+    expect(skipped.length).toBeGreaterThan(0);
+    await badge(waiting.appId, "waiting");
+    for (const step of skipped) expect(document.querySelector(`[data-step="${step.appId}"]`)).toBeNull();
+    expect(screen.getByText(new RegExp(`${skipped.length} already present or not needed`))).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    for (const step of skipped) {
+      expect(document.querySelector(`[data-skipped-step="${step.appId}"]`)).not.toBeNull();
     }
   });
 
@@ -108,14 +106,17 @@ describe("DeployRolloutProgress", () => {
 });
 
 describe("BundlePlanView", () => {
-  it("lists apps in order with the skipped ones and their reasons", () => {
+  it("lists the apps it installs, with the skipped ones folded into one line", () => {
     renderWithApp(<BundlePlanView plan={mockBundlePlan} />);
     const skipped = mockBundlePlan.steps.filter((s) => s.skip);
+    expect(skipped.length).toBeGreaterThan(0);
     const running = mockBundlePlan.steps.length - skipped.length;
     expect(screen.getByText(new RegExp(`Installs ${running} apps in this order`))).toBeInTheDocument();
+    for (const step of skipped) expect(document.querySelector(`[data-step="${step.appId}"]`)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
     for (const step of skipped) {
-      const el = document.querySelector<HTMLElement>(`[data-step="${step.appId}"]`)!;
-      expect(within(el).getByText("skipped")).toBeInTheDocument();
+      const el = document.querySelector<HTMLElement>(`[data-skipped-step="${step.appId}"]`)!;
+      if (step.reason) expect(el.textContent).toContain(step.reason);
     }
   });
 

@@ -20,6 +20,7 @@ import { apiRequest, useApi } from "../api";
 import { SessionContext } from "../session";
 import { relativeTime } from "../time";
 import { DeployJobProgress } from "./DeployJobProgress";
+import { SkippedSteps } from "./SkippedSteps";
 import { RUN_STATE_COLOR, STEP_STATE_COLOR, STEP_STATE_VARIANT } from "./jobs";
 
 const POLL_MS = 2_000;
@@ -157,7 +158,7 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
       ) : null}
       <Table verticalSpacing={6} highlightOnHover>
         <Table.Tbody>
-          {view.steps.map((step, index) => {
+          {counted.map((step, index) => {
             const isSelected = selected?.appId === step.appId;
             return (
               <Table.Tr
@@ -182,7 +183,7 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
                       </Text>
                     </UnstyledButton>
                   ) : (
-                    <Text size="sm" fw={500} c={step.state === "skipped" ? "dimmed" : undefined}>
+                    <Text size="sm" fw={500}>
                       {label(step.appId)}
                     </Text>
                   )}
@@ -200,12 +201,6 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
                         <IconExternalLink size={14} />
                       </Group>
                     </Anchor>
-                  ) : step.message && step.state === "skipped" ? (
-                    <Tooltip label={step.message} multiline maw={420}>
-                      <Text size="xs" c="dimmed" lineClamp={1}>
-                        {step.message}
-                      </Text>
-                    </Tooltip>
                   ) : step.message ? (
                     <Text size="sm" c={step.state === "failed" ? "red" : "dimmed"} lineClamp={2}>
                       {step.message}
@@ -217,6 +212,15 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
           })}
         </Table.Tbody>
       </Table>
+      <SkippedSteps
+        steps={view.steps
+          .filter((step) => step.state === "skipped")
+          .map((step) => ({
+            appId: step.appId,
+            name: label(step.appId),
+            ...(step.message ? { reason: step.message } : {}),
+          }))}
+      />
       {selected?.jobId ? (
         <div>
           <Title order={6} mb={4}>

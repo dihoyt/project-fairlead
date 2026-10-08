@@ -161,7 +161,7 @@ describe("BundleDoor", () => {
       include: [],
     });
     expect(calls.some((c) => c.key === "POST /api/deploy/bundles")).toBe(false);
-    expect(document.querySelectorAll("[data-step]")).toHaveLength(mockBundlePlan.steps.length);
+    expect(document.querySelectorAll("[data-step]")).toHaveLength(mockBundlePlan.steps.filter((s) => !s.skip).length);
 
     fireEvent.click(screen.getByRole("button", { name: "Start rollout" }));
     await waitFor(() => expect(calls.some((c) => c.key === "POST /api/deploy/bundles")).toBe(true));
