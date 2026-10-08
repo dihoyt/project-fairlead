@@ -3,6 +3,8 @@ import type { CatalogEntry, CatalogService, DiscoveryReport } from "../../contra
 import type {
   AccessRequest,
   AccessView,
+  DeployActionKind,
+  DeployActionRequest,
   DeployJobRequest,
   DeployJobState,
   DeployJobView,
@@ -19,6 +21,7 @@ import type { ModuleContext } from "../../contracts/module.js";
 import type { LogLines } from "../../contracts/workloads.js";
 import { HttpError } from "../../runtime/http.js";
 import { errorMessage } from "../../runtime/log.js";
+import { actionRecipe, type ActionContext, type ActionRecipe, type ActionRendered } from "./actions/index.js";
 import type { Defaults, Step } from "./apps.js";
 import { accessView, AccessStore, type Resolver } from "./access.js";
 import { enableHint, type DeployConfig } from "./config.js";
@@ -59,6 +62,11 @@ interface Observed {
   message?: string;
 }
 
+const deadlineOf = (job: KubeObject): number => {
+  const set = (job.spec as { activeDeadlineSeconds?: unknown } | undefined)?.activeDeadlineSeconds;
+  return typeof set === "number" && set > 0 ? set : DEADLINE_SECONDS;
+};
+
 export function observe(job: KubeObject): Observed {
   const status = (job.status ?? {}) as JobStatus;
   const condition = (type: string) => status.conditions?.find((c) => c.type === type && c.status === "True");
@@ -70,7 +78,7 @@ export function observe(job: KubeObject): Observed {
       startedAt: status.startTime,
       message:
         failed.reason === "DeadlineExceeded"
-          ? `Stopped after ${DEADLINE_SECONDS / 60} minutes without finishing.`
+          ? `Stopped after ${Math.round(deadlineOf(job) / 60)} minutes without finishing.`
           : failed.message || failed.reason || "The Job failed.",
     };
   }
@@ -83,6 +91,8 @@ export function summarize(lines: readonly string[], state: DeployJobState, mode:
   const text = lines.map((line) => line.trim()).filter(Boolean);
   if (state === "succeeded") {
     if (mode === "dry-run") return "Dry run passed: nothing was changed.";
+    // An action's script ends by echoing its result.
+    if (mode === "action") return text.at(-1);
     const status = text.findLast((line) => line.startsWith("STATUS:"));
     if (status) return `Release "${release}" ${status.slice("STATUS:".length).trim()}.`;
     return text.at(-1);
@@ -354,12 +364,75 @@ export class Deployer {
     );
   }
 
+  // --- actions -------------------------------------------------------------
+
+  async renderAction(request: DeployActionRequest, call: ActionContext["call"], run = false): Promise<ActionRendered> {
+    const recipe = actionRecipe(request.kind) as ActionRecipe | undefined;
+    if (!recipe) throw new HttpError(400, `The ${request.kind} action is not available yet.`);
+    const enabled = await this.enabled();
+    const rendered = await recipe.render(request, {
+      run,
+      enabled,
+      image: this.config.image(),
+      ...(enabled ? {} : { enableHint: enableHint(this.config) }),
+      call,
+      k8s: this.k8s(),
+      catalog: this.ctx.services.has("catalog") ? this.catalog() : undefined,
+      discover: async () => (await this.discover()).discovery,
+      releases: this.store.releases(),
+      versions: this.store.installedVersions(),
+    });
+    if (!rendered.plan.allowed) return rendered;
+    const namespace = this.config.namespace();
+    rendered.plan.creates = [
+      ...rendered.plan.creates,
+      { kind: "Job", name: jobName(rendered.release, this.store.nextSeq()), namespace },
+      { kind: "Secret", name: valuesSecretName(rendered.release), namespace },
+    ];
+    return rendered;
+  }
+
+  async startAction(actor: string, request: DeployActionRequest, call: ActionContext["call"]): Promise<DeployJobView> {
+    const rendered = await this.renderAction(request, call, true);
+    if (!rendered.plan.allowed) throw new HttpError(400, rendered.plan.blockedBy ?? "This action is not allowed.");
+    const view = await this.launch(
+      actor,
+      {
+        appId: rendered.appId,
+        release: rendered.release,
+        namespace: rendered.namespace,
+        version: rendered.version,
+        mode: "action",
+        action: request.kind,
+      },
+      Object.keys(rendered.files).length > 0 ? rendered.files : { "values.yaml": "{}\n" },
+      rendered.steps,
+      rendered.secrets ?? [],
+      { script: rendered.script, deadlineSeconds: rendered.deadlineSeconds }
+    );
+    try {
+      await rendered.onStarted?.(view);
+    } catch (err) {
+      this.ctx.log.warn("A deploy action's start hook failed", { job: view.id, error: errorMessage(err) });
+    }
+    return view;
+  }
+
   private async launch(
     actor: string,
-    plan: { appId: string; release: string; namespace: string; version: string; mode: DeployJobMode; url?: string },
+    plan: {
+      appId: string;
+      release: string;
+      namespace: string;
+      version: string;
+      mode: DeployJobMode;
+      action?: DeployActionKind;
+      url?: string;
+    },
     files: Record<string, string>,
     steps: Step[],
-    secrets: string[]
+    secrets: string[],
+    program: { script?: string; deadlineSeconds?: number } = {}
   ): Promise<DeployJobView> {
     const k8s = this.k8s()!;
     const jobNamespace = this.config.namespace();
@@ -371,6 +444,7 @@ export class Deployer {
         namespace: plan.namespace,
         version: plan.version,
         mode: plan.mode,
+        ...(plan.action ? { action: plan.action } : {}),
         startedBy: actor,
         url: plan.url,
         jobNamespace,
@@ -400,6 +474,7 @@ export class Deployer {
           serviceAccount: this.config.serviceAccount(),
           valuesSecret: secretName,
           steps,
+          ...program,
         })
       );
       await k8s.create!(
@@ -425,7 +500,9 @@ export class Deployer {
       actor,
       action: "deploy.start",
       target: view.id,
-      detail: `${plan.appId} ${plan.version} ${plan.mode} into ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`,
+      detail: plan.action
+        ? `${plan.action} on ${plan.appId} in ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`
+        : `${plan.appId} ${plan.version} ${plan.mode} into ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`,
     });
     void this.ensureWatch();
     return this.store.get(view.id)!.view;

@@ -71,4 +71,12 @@ export const migrations: readonly Migration[] = [
       );
     `,
   },
+  {
+    version: 4,
+    name: "deploy actions",
+    up: `
+      -- The DeployActionKind of a job whose mode is "action".
+      ALTER TABLE deploy_jobs ADD COLUMN action TEXT;
+    `,
+  },
 ];

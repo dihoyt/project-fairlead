@@ -6,9 +6,11 @@ import type {
   DeployRequest,
   UpgradeRequest,
 } from "../../contracts/deploy.js";
-import type { Module, ModuleContext } from "../../contracts/module.js";
+import type { RouteKey } from "../../contracts/api.js";
+import type { CallInput, Module, ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
 import { ACCESS_MODES } from "./access.js";
+import { actionSchema } from "./actions/index.js";
 import { Bundles } from "./bundles.js";
 import { declareConfig } from "./config.js";
 import { migrations } from "./migrations.js";
@@ -150,6 +152,24 @@ export function registerDeploy(
     const user = ctx.require(req, res, "write");
     if (!user) return undefined;
     return bundles.startUpgrade(user.id, parse(upgradeSchema, req.body) as UpgradeRequest);
+  });
+
+  // The caller's own identity for the routes an action reads (the Longhorn
+  // advice), so they see what that user would.
+  const caller =
+    (req: Parameters<ModuleContext["call"]>[0]) =>
+    <K extends RouteKey>(key: K, input?: CallInput<K>) =>
+      ctx.call(req, key, input);
+
+  ctx.route("POST /api/deploy/actions/plan", async (req, res) => {
+    if (!ctx.require(req, res, "write")) return undefined;
+    return (await deployer.renderAction(parse(actionSchema, req.body), caller(req))).plan;
+  });
+
+  ctx.route("POST /api/deploy/actions/run", async (req, res) => {
+    const user = ctx.require(req, res, "write");
+    if (!user) return undefined;
+    return deployer.startAction(user.id, parse(actionSchema, req.body), caller(req));
   });
   return { deployer, bundles };
 }
