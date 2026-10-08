@@ -28,7 +28,7 @@ import type {
   UserChangesRequest,
   UserView,
 } from "./auth.js";
-import type { BackupPosture, RestoreTestMark } from "./backups.js";
+import type { BackupPosture, LonghornReplicaAdvice, RestoreTestMark } from "./backups.js";
 import type { CatalogAppView, CatalogBundleView, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
 import type { JoinLink, JoinLinkRequest, JoinStatus } from "./cluster.js";
@@ -38,6 +38,8 @@ import type {
   BundlePlan,
   BundleRequest,
   BundleRunView,
+  DeployActionPlan,
+  DeployActionRequest,
   DeployJobRequest,
   DeployJobView,
   DeployPlan,
@@ -252,6 +254,11 @@ export interface ApiRoutes {
   // --- metrics-k8s (A11) --------------------------------------------------
   "GET /api/metrics-k8s/nodes": Route<None, None, None, NodeSummary[]>;
 
+  // --- longhorn (A6) ------------------------------------------------------
+  // Volumes, StorageClasses and the default Setting against min(2,
+  // schedulable nodes). Reads only.
+  "GET /api/longhorn/replicas": Route<None, None, None, LonghornReplicaAdvice>;
+
   // --- backups (A12) ------------------------------------------------------
   "GET /api/backups/posture": Route<None, None, None, BackupPosture>;
   "GET /api/backups/posture.csv": Route<None, None, None, TextBody<"text/csv">>;
@@ -344,6 +351,12 @@ export interface ApiRoutes {
   // not ours or not upgradable, or when nothing is available; 409 while
   // another bundle or upgrade run is running.
   "POST /api/deploy/upgrades": Route<None, None, UpgradeRequest, BundleRunView>;
+  // Admin. What the action would change, from reads only; runs nothing.
+  "POST /api/deploy/actions/plan": Route<None, None, DeployActionRequest, DeployActionPlan>;
+  // Admin, audited. Starts the action as a deploy job (mode "action"); 400
+  // with the plan's blockedBy when it is not allowed, 409 while another job
+  // for the same release is running.
+  "POST /api/deploy/actions/run": Route<None, None, DeployActionRequest, DeployJobView>;
 
   // --- mcp ------------------------------------------------------------------
   // The MCP streamable-HTTP endpoint, also served at MCP_PATH (/mcp).

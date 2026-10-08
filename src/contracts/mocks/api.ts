@@ -15,6 +15,7 @@ import {
   mockNeverBackedUpVolume,
   mockProtectedVolume,
   mockPvcs,
+  mockReplicaAdvice,
   mockStaleVolume,
   mockTargets,
 } from "./backups.js";
@@ -31,6 +32,8 @@ import {
   mockDiscovery,
   mockFailedJob,
   mockHostKeypair,
+  mockReplicasJob,
+  mockReplicasPlan,
   mockRunningJob,
   mockUpgradeReport,
   mockUpgradeRun,
@@ -645,6 +648,7 @@ export const apiMocks: ApiMocks = {
     { name: "node-3", ready: false, pods: 0, source: "none" },
   ],
 
+  "GET /api/longhorn/replicas": mockReplicaAdvice,
   "GET /api/backups/posture": mockPosture,
   "GET /api/backups/posture.csv":
     "namespace,pvc,app,protected,source,last_good,age_status,target\n" +
@@ -745,6 +749,8 @@ export const apiMocks: ApiMocks = {
   },
   "GET /api/deploy/upgrades": mockUpgradeReport,
   "POST /api/deploy/upgrades": mockUpgradeRun,
+  "POST /api/deploy/actions/plan": mockReplicasPlan,
+  "POST /api/deploy/actions/run": mockReplicasJob,
 
   "POST /api/mcp": {
     jsonrpc: "2.0",

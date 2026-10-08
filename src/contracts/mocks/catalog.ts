@@ -17,6 +17,7 @@ import {
   type AccessView,
   type BundlePlan,
   type BundleRunView,
+  type DeployActionPlan,
   type DeployJobView,
   type DeployPlan,
   type DeployStatus,
@@ -869,4 +870,54 @@ export const mockUpgradeRun: BundleRunView = {
   startedBy: "admin",
   createdAt: isoAgo(60_000),
   steps: [{ appId: "gitea", state: "running", jobId: "dj_4" }],
+};
+
+export const mockReplicasPlan: DeployActionPlan = {
+  kind: "longhorn-replicas",
+  title: "Raise Longhorn replicas to 2",
+  allowed: true,
+  steps: [
+    {
+      label: "Set Longhorn's StorageClass and default replica count to 2",
+      commands: [
+        "helm upgrade longhorn longhorn --repo https://charts.longhorn.io --version 0.0.0-mock " +
+          "--namespace longhorn-system --reuse-values --values /values/replicas.yaml --wait --timeout 10m",
+        "kubectl patch settings.longhorn.io default-replica-count --namespace longhorn-system --type merge " +
+          "--patch-file /values/setting.yaml",
+      ],
+    },
+    {
+      label: "Raise 2 existing volumes to 2 replicas",
+      commands: [
+        "kubectl patch volumes.longhorn.io pvc-0b7c --namespace longhorn-system --type merge " +
+          "--patch-file /values/volume.yaml",
+        "kubectl patch volumes.longhorn.io pvc-91ae --namespace longhorn-system --type merge " +
+          "--patch-file /values/volume.yaml",
+      ],
+    },
+  ],
+  rollback:
+    "Nothing is lowered: a failed step leaves the earlier ones raised, and running it again picks up where it stopped.",
+  changes: [
+    { kind: "Setting", name: "default-replica-count", namespace: "longhorn-system" },
+    { kind: "StorageClass", name: "longhorn" },
+    { kind: "Volume", name: "pvc-0b7c", namespace: "longhorn-system" },
+    { kind: "Volume", name: "pvc-91ae", namespace: "longhorn-system" },
+  ],
+  creates: [
+    { kind: "Job", name: "deploy-longhorn-7", namespace: "console" },
+    { kind: "Secret", name: "deploy-longhorn-values", namespace: "console" },
+  ],
+  warnings: ["Each raised volume copies its data to the new node; expect disk and network load while it rebuilds."],
+};
+
+export const mockReplicasJob: DeployJobView = {
+  ...mockRunningJob,
+  id: "dj_7",
+  appId: "longhorn",
+  release: "longhorn",
+  namespace: "longhorn-system",
+  mode: "action",
+  action: "longhorn-replicas",
+  job: { namespace: "console", name: "deploy-longhorn-7" },
 };

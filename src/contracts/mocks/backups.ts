@@ -1,5 +1,12 @@
-import type { BackupSource, BackupTarget, CapacitySource, ProtectedVolume, PvcRef } from "../backups.js";
-import { DAY, HOUR, isoAgo } from "./time.js";
+import type {
+  BackupSource,
+  BackupTarget,
+  CapacitySource,
+  LonghornReplicaAdvice,
+  ProtectedVolume,
+  PvcRef,
+} from "../backups.js";
+import { DAY, HOUR, MOCK_NOW, isoAgo } from "./time.js";
 
 export const mockPvcs = {
   postgres: { namespace: "apps", name: "postgres-data", uid: "11111111-0000-4000-8000-000000000001" },
@@ -95,3 +102,27 @@ export function createMockCapacitySource(
 }
 
 export const mockCapacitySource = createMockCapacitySource();
+
+// Two nodes, both volumes and the default still at 1.
+export const mockReplicaAdvice: LonghornReplicaAdvice = {
+  state: "raise",
+  schedulableNodes: 2,
+  target: 2,
+  defaultReplicaCount: 1,
+  storageClasses: [{ name: "longhorn", replicas: 1 }],
+  volumes: [
+    { name: "pvc-0b7c", replicas: 1, pvc: { namespace: "gitea", name: "data-gitea-0" } },
+    { name: "pvc-91ae", replicas: 1, pvc: { namespace: "ntfy", name: "ntfy-cache" } },
+  ],
+  detail: "2 volumes have 1 replica; 2 nodes can hold 2.",
+  checkedAt: new Date(MOCK_NOW).toISOString(),
+};
+
+export const mockReplicaAdviceOk: LonghornReplicaAdvice = {
+  ...mockReplicaAdvice,
+  state: "ok",
+  defaultReplicaCount: 2,
+  storageClasses: [],
+  volumes: [],
+  detail: "Every volume has 2 replicas across 2 nodes.",
+};
