@@ -90,7 +90,7 @@ Two extras, both off unless asked for, and both only for this host's k3s:
 (`update.sh --help`). `scripts/install/gen-scripts.sh` regenerates it, and CI
 fails if it falls out of step.
 
-## Adding nodes
+## Adding nodes over SSH
 
 `add-node.sh` joins more machines to a k3s cluster from one of its server
 nodes. For each `user@host` it logs in over SSH, installs open-iscsi and the
@@ -118,6 +118,11 @@ k3s with `K3S_URL`, `K3S_TOKEN` and `INSTALL_K3S_VERSION` from the
 environment). `add-node.sh` carries a copy of it, kept in step by
 `scripts/install/gen-scripts.sh`, so the same steps can be run on a node by
 other means.
+
+`install.sh` and `update.sh` also refresh the `k3s-join` Secret behind the
+console's join links (see [Adding nodes from the console](#adding-nodes-from-the-console))
+on every run, but only when run on the k3s server node; anywhere else they say
+so and the console's node joining stays off.
 
 ## Install with Helm
 
@@ -213,7 +218,7 @@ Mirror it and change this value for an air-gapped cluster. `deploy.chartRef`
 is only used to show the command above; it defaults to the chart's published
 OCI location beside the image.
 
-## Adding nodes
+## Adding nodes from the console
 
 On a k3s cluster set up by the installer, the console can hand out the command
 that adds a machine. Open **Nodes** (or the wizard's cluster step), choose

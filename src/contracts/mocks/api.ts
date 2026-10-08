@@ -19,6 +19,7 @@ import {
   mockTargets,
 } from "./backups.js";
 import {
+  mockAccess,
   mockBundlePlan,
   mockBundleRun,
   mockBundleView,
@@ -292,6 +293,7 @@ export const mockOnboarding: OnboardingState = {
   steps: [
     { id: "password", done: true, skipped: false, optional: false },
     { id: "cluster", done: true, skipped: false, optional: true },
+    { id: "access", done: false, skipped: false, optional: true },
     { id: "oidc", done: false, skipped: true, optional: true },
     { id: "links", done: true, skipped: false, optional: true },
     { id: "hosts", done: false, skipped: false, optional: true },
@@ -636,6 +638,8 @@ export const apiMocks: ApiMocks = {
   "GET /api/catalog/bundles": [mockBundleView],
 
   "GET /api/deploy/status": mockDeployStatus,
+  "GET /api/deploy/access": mockAccess,
+  "PUT /api/deploy/access": mockAccess,
   "POST /api/deploy/plan": mockDeployPlan,
   "POST /api/deploy/jobs": { ...mockRunningJob, appId: "headlamp", release: "headlamp", namespace: "headlamp" },
   "GET /api/deploy/jobs": [mockRunningJob, mockDeployJob, mockFailedJob],

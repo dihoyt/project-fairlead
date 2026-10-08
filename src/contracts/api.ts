@@ -25,6 +25,8 @@ import type { CatalogAppView, CatalogBundleView, DiscoveryReport } from "./catal
 import type { CheckRequest, CheckView } from "./checks.js";
 import type { JoinLink, JoinLinkRequest, JoinStatus } from "./cluster.js";
 import type {
+  AccessRequest,
+  AccessView,
   BundlePlan,
   BundleRequest,
   BundleRunView,
@@ -250,6 +252,11 @@ export interface ApiRoutes {
 
   // --- deploy (v0.1.x) ----------------------------------------------------
   "GET /api/deploy/status": Route<None, None, None, DeployStatus>;
+  // How the apps are reached, with the hosts and what to point at what.
+  "GET /api/deploy/access": Route<None, None, None, AccessView>;
+  // Admin, audited. Saves the mode and base domain; later deploys and bundle
+  // runs write their Ingresses for it. Deploys nothing itself.
+  "PUT /api/deploy/access": Route<None, None, AccessRequest, AccessView>;
   // Admin. Resolves defaults and validates inputs; runs nothing.
   "POST /api/deploy/plan": Route<None, None, DeployRequest, DeployPlan>;
   // Admin, audited. 409 while another job for the same release is running;

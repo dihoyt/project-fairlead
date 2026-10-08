@@ -28,7 +28,20 @@ export function firstService(manifest: string): ServiceRef | undefined {
   return undefined;
 }
 
+export const TAILSCALE_CLASS = "tailscale";
+
+// The Tailscale operator takes the node's name from the first label of the
+// first TLS host and serves only host-less rules, over HTTPS with its own
+// certificate.
 export function ingressFor(r: RecipeInput, service: ServiceRef): YamlValue {
+  const tailscale = r.defaults.access === "tailscale";
+  const paths = [
+    {
+      path: "/",
+      pathType: "Prefix",
+      backend: { service: { name: service.name, port: { number: service.port } } },
+    },
+  ];
   return {
     apiVersion: "networking.k8s.io/v1",
     kind: "Ingress",
@@ -39,24 +52,17 @@ export function ingressFor(r: RecipeInput, service: ServiceRef): YamlValue {
       annotations:
         r.tls && r.defaults.clusterIssuer ? { "cert-manager.io/cluster-issuer": r.defaults.clusterIssuer } : {},
     },
-    spec: {
-      ingressClassName: r.defaults.ingressClass,
-      rules: [
-        {
-          host: r.host,
-          http: {
-            paths: [
-              {
-                path: "/",
-                pathType: "Prefix",
-                backend: { service: { name: service.name, port: { number: service.port } } },
-              },
-            ],
-          },
+    spec: tailscale
+      ? {
+          ingressClassName: TAILSCALE_CLASS,
+          rules: [{ http: { paths } }],
+          tls: [{ hosts: [(r.host ?? r.release).split(".")[0]!] }],
+        }
+      : {
+          ingressClassName: r.defaults.ingressClass,
+          rules: [{ host: r.host, http: { paths } }],
+          tls: r.tls ? [{ hosts: [r.host], secretName: `${r.release}-tls` }] : [],
         },
-      ],
-      tls: r.tls ? [{ hosts: [r.host], secretName: `${r.release}-tls` }] : [],
-    },
   };
 }
 

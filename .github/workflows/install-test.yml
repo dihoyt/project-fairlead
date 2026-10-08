@@ -124,6 +124,10 @@ jobs:
           grep -q '^Image: .* -> ' "$RUNNER_TEMP/update.log"
           grep -q '^URL: http://.*:32450/$' "$RUNNER_TEMP/update.log" || { echo "update moved the port"; exit 1; }
           ! grep -q '^Password' "$RUNNER_TEMP/update.log"
+          # The join values for the console's node join links, from this k3s server.
+          [ "$(sudo k3s kubectl -n "$NS" get secret k3s-join -o jsonpath='{.data.token}' | base64 -d)" = "$(sudo cat /var/lib/rancher/k3s/server/node-token)" ]
+          sudo k3s kubectl -n "$NS" get secret k3s-join -o jsonpath='{.data.server-url}' | base64 -d | grep -q '^https://.*:6443$'
+          ! grep -q "$(sudo cat /var/lib/rancher/k3s/server/node-token)" "$RUNNER_TEMP/first.log" "$RUNNER_TEMP/update.log"
           [ "$(sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml history "$RELEASE" -n "$NS" -o json | jq length)" = 3 ]
           scripts/install/assert-install.sh "$RUNNER_TEMP/update.log" "$PASSWORD"
           # No release to update: it says so and points at install.sh.
@@ -169,6 +173,7 @@ jobs:
             || { sed 's/^Password: .*/Password: (redacted)/' "$RUNNER_TEMP/kind.log"; exit 1; }
           sed 's/^Password: .*/Password: (redacted)/' "$RUNNER_TEMP/kind.log"
           ! grep -qi 'installing k3s' "$RUNNER_TEMP/kind.log"
+          grep -q '^Not on a k3s server node' "$RUNNER_TEMP/kind.log"
           password=$(sed -n 's/^Password: //p' "$RUNNER_TEMP/kind.log")
           echo "::add-mask::$password"
           scripts/install/assert-install.sh "$RUNNER_TEMP/kind.log" "$password"

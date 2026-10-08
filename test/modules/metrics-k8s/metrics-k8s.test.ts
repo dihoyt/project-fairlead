@@ -1,5 +1,6 @@
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import type { CheckResult } from "../../../src/contracts/health.js";
 import { RESOURCES, type K8sApi, type KubeObject } from "../../../src/contracts/k8s.js";
 import type { NodeSummary, Sample } from "../../../src/contracts/metrics.js";
@@ -9,7 +10,7 @@ import { createK8sService, type K8sService } from "../../../src/modules/k8s/api.
 import { DEFAULT_THRESHOLDS, judge } from "../../../src/modules/metrics-k8s/health.js";
 import mod, { registerMetricsK8s } from "../../../src/modules/metrics-k8s/index.js";
 import { parseQuantity } from "../../../src/modules/metrics-k8s/quantity.js";
-import { createScraper, summaryPath, toSamples } from "../../../src/modules/metrics-k8s/scrape.js";
+import { createScraper, nodeCounters, summaryPath, toSamples } from "../../../src/modules/metrics-k8s/scrape.js";
 import { loadFixtureSet, scenarios, startFakeApi, type FakeApi, type FixtureSet } from "../../support/index.js";
 import { listen } from "../../runtime/helpers.js";
 
@@ -297,6 +298,56 @@ test("network counters become rates between reads, skipping cached and reset cou
   raw[summaryPath("n1")] = summary("2026-10-07T12:01:00Z", 10, 10);
   now += 25_000;
   assert.equal((await scraper.scrape()).nodes[0]!.rxBytesPerSec, undefined);
+});
+
+// k3s on a VM: the NIC is ens18, so the kubelet leaves the top-level
+// counters out and lists the interfaces, pod and overlay bridges included.
+function vmSummary(time: string, ens18: [number, number]) {
+  const base = summary(time, 0, 0);
+  return {
+    node: {
+      ...base.node,
+      network: {
+        time,
+        name: "",
+        interfaces: [
+          { name: "ens18", rxBytes: ens18[0], txBytes: ens18[1] },
+          { name: "flannel.1", rxBytes: 900_000, txBytes: 900_000 },
+          { name: "cni0", rxBytes: 700_000, txBytes: 700_000 },
+          { name: "veth1a2b3c4d", rxBytes: 500_000, txBytes: 500_000 },
+        ],
+      },
+    },
+    pods: base.pods,
+  };
+}
+
+test("a node whose NIC is not eth0 gets network rates from its physical interfaces", async () => {
+  const raw: Record<string, unknown> = { [summaryPath("n1")]: vmSummary("2026-10-07T12:00:00Z", [1_000, 5_000]) };
+  const fake = createFakeK8s({ objects: [{ ref: RESOURCES.nodes, items: [node("n1")] }], raw });
+  let now = Date.parse("2026-10-07T12:00:05Z");
+  const scraper = createScraper(() => fake, { now: () => now });
+  await scraper.scrape();
+
+  raw[summaryPath("n1")] = vmSummary("2026-10-07T12:00:30Z", [31_000, 8_000]);
+  now += 30_000;
+  const second = await scraper.scrape();
+  assert.equal(second.nodes[0]!.rxBytesPerSec, 1_000);
+  assert.equal(second.nodes[0]!.txBytesPerSec, 100);
+  assert.equal(find(toSamples(second), "node.net.tx.bytesPerSec", { node: "n1" })[0]!.value, 100);
+});
+
+test("the captured k3s summary counts ens18 and leaves flannel and cni0 out", () => {
+  const captured = JSON.parse(
+    readFileSync(new URL("../../fixtures/real/kubelet/summary-agent-1.json", import.meta.url), "utf8")
+  ) as { node: { network: Parameters<typeof nodeCounters>[0] } };
+  assert.equal(captured.node.network!.rxBytes, undefined);
+  assert.deepEqual(nodeCounters(captured.node.network), { rx: 23_989_698_577, tx: 9_307_985_674 });
+  assert.deepEqual(nodeCounters({ rxBytes: 1, txBytes: 2, interfaces: [{ name: "eth0", rxBytes: 9, txBytes: 9 }] }), {
+    rx: 1,
+    tx: 2,
+  });
+  assert.equal(nodeCounters({ interfaces: [{ name: "lo", rxBytes: 9, txBytes: 9 }] }), undefined);
 });
 
 test("inodes count toward the disk check when they are fuller than the bytes", async () => {
