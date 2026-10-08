@@ -125,9 +125,23 @@ function hasDefaultIngressClass(r: RecipeInput): boolean {
 // (plugin 1.14 for Velero 1.18; see Velero's compatibility matrix).
 export const VELERO_AWS_PLUGIN = "velero/velero-plugin-for-aws:v1.14.4";
 
+// Requests close to what each app uses idle, so the scheduler sees a small
+// box filling up; memory limits with headroom, so one app can't take the
+// node. No CPU limits: throttling hurts more than it protects.
+const resources = (cpu: string, memory: string, limit: string) => ({
+  requests: { cpu, memory },
+  limits: { memory: limit },
+});
+
 export const recipes: Record<string, Recipe> = {
   "cert-manager": {
-    values: () => ({ crds: { enabled: true }, global: { commonLabels: labels() } }),
+    values: () => ({
+      crds: { enabled: true },
+      global: { commonLabels: labels() },
+      resources: resources("10m", "48Mi", "256Mi"),
+      webhook: { resources: resources("5m", "24Mi", "128Mi") },
+      cainjector: { resources: resources("5m", "48Mi", "256Mi") },
+    }),
     files: (r) => {
       const email = str(r.inputs.acmeEmail);
       if (!email) return {};
@@ -274,6 +288,7 @@ export const recipes: Record<string, Recipe> = {
         },
       },
       persistence: { enabled: true, size: r.app.storage, storageClass: storageClass(r) },
+      resources: resources("25m", "160Mi", "512Mi"),
       "postgresql-ha": { enabled: false },
       postgresql: { enabled: false },
       "valkey-cluster": { enabled: false },
@@ -315,9 +330,15 @@ export const recipes: Record<string, Recipe> = {
         postgresql: {
           enabled: true,
           auth: { password: dbPassword },
-          primary: { persistence: { size: r.app.storage, storageClass: storageClass(r) } },
+          primary: {
+            persistence: { size: r.app.storage, storageClass: storageClass(r) },
+            resources: resources("25m", "96Mi", "512Mi"),
+          },
         },
+        // Idle, the server and worker each hold about half a GiB.
+        worker: { resources: resources("50m", "448Mi", "1Gi") },
         server: {
+          resources: resources("50m", "512Mi", "1Gi"),
           ingress: {
             enabled: r.chartIngress,
             ingressClassName: r.defaults.ingressClass,
@@ -483,7 +504,11 @@ export const recipes: Record<string, Recipe> = {
 
   cloudflared: {
     // The chart runs two by default; each shows as a separate connector.
-    values: (r) => ({ cloudflare: { tunnel_token: str(r.inputs.tunnelToken) }, replicaCount: upToNodes(r, 2) }),
+    values: (r) => ({
+      cloudflare: { tunnel_token: str(r.inputs.tunnelToken) },
+      replicaCount: upToNodes(r, 2),
+      resources: resources("10m", "32Mi", "128Mi"),
+    }),
   },
 
   "tailscale-operator": {
