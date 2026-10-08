@@ -114,7 +114,6 @@ export const bundles: readonly CatalogBundle[] = [
       },
       { appId: "authentik", required: true, hostPrefix: "auth" },
       { appId: "gitea", required: true, hostPrefix: "git", values: { adminUser: "gitea-admin" } },
-      { appId: "ntfy", required: true },
     ],
   },
 ];

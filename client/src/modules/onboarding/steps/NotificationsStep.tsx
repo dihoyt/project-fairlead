@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Button,
@@ -12,10 +12,15 @@ import {
 } from "@mantine/core";
 import type { ChannelKind, ChannelRequest, TestSendResult } from "@contracts/notify";
 import { apiRequest, useApi } from "../../../ui";
-import { AppOffer, useDiscovery } from "../discovery";
+import {
+  CHANNEL_CHOICES,
+  choiceKind,
+  PUBLIC_NTFY,
+  SelfHostedNtfy,
+  useOwnNtfy,
+  type ChannelChoice,
+} from "../../notify/ntfyChoice";
 import { StepFrame, useAction, type StepProps } from "../shared";
-
-const PUBLIC_NTFY = "https://ntfy.sh";
 
 const SECRET: Record<ChannelKind, { label: string; placeholder: string; required: boolean }> = {
   ntfy: { label: "Access token (protected topics only)", placeholder: "tk_…", required: false },
@@ -25,24 +30,29 @@ const SECRET: Record<ChannelKind, { label: string; placeholder: string; required
 
 export function NotificationsStep({ onFinish }: StepProps) {
   const channels = useApi("GET /api/notify/channels");
-  const [kind, setKind] = useState<ChannelKind>("ntfy");
+  const [choice, setChoice] = useState<ChannelChoice>("ntfy-public");
+  const kind = choiceKind(choice);
   const [label, setLabel] = useState("");
   const [server, setServer] = useState(PUBLIC_NTFY);
   const [topic, setTopic] = useState("");
   const [secret, setSecret] = useState("");
   const [sent, setSent] = useState<{ label: string; result: TestSendResult }>();
   const action = useAction();
-  const discovery = useDiscovery();
-  const ntfy = discovery.app("ntfy");
-  const ownNtfy = ntfy?.detected.state === "installed" ? ntfy.detected.urls[0] : undefined;
+  const ownNtfy = useOwnNtfy().url;
+  const takeServer = useCallback((url: string) => setServer(url), []);
 
-  // An ntfy server in the cluster replaces the public one, unless someone
-  // already typed another.
+  // An ntfy server already in the cluster is the one to use.
   useEffect(() => {
-    if (ownNtfy) setServer((prev) => (prev === PUBLIC_NTFY ? ownNtfy.replace(/\/+$/, "") : prev));
+    if (ownNtfy) setChoice((prev) => (prev === "ntfy-public" ? "ntfy-self" : prev));
   }, [ownNtfy]);
 
-  const ready = kind === "ntfy" ? topic.trim() !== "" : secret.trim() !== "";
+  function pick(next: ChannelChoice) {
+    setChoice(next);
+    if (next === "ntfy-public") setServer(PUBLIC_NTFY);
+    else if (next === "ntfy-self" && server === PUBLIC_NTFY) setServer(ownNtfy ?? "");
+  }
+
+  const ready = kind === "ntfy" ? topic.trim() !== "" && server.trim() !== "" : secret.trim() !== "";
 
   async function addAndTest() {
     setSent(undefined);
@@ -70,7 +80,7 @@ export function NotificationsStep({ onFinish }: StepProps) {
   return (
     <StepFrame
       onFinish={onFinish}
-      what="Alerts go to a chat app, a webhook or ntfy, which sends push notifications to the ntfy app on your phone."
+      what="Alerts go to a chat app, a webhook or ntfy, which sends push notifications to the ntfy app on your phone. Use the public ntfy.sh server, or deploy your own in this cluster."
       intro="Where a check going to warning or critical is sent, and its recovery. Add one and a test message goes out straight away."
       fullPage={{ to: "/notifications", label: "Notifications page" }}
       canFinish={list.length > 0}
@@ -89,25 +99,8 @@ export function NotificationsStep({ onFinish }: StepProps) {
           ))}
         </Stack>
       ) : null}
-      {ntfy && ntfy.detected.state !== "installed" ? (
-        <AppOffer
-          app={ntfy}
-          onDeployed={(result) => {
-            setKind("ntfy");
-            if (result.url) setServer(result.url.replace(/\/+$/, ""));
-            discovery.refresh();
-          }}
-        />
-      ) : null}
-      <SegmentedControl
-        value={kind}
-        onChange={(v) => setKind(v as ChannelKind)}
-        data={[
-          { value: "ntfy", label: "ntfy" },
-          { value: "discord", label: "Discord" },
-          { value: "webhook", label: "Webhook" },
-        ]}
-      />
+      <SegmentedControl value={choice} onChange={(v) => pick(v as ChannelChoice)} data={CHANNEL_CHOICES} />
+      {choice === "ntfy-self" ? <SelfHostedNtfy onServer={takeServer} /> : null}
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <TextInput label="Name" placeholder="Phone" value={label} onChange={(e) => setLabel(e.currentTarget.value)} />
         {kind === "ntfy" ? (
