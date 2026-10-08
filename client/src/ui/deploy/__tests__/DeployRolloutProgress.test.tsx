@@ -14,6 +14,11 @@ const row = (appId: string) =>
     return el!;
   });
 
+const badge = async (appId: string, text: string) =>
+  within(await row(appId))
+    .getByText(text)
+    .closest(".mantine-Badge-root")!;
+
 const failedRun: BundleRunView = {
   ...mockBundleRun,
   state: "failed",
@@ -44,6 +49,22 @@ describe("DeployRolloutProgress", () => {
     if (waiting) expect(within(await row(waiting.appId)).getByText("waiting")).toBeInTheDocument();
     const skipped = mockBundleRun.steps.find((s) => s.state === "skipped");
     if (skipped) expect(within(await row(skipped.appId)).getByText("skipped")).toBeInTheDocument();
+  });
+
+  it("draws waiting and skipped steps differently, with the skip reason in small print", async () => {
+    stubApi();
+    stubEventSource([]);
+    renderWithApp(<DeployRolloutProgress runId={mockBundleRun.id} />);
+    const waiting = mockBundleRun.steps.find((s) => s.state === "pending")!;
+    const skipped = mockBundleRun.steps.find((s) => s.state === "skipped")!;
+    const w = await badge(waiting.appId, "waiting");
+    const s = await badge(skipped.appId, "skipped");
+    expect(w.getAttribute("data-variant")).not.toBe(s.getAttribute("data-variant"));
+    if (skipped.message) {
+      const reason = within(await row(skipped.appId)).getByText(skipped.message);
+      expect(reason.className).toMatch(/mantine-Text/);
+      expect(reason.getAttribute("data-size")).toBe("xs");
+    }
   });
 
   it("names apps from the catalog when no names are given", async () => {
