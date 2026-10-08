@@ -212,7 +212,7 @@ export interface TemplateInstance {
 }
 
 export interface TemplatesView {
-  // Library order, the custom template last.
+  // Library order, then the custom and external templates.
   templates: AppTemplate[];
   // Newest first.
   instances: TemplateInstance[];
