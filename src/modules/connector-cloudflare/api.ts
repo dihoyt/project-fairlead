@@ -6,13 +6,48 @@ export const DEFAULT_API_BASE = "https://api.cloudflare.com/client/v4";
 const TIMEOUT_MS = 15_000;
 const PER_PAGE = 100;
 
+// The token permission each call needs, as Cloudflare's "Create Custom
+// Token" form names it, so a refusal can say what to add.
+const PERMISSION: Record<string, string> = {
+  "List accounts": "Account > Account Settings > Read",
+  "Read account": "Account > Account Settings > Read",
+  "List zones": "Zone > DNS > Edit",
+  "List DNS records": "Zone > DNS > Edit",
+  "Create DNS record": "Zone > DNS > Edit",
+  "Update DNS record": "Zone > DNS > Edit",
+  "Delete DNS record": "Zone > DNS > Edit",
+  "List tunnels": "Account > Cloudflare Tunnel > Edit",
+  "Read tunnel": "Account > Cloudflare Tunnel > Edit",
+  "Create tunnel": "Account > Cloudflare Tunnel > Edit",
+  "Read tunnel token": "Account > Cloudflare Tunnel > Edit",
+  "Read tunnel routes": "Account > Cloudflare Tunnel > Edit",
+  "Save tunnel routes": "Account > Cloudflare Tunnel > Edit",
+  "List Access apps": "Account > Access: Apps and Policies > Edit",
+  "Create Access app": "Account > Access: Apps and Policies > Edit",
+  "Update Access app": "Account > Access: Apps and Policies > Edit",
+  "Delete Access app": "Account > Access: Apps and Policies > Edit",
+};
+// 9109 "Unauthorized to access requested resource" and 10000
+// "Authentication error" are what a valid token missing a permission gets.
+const DENIED_CODES = new Set([9109, 10000]);
+
 export class CloudflareError extends Error {
   readonly status: number;
   readonly errors: Array<{ code: number; message: string }>;
+  // The permission the token lacks, when the refusal is one.
+  readonly missingPermission?: string;
   constructor(status: number, errors: Array<{ code: number; message: string }>, what: string) {
-    super(`${what}: ${errors.map((e) => `${e.message} (${e.code})`).join("; ") || `HTTP ${status}`}`);
+    const said = errors.map((e) => `${e.message} (${e.code})`).join("; ") || `HTTP ${status}`;
+    const denied = status === 403 || errors.some((e) => DENIED_CODES.has(e.code));
+    const permission = denied ? PERMISSION[what] : undefined;
+    super(
+      permission
+        ? `${what}: the API token is missing the "${permission}" permission (Cloudflare said: ${said})`
+        : `${what}: ${said}`
+    );
     this.status = status;
     this.errors = errors;
+    if (permission) this.missingPermission = permission;
   }
 }
 
@@ -147,7 +182,7 @@ export class CloudflareClient {
   async zones(
     accountId?: string,
     name?: string
-  ): Promise<Array<{ id: string; name: string; account: { id: string } }>> {
+  ): Promise<Array<{ id: string; name: string; account: { id: string; name?: string } }>> {
     const query = new URLSearchParams();
     if (accountId) query.set("account.id", accountId);
     if (name) query.set("name", name);
