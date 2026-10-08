@@ -549,10 +549,11 @@ export interface PortsView {
   // Why the setting can't be used, one sentence; ranges is then empty.
   rangeError?: string;
   // Where Traefik's values live, absent when no Traefik was found.
-  // k3s: the HelmChartConfig kube-system/traefik (exists: whether it does yet).
+  // k3s: k3s's bundled Traefik, whose values are the HelmChartConfig
+  // kube-system/traefik (the action creates it or merges into it).
   // release: the catalog's Traefik that this product's deploy runner installed.
   traefik?:
-    | { kind: "k3s"; namespace: string; service: string; exists: boolean }
+    | { kind: "k3s"; namespace: string; service: string }
     | { kind: "release"; namespace: string; service: string; release: string };
   // One sentence when traefik is absent or can't be changed from here
   // (another tool manages it).

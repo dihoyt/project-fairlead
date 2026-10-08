@@ -170,7 +170,7 @@ export const mockWantedPorts: WantedPort[] = [{ appId: "valheim", port: 25565, p
 export const mockPortsView: PortsView = {
   range: "25565-25575",
   ranges: [{ from: 25565, to: 25575 }],
-  traefik: { kind: "k3s", namespace: "kube-system", service: "traefik", exists: false },
+  traefik: { kind: "k3s", namespace: "kube-system", service: "traefik" },
   open: [],
   wanted: mockWantedPorts,
   outOfRange: [],
