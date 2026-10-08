@@ -124,6 +124,23 @@ console's join links (see [Adding nodes from the console](#adding-nodes-from-the
 on every run, but only when run on the k3s server node; anywhere else they say
 so and the console's node joining stays off.
 
+## Testing the next branch
+
+Work for the following round is built on the `next` branch. Its pushes publish
+the image as `:next` and `:next.<run>` and the chart as `<base>-next.<run>` at
+`oci://ghcr.io/<owner>/charts-next/<chartName>`, a separate path so the plain
+installer, which takes the newest edge build, never picks one up. Select it
+with `--channel next` on `install.sh` or `update.sh`; `--version` still pins a
+build (`--channel next --version 0.1.1-next.7`).
+
+```
+curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/update.sh | sh -s -- --channel next
+```
+
+Running the same command without `--channel next` moves the install back to
+the newest edge build. Next builds can carry migrations that edge does not
+know, so treat going back as a reinstall.
+
 ## Install with Helm
 
 ```
