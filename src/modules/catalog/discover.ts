@@ -524,15 +524,20 @@ export async function discover(
   // From the deploy module: catches charts that drop the deployed-by label.
   releases: readonly DeployedRelease[] = []
 ): Promise<DiscoveryReport> {
-  const [workloads, ingresses, services, storageClasses, ingressClasses, issuers, nodeMetrics] = await Promise.all([
-    listWorkloads(k8s),
-    listSafe<Ingress>(k8s, RESOURCES.ingresses),
-    listSafe<Service>(k8s, RESOURCES.services),
-    listSafe<KubeObject>(k8s, RESOURCES.storageClasses),
-    listSafe<KubeObject>(k8s, RESOURCES.ingressClasses),
-    listSafe<Readiness>(k8s, RESOURCES.clusterIssuers),
-    listSafe<KubeObject>(k8s, RESOURCES.nodeMetrics),
-  ]);
+  const [kubernetesVersion, workloads, ingresses, services, storageClasses, ingressClasses, issuers, nodeMetrics] =
+    await Promise.all([
+      k8s.version().then(
+        (v) => v.gitVersion,
+        () => undefined
+      ),
+      listWorkloads(k8s),
+      listSafe<Ingress>(k8s, RESOURCES.ingresses),
+      listSafe<Service>(k8s, RESOURCES.services),
+      listSafe<KubeObject>(k8s, RESOURCES.storageClasses),
+      listSafe<KubeObject>(k8s, RESOURCES.ingressClasses),
+      listSafe<Readiness>(k8s, RESOURCES.clusterIssuers),
+      listSafe<KubeObject>(k8s, RESOURCES.nodeMetrics),
+    ]);
 
   const matched = entries
     .filter((entry) => signatures[entry.id])
@@ -577,6 +582,7 @@ export async function discover(
 
   return {
     checkedAt: now().toISOString(),
+    ...(kubernetesVersion ? { kubernetesVersion } : {}),
     apps,
     ingressHosts: hosts,
     basics: [storage.basic, ingress.basic, certs.basic, metricsBasic(nodeMetrics, versionOf("metrics-server"))],
