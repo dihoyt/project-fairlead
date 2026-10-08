@@ -1,5 +1,6 @@
 import { Alert, Group, Loader, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { StatusBadge, Tile } from "../../ui";
+import { RaiseReplicas } from "../../ui/deploy";
 import { useApi } from "./api";
 import { CATEGORY_LABEL, ago } from "./labels";
 
@@ -19,6 +20,7 @@ export function Board() {
           </Text>
         ) : null}
       </Group>
+      <RaiseReplicas />
       {error ? (
         <Alert color="red" title="Could not load the health board">
           {error}

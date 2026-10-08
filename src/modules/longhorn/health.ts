@@ -29,6 +29,7 @@ import {
   type LonghornVolume,
   type Snapshot,
 } from "./model.js";
+import { replicaAdvice, replicaResult, type StorageClassObject } from "./replicas.js";
 
 export const STORAGE_PROVIDER_ID = "longhorn";
 export const BACKUPS_PROVIDER_ID = "longhorn.backups";
@@ -42,6 +43,8 @@ export interface HealthOptions {
   graceMs: () => number;
   // Longhorn UI base URL, "" when not configured.
   uiUrl: () => string;
+  // For the replica advice; none: StorageClasses are left out of it.
+  storageClasses?: () => Promise<StorageClassObject[]>;
 }
 
 // A pod in one of these states needs its volume attached.
@@ -316,7 +319,11 @@ export function createStorageProvider(options: HealthOptions): HealthProvider {
       try {
         const snapshot = await options.load();
         if (snapshot === "absent") return absent("installed", "Longhorn", observedAt);
-        return storageResults(snapshot, observedAt, options.uiUrl());
+        const classes = (await options.storageClasses?.()) ?? [];
+        return [
+          ...storageResults(snapshot, observedAt, options.uiUrl()),
+          replicaResult(replicaAdvice(snapshot, classes, observedAt), observedAt),
+        ];
       } catch (err) {
         return failed("volumes", "Volumes", err, observedAt);
       }

@@ -3,6 +3,8 @@ import type { CatalogService, DiscoveryReport } from "../../contracts/catalog.js
 import type {
   AccessRequest,
   AccessView,
+  DeployActionKind,
+  DeployActionRequest,
   DeployJobRequest,
   DeployJobState,
   DeployJobView,
@@ -19,6 +21,7 @@ import type { ModuleContext } from "../../contracts/module.js";
 import type { LogLines } from "../../contracts/workloads.js";
 import { HttpError } from "../../runtime/http.js";
 import { errorMessage } from "../../runtime/log.js";
+import { actionRecipe, type ActionContext, type ActionRecipe, type ActionRendered } from "./actions/index.js";
 import type { Defaults, Step } from "./apps.js";
 import { accessView, AccessStore, type Resolver } from "./access.js";
 import { enableHint, type DeployConfig } from "./config.js";
@@ -83,6 +86,8 @@ export function summarize(lines: readonly string[], state: DeployJobState, mode:
   const text = lines.map((line) => line.trim()).filter(Boolean);
   if (state === "succeeded") {
     if (mode === "dry-run") return "Dry run passed: nothing was changed.";
+    // An action's script ends by echoing its result.
+    if (mode === "action") return text.at(-1);
     const status = text.findLast((line) => line.startsWith("STATUS:"));
     if (status) return `Release "${release}" ${status.slice("STATUS:".length).trim()}.`;
     return text.at(-1);
@@ -338,9 +343,61 @@ export class Deployer {
     );
   }
 
+  // --- actions -------------------------------------------------------------
+
+  async renderAction(request: DeployActionRequest, call: ActionContext["call"]): Promise<ActionRendered> {
+    const recipe = actionRecipe(request.kind) as ActionRecipe | undefined;
+    if (!recipe) throw new HttpError(400, `The ${request.kind} action is not available yet.`);
+    const enabled = await this.enabled();
+    const rendered = await recipe.render(request, {
+      enabled,
+      ...(enabled ? {} : { enableHint: enableHint(this.config) }),
+      call,
+      k8s: this.k8s(),
+      catalog: this.ctx.services.has("catalog") ? this.catalog() : undefined,
+      releases: this.store.releases(),
+      versions: this.store.installedVersions(),
+    });
+    if (!rendered.plan.allowed) return rendered;
+    const namespace = this.config.namespace();
+    rendered.plan.creates = [
+      ...rendered.plan.creates,
+      { kind: "Job", name: jobName(rendered.release, this.store.nextSeq()), namespace },
+      { kind: "Secret", name: valuesSecretName(rendered.release), namespace },
+    ];
+    return rendered;
+  }
+
+  async startAction(actor: string, request: DeployActionRequest, call: ActionContext["call"]): Promise<DeployJobView> {
+    const rendered = await this.renderAction(request, call);
+    if (!rendered.plan.allowed) throw new HttpError(400, rendered.plan.blockedBy ?? "This action is not allowed.");
+    return this.launch(
+      actor,
+      {
+        appId: rendered.appId,
+        release: rendered.release,
+        namespace: rendered.namespace,
+        version: rendered.version,
+        mode: "action",
+        action: request.kind,
+      },
+      Object.keys(rendered.files).length > 0 ? rendered.files : { "values.yaml": "{}\n" },
+      rendered.steps,
+      []
+    );
+  }
+
   private async launch(
     actor: string,
-    plan: { appId: string; release: string; namespace: string; version: string; mode: DeployJobMode; url?: string },
+    plan: {
+      appId: string;
+      release: string;
+      namespace: string;
+      version: string;
+      mode: DeployJobMode;
+      action?: DeployActionKind;
+      url?: string;
+    },
     files: Record<string, string>,
     steps: Step[],
     secrets: string[]
@@ -355,6 +412,7 @@ export class Deployer {
         namespace: plan.namespace,
         version: plan.version,
         mode: plan.mode,
+        ...(plan.action ? { action: plan.action } : {}),
         startedBy: actor,
         url: plan.url,
         jobNamespace,
@@ -409,7 +467,9 @@ export class Deployer {
       actor,
       action: "deploy.start",
       target: view.id,
-      detail: `${plan.appId} ${plan.version} ${plan.mode} into ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`,
+      detail: plan.action
+        ? `${plan.action} on ${plan.appId} in ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`
+        : `${plan.appId} ${plan.version} ${plan.mode} into ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`,
     });
     void this.ensureWatch();
     return this.store.get(view.id)!.view;

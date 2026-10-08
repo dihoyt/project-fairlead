@@ -18,3 +18,4 @@ export {
 } from "./jobs";
 export { BundlePlanView } from "./BundlePlanView";
 export { DeployRolloutProgress, defaultStep, type DeployRolloutProgressProps } from "./DeployRolloutProgress";
+export { RaiseReplicas } from "./RaiseReplicas";
