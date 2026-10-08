@@ -56,6 +56,11 @@ deletes the namespace too. Neither touches k3s; remove that with
 
 Run `install.sh --help` for every flag.
 
+`update.sh` is generated from `install.sh` (`gen-update.sh`; CI runs
+`gen-update.sh --check`): the same script in update mode, which only upgrades an
+existing release and keeps its settings, plus `--k3s` and `--prereqs`. See
+"Updating" in [docs/install.md](../../docs/install.md).
+
 ## Pins
 
 `K3S_VERSION`, `HELM_VERSION` and the Helm checksums are at the top of

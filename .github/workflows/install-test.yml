@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - install.sh
+      - update.sh
       - scripts/install/**
       - chart/**
       - Dockerfile
@@ -12,6 +13,7 @@ on:
     branches: [main]
     paths:
       - install.sh
+      - update.sh
       - scripts/install/**
       - chart/**
       - Dockerfile
@@ -30,7 +32,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - run: shellcheck install.sh scripts/install/*.sh
+      - run: shellcheck install.sh update.sh scripts/install/*.sh
+      - if: ${{ !cancelled() }}
+        run: scripts/install/gen-update.sh --check
       - if: ${{ !cancelled() }}
         run: scripts/install/check-pins.sh install.sh
 
@@ -110,6 +114,19 @@ jobs:
           cmp -s "$RUNNER_TEMP/secret.before" "$RUNNER_TEMP/secret.after" || { echo "re-run changed the Secret"; exit 1; }
           [ "$(sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml history "$RELEASE" -n "$NS" -o json | jq length)" = 2 ]
           scripts/install/assert-install.sh "$RUNNER_TEMP/second.log" "$PASSWORD"
+      - name: update.sh upgrades in place and keeps the settings
+        run: |
+          sh update.sh --yes --chart ./chart --k3s --prereqs | tee "$RUNNER_TEMP/update.log"
+          grep -q '^k3s is already ' "$RUNNER_TEMP/update.log"
+          grep -q '^Chart: .* -> ' "$RUNNER_TEMP/update.log"
+          grep -q '^Image: .* -> ' "$RUNNER_TEMP/update.log"
+          grep -q '^URL: http://.*:32450/$' "$RUNNER_TEMP/update.log" || { echo "update moved the port"; exit 1; }
+          ! grep -q '^Password' "$RUNNER_TEMP/update.log"
+          [ "$(sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml history "$RELEASE" -n "$NS" -o json | jq length)" = 3 ]
+          scripts/install/assert-install.sh "$RUNNER_TEMP/update.log" "$PASSWORD"
+          # No release to update: it says so and points at install.sh.
+          ! sh update.sh --yes --chart ./chart --release absent 2> "$RUNNER_TEMP/absent.err"
+          grep -q 'install it with install.sh' "$RUNNER_TEMP/absent.err"
       - name: Uninstall removes the release and leaves k3s
         run: |
           sh install.sh --yes --uninstall

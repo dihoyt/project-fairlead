@@ -12,7 +12,7 @@
 # also upgrade this host's k3s (--k3s) and node packages (--prereqs).
 set -eu
 
-MODE="install"
+MODE="update"
 # Not POSIX, but every sh this runs under (dash, bash, busybox ash) has it.
 # shellcheck disable=SC3040
 if (set -o pipefail) 2>/dev/null; then set -o pipefail; fi
