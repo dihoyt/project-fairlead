@@ -103,8 +103,22 @@ const settle = async () => {
 
 const answers = { baseDomain: "example.test", adminEmail: "ops@example.test", adminPassword: PASSWORD };
 
+// The runner starts the next item after the previous job's watch fires,
+// which a loaded test run can take longer than settle() to deliver.
+async function jobView(e: Env, jobId: string): Promise<DeployJobView> {
+  for (let i = 0; i < 100; i++) {
+    const res = await fetch(`${e.server.url}/api/deploy/jobs/${jobId}`);
+    if (res.status !== 404) {
+      assert.equal(res.status, 200);
+      return (await res.json()) as DeployJobView;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  return call<DeployJobView>(e, "GET", `/jobs/${jobId}`);
+}
+
 async function finishJob(e: Env, jobId: string, ok: boolean) {
-  const view = await call<DeployJobView>(e, "GET", `/jobs/${jobId}`);
+  const view = await jobView(e, jobId);
   const job = (await e.k8s.get(RESOURCES.jobs, view.job.name, NS)) as KubeObject;
   e.k8s.upsert(RESOURCES.jobs, {
     ...job,
