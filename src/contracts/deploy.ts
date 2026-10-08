@@ -412,6 +412,8 @@ export interface DeployedRelease {
 export interface DeployService {
   // The latest install or upgrade job per release, newest first; dry runs excluded.
   releases(): Promise<DeployedRelease[]>;
+  // What GET /api/deploy/access answers, for work that runs without a request.
+  access(): Promise<AccessView>;
   // A CatalogEntry another module built (a template instance: install kind
   // "manifest", bundled), planned and run exactly as a catalog app with
   // that id would be: same defaults, access-mode Ingress from its "host"

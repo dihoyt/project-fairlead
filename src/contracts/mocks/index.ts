@@ -3,6 +3,7 @@
 export * from "./api.js";
 export * from "./backups.js";
 export * from "./catalog.js";
+export * from "./connectors/index.js";
 export * from "./context.js";
 export * from "./deploy.js";
 export * from "./health.js";

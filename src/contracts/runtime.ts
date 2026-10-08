@@ -1,5 +1,6 @@
 import type { Database } from "better-sqlite3";
 import type { CatalogService } from "./catalog.js";
+import type { ConnectorRegistry } from "./connectors.js";
 import type { DeployService } from "./deploy.js";
 import type { K8sApi } from "./k8s.js";
 import type { SeriesQuery, SeriesResult } from "./metrics.js";
@@ -57,6 +58,8 @@ export interface Services {
   templates: TemplatesService;
   // Provided by module "metrics" (A3).
   metrics: MetricsQuery;
+  // Provided by module "connectors" (B1).
+  connectors: ConnectorRegistry;
 }
 
 // The store behind GET /api/metrics/query, for modules that summarise

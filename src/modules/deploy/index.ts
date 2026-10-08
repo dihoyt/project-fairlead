@@ -70,6 +70,7 @@ export function registerDeploy(
   const bundles = new Bundles(ctx, deployer, options.now);
   ctx.services.provide("deploy", {
     releases: async () => deployer.releases(),
+    access: () => deployer.accessView(),
     planEntry: (entry, request) => deployer.plan(request, entry),
     startEntry: (actor, entry, request) => deployer.start(actor, request, {}, entry),
   });

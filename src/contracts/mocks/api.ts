@@ -39,6 +39,14 @@ import {
   mockUpgradeRun,
   mockVolumeBackup,
 } from "./catalog.js";
+import {
+  mockCloudflareConnector,
+  mockCloudflareDiscovery,
+  mockCloudflareHosts,
+  mockCloudflareView,
+  mockConnectorKinds,
+  mockConnectors,
+} from "./connectors/views.js";
 import { mockCheckResults } from "./health.js";
 import { mockTemplateJob, mockTemplatePlan, mockTemplatesView } from "./templates.js";
 import { mockSeriesResults } from "./metrics.js";
@@ -761,6 +769,26 @@ export const apiMocks: ApiMocks = {
   "POST /api/templates/plan": mockTemplatePlan,
   "POST /api/templates/jobs": mockTemplateJob,
 
+  "GET /api/connectors/kinds": mockConnectorKinds,
+  "GET /api/connectors": mockConnectors,
+  "POST /api/connectors": mockCloudflareConnector,
+  "POST /api/connectors/test": { ok: true, checks: mockCloudflareConnector.checks },
+  "GET /api/connectors/:id": mockCloudflareConnector,
+  "PUT /api/connectors/:id": mockCloudflareConnector,
+  "DELETE /api/connectors/:id": { ok: true, removed: 2, errors: [] },
+  "POST /api/connectors/:id/test": mockCloudflareConnector,
+  "POST /api/connectors/:id/reconcile": mockCloudflareConnector,
+  "GET /api/connector-cloudflare/view": mockCloudflareView,
+  "POST /api/connector-cloudflare/sync": mockCloudflareView,
+  "PUT /api/connector-cloudflare/hosts/:host": mockCloudflareHosts[0]!,
+  "POST /api/connector-cloudflare/discover": mockCloudflareDiscovery,
+  "POST /api/connector-cloudflare/tunnel": mockCloudflareView,
+  "POST /api/connector-cloudflare/tunnel/deploy": {
+    ...mockRunningJob,
+    appId: "cloudflared",
+    release: "cloudflared",
+    namespace: "cloudflared",
+  },
   "POST /api/mcp": {
     jsonrpc: "2.0",
     id: 1,

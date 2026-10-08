@@ -31,6 +31,22 @@ import type {
 import type { BackupPosture, LonghornReplicaAdvice, RestoreTestMark } from "./backups.js";
 import type { CatalogAppView, CatalogBundleView, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
+import type {
+  CloudflareDiscoverRequest,
+  CloudflareDiscovery,
+  CloudflareHostRequest,
+  CloudflareHostView,
+  CloudflareTunnelDeploy,
+  CloudflareTunnelRequest,
+  CloudflareView,
+  ConnectorKindView,
+  ConnectorRemoveResult,
+  ConnectorRequest,
+  ConnectorTestRequest,
+  ConnectorTestResult,
+  ConnectorUpdate,
+  ConnectorView,
+} from "./connectors.js";
 import type { JoinLink, JoinLinkRequest, JoinStatus } from "./cluster.js";
 import type {
   AccessRequest,
@@ -396,6 +412,34 @@ export interface ApiRoutes {
   // 405: there is no stream to open and no session to end.
   "GET /api/mcp": Route<None, None, None, ApiError>;
   "DELETE /api/mcp": Route<None, None, None, ApiError>;
+
+  // --- connectors (B1) ----------------------------------------------------
+  // Reads are open to anyone signed in; everything else needs "admin".
+  "GET /api/connectors/kinds": Route<None, None, None, ConnectorKindView[]>;
+  "GET /api/connectors": Route<None, None, None, ConnectorView[]>;
+  // Verifies, then saves whatever the checks say; the view carries them.
+  // 409 for a second instance of a single kind.
+  "POST /api/connectors": Route<None, None, ConnectorRequest, ConnectorView>;
+  "POST /api/connectors/test": Route<None, None, ConnectorTestRequest, ConnectorTestResult>;
+  "GET /api/connectors/:id": Route<{ id: string }, None, None, ConnectorView>;
+  "PUT /api/connectors/:id": Route<{ id: string }, None, ConnectorUpdate, ConnectorView>;
+  // cleanup=1 first deletes what the instance created in the tool.
+  "DELETE /api/connectors/:id": Route<{ id: string }, { cleanup?: "1" }, None, ConnectorRemoveResult>;
+  // Re-runs verify (or health) and returns the updated view.
+  "POST /api/connectors/:id/test": Route<{ id: string }, None, None, ConnectorView>;
+  // 400 for a kind without reconcile.
+  "POST /api/connectors/:id/reconcile": Route<{ id: string }, None, None, ConnectorView>;
+
+  // --- connector-cloudflare (B2) -----------------------------------------
+  "GET /api/connector-cloudflare/view": Route<None, None, None, CloudflareView>;
+  // Reconciles now; 409 without a connector.
+  "POST /api/connector-cloudflare/sync": Route<None, None, None, CloudflareView>;
+  // 404 for a host the Access step doesn't list.
+  "PUT /api/connector-cloudflare/hosts/:host": Route<{ host: string }, None, CloudflareHostRequest, CloudflareHostView>;
+  "POST /api/connector-cloudflare/discover": Route<None, None, CloudflareDiscoverRequest, CloudflareDiscovery>;
+  "POST /api/connector-cloudflare/tunnel": Route<None, None, CloudflareTunnelRequest, CloudflareView>;
+  // 409 without a connector or a tunnel; the deploy's own 400 when deploys are off.
+  "POST /api/connector-cloudflare/tunnel/deploy": Route<None, None, None, CloudflareTunnelDeploy>;
 
   // --- onboarding (A14) ---------------------------------------------------
   "GET /api/onboarding/state": Route<None, None, None, OnboardingState>;
