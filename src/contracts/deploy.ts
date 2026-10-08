@@ -139,3 +139,21 @@ export interface BundleRunView {
   finishedAt?: string;
   steps: Array<{ appId: string; state: BundleStepState; jobId?: string; message?: string; url?: string }>;
 }
+
+// --- For other modules -------------------------------------------------------
+
+// A release the deploy runner installed (its latest install job), so
+// discovery can tell "installed by us" where a chart ignores the label.
+export interface DeployedRelease {
+  appId: string;
+  release: string;
+  namespace: string;
+  jobId: string;
+  state: DeployJobState;
+}
+
+// Provided by module "deploy" as ctx.services.get("deploy").
+export interface DeployService {
+  // The latest install-mode job per release, newest first; dry runs excluded.
+  releases(): Promise<DeployedRelease[]>;
+}
