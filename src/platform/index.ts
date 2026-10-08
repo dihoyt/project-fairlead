@@ -18,6 +18,7 @@ import { updateUser, userByUsername } from "./auth/users.js";
 import { bootstrapAdmin } from "./bootstrap.js";
 import type { Core } from "./core.js";
 import { platformMigrations } from "./migrations.js";
+import { createGate } from "./gate.js";
 import { originGuard } from "./originGuard.js";
 import { mcpChallenge, oauthRouter } from "./routes/oauth.js";
 import { adminRouter } from "./routes/admin.js";
@@ -60,6 +61,7 @@ export const createPlatform: CreatePlatform = (deps) => {
     limits: createLoginLimits(),
   };
   const signIn = createSignIn(core);
+  const gate = createGate(core);
   const resolveSession = createResolver(core);
   const tickets = new Map<string, { auth: AuthResult; expires: number }>();
   const redeem = (ticket: string): AuthResult => {
@@ -148,6 +150,7 @@ export const createPlatform: CreatePlatform = (deps) => {
     secrets: core.secrets,
     audit: core.audit,
     signIn,
+    gate,
     clearSettings: ({ only, except = [], exceptPrefixes = [] }) =>
       core.settings.clearOverrides(only, except, exceptPrefixes),
     async resetAdminPassword() {

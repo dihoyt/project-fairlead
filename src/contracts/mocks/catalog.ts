@@ -21,6 +21,7 @@ import {
   type DeployJobView,
   type DeployPlan,
   type DeployStatus,
+  type GateStatus,
   type UpgradeReport,
   type VolumeBackupView,
 } from "../deploy.js";
@@ -651,7 +652,35 @@ export const mockDeployPlan: DeployPlan = {
     { kind: "Job", name: "deploy-headlamp-1", namespace: "console" },
   ],
   url: "https://headlamp.example.test",
+  gate: { state: "gated" },
   warnings: [],
+};
+
+// One app in each state the gate can report.
+export const mockGateStatus: GateStatus = {
+  ready: true,
+  signInUrl: "https://console.example.test",
+  middleware: "console-console-gate@kubernetescrd",
+  apps: [
+    {
+      appId: "authentik",
+      name: "Authentik",
+      state: "public",
+      public: true,
+      mode: "public",
+      hosts: ["auth.example.test"],
+    },
+    { appId: "gitea", name: "Gitea", state: "gated", public: false, mode: "credentials", hosts: ["git.example.test"] },
+    { appId: "headlamp", name: "Headlamp", state: "public", public: true, hosts: ["headlamp.example.test"] },
+    {
+      appId: "longhorn",
+      name: "Longhorn",
+      state: "open",
+      public: false,
+      hosts: ["longhorn.example.test"],
+      reason: "Its Ingress longhorn-system/longhorn-ingress has no gate middleware.",
+    },
+  ],
 };
 
 export const mockBlockedPlan: DeployPlan = {

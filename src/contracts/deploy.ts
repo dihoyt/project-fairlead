@@ -18,6 +18,10 @@ export interface DeployRequest {
   // By CatalogInput.key. Secret inputs are write-only: they go into the
   // Job's values Secret and are never returned or logged.
   inputs: Record<string, DeployValue>;
+  // Leave the app reachable without signing in to the console (see
+  // "Sign-in gate" below). Default false; ignored for an entry whose
+  // CatalogEntry.gate is "public", which always is.
+  public?: boolean;
 }
 
 export interface DeployStatus {
@@ -71,6 +75,8 @@ export interface DeployPlan {
   creates: PlannedObject[];
   // Where the UI will be once it is up.
   url?: string;
+  // How the sign-in gate will treat it; absent for an app with no UI.
+  gate?: { state: AppGateState; reason?: string };
   warnings: string[];
 }
 
@@ -119,6 +125,9 @@ export interface BundleRequest {
   apps?: Record<string, Record<string, DeployValue>>;
   // Optional items to roll out; omitted: the ones the bundle view marks selected.
   include?: string[];
+  // Apps to leave reachable without signing in to the console
+  // (DeployRequest.public for each).
+  public?: string[];
 }
 
 export interface BundlePlanStep {
@@ -235,7 +244,8 @@ export interface UpgradeRequest {
 // cancel go through /api/deploy/jobs, one job per release at a time, and it
 // ends with deploy.finished. Needs deploy.enabled, like installs.
 
-export type DeployActionKind = "longhorn-replicas" | "migrate-to-longhorn" | "backup-volumes" | "remove-app";
+export type DeployActionKind =
+  "longhorn-replicas" | "migrate-to-longhorn" | "backup-volumes" | "remove-app" | "app-gate";
 
 // Raises Longhorn's default-replica-count Setting (what new volumes get),
 // the replica count pinned by a Longhorn StorageClass when it is lower, and,
@@ -284,8 +294,20 @@ export interface RemoveAppAction {
   deleteVolumes?: boolean;
 }
 
+// Puts an app the deploy runner installed behind the sign-in gate, or makes
+// it public: saves the choice (what later installs and upgrades apply) and
+// sets or removes the gate middleware on each of its Ingresses in place,
+// keeping any other middleware they carry. Refused for an entry whose
+// CatalogEntry.gate is "public" and, to gate, when the gate can't work
+// (GateStatus.ready false).
+export interface AppGateAction {
+  kind: "app-gate";
+  appId: string;
+  public: boolean;
+}
+
 export type DeployActionRequest =
-  LonghornReplicasAction | MigrateToLonghornAction | BackupVolumesAction | RemoveAppAction;
+  LonghornReplicasAction | MigrateToLonghornAction | BackupVolumesAction | RemoveAppAction | AppGateAction;
 
 export interface DeployActionStep {
   // "Raise the default replica count to 2".
@@ -412,6 +434,56 @@ export interface AccessView {
   // local: "<address> <host>" per host, ready to paste into a hosts file;
   // "<ingress IP>" stands in for an address discovery could not find.
   hostsFile?: string;
+}
+
+// --- Sign-in gate -------------------------------------------------------------
+// Every app the deploy runner publishes sits behind the console's own
+// sign-in until it is made public. Its Ingresses carry a Traefik
+// forwardAuth middleware that asks the console about each request
+// (GATE_FORWARD_PATH in ./platform.ts); only people signed in to the
+// console get through, so once sign-in goes through Authentik or Entra the
+// gate does too. Works for every access mode whose Ingresses Traefik serves
+// (cloudflare-tunnel, direct, local). With tailscale the operator's own
+// proxy serves the app and the tailnet is the gate. Cloudflare Access, when
+// on, is a separate layer in front.
+
+// gated: every Ingress of the app carries the gate.
+// public: left reachable without the console's sign-in on purpose (the
+//   saved choice, or CatalogEntry.gate "public").
+// open: published with no gate although not made public; reason says why
+//   (the ingress class is not Traefik, the gate isn't ready, an Ingress lost
+//   the middleware). Anyone with the URL reaches it.
+// tailnet: served by the Tailscale operator; only the tailnet reaches it.
+export type AppGateState = "gated" | "public" | "open" | "tailnet";
+
+export interface AppGateView {
+  appId: string;
+  name: string;
+  state: AppGateState;
+  // The saved choice: what the next install, upgrade or app-gate applies.
+  public: boolean;
+  // CatalogEntry.gate: "public" can't be gated; "credentials" lets requests
+  // carrying their own Authorization header through to the app.
+  mode?: "credentials" | "public";
+  // Its Ingress hosts (discovery), sorted.
+  hosts: string[];
+  // One sentence, for "open" always, otherwise when there is more to say.
+  reason?: string;
+}
+
+export interface GateStatus {
+  // The gate can be applied: the access mode isn't tailscale, the ingress
+  // class is Traefik's and the console has a public URL to send people to.
+  ready: boolean;
+  // Why not, one sentence.
+  reason?: string;
+  // The console's public URL, where people are sent to sign in.
+  signInUrl?: string;
+  // The Middleware every gated Ingress references,
+  // "<namespace>-<name>@kubernetescrd".
+  middleware?: string;
+  // Every app the deploy runner installed that has an Ingress, by name.
+  apps: AppGateView[];
 }
 
 // --- For other modules -------------------------------------------------------

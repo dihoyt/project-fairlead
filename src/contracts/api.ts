@@ -64,6 +64,7 @@ import type {
   DeployPlan,
   DeployRequest,
   DeployStatus,
+  GateStatus,
   UpgradeReport,
   UpgradeRequest,
   VolumeBackupView,
@@ -372,6 +373,9 @@ export interface ApiRoutes {
   // not ours or not upgradable, or when nothing is available; 409 while
   // another bundle or upgrade run is running.
   "POST /api/deploy/upgrades": Route<None, None, UpgradeRequest, BundleRunView>;
+  // Whether the sign-in gate can work and how each deployed app stands
+  // behind it. Public and Public off are changed with the "app-gate" action.
+  "GET /api/deploy/gate": Route<None, None, None, GateStatus>;
   // Admin. What the action would change, from reads only; runs nothing.
   "POST /api/deploy/actions/plan": Route<None, None, DeployActionRequest, DeployActionPlan>;
   // Admin, audited. Starts the action as a deploy job (mode "action"); 400
