@@ -155,7 +155,7 @@ case "$INGRESS_CLASS" in *[!a-z0-9.-]*) die "--ingress-class has unexpected char
 case "$NODE_PORT" in
   "") ;;
   *[!0-9]*) die "--port must be a number: $NODE_PORT" ;;
-  *) [ "$NODE_PORT" -ge 30000 ] && [ "$NODE_PORT" -le 32767 ] || die "--port must be in the NodePort range 30000-32767" ;;
+  *) if [ "$NODE_PORT" -lt 30000 ] || [ "$NODE_PORT" -gt 32767 ]; then die "--port must be in the NodePort range 30000-32767"; fi ;;
 esac
 [ -z "$NODE_PORT" ] || [ -z "$HOST" ] || die "--port is for the NodePort install; --host serves through an Ingress"
 [ "$PURGE" = 0 ] || [ "$UNINSTALL" = 1 ] || die "--purge only goes with --uninstall"
