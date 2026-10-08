@@ -2,6 +2,7 @@ import type { CatalogEntry, ClusterBasic, DetectedApp, DiscoveryReport, IngressH
 import type { DeployedRelease } from "../../contracts/deploy.js";
 import { isDeployedByUs } from "../../contracts/deployed.js";
 import { RESOURCES, type K8sApi, type KubeObject, type ResourceRef } from "../../contracts/k8s.js";
+import { nodeDisks } from "./disks.js";
 import { chartName, parseImage, signatures, type Signature } from "./signatures.js";
 
 const DEFAULT_SC = "storageclass.kubernetes.io/is-default-class";
@@ -524,20 +525,30 @@ export async function discover(
   // From the deploy module: catches charts that drop the deployed-by label.
   releases: readonly DeployedRelease[] = []
 ): Promise<DiscoveryReport> {
-  const [kubernetesVersion, workloads, ingresses, services, storageClasses, ingressClasses, issuers, nodeMetrics] =
-    await Promise.all([
-      k8s.version().then(
-        (v) => v.gitVersion,
-        () => undefined
-      ),
-      listWorkloads(k8s),
-      listSafe<Ingress>(k8s, RESOURCES.ingresses),
-      listSafe<Service>(k8s, RESOURCES.services),
-      listSafe<KubeObject>(k8s, RESOURCES.storageClasses),
-      listSafe<KubeObject>(k8s, RESOURCES.ingressClasses),
-      listSafe<Readiness>(k8s, RESOURCES.clusterIssuers),
-      listSafe<KubeObject>(k8s, RESOURCES.nodeMetrics),
-    ]);
+  const [
+    kubernetesVersion,
+    workloads,
+    ingresses,
+    services,
+    storageClasses,
+    ingressClasses,
+    issuers,
+    nodeMetrics,
+    disks,
+  ] = await Promise.all([
+    k8s.version().then(
+      (v) => v.gitVersion,
+      () => undefined
+    ),
+    listWorkloads(k8s),
+    listSafe<Ingress>(k8s, RESOURCES.ingresses),
+    listSafe<Service>(k8s, RESOURCES.services),
+    listSafe<KubeObject>(k8s, RESOURCES.storageClasses),
+    listSafe<KubeObject>(k8s, RESOURCES.ingressClasses),
+    listSafe<Readiness>(k8s, RESOURCES.clusterIssuers),
+    listSafe<KubeObject>(k8s, RESOURCES.nodeMetrics),
+    nodeDisks(k8s),
+  ]);
 
   const matched = entries
     .filter((entry) => signatures[entry.id])
@@ -586,6 +597,7 @@ export async function discover(
     apps,
     ingressHosts: hosts,
     basics: [storage.basic, ingress.basic, certs.basic, metricsBasic(nodeMetrics, versionOf("metrics-server"))],
+    ...(disks ? { nodeDisks: disks } : {}),
     suggested: {
       ...(storage.suggested ? { storageClass: storage.suggested } : {}),
       ...(ingress.suggested ? { ingressClass: ingress.suggested } : {}),

@@ -18,6 +18,8 @@ import mod from "../../../src/modules/catalog/index.js";
 import { baseDomain, discover } from "../../../src/modules/catalog/discover.js";
 import { bundleView, bundles } from "../../../src/modules/catalog/bundles.js";
 import { catalog } from "../../../src/modules/catalog/entries.js";
+import { nodeDisks } from "../../../src/modules/catalog/disks.js";
+import { ntfyManifest } from "../../../src/modules/catalog/manifests/ntfy.js";
 import { createCatalogService } from "../../../src/modules/catalog/service.js";
 import { chartName, parseImage, signatures } from "../../../src/modules/catalog/signatures.js";
 import { loadFixtureSet } from "../../support/index.js";
@@ -232,6 +234,22 @@ describe("catalog entries", () => {
     assert.equal((pickVersion(longhorn, "v1.34.2") as { version: string }).version, "1.13.0");
   });
 
+  test("every installable app has a disk footprint; volumes match its storage", () => {
+    const GiB = 1024 ** 3;
+    for (const entry of catalog) {
+      if (entry.install.kind === "patch") {
+        assert.equal(entry.disk, undefined, entry.id);
+        continue;
+      }
+      assert.ok(entry.disk && entry.disk.imageBytes > 0, entry.id);
+      assert.equal(entry.disk.volumeBytes > 0, entry.storage !== undefined, entry.id);
+    }
+    const gitea = catalog.find((e) => e.id === "gitea")!;
+    assert.equal(gitea.disk?.volumeBytes, 5 * GiB);
+    assert.equal(catalog.find((e) => e.id === "ntfy")!.disk?.volumeBytes, GiB / 2);
+    assert.match(ntfyManifest, /storage: 512Mi/);
+  });
+
   test("every installable app has a detection signature", () => {
     for (const entry of catalog) {
       if (entry.install.kind === "patch") continue;
@@ -315,6 +333,15 @@ describe("discovery over the real fixture set", () => {
   });
 });
 
+const nodeObject = (name: string, ready = true, unschedulable = false) => ({
+  apiVersion: "v1",
+  kind: "Node",
+  metadata: { name },
+  spec: unschedulable ? { unschedulable } : {},
+  status: { conditions: [{ type: "Ready", status: ready ? "True" : "False" }] },
+});
+const summaryPath = (path: string) => `/api/v1/nodes/${path}/proxy/stats/summary`;
+
 // --- discovery over synthetic clusters ------------------------------------------
 
 describe("discovery over a healthy synthetic cluster", () => {
@@ -334,6 +361,52 @@ describe("discovery over a healthy synthetic cluster", () => {
       catalog
     );
     assert.equal("kubernetesVersion" in silent, false);
+  });
+
+  test("node disks come from each ready node's kubelet summary; failures say why", async () => {
+    const GiB = 1024 ** 3;
+    const k8s = createFakeK8s({
+      objects: [
+        {
+          ref: RESOURCES.nodes,
+          items: [
+            nodeObject("n1"),
+            nodeObject("n2"),
+            nodeObject("n3", false),
+            nodeObject("n4", true, true),
+            nodeObject("n5"),
+          ],
+        },
+      ],
+      raw: {
+        [summaryPath("n1")]: {
+          node: {
+            fs: { availableBytes: 10 * GiB, capacityBytes: 30 * GiB },
+            runtime: { imageFs: { availableBytes: 10 * GiB, capacityBytes: 30 * GiB } },
+          },
+        },
+        [summaryPath("n2")]: { node: {} },
+      },
+    });
+    const found = await discover(k8s, catalog);
+    assert.deepEqual(found.nodeDisks, [
+      {
+        node: "n1",
+        availableBytes: 10 * GiB,
+        capacityBytes: 30 * GiB,
+        imageAvailableBytes: 10 * GiB,
+        imageCapacityBytes: 30 * GiB,
+      },
+      { node: "n2", error: "the kubelet reported no filesystem stats" },
+      { node: "n3", error: "node not ready" },
+      { node: "n5", error: "fake k8s: no raw response for /api/v1/nodes/n5/proxy/stats/summary" },
+    ]);
+    const hung = await nodeDisks({ ...k8s, raw: () => new Promise(() => {}) }, 10);
+    assert.equal(hung?.[0]?.error, "timed out");
+    const denied = await nodeDisks({ ...k8s, raw: () => Promise.reject(new Error("403 Forbidden")) });
+    assert.equal(denied?.[0]?.error, "forbidden: needs get on nodes/proxy");
+    const unlisted = await discover({ ...k8s, list: () => Promise.reject(new Error("forbidden")) }, catalog);
+    assert.equal("nodeDisks" in unlisted, false);
   });
 
   test("Ingress hosts carry scheme by TLS, their service and matched app; wildcards are skipped", () => {
@@ -616,19 +689,30 @@ describe("deploy bundles", () => {
     }
   });
 
-  test("on an empty cluster everything is in, optional Longhorn starts unticked", async () => {
+  test("on an empty cluster everything is in, optional Longhorn included, its open-iscsi need a note", async () => {
     const empty = createFakeK8s({ absentGroups: ["cert-manager.io", "metrics.k8s.io"] });
-    const view = bundleView(bundles[0]!, await discover(empty, catalog));
+    const view = bundleView(bundles[0]!, await discover(empty, catalog), catalog);
+    for (const item of view.items) {
+      assert.deepEqual([item.appId, item.skip, item.selected, item.reason], [item.appId, false, true, undefined]);
+    }
+    assert.match(view.items.find((i) => i.appId === "longhorn")!.note!, /open-iscsi/);
+  });
+
+  test("an optional app whose chart doesn't support the cluster starts unticked, with the reason", async () => {
+    const empty = createFakeK8s({ absentGroups: ["cert-manager.io", "metrics.k8s.io"] });
+    const report = await discover(empty, catalog);
+    const view = bundleView(bundles[0]!, { ...report, kubernetesVersion: "v1.20.3" }, catalog);
     const longhorn = view.items.find((i) => i.appId === "longhorn")!;
     assert.deepEqual([longhorn.skip, longhorn.selected], [false, false]);
-    assert.match(longhorn.reason!, /open-iscsi/);
-    for (const item of view.items.filter((i) => i.appId !== "longhorn")) {
-      assert.deepEqual([item.appId, item.skip, item.selected], [item.appId, false, true]);
-    }
+    assert.match(longhorn.reason!, /^Needs Kubernetes .*this cluster runs v1\.20\.3\.$/);
   });
 
   test("on a healthy cluster, installed apps and met basics are skipped", async () => {
-    const view = bundleView(bundles[0]!, await discover(createFakeK8s({ objects: healthyCluster() }), catalog));
+    const view = bundleView(
+      bundles[0]!,
+      await discover(createFakeK8s({ objects: healthyCluster() }), catalog),
+      catalog
+    );
     const skipped = view.items.filter((i) => i.skip).map((i) => i.appId);
     assert.deepEqual(skipped, [
       "traefik",
@@ -642,7 +726,7 @@ describe("deploy bundles", () => {
     assert.match(view.items.find((i) => i.appId === "traefik")!.reason!, /^Already covered: IngressClass traefik/);
     assert.deepEqual(
       view.items.filter((i) => i.selected).map((i) => i.appId),
-      ["authentik", "gitea", "ntfy"]
+      ["longhorn", "authentik", "gitea", "ntfy"]
     );
     assert.deepEqual(view.suggested, { baseDomain: "home.example.com", storageClass: "longhorn" });
   });

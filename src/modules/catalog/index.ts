@@ -54,7 +54,7 @@ const mod: Module = {
     ctx.route("GET /api/catalog/discovery", (req) => service.discover(req.query.refresh === "1"));
     ctx.route("GET /api/catalog/bundles", async (req) => {
       const report = await service.discover(req.query.refresh === "1");
-      return service.bundles().map((bundle) => bundleView(bundle, report));
+      return service.bundles().map((bundle) => bundleView(bundle, report, service.entries()));
     });
   },
 };

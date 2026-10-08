@@ -77,6 +77,13 @@ const tlsSecret = (r: RecipeInput) => `${r.release}-tls`;
 // module's releases().
 const labels = () => deployedLabel();
 
+// Two replicas, or one on a single node: more replicas than nodes leaves
+// every volume degraded. Users raise it in Longhorn as they add nodes.
+const LONGHORN_REPLICAS = 2;
+const longhornReplicas = (r: RecipeInput) => {
+  const nodes = r.discovery?.nodeDisks?.length;
+  return nodes ? Math.min(LONGHORN_REPLICAS, nodes) : LONGHORN_REPLICAS;
+};
 const storageClass = (r: RecipeInput) => r.defaults.storageClass || undefined;
 
 function hasDefaultStorageClass(r: RecipeInput): boolean {
@@ -169,7 +176,8 @@ export const recipes: Record<string, Recipe> = {
   longhorn: {
     values: (r) => ({
       commonLabels: labels(),
-      persistence: { defaultClass: !hasDefaultStorageClass(r) },
+      defaultSettings: { defaultReplicaCount: longhornReplicas(r) },
+      persistence: { defaultClass: !hasDefaultStorageClass(r), defaultClassReplicaCount: longhornReplicas(r) },
       ingress: {
         enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
@@ -180,7 +188,13 @@ export const recipes: Record<string, Recipe> = {
       },
     }),
     service: () => ({ name: "longhorn-frontend", port: 80 }),
-    warnings: () => ["Longhorn's UI has no sign-in of its own: anyone who can reach the hostname can use it."],
+    warnings: (r) => {
+      const replicas = longhornReplicas(r);
+      return [
+        "Longhorn's UI has no sign-in of its own: anyone who can reach the hostname can use it.",
+        ...(replicas === 1 ? ["1 replica on a single node; raise it in Longhorn when you add nodes."] : []),
+      ];
+    },
   },
 
   rancher: {
