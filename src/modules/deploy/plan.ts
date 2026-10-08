@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { CatalogEntry, CatalogInput, DiscoveryReport } from "../../contracts/catalog.js";
 import type { DeployMode, DeployPlan, DeployRequest, DeployValue, PlannedObject } from "../../contracts/deploy.js";
 import { recipes, VALUES_DIR, type Defaults, type RecipeInput, type Step } from "./apps.js";
+import { manifestParts } from "./manifest.js";
 import { toYaml, type YamlValue } from "./yaml.js";
 
 export const MASK = "********";
@@ -133,9 +134,6 @@ function mainSteps(entry: CatalogEntry, release: string, namespace: string, mode
       },
     ];
   }
-  if (install.kind === "manifest") {
-    return [{ argv: ["kubectl", "apply", "-f", install.url], dryRun: "--dry-run=server" }];
-  }
   return [];
 }
 
@@ -155,11 +153,16 @@ const secretValue = () => randomBytes(24).toString("base64url");
 export function render(input: PlanInput, mode: DeployMode, generate: () => string = secretValue): Rendered {
   const { entry, request } = input;
   const release = entry.id;
-  const namespace = request.namespace?.trim() || entry.namespace;
+  const manifest = entry.install.kind === "manifest";
+  const asked = request.namespace?.trim();
+  // A manifest names its own namespaces.
+  const namespace = manifest ? entry.namespace : asked || entry.namespace;
   const recipe = recipes[entry.id];
   const given = request.inputs && typeof request.inputs === "object" ? request.inputs : {};
   const { values, errors } = resolveInputs(entry, given as Record<string, unknown>, input.defaults);
   if (!DNS_LABEL.test(namespace)) errors.namespace ??= "must be a lowercase DNS label";
+  if (manifest && asked && asked !== entry.namespace)
+    errors.namespace ??= `${entry.name} installs into ${entry.namespace}`;
 
   const host = typeof values.host === "string" && values.host ? values.host : undefined;
   const tls = entry.exposesUi && Boolean(input.defaults.clusterIssuer);
@@ -197,13 +200,13 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
   const self = detected(entry.id);
   const alreadyThere = entry.install.kind !== "patch" && self?.state === "installed" && !self.ownedByUs;
 
+  const parts = manifestParts(entry, shown);
   const supported =
-    recipe !== undefined &&
-    (entry.install.kind === "helm"
-      ? recipe.values !== undefined
+    entry.install.kind === "helm"
+      ? recipe?.values !== undefined
       : entry.install.kind === "patch"
-        ? recipe.patch !== undefined
-        : true);
+        ? recipe?.patch !== undefined
+        : parts.error === undefined;
 
   if (entry.exposesUi && !input.defaults.ingressClass) {
     warnings.push("No ingress class found: the app installs but is unreachable from outside until one exists.");
@@ -214,12 +217,16 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
   if (self?.state === "installed" && self.ownedByUs && entry.install.kind !== "patch") {
     warnings.push("Installed here before: this runs the same install again over it.");
   }
-  if (supported) warnings.push(...(recipe!.warnings?.(shown) ?? []));
+  if (supported) warnings.push(...(recipe?.warnings?.(shown) ?? []));
 
   const all = supported
     ? [
-        ...(entry.install.kind === "patch" ? recipe!.patch!(shown) : mainSteps(entry, release, namespace, mode)),
-        ...(recipe!.after?.(shown) ?? []),
+        ...(entry.install.kind === "patch"
+          ? recipe!.patch!(shown)
+          : manifest
+            ? parts.steps
+            : mainSteps(entry, release, namespace, mode)),
+        ...(recipe?.after?.(shown) ?? []),
       ]
     : [];
   const { steps: shownSteps, skipped } = prepare(all, mode);
@@ -236,7 +243,7 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
   const blockedBy = !input.enabled
     ? "Deploys are turned off for this install."
     : !supported
-      ? `There is no install template for ${entry.name} yet.`
+      ? (parts.error ?? `There is no install template for ${entry.name} yet.`)
       : firstError
         ? `${firstError[0]}: ${firstError[1]}`
         : missingRequires.length > 0
@@ -252,7 +259,11 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
         ? Object.values(recipe!.files?.(shown) ?? {})
             .map((file) => toYaml(file))
             .join("---\n")
-        : "";
+        : manifest && supported
+          ? Object.values(parts.files)
+              .map((file) => toYaml(file))
+              .join("---\n")
+          : "";
 
   const creates: PlannedObject[] = [
     ...(entry.install.kind === "helm" && input.namespaceExists !== true
@@ -284,7 +295,12 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
   const real = recipeInput(true);
   const files: Record<string, string> = {};
   if (entry.install.kind === "helm") files["values.yaml"] = toYaml(recipe!.values!(real) as YamlValue);
-  for (const [file, content] of Object.entries(recipe!.files?.(real) ?? {})) files[file] = toYaml(content);
+  for (const [file, content] of Object.entries(recipe?.files?.(real) ?? {})) files[file] = toYaml(content);
+  if (manifest) {
+    const realParts = manifestParts(entry, real);
+    Object.assign(files, realParts.raw);
+    for (const [file, content] of Object.entries(realParts.files)) files[file] = toYaml(content);
+  }
   if (Object.keys(files).length === 0) files["values.yaml"] = "{}\n";
 
   const secrets = [

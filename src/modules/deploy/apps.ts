@@ -137,7 +137,6 @@ export const recipes: Record<string, Recipe> = {
                 "-p",
                 '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}',
               ],
-              dryRun: "--dry-run=server",
             },
           ]
         : [],

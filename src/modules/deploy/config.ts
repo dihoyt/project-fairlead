@@ -74,7 +74,7 @@ export function declareConfig(settings: SettingsRegistry): DeployConfig {
     label: "Installer service account",
     schema: z.string(),
     default: `${product.chartName}-installer`,
-    env: "DEPLOY_INSTALLER_SERVICE_ACCOUNT",
+    env: "DEPLOY_SERVICE_ACCOUNT",
     envOnly: true,
   });
   const namespace = settings.declare({
@@ -90,7 +90,7 @@ export function declareConfig(settings: SettingsRegistry): DeployConfig {
     label: "This install's Helm release",
     schema: z.string(),
     default: product.chartName,
-    env: "DEPLOY_RELEASE",
+    env: "HELM_RELEASE",
     envOnly: true,
   });
 

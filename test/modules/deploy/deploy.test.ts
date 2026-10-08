@@ -13,6 +13,9 @@ import mod, { registerDeploy } from "../../../src/modules/deploy/index.js";
 import { JOB_LABEL } from "../../../src/modules/deploy/job.js";
 import { summarize, type Deployer } from "../../../src/modules/deploy/runner.js";
 import { toYaml } from "../../../src/modules/deploy/yaml.js";
+import { firstService } from "../../../src/modules/deploy/manifest.js";
+import { mockCatalog } from "../../../src/contracts/mocks/catalog.js";
+import type { CatalogEntry } from "../../../src/contracts/catalog.js";
 import { createRedactor } from "../../../src/modules/deploy/redact.js";
 import { product } from "../../../src/product.js";
 import { listen } from "../../runtime/helpers.js";
@@ -576,4 +579,102 @@ test("jobs list newest first, by app, limited; unknown ids 404", async () => {
   await call(e, "GET", "/jobs/dj_9/logs", undefined, 404);
   e.mock.setUser(mockViewer);
   assert.equal((await call<DeployJobView[]>(e, "GET", "/jobs")).length, 2, "anyone signed in can read jobs");
+});
+
+// --- manifests -------------------------------------------------------------
+
+const NTFY_MANIFEST = [
+  "apiVersion: v1",
+  "kind: Namespace",
+  "metadata:",
+  "  name: ntfy",
+  "---",
+  "apiVersion: apps/v1",
+  "kind: Deployment",
+  "metadata:",
+  "  name: ntfy",
+  "  namespace: ntfy",
+  "spec:",
+  "  template:",
+  "    spec:",
+  "      containers:",
+  "        - name: ntfy",
+  "          ports:",
+  "            - name: http",
+  "              containerPort: 80",
+  "---",
+  "apiVersion: v1",
+  "kind: Service",
+  "metadata:",
+  "  name: ntfy-web",
+  "  namespace: ntfy",
+  "  labels:",
+  "    name: not-this",
+  "spec:",
+  "  ports:",
+  "    - name: http",
+  "      port: 8080",
+  "      targetPort: http",
+  "",
+].join("\n");
+
+const withNtfy = (bundled: string): CatalogEntry[] =>
+  mockCatalog.map((entry) =>
+    entry.id === "ntfy" ? { ...entry, install: { kind: "manifest", bundled, version: "v0.0.0-mock" } } : entry
+  );
+
+test("firstService reads the Service's own name, namespace and first port", () => {
+  assert.deepEqual(firstService(NTFY_MANIFEST), { name: "ntfy-web", namespace: "ntfy", port: 8080 });
+  assert.equal(firstService("kind: Deployment\nmetadata:\n  name: x\n"), undefined);
+});
+
+test("a bundled manifest is applied from the values Secret with an Ingress for its host", async () => {
+  const e = await setup({ catalog: createMockCatalogService({ entries: withNtfy(NTFY_MANIFEST) }) });
+  const plan = await call<DeployPlan>(e, "POST", "/plan", { appId: "ntfy", inputs: {} });
+  assert.equal(plan.allowed, true, plan.blockedBy);
+  assert.equal(plan.url, "https://ntfy.example.test");
+  assert.deepEqual(plan.commands, ["kubectl apply -f /values/manifest.yaml", "kubectl apply -f /values/ingress.yaml"]);
+  assert.match(plan.values, /kind: Ingress/);
+  assert.match(plan.values, /name: ntfy-web\n\s+port:\n\s+number: 8080/);
+  assert.deepEqual(
+    plan.creates.map((c) => c.kind),
+    ["Secret", "Job"]
+  );
+
+  const moved = await call<DeployPlan>(e, "POST", "/plan", { appId: "ntfy", namespace: "elsewhere", inputs: {} });
+  assert.equal(moved.inputErrors.namespace, "ntfy installs into ntfy");
+
+  const view = await call<DeployJobView>(e, "POST", "/jobs", { appId: "ntfy", mode: "dry-run", inputs: {} });
+  const secret = (await e.k8s.get(RESOURCES.secrets, "deploy-ntfy-values", NS)) as KubeObject & {
+    stringData: Record<string, string>;
+  };
+  assert.equal(secret.stringData["manifest.yaml"], NTFY_MANIFEST);
+  assert.match(secret.stringData["ingress.yaml"]!, /host: ntfy.example.test/);
+  const job = (await e.k8s.get(RESOURCES.jobs, view.job.name, NS)) as KubeObject & {
+    spec: { template: { spec: { containers: Array<{ command: string[] }> } } };
+  };
+  const script = job.spec.template.spec.containers[0]!.command[2]!;
+  assert.match(script, /'kubectl' 'apply' '-f' '\/values\/manifest.yaml' '--dry-run=client'/);
+  assert.match(script, /'kubectl' 'apply' '-f' '\/values\/ingress.yaml' '--dry-run=client'/);
+});
+
+test("a bundled manifest with no Service for its host is blocked; a URL manifest applies the URL", async () => {
+  const e = await setup({
+    catalog: createMockCatalogService({ entries: withNtfy("kind: ConfigMap\nmetadata:\n  name: x\n") }),
+  });
+  const plan = await call<DeployPlan>(e, "POST", "/plan", { appId: "ntfy", inputs: {} });
+  assert.equal(plan.blockedBy, "The bundled manifest for ntfy has no Service for its hostname.");
+
+  const lpp = await call<DeployPlan>(e, "POST", "/plan", { appId: "local-path-provisioner", inputs: {} });
+  assert.equal(lpp.allowed, true, lpp.blockedBy);
+  assert.equal(lpp.commands.length, 2);
+  assert.match(
+    lpp.commands[0]!,
+    /^kubectl apply -f https:\/\/raw.githubusercontent.com\/rancher\/local-path-provisioner\//
+  );
+  assert.match(lpp.commands[1]!, /^kubectl patch storageclass local-path --type merge -p /);
+  assert.ok(
+    lpp.warnings.some((w) => /two/.test(w)),
+    "the cluster already has a default"
+  );
 });
