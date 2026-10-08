@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
-import type { Server } from "node:http";
+import { createServer, type Server } from "node:http";
 import type {
   CloudflareDiscovery,
   CloudflareHostView,
@@ -79,7 +79,11 @@ async function setup(
       suggested: { ...mockDiscovery.suggested, ...(issuer ? { clusterIssuer: issuer } : { clusterIssuer: undefined }) },
     },
   });
-  const settings: Record<string, unknown> = { "connector-cloudflare.apiBase": cf.url, ...options.settings };
+  const settings: Record<string, unknown> = {
+    "connector-cloudflare.apiBase": cf.url,
+    "connector-cloudflare.addressLookup": "",
+    ...options.settings,
+  };
   const m = createMockContext("connector-cloudflare", {
     migrations: cloudflare.migrations ?? [],
     services: { connectors: registry, deploy, k8s, catalog },
@@ -586,6 +590,86 @@ test("direct without a public address waits and says what to set", async () => {
     const { body } = await s.call<CloudflareHostView>("PUT", `/hosts/gitea.${MOCK_ZONE}`, { exposure: "direct" });
     assert.equal(body.dns.state, "pending");
     assert.match(body.detail, /public address/);
+  } finally {
+    await s.close();
+  }
+});
+
+// Answers like Cloudflare's trace endpoint with whatever `ip` holds.
+async function startAddressLookup(ip: { current: string }) {
+  const server = createServer((_req, res) => res.end(`fl=1\nip=${ip.current}\nts=1\n`));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  return {
+    url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/cdn-cgi/trace`,
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+  };
+}
+
+test("an empty public address is detected, and direct records follow it when it changes", async () => {
+  const ip = { current: "203.0.113.9" };
+  const lookup = await startAddressLookup(ip);
+  const s = await setup({
+    settings: { "connector-cloudflare.addressLookup": `http://127.0.0.1:1/down ${lookup.url}` },
+  });
+  try {
+    await s.call("POST", "/tunnel", {});
+    const { body } = await s.call<CloudflareHostView>("PUT", `/hosts/gitea.${MOCK_ZONE}`, { exposure: "direct" });
+    assert.equal(body.dns.state, "in-sync");
+    const record = () => s.cf.state.dns.find((r) => r.name === `gitea.${MOCK_ZONE}`)!;
+    assert.deepEqual([record().type, record().content], ["A", "203.0.113.9"]);
+    let view = (await s.call<CloudflareView>("GET", "/view")).body;
+    assert.deepEqual([view.publicAddress, view.publicAddressSource], ["203.0.113.9", "detected"]);
+
+    ip.current = "203.0.113.10";
+    await s.jobs.get("connector-cloudflare.public-address")!();
+    assert.equal(record().content, "203.0.113.10");
+    view = (await s.call<CloudflareView>("GET", "/view")).body;
+    assert.equal(view.publicAddress, "203.0.113.10");
+  } finally {
+    await s.close();
+    await lookup.close();
+  }
+});
+
+test("a set public address wins over detection", async () => {
+  const lookup = await startAddressLookup({ current: "203.0.113.9" });
+  const s = await setup({
+    config: { publicAddress: "198.51.100.4" },
+    settings: { "connector-cloudflare.addressLookup": lookup.url },
+  });
+  try {
+    await s.call("POST", "/tunnel", {});
+    await s.call("PUT", `/hosts/gitea.${MOCK_ZONE}`, { exposure: "direct" });
+    assert.equal(s.cf.state.dns.find((r) => r.name === `gitea.${MOCK_ZONE}`)!.content, "198.51.100.4");
+    const view = (await s.call<CloudflareView>("GET", "/view")).body;
+    assert.equal(view.publicAddressSource, "set");
+  } finally {
+    await s.close();
+    await lookup.close();
+  }
+});
+
+test("an app behind the console's sign-in gate isn't flagged as open", async () => {
+  const entries = mockCatalog.map((e) => (e.id === "grafana" ? { ...e, noLogin: true } : e));
+  const s = await setup({ entries, settings: { "connector-cloudflare.accessApps": "never" } });
+  const gate = (state: "gated" | "public") =>
+    (s.deploy.gate = async () => ({
+      ready: true,
+      apps: [{ appId: "grafana", name: "Grafana", state, public: state === "public", hosts: [`grafana.${MOCK_ZONE}`] }],
+    }));
+  try {
+    gate("gated");
+    let { body } = await s.call<CloudflareView>("POST", "/tunnel", {});
+    let grafana = hostOf(body, `grafana.${MOCK_ZONE}`);
+    assert.equal(grafana.gate, "gated");
+    assert.equal(grafana.status, "ok");
+    assert.equal(grafana.detail, "Routed over the tunnel behind the console sign-in");
+
+    gate("public");
+    ({ body } = await s.call<CloudflareView>("POST", "/sync"));
+    grafana = hostOf(body, `grafana.${MOCK_ZONE}`);
+    assert.equal(grafana.status, "warn");
+    assert.match(grafana.detail, /It's public, with no sign-in of its own/);
   } finally {
     await s.close();
   }

@@ -110,6 +110,17 @@ describe("CloudflarePage", () => {
     expect(document.querySelector("[data-access-provider]")?.textContent).toMatch(/add Google under Zero Trust/);
   });
 
+  it("says where direct apps point and that a detected address is followed", async () => {
+    serve({
+      ...apiMocks["GET /api/connector-cloudflare/view"],
+      publicAddress: "203.0.113.9",
+      publicAddressSource: "detected",
+    });
+    renderWithApp(<CloudflarePage />);
+    expect(await screen.findByText("203.0.113.9")).toBeInTheDocument();
+    expect(document.querySelector("[data-public-address]")?.textContent).toMatch(/detected from this cluster/);
+  });
+
   it("shows the Access switch only when the setting is per app", async () => {
     serve({ ...apiMocks["GET /api/connector-cloudflare/view"], accessPolicy: "per-app" });
     renderWithApp(<CloudflarePage />);

@@ -18,6 +18,7 @@ import { CloudflareClient, CloudflareError, DEFAULT_API_BASE, type Tunnel } from
 import { migrations } from "./migrations.js";
 import { CloudflareStore } from "./store.js";
 import { directTls, removeAllTls } from "./direct.js";
+import { DEFAULT_ADDRESS_LOOKUP, detectPublicAddress, lookupUrls } from "./address.js";
 import { cleanup, parseAllow, sync, type Marker } from "./sync.js";
 
 const KIND = "cloudflare";
@@ -32,6 +33,8 @@ const flagged = (get: () => { noLogin?: boolean } | undefined): boolean => {
 const SYNC_DEBOUNCE_MS = 5_000;
 // Settings carry no change event; the Access setting is looked at this often.
 const SETTING_POLL_MS = 30_000;
+// How often a detected public address is checked between reconciles.
+const ADDRESS_POLL_MS = 2 * 60_000;
 const TUNNEL_SUFFIX = ".cfargotunnel.com";
 
 // A wildcard record that sends the zone to another tunnel answers for every
@@ -86,10 +89,10 @@ const FIELDS: ConnectorKind["fields"] = [
   },
   {
     key: "publicAddress",
-    label: "Public address",
+    label: "Public address (leave empty to detect)",
     type: "text",
     required: false,
-    help: "Where DNS-only records for direct apps point: your router's public IP.",
+    help: "Where DNS-only records for direct apps point: your router's public IP. Empty: looked up at every sync and the records follow it when it changes.",
   },
   {
     key: "accessEmails",
@@ -157,6 +160,17 @@ function register(ctx: ModuleContext): void {
     env: "CLOUDFLARE_API_BASE",
     envOnly: true,
   });
+
+  const addressLookup = ctx.settings.declare({
+    key: "connector-cloudflare.addressLookup",
+    label: "Public address lookup",
+    help: "URLs that answer with the caller's IP, tried in order, for a connector whose Public address is empty.",
+    schema: z.string(),
+    default: DEFAULT_ADDRESS_LOOKUP,
+    env: "PUBLIC_ADDRESS_LOOKUP",
+    envOnly: true,
+  });
+  const detect = (signal?: AbortSignal) => detectPublicAddress(lookupUrls(addressLookup.get()), signal);
 
   const client = (token: string, signal?: AbortSignal) => new CloudflareClient(token, apiBase.get(), signal);
   // Catalog apps and template instances alike; a missing service means no
@@ -253,6 +267,29 @@ function register(ctx: ModuleContext): void {
     return results;
   }
 
+  // The connector's Public address when set; otherwise, when a host is
+  // direct, the one looked up now. A change is logged, and the records
+  // follow it in the same sync.
+  async function publicAddress(
+    instance: ConnectorInstance,
+    needed: boolean,
+    signal?: AbortSignal
+  ): Promise<{ address?: string; source?: "set" | "detected"; missing?: string }> {
+    const set = instance.config.publicAddress?.trim();
+    if (set) return { address: set, source: "set" };
+    if (!needed) return {};
+    try {
+      const address = await detect(signal);
+      const last = store.view();
+      if (last?.publicAddressSource === "detected" && last.publicAddress && last.publicAddress !== address) {
+        ctx.log.info(`public address changed from ${last.publicAddress} to ${address}; updating direct records`);
+      }
+      return { address, source: "detected" };
+    } catch (err) {
+      return { missing: message(err) };
+    }
+  }
+
   async function reconcile(
     instance: ConnectorInstance,
     owned: Parameters<NonNullable<ConnectorKind["reconcile"]>>[1],
@@ -297,22 +334,36 @@ function register(ctx: ModuleContext): void {
         });
         return { checkedAt, items: [] };
       }
+      const prefs = store.prefs();
+      const defaultExposure = access.mode === "direct" ? "direct" : "tunnel";
+      const needsAddress = access.hosts.some((h) => (prefs.get(h.host)?.exposure ?? defaultExposure) === "direct");
+      const address = await publicAddress(instance, needsAddress, signal);
+      const gates = await ctx.services
+        .get("deploy")
+        .gate()
+        .catch(() => undefined);
+      const gateOf = (host: string) => gates?.apps.find((a) => a.hosts.includes(host))?.state;
       const result = await sync({
         client: api,
         accountId: instance.config.accountId!,
         zone: { id: zone.id, name: zone.name },
         ...(tunnelId ? { tunnelId } : {}),
         ...(access.ingressService ? { ingressService: access.ingressService } : {}),
-        ...(instance.config.publicAddress ? { publicAddress: instance.config.publicAddress } : {}),
+        ...(address.address ? { publicAddress: address.address } : {}),
+        ...(address.missing ? { publicAddressMissing: address.missing } : {}),
         allow: parseAllow(instance.config.accessEmails),
         accessPolicy: accessApps.get(),
-        defaultExposure: access.mode === "direct" ? "direct" : "tunnel",
-        hosts: access.hosts.map((h) => ({
-          host: h.host,
-          ...(h.appId ? { appId: h.appId } : {}),
-          ...(h.appId && noLogin(h.appId) ? { noLogin: true } : {}),
-        })),
-        prefs: store.prefs(),
+        defaultExposure,
+        hosts: access.hosts.map((h) => {
+          const gate = gateOf(h.host);
+          return {
+            host: h.host,
+            ...(h.appId ? { appId: h.appId } : {}),
+            ...(h.appId && noLogin(h.appId) ? { noLogin: true } : {}),
+            ...(gate ? { gate } : {}),
+          };
+        }),
+        prefs,
         owned,
         marker,
       });
@@ -327,7 +378,11 @@ function register(ctx: ModuleContext): void {
           views: result.hosts,
         });
       }
-      store.setView({ ...view, hosts: result.hosts });
+      store.setView({
+        ...view,
+        ...(address.address ? { publicAddress: address.address, publicAddressSource: address.source } : {}),
+        hosts: result.hosts,
+      });
       return { checkedAt, items: result.items };
     } catch (err) {
       store.setView({ ...(store.view() ?? base), syncedAt: checkedAt, error: message(err) });
@@ -412,6 +467,15 @@ function register(ctx: ModuleContext): void {
     policySeen = policy;
     const found = await instance();
     if (found) await syncNow(found.id);
+  });
+
+  // A detected address is checked more often than the reconcile runs, so
+  // direct records follow a dynamic IP within minutes.
+  ctx.scheduler.every("connector-cloudflare.public-address", ADDRESS_POLL_MS, async (signal) => {
+    const last = store.view();
+    if (last?.publicAddressSource !== "detected" || !last.connectorId) return;
+    const address = await detect(signal);
+    if (address !== last.publicAddress) await syncNow(last.connectorId);
   });
 
   // New apps get their records shortly after their deploy finishes.
