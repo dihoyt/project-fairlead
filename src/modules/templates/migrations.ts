@@ -25,4 +25,12 @@ export const migrations: readonly Migration[] = [
       );
     `,
   },
+  {
+    version: 2,
+    name: "external services",
+    up: `
+      -- ExternalServiceSpec as JSON, for the external template.
+      ALTER TABLE templates_instances ADD COLUMN external TEXT;
+    `,
+  },
 ];

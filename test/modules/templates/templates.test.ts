@@ -208,12 +208,12 @@ test("the guardrail refuses privileged, host access, extra capabilities and clus
 
 // --- routes ----------------------------------------------------------------
 
-test("GET lists the library with Custom app last and no instances yet", async () => {
+test("GET lists the library, then Custom app and External service, and no instances yet", async () => {
   const e = await setup();
   const view = await call<TemplatesView>(e, "GET", "");
   assert.deepEqual(
     view.templates.map((t) => t.id),
-    ["whoami", "uptime-kuma", "it-tools", "custom"]
+    ["whoami", "uptime-kuma", "it-tools", "custom", "external"]
   );
   assert.deepEqual(view.instances, []);
 });

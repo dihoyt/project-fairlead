@@ -16,6 +16,7 @@ import { gateAction, type GateActionContext } from "./gate.js";
 import { migrateAction } from "./migrate.js";
 import { removeAction } from "./remove.js";
 import { replicasAction } from "./replicas.js";
+import { portsAction } from "../ports.js";
 
 // What an action renders from. Reads only: nothing here changes the cluster.
 export interface ActionContext {
@@ -76,6 +77,7 @@ const recipes: { [K in DeployActionKind]?: ActionRecipe<Extract<DeployActionRequ
   "backup-volumes": backupAction,
   "remove-app": removeAction,
   "app-gate": gateAction,
+  "traefik-ports": portsAction,
 };
 
 export function actionRecipe<K extends DeployActionKind>(
@@ -94,4 +96,5 @@ export const actionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("backup-volumes"), appId: z.string().min(1).max(100) }),
   z.object({ kind: z.literal("remove-app"), appId: z.string().min(1).max(100), deleteVolumes: z.boolean().optional() }),
   z.object({ kind: z.literal("app-gate"), appId: z.string().min(1).max(100), public: z.boolean() }),
+  z.object({ kind: z.literal("traefik-ports") }),
 ]);

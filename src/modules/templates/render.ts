@@ -1,7 +1,8 @@
 import type { CatalogEntry } from "../../contracts/catalog.js";
 import { deployedLabel } from "../../contracts/deployed.js";
 import type { KubeObject } from "../../contracts/k8s.js";
-import { TEMPLATE_LABEL_SUFFIX, type EnvVar } from "../../contracts/templates.js";
+import { TEMPLATE_LABEL_SUFFIX, type EnvVar, type ExternalServiceSpec } from "../../contracts/templates.js";
+import { externalManifests } from "./external.js";
 import { product } from "../../product.js";
 import type { TemplateDefinition } from "./library.js";
 import { toYaml, type YamlValue } from "./yaml.js";
@@ -24,6 +25,8 @@ export interface Resolved {
   exposed: boolean;
   disk?: { volumeBytes: number; imageBytes: number };
   noLogin?: boolean;
+  // The external template: no workload, the Service points at this.
+  external?: ExternalServiceSpec;
 }
 
 export const templateLabel = () => `${product.ownerMarker.labelDomain}/${TEMPLATE_LABEL_SUFFIX}`;
@@ -65,6 +68,23 @@ export function manifests(r: Resolved): KubeObject[] {
   const labels = { [SELECTOR]: r.name };
   const ns = r.name;
   const claim = `${r.name}-data`;
+  const namespace: KubeObject = {
+    apiVersion: "v1",
+    kind: "Namespace",
+    metadata: {
+      name: ns,
+      labels: {
+        "app.kubernetes.io/managed-by": product.ownerMarker.labelDomain,
+        ...deployedLabel(),
+        [templateLabel()]: r.templateId,
+        // The API server refuses privileged pods, host paths, host
+        // networking and extra capabilities here, whoever applies them.
+        "pod-security.kubernetes.io/enforce": "baseline",
+        "pod-security.kubernetes.io/enforce-version": "latest",
+      },
+    },
+  };
+  if (r.external) return externalManifests(r.name, r.external, namespace);
   const probe = r.probePath ? { httpGet: { path: r.probePath, port: r.port } } : { tcpSocket: { port: r.port } };
   const container: Record<string, YamlValue> = {
     name: r.name,
@@ -75,24 +95,7 @@ export function manifests(r: Resolved): KubeObject[] {
     readinessProbe: { ...probe, periodSeconds: 10 },
     ...(r.volume ? { volumeMounts: [{ name: "data", mountPath: r.volume.mountPath }] } : {}),
   };
-  const objects: KubeObject[] = [
-    {
-      apiVersion: "v1",
-      kind: "Namespace",
-      metadata: {
-        name: ns,
-        labels: {
-          "app.kubernetes.io/managed-by": product.ownerMarker.labelDomain,
-          ...deployedLabel(),
-          [templateLabel()]: r.templateId,
-          // The API server refuses privileged pods, host paths, host
-          // networking and extra capabilities here, whoever applies them.
-          "pod-security.kubernetes.io/enforce": "baseline",
-          "pod-security.kubernetes.io/enforce-version": "latest",
-        },
-      },
-    },
-  ];
+  const objects: KubeObject[] = [namespace];
   if (r.volume) {
     objects.push({
       apiVersion: "v1",

@@ -41,7 +41,11 @@ const asList = (value: unknown): unknown[] => (Array.isArray(value) ? value : []
 // writes any of this, so a finding here means a template or the renderer
 // is wrong, and nothing runs. The chart's admission policy holds the same
 // line in the cluster.
-export function checkManifests(objects: readonly KubeObject[], namespace: string): GuardrailViolation[] {
+export function checkManifests(
+  objects: readonly KubeObject[],
+  namespace: string,
+  extraKinds: ReadonlySet<string> = new Set()
+): GuardrailViolation[] {
   const out: GuardrailViolation[] = [];
   for (const obj of objects) {
     const kind = obj.kind ?? "?";
@@ -52,7 +56,7 @@ export function checkManifests(objects: readonly KubeObject[], namespace: string
       add("cluster-rbac", "kind", `A ${kind} grants rights across the whole cluster.`);
       continue;
     }
-    if (!ALLOWED_KINDS.has(kind)) {
+    if (!ALLOWED_KINDS.has(kind) && !extraKinds.has(kind)) {
       add("kind", "kind", `A template may not create a ${kind}.`);
       continue;
     }
