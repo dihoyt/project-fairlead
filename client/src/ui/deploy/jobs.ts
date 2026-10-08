@@ -1,4 +1,4 @@
-import type { DeployJobState } from "@contracts/deploy";
+import type { BundleRunState, BundleStepState, DeployJobState } from "@contracts/deploy";
 import type { DetectState } from "@contracts/catalog";
 
 export const FINISHED_STATES: readonly DeployJobState[] = ["succeeded", "failed", "cancelled"];
@@ -29,3 +29,19 @@ export const DETECT_COLOR: Record<DetectState, string> = {
 
 // What the plan shows in place of a secret input's value.
 export const MASKED = "********";
+
+export const STEP_STATE_COLOR: Record<BundleStepState, string> = {
+  pending: "gray",
+  skipped: "gray",
+  running: "cyan",
+  succeeded: "teal",
+  failed: "red",
+  cancelled: "gray",
+};
+
+export const RUN_STATE_COLOR: Record<BundleRunState, string> = {
+  running: "cyan",
+  succeeded: "teal",
+  failed: "red",
+  cancelled: "gray",
+};
