@@ -120,7 +120,7 @@ test("bundle plan: order, skips with reasons, shared answers fill each app", asy
   const step = (id: string) => plan.steps.find((s) => s.appId === id)!;
   assert.match(step("traefik").reason ?? "", /^Already installed/);
   assert.equal(step("local-path-provisioner").reason, "The cluster already has what it provides");
-  assert.equal(step("longhorn").reason, "Every node needs open-iscsi; tick it once yours do.");
+  assert.equal(step("longhorn").reason, "Every node needs open-iscsi; untick it if yours don't have it.");
   assert.deepEqual(step("gitea").plan?.inputs, {
     host: "git.example.test",
     adminUser: "gitea-admin",
@@ -241,4 +241,68 @@ test("bundle cancel stops the running job and leaves the rest pending", async ()
   await settle();
   assert.deepEqual(e.finished, [{ runId: "br_1", bundleId: "self-hosted", state: "cancelled" }]);
   await call(e, "POST", "/bundles/br_1/cancel", undefined, 409);
+});
+
+test("bundle access: mode items and inputs apply only to their mode; starting saves the access choice", async () => {
+  const bundle: CatalogBundle = {
+    ...mockBundle,
+    inputs: [
+      {
+        key: "access",
+        label: "Access",
+        kind: "select",
+        required: true,
+        options: [
+          { value: "cloudflare-tunnel", label: "Cloudflare" },
+          { value: "local", label: "Local" },
+        ],
+      },
+      ...mockBundle.inputs,
+      {
+        key: "tunnelToken",
+        label: "Tunnel token",
+        kind: "secret",
+        required: true,
+        when: { input: "access", in: ["cloudflare-tunnel"] },
+      },
+    ],
+    items: [
+      { appId: "cloudflared", required: true, when: { input: "access", in: ["cloudflare-tunnel"] } },
+      { appId: "headlamp", required: true },
+    ],
+  };
+  const e = await setup([bundle]);
+
+  const local = await call<BundlePlan>(e, "POST", "/bundles/plan", {
+    bundleId: bundle.id,
+    inputs: { ...answers, access: "local" },
+  });
+  assert.equal(local.allowed, true);
+  assert.deepEqual(
+    local.steps.map((s) => [s.appId, s.skip, s.reason]),
+    [
+      ["cloudflared", true, "Not needed for how you reach the apps"],
+      ["headlamp", false, undefined],
+    ]
+  );
+  assert.equal(local.steps[1]!.plan!.url, "http://headlamp.example.test");
+
+  const missing = await call<BundlePlan>(e, "POST", "/bundles/plan", {
+    bundleId: bundle.id,
+    inputs: { ...answers, access: "cloudflare-tunnel" },
+  });
+  assert.equal(missing.allowed, false);
+  await call(e, "POST", "/bundles", { bundleId: bundle.id, inputs: { ...answers, access: "cloudflare-tunnel" } }, 400);
+
+  const tunnel = { ...answers, access: "cloudflare-tunnel", tunnelToken: "tok-123" };
+  const plan = await call<BundlePlan>(e, "POST", "/bundles/plan", { bundleId: bundle.id, inputs: tunnel });
+  assert.equal(plan.allowed, true);
+  assert.deepEqual(plan.steps[0]!.plan!.inputs, { tunnelToken: "********" });
+  assert.equal(plan.steps[1]!.plan!.url, "https://headlamp.example.test");
+
+  await call<BundleRunView>(e, "POST", "/bundles", { bundleId: bundle.id, inputs: tunnel });
+  const access = await call<{ mode: string; baseDomain: string }>(e, "GET", "/access");
+  assert.equal(access.mode, "cloudflare-tunnel");
+  assert.equal(access.baseDomain, "example.test");
+  assert.ok(e.mock.audit.some((entry) => entry.action === "deploy.set-access"));
 });

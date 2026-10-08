@@ -3,7 +3,7 @@ import type { CatalogEntry, CatalogInput, DiscoveryReport } from "../../contract
 import type { DeployMode, DeployPlan, DeployRequest, DeployValue, PlannedObject } from "../../contracts/deploy.js";
 import { pickVersion } from "../../contracts/kubeversion.js";
 import { recipes, VALUES_DIR, type Defaults, type RecipeInput, type Step } from "./apps.js";
-import { manifestParts } from "./manifest.js";
+import { ingressFor, manifestParts } from "./manifest.js";
 import { toYaml, type YamlValue } from "./yaml.js";
 
 export const MASK = "********";
@@ -168,8 +168,13 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
     errors.namespace ??= `${entry.name} installs into ${entry.namespace}`;
 
   const host = typeof values.host === "string" && values.host ? values.host : undefined;
-  const tls = entry.exposesUi && Boolean(input.defaults.clusterIssuer);
-  const url = entry.exposesUi && host ? `${tls ? "https" : "http"}://${host}` : undefined;
+  const access = input.defaults.access ?? "direct";
+  // Behind a tunnel or on a tailnet the edge serves HTTPS; locally there is
+  // no public name for Let's Encrypt to check.
+  const tls = entry.exposesUi && access === "direct" && Boolean(input.defaults.clusterIssuer);
+  const scheme = access === "cloudflare-tunnel" || access === "tailscale" || tls ? "https" : "http";
+  const url = entry.exposesUi && host ? `${scheme}://${host}` : undefined;
+  const tailscaleIngress = access === "tailscale" && entry.exposesUi && entry.install.kind === "helm";
 
   const generatedReal = new Map<string, string>();
   const recipeInput = (real: boolean): RecipeInput => ({
@@ -179,6 +184,8 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
     inputs: real ? values : masked(entry, values),
     host,
     tls,
+    scheme,
+    chartIngress: !tailscaleIngress,
     defaults: input.defaults,
     discovery: input.discovery,
     generated: (name) => {
@@ -214,18 +221,28 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
   const alreadyThere = entry.install.kind !== "patch" && self?.state === "installed" && !self.ownedByUs;
 
   const parts = manifestParts(entry, shown);
+  const service = tailscaleIngress ? recipe?.service?.(shown) : undefined;
+  if (tailscaleIngress && !service) parts.error ??= `There is no Tailscale template for ${entry.name} yet.`;
   const supported =
     entry.install.kind === "helm"
-      ? recipe?.values !== undefined
+      ? recipe?.values !== undefined && parts.error === undefined
       : entry.install.kind === "patch"
         ? recipe?.patch !== undefined
         : parts.error === undefined;
 
-  if (entry.exposesUi && !input.defaults.ingressClass) {
+  if (entry.exposesUi && access !== "tailscale" && !input.defaults.ingressClass) {
     warnings.push("No ingress class found: the app installs but is unreachable from outside until one exists.");
   }
-  if (entry.exposesUi && !tls) {
+  if (entry.exposesUi && access === "direct" && !tls) {
     warnings.push("No cert-manager ClusterIssuer found, so it will be served over plain HTTP.");
+  }
+  if (entry.exposesUi && host && access === "cloudflare-tunnel") {
+    warnings.push(
+      `Reachable once the tunnel routes ${host} (or *.${host.split(".").slice(1).join(".")}); see Setup > Access.`
+    );
+  }
+  if (entry.exposesUi && host && access === "local") {
+    warnings.push(`Reachable once ${host} points at your ingress in a hosts file or local DNS; see Setup > Access.`);
   }
   if (self?.state === "installed" && self.ownedByUs && entry.install.kind !== "patch") {
     warnings.push("Installed here before: this runs the same install again over it.");
@@ -239,6 +256,9 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
           : manifest
             ? parts.steps
             : mainSteps(entry, version, release, namespace, mode)),
+        ...(tailscaleIngress
+          ? [{ argv: ["kubectl", "apply", "-f", `${VALUES_DIR}/tailscale-ingress.yaml`], dryRun: "--dry-run=client" }]
+          : []),
         ...(recipe?.after?.(shown) ?? []),
       ]
     : [];
@@ -269,7 +289,7 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
 
   const valuesShown =
     entry.install.kind === "helm" && supported
-      ? toYaml(recipe!.values!(shown))
+      ? toYaml(recipe!.values!(shown)) + (service ? `---\n${toYaml(ingressFor(shown, service))}` : "")
       : entry.install.kind === "patch" && supported
         ? Object.values(recipe!.files?.(shown) ?? {})
             .map((file) => toYaml(file))
@@ -310,6 +330,7 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
   const real = recipeInput(true);
   const files: Record<string, string> = {};
   if (entry.install.kind === "helm") files["values.yaml"] = toYaml(recipe!.values!(real) as YamlValue);
+  if (service) files["tailscale-ingress.yaml"] = toYaml(ingressFor(real, service));
   for (const [file, content] of Object.entries(recipe?.files?.(real) ?? {})) files[file] = toYaml(content);
   if (manifest) {
     const realParts = manifestParts(entry, real);
