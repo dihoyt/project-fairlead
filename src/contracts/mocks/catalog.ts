@@ -12,7 +12,7 @@ import type {
   DiscoveryReport,
   IngressHost,
 } from "../catalog.js";
-import type { BundlePlan, BundleRunView, DeployJobView, DeployPlan, DeployStatus } from "../deploy.js";
+import type { AccessView, BundlePlan, BundleRunView, DeployJobView, DeployPlan, DeployStatus } from "../deploy.js";
 import type { HostKeypair } from "../hosts.js";
 import { checkDisk } from "../disk.js";
 import { HOUR, MOCK_NOW, isoAgo } from "./time.js";
@@ -395,6 +395,8 @@ export const mockIngressHosts: IngressHost[] = [
     namespace: "monitoring",
     ingress: "grafana",
     service: "grafana",
+    serviceUrl: "http://grafana.monitoring.svc:80",
+    ingressClass: "traefik",
     appId: "grafana",
   },
   {
@@ -404,6 +406,8 @@ export const mockIngressHosts: IngressHost[] = [
     namespace: "longhorn-system",
     ingress: "longhorn-ingress",
     service: "longhorn-frontend",
+    serviceUrl: "http://longhorn-frontend.longhorn-system.svc:80",
+    ingressClass: "traefik",
     appId: "longhorn",
   },
   {
@@ -413,6 +417,7 @@ export const mockIngressHosts: IngressHost[] = [
     namespace: "media",
     ingress: "jellyfin",
     service: "jellyfin",
+    ingressClass: "traefik",
   },
 ];
 
@@ -464,6 +469,8 @@ export const mockDiscovery: DiscoveryReport = {
     ingressClass: "traefik",
     clusterIssuer: "letsencrypt-prod",
     baseDomain: "example.test",
+    ingressService: "http://traefik.kube-system.svc.cluster.local:80",
+    ingressAddress: "10.0.0.20",
   },
 };
 
@@ -561,7 +568,36 @@ export const mockDeployStatus: DeployStatus = {
   namespace: "console",
   installerServiceAccount: "console-installer",
   image: "docker.io/alpine/k8s@sha256:0000000000000000000000000000000000000000000000000000000000000000",
-  defaults: { ...mockDiscovery.suggested },
+  defaults: {
+    storageClass: mockDiscovery.suggested.storageClass,
+    ingressClass: mockDiscovery.suggested.ingressClass,
+    clusterIssuer: mockDiscovery.suggested.clusterIssuer,
+    baseDomain: mockDiscovery.suggested.baseDomain,
+  },
+};
+
+export const mockAccess: AccessView = {
+  mode: "cloudflare-tunnel",
+  baseDomain: "example.test",
+  appId: "cloudflared",
+  appInstalled: false,
+  hosts: [
+    { appId: "grafana", host: "grafana.example.test", url: "https://grafana.example.test", resolves: true },
+    { appId: "longhorn", host: "longhorn.example.test", url: "https://longhorn.example.test", resolves: false },
+  ],
+  wildcard: "*.example.test",
+  ingressService: "http://traefik.kube-system.svc.cluster.local:80",
+};
+
+export const mockAccessLocal: AccessView = {
+  mode: "local",
+  baseDomain: "example.test",
+  hosts: [
+    { appId: "grafana", host: "grafana.example.test", url: "http://grafana.example.test", resolves: false },
+    { appId: "longhorn", host: "longhorn.example.test", url: "http://longhorn.example.test", resolves: false },
+  ],
+  ingressAddress: "10.0.0.20",
+  hostsFile: "10.0.0.20 grafana.example.test\n10.0.0.20 longhorn.example.test\n",
 };
 
 export const mockDeployDisabled: DeployStatus = {
