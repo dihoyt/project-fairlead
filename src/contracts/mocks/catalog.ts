@@ -2,14 +2,17 @@
 // it. Versions here are placeholders for building against, not the pins the
 // catalog module ships.
 import type {
+  BundleItemView,
   CatalogAppView,
+  CatalogBundle,
+  CatalogBundleView,
   CatalogEntry,
   CatalogService,
   DetectedApp,
   DiscoveryReport,
   IngressHost,
 } from "../catalog.js";
-import type { DeployJobView, DeployPlan, DeployStatus } from "../deploy.js";
+import type { BundlePlan, BundleRunView, DeployJobView, DeployPlan, DeployStatus } from "../deploy.js";
 import type { HostKeypair } from "../hosts.js";
 import { HOUR, MOCK_NOW, isoAgo } from "./time.js";
 
@@ -444,16 +447,86 @@ export const mockCatalogApps: CatalogAppView[] = mockCatalog.map((entry) => ({
   detected: mockDetected.find((d) => d.appId === entry.id)!,
 }));
 
+export const mockBundle: CatalogBundle = {
+  id: "self-hosted",
+  name: "Deploy bundle",
+  summary: "Everything a small self-hosted cluster needs, with sensible defaults.",
+  inputs: [
+    {
+      key: "baseDomain",
+      label: "Base domain",
+      help: "Apps get names under it, like git.example.test.",
+      kind: "text",
+      required: true,
+    },
+    { key: "adminEmail", label: "Admin email", kind: "text", required: true },
+    { key: "adminPassword", label: "Admin password", kind: "secret", required: true },
+    {
+      key: "storageClass",
+      label: "Storage class",
+      help: "Where apps keep their data. Leave empty for the cluster's default.",
+      kind: "text",
+      required: false,
+    },
+  ],
+  items: [
+    { appId: "traefik", required: true, bind: {}, values: {} },
+    { appId: "cert-manager", required: true, bind: { acmeEmail: "adminEmail" }, values: {} },
+    { appId: "metrics-server", required: true, bind: {}, values: {} },
+    { appId: "local-path-provisioner", required: true, bind: {}, values: { makeDefault: true } },
+    {
+      appId: "longhorn",
+      required: false,
+      hostPrefix: "longhorn",
+      bind: {},
+      values: {},
+      note: "Every node needs open-iscsi; tick it once yours do.",
+    },
+    { appId: "authentik", required: true, hostPrefix: "auth", bind: { adminEmail: "adminEmail" }, values: {} },
+    {
+      appId: "gitea",
+      required: true,
+      hostPrefix: "git",
+      bind: { adminPassword: "adminPassword" },
+      values: { adminUser: "gitea-admin" },
+    },
+    { appId: "grafana", required: true, hostPrefix: "grafana", bind: { adminPassword: "adminPassword" }, values: {} },
+    { appId: "headlamp", required: true, hostPrefix: "headlamp", bind: {}, values: {} },
+    { appId: "ntfy", required: true, hostPrefix: "ntfy", bind: {}, values: {} },
+  ],
+};
+
+// Against mockDiscovery: Traefik, cert-manager, Longhorn and Grafana are
+// there already, and storage classes are marked default; metrics-server is
+// unknown, so it stays in.
+export const mockBundleView: CatalogBundleView = {
+  ...mockBundle,
+  suggested: { baseDomain: mockDiscovery.suggested.baseDomain, storageClass: mockDiscovery.suggested.storageClass },
+  items: mockBundle.items.map((item): BundleItemView => {
+    const detected = mockDetected.find((d) => d.appId === item.appId)!;
+    const skip = detected.state === "installed" || item.appId === "local-path-provisioner";
+    const selected = !skip && (item.required || item.appId !== "longhorn");
+    return {
+      ...item,
+      detected,
+      skip,
+      selected,
+      ...(skip ? { reason: "Already installed" } : selected ? {} : { reason: item.note }),
+    };
+  }),
+};
+
 // A CatalogService over the mock catalog, for modules that look it up
 // (deploy) and for HTTP tests of the catalog routes' consumers.
 export function createMockCatalogService(
-  options: { entries?: readonly CatalogEntry[]; discovery?: DiscoveryReport } = {}
+  options: { entries?: readonly CatalogEntry[]; discovery?: DiscoveryReport; bundles?: readonly CatalogBundle[] } = {}
 ): CatalogService {
   const entries = options.entries ?? mockCatalog;
   const discovery = options.discovery ?? mockDiscovery;
   return {
     entries: () => entries,
     get: (appId) => entries.find((entry) => entry.id === appId),
+    bundles: () => options.bundles ?? [mockBundle],
     discover: async () => structuredClone(discovery),
   };
 }
@@ -581,4 +654,37 @@ export const mockHostKeypair: HostKeypair = {
   createdAt: isoAgo(HOUR),
   installCommand:
     "umask 077 && mkdir -p ~/.ssh && echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMockMockMockMockMockMockMockMockMockMockMock app@cluster' >> ~/.ssh/authorized_keys",
+};
+
+export const mockBundlePlan: BundlePlan = {
+  bundleId: mockBundle.id,
+  allowed: true,
+  steps: mockBundleView.items.map((item) =>
+    item.skip || !item.selected
+      ? { appId: item.appId, skip: true, reason: item.reason ?? "Left out" }
+      : item.appId === "headlamp"
+        ? { appId: item.appId, skip: false, plan: mockDeployPlan }
+        : {
+            appId: item.appId,
+            skip: false,
+            plan: { ...mockDeployPlan, appId: item.appId, release: item.appId, namespace: item.appId },
+          }
+  ),
+};
+
+// Halfway: metrics-server and Authentik done, Gitea installing.
+export const mockBundleRun: BundleRunView = {
+  id: "br_1",
+  bundleId: mockBundle.id,
+  state: "running",
+  startedBy: "admin",
+  createdAt: isoAgo(10 * 60_000),
+  steps: mockBundlePlan.steps.map((step) => {
+    if (step.skip) return { appId: step.appId, state: "skipped" as const, message: step.reason };
+    if (step.appId === "metrics-server" || step.appId === "authentik") {
+      return { appId: step.appId, state: "succeeded" as const, jobId: `dj_${step.appId}` };
+    }
+    if (step.appId === "gitea") return { appId: step.appId, state: "running" as const, jobId: "dj_gitea" };
+    return { appId: step.appId, state: "pending" as const };
+  }),
 };
