@@ -109,11 +109,22 @@ export interface SettingView {
   source: "ui" | "env" | "default";
   envValue?: string;
   envError?: string;
+  // The environment's value overrides any saved one, so the field is shown
+  // read-only while it is set.
+  locked?: boolean;
+}
+
+// Where browsers reach this install. "request" means nothing is configured
+// and the value is the address the current request arrived on.
+export interface PublicUrlView {
+  value: string;
+  source: "env" | "ui" | "request";
 }
 
 export interface AdminOverview {
   settings: SettingView[];
   environment: Array<{ name: string; help: string; value: string; set: boolean }>;
+  publicUrl: PublicUrlView;
   oidc: { redirectUri: string; hasSecret: boolean; unavailable: string | null };
   secretKeyConfigured: boolean;
   you: { ip: string };
