@@ -1,6 +1,7 @@
 import type { Database } from "better-sqlite3";
-import type { CatalogBundle, CatalogEntry, DiscoveryReport } from "../../contracts/catalog.js";
+import type { CatalogBundle, CatalogEntry, DiscoveryReport, InputCondition } from "../../contracts/catalog.js";
 import type {
+  AccessMode,
   BundlePlan,
   BundlePlanStep,
   BundleRequest,
@@ -13,6 +14,7 @@ import type {
 import type { ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
 import { errorMessage } from "../../runtime/log.js";
+import { ACCESS_MODES } from "./access.js";
 import type { Defaults } from "./apps.js";
 import { MASK } from "./plan.js";
 import type { Deployer, Found } from "./runner.js";
@@ -161,6 +163,12 @@ function mask(values: Record<string, DeployValue>, secret: Set<string>): Record<
   return Object.fromEntries(Object.entries(values).map(([k, v]) => [k, secret.has(k) && v !== "" ? MASK : v]));
 }
 
+export function holds(condition: InputCondition | undefined, values: Record<string, DeployValue> | undefined): boolean {
+  if (!condition) return true;
+  const value = values?.[condition.input];
+  return typeof value === "string" && condition.in.includes(value);
+}
+
 export interface StepRequest {
   appId: string;
   skip: boolean;
@@ -183,6 +191,9 @@ export function stepRequests(
   return bundle.items.map((item): StepRequest => {
     const entry = entries(item.appId);
     if (!entry) return { appId: item.appId, skip: true, reason: "Not in this catalog" };
+    if (!holds(item.when, shared)) {
+      return { appId: item.appId, skip: true, reason: "Not needed for how you reach the apps" };
+    }
     if (!item.required && !included.has(item.appId)) {
       return { appId: item.appId, skip: true, reason: item.note ?? "Left out" };
     }
@@ -263,7 +274,9 @@ export class Bundles {
     const earlier = steps.slice(0, index).filter((step) => !step.skip);
     const has = (appId: string) => earlier.some((step) => step.appId === appId);
     const issuerAsked = earlier.some((step) => step.appId === "cert-manager" && step.request?.inputs.acmeEmail);
+    const access = text("access");
     return {
+      ...(access && ACCESS_MODES.includes(access as AccessMode) ? { access: access as AccessMode } : {}),
       baseDomain: text("baseDomain"),
       storageClass: text("storageClass"),
       ingressClass: found.discovery?.suggested.ingressClass ? undefined : has("traefik") ? "traefik" : undefined,
@@ -302,7 +315,7 @@ export class Bundles {
 
   private sharedErrors(bundle: CatalogBundle, request: BundleRequest): string[] {
     return bundle.inputs
-      .filter((input) => input.required)
+      .filter((input) => input.required && holds(input.when, request.inputs))
       .filter((input) => {
         const value = request.inputs?.[input.key];
         return value === undefined || value === "";
@@ -334,6 +347,12 @@ export class Bundles {
     );
     if ("busy" in inserted) throw new HttpError(409, `Bundle run ${inserted.busy} is still running.`);
     this.requests.set(inserted.id, request);
+    const access = typeof request.inputs?.access === "string" ? request.inputs.access : "";
+    const baseDomain =
+      typeof request.inputs?.baseDomain === "string" ? request.inputs.baseDomain.trim().toLowerCase() : "";
+    if (ACCESS_MODES.includes(access as AccessMode) && baseDomain) {
+      this.deployer.saveAccess(actor, { mode: access as AccessMode, baseDomain });
+    }
     try {
       await this.ctx.secrets.put("deploy", inserted.id, JSON.stringify(request));
     } catch (err) {
