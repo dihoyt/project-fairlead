@@ -259,6 +259,16 @@ pick_kubectl() {
 
 reachable() { kube get --raw /readyz --request-timeout=10s >/dev/null 2>&1; }
 
+# Why reachable failed: an API server that answers /livez but not /readyz is
+# up with a failing check (often the datastore on a host short of memory).
+# kubectl puts a 500's body on one line with the newlines escaped.
+unreachable_detail() {
+  kube get --raw /livez --request-timeout=10s >/dev/null 2>&1 || return 0
+  failing=$(kube get --raw '/readyz?verbose' --request-timeout=10s 2>&1 | sed 's/\\n/\
+/g' | grep '^\[-\]' | sed 's/^/  /' || true)
+  printf 'its API server is not ready. Failing checks:\n%s\n' "${failing:-  (none listed; see $(kubectl_hint) get --raw '/readyz?verbose')}"
+}
+
 use_k3s_kubeconfig() {
   KUBECONFIG_PATH="$K3S_KUBECONFIG"
   if [ -r "$KUBECONFIG_PATH" ]; then KSUDO=""; else KSUDO="$SUDO"; fi
@@ -420,7 +430,10 @@ release_image() { kube -n "$NAMESPACE" get deploy "$RELEASE" -o jsonpath='{.spec
 
 use_host_k3s() {
   use_k3s_kubeconfig
-  reachable || die "k3s is installed but its API server does not answer (systemctl status k3s)"
+  if ! reachable; then
+    detail=$(unreachable_detail)
+    die "k3s is installed, but ${detail:-its API server does not answer} (systemctl status k3s, journalctl -u k3s -n 50, free -m)"
+  fi
   say "Using this host's k3s."
 }
 
@@ -428,7 +441,10 @@ find_cluster() {
   if [ -n "$KUBECONFIG_PATH" ]; then
     [ -r "$KUBECONFIG_PATH" ] || die "cannot read $KUBECONFIG_PATH"
     pick_kubectl
-    reachable || die "the cluster in $KUBECONFIG_PATH does not answer"
+    if ! reachable; then
+      detail=$(unreachable_detail)
+      die "the cluster in $KUBECONFIG_PATH ${detail:+answers, but }${detail:-does not answer}"
+    fi
     say "Using the cluster in $KUBECONFIG_PATH."
     return 0
   fi
