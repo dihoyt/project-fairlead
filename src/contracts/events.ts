@@ -1,11 +1,19 @@
-import type { BundleRunState, DeployJobMode, DeployJobState } from "./deploy.js";
+import type { BundleRunState, DeployActionKind, DeployJobMode, DeployJobState } from "./deploy.js";
 import type { Status } from "./health.js";
 
 // Every event on the bus, by name. Adding one is a contract change.
 export type Events = {
   "health.changed": { providerId: string; checkId: string; label: string; from: Status; to: Status; detail: string };
-  // A deploy job reached a final state. Discovery refreshes on it.
-  "deploy.finished": { jobId: string; appId: string; mode: DeployJobMode; state: DeployJobState; url?: string };
+  // A deploy job reached a final state. Discovery refreshes on it. action is
+  // set for mode "action".
+  "deploy.finished": {
+    jobId: string;
+    appId: string;
+    mode: DeployJobMode;
+    action?: DeployActionKind;
+    state: DeployJobState;
+    url?: string;
+  };
   // A bundle run reached a final state.
   "deploy.bundle-finished": { runId: string; bundleId: string; state: BundleRunState };
 };

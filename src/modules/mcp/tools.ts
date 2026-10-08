@@ -55,6 +55,37 @@ const bundleRequest = {
   include: z.array(z.string()).optional().describe("Optional items to roll out; default: the bundle's selected ones."),
 };
 
+const templateRequest = {
+  templateId: z.string().min(1).describe('Template id from list_templates, or "custom" for your own image.'),
+  name: z
+    .string()
+    .optional()
+    .describe("Instance name: its namespace and hostname label. Default: the template id; required for custom."),
+  host: z
+    .string()
+    .optional()
+    .describe('Hostname for its Ingress. Default: "<name>.<base domain>"; "" for inside the cluster only.'),
+  volumeSize: z.string().optional().describe('Volume size such as "5Gi", for a template that keeps data.'),
+  storageClass: z.string().optional().describe("Default: the cluster's default storage class."),
+  custom: z
+    .object({
+      image: z.string().min(1).describe('With a tag or digest, e.g. "ghcr.io/org/app:1.2.3".'),
+      port: z.number().int().describe("Container port of its web page or API."),
+      env: z.array(z.object({ name: z.string(), value: z.string() })).default([]),
+      volume: z.object({ size: z.string(), mountPath: z.string() }).optional(),
+    })
+    .optional()
+    .describe("Required for the custom template, refused for the others."),
+};
+
+const removeRequest = {
+  name: z.string().min(1).describe("The instance's name, from list_templates."),
+  deleteVolumes: z
+    .boolean()
+    .optional()
+    .describe("Also delete its namespace and volumes, and with them its data. Default false."),
+};
+
 const items = <T>(list: T[]) => ({ items: list });
 
 // An empty expectStatus means any 2xx or 3xx; accepting one more code has to
@@ -149,6 +180,13 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
   },
   list_bundle_runs: { input: z.object({}), run: async (call) => items(await call("GET /api/deploy/bundles")) },
   list_hosts: { input: z.object({}), run: async (call) => items(await call("GET /api/hosts")) },
+  list_templates: { input: z.object({}), run: (call) => call("GET /api/templates") },
+  get_entra_signin: { input: z.object({}), run: (call) => call("GET /api/connector-entra/view") },
+  list_entra_groups: {
+    input: z.object({ search: z.string().optional().describe("Display name prefix.") }),
+    run: async (call, { search }) =>
+      items(await call("GET /api/connector-entra/groups", { query: search ? { search } : {} })),
+  },
 
   create_check: { input: z.object(checkFields), run: (call, body) => call("POST /api/checks", { body }) },
   update_check: {
@@ -200,4 +238,39 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
   },
   plan_bundle: { input: z.object(bundleRequest), run: (call, body) => call("POST /api/deploy/bundles/plan", { body }) },
   start_bundle: { input: z.object(bundleRequest), run: (call, body) => call("POST /api/deploy/bundles", { body }) },
+  plan_template_deploy: {
+    input: z.object(templateRequest),
+    run: (call, body) => call("POST /api/templates/plan", { body }),
+  },
+  deploy_template: {
+    input: z.object({
+      ...templateRequest,
+      mode: z.enum(["install", "dry-run"]).describe("dry-run renders the manifests and changes nothing."),
+    }),
+    run: (call, body) => call("POST /api/templates/jobs", { body }),
+  },
+  plan_template_removal: {
+    input: z.object(removeRequest),
+    run: (call, { name, deleteVolumes }) =>
+      call("POST /api/deploy/actions/plan", {
+        body: { kind: "remove-app", appId: name, deleteVolumes: deleteVolumes ?? false },
+      }),
+  },
+  remove_template_app: {
+    input: z.object(removeRequest),
+    run: (call, { name, deleteVolumes }) =>
+      call("POST /api/deploy/actions/run", {
+        body: { kind: "remove-app", appId: name, deleteVolumes: deleteVolumes ?? false },
+      }),
+  },
+  setup_entra_signin: {
+    input: z.object({
+      adminGroups: z
+        .array(z.string().min(1))
+        .optional()
+        .describe("Entra group object ids (not names) whose members are admins; list_entra_groups finds them."),
+      label: z.string().max(80).optional().describe('Sign-in button text. Default "Sign in with Microsoft".'),
+    }),
+    run: (call, body) => call("POST /api/connector-entra/signin", { body }),
+  },
 };
