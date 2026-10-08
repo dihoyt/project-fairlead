@@ -72,7 +72,7 @@ Each chunk may create or edit only its own paths. Everything else is read-only t
 | W5 deploy UI | `client/src/ui/deploy/`, `client/src/modules/apps/` |
 | W6 wizard deploy | `client/src/modules/onboarding/` except `steps/HostsStep.tsx` |
 | W7 host key pair | `src/modules/hosts/`, `client/src/modules/hosts/`, `client/src/modules/onboarding/steps/HostsStep.tsx` |
-| M1 tokens + MCP | `src/modules/mcp/`, `client/src/modules/mcp/`, API tokens in `src/platform/` (`auth/tokens.ts`, its routes and the bearer path in identity), custom links in `src/modules/health/`, `client/src/shell/admin/TokensPage.tsx`, `docs/mcp.md` |
+| M1 tokens + MCP | `src/modules/mcp/`, `client/src/modules/mcp/`, API tokens and the MCP OAuth server in `src/platform/` (`auth/tokens.ts`, `auth/oauth.ts`, `routes/oauth.ts`, their admin routes and the bearer path in identity), `client/src/shell/oauth/`, custom links in `src/modules/health/`, `client/src/shell/admin/TokensPage.tsx`, `docs/mcp.md` |
 | B1 connectors | `src/modules/connectors/`, `client/src/modules/connectors/`, `src/contracts/connectors.ts`, `src/contracts/mocks/connectors/` |
 | Every module chunk (A1–A15, W1–W7, B1–B5) | also `test/modules/<id>/` for its module's tests |
 | B2–B5 | their own `src/modules/<id>/` and `client/src/modules/<id>/`, plus the chart files the plan names |

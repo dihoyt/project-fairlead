@@ -52,7 +52,7 @@ describe("TokensPage", () => {
   it("revokes a token", async () => {
     const fetchMock = serve();
     renderWithApp(<TokensPage />);
-    fireEvent.click(await screen.findByText("Revoke"));
+    fireEvent.click((await screen.findAllByText("Revoke"))[0]!);
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some(([url, init]) => String(url).includes("tokens/tok_1") && init?.method === "DELETE")
