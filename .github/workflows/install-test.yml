@@ -89,6 +89,10 @@ jobs:
           echo "::add-mask::$password"
           echo "PASSWORD=$password" >> "$GITHUB_ENV"
           scripts/install/assert-install.sh "$RUNNER_TEMP/first.log" "$password"
+          # The k3s installed is the stable channel's newest release, not the fallback pin.
+          stable=$(curl -fsS -o /dev/null -w '%{redirect_url}' https://update.k3s.io/v1-release/channels/stable | sed 's|.*/||; s/%2[Bb]/+/')
+          grep -q "^Installing k3s $stable " "$RUNNER_TEMP/first.log" || { echo "expected k3s $stable"; exit 1; }
+          k3s --version | grep -qF "$stable" || { echo "k3s is not $stable"; exit 1; }
           sudo k3s kubectl -n "$NS" get secret "$RELEASE-secrets" -o jsonpath='{.metadata.uid}{.data}' > "$RUNNER_TEMP/secret.before"
       - name: Re-run as root upgrades in place and keeps the password
         run: |
@@ -129,7 +133,9 @@ jobs:
           path: ${{ runner.temp }}
       - uses: helm/kind-action@v1
         with:
-          version: v0.24.0
+          version: v0.33.0
+          # The same minor as the k3s that install.sh pins as its fallback.
+          node_image: kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed
           cluster_name: kind
       - name: Install into kind
         run: |

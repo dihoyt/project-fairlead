@@ -27,4 +27,11 @@ else
   echo "k3s $k3s_version has no installer at that tag"
   status=1
 fi
+# The k3s pin is only the offline fallback; a fresh install takes the stable
+# channel's release. Flag a fallback a minor or more behind it.
+stable=$(curl -fsS -o /dev/null -w '%{redirect_url}' https://update.k3s.io/v1-release/channels/stable | sed 's|.*/||; s/%2[Bb]/+/')
+minor() { echo "$1" | cut -d. -f2; }
+if [ -n "$stable" ] && [ "$(minor "$k3s_version")" -lt "$(minor "$stable")" ]; then
+  echo "::warning::K3S_VERSION $k3s_version is behind the stable channel ($stable); move the fallback pin up"
+fi
 exit "$status"

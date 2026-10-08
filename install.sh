@@ -18,7 +18,10 @@ CHART_NAME="fairlead" # brand:generated chartName
 IMAGE_REGISTRY="ghcr.io/dihoyt" # brand:generated imageRegistry
 OWNER_LABEL="fairlead" # brand:generated ownerLabelDomain
 
-K3S_VERSION="v1.31.4+k3s1"
+# A fresh k3s is the stable channel's newest release, read at install time;
+# this pin is used only when the channel can't be read.
+K3S_VERSION="v1.36.5+k3s1"
+K3S_CHANNEL_URL="https://update.k3s.io/v1-release/channels/stable"
 HELM_VERSION="v3.16.2"
 HELM_SHA256_AMD64="9318379b847e333460d33d291d4c088156299a26cd93d570a7f5d0c36e50b5bb"
 HELM_SHA256_ARM64="1888301aeb7d08a03b6d9f4d2b73dcd09b89c41577e80e3455c113629fc657a4"
@@ -210,10 +213,25 @@ use_k3s_kubeconfig() {
   pick_kubectl
 }
 
+# The channel answers with a redirect to its newest release's tag page.
+resolve_k3s_version() {
+  tag=$(curl -sS -o /dev/null -w '%{redirect_url}' --max-time 15 "$K3S_CHANNEL_URL" 2>/dev/null || true)
+  tag=$(printf '%s' "${tag##*/}" | sed 's/%2[Bb]/+/g')
+  case "$tag" in
+    *[!A-Za-z0-9.+]*) ;;
+    v1.[0-9]*+k3s[0-9]*)
+      K3S_VERSION="$tag"
+      return 0
+      ;;
+  esac
+  warn "could not read the k3s stable channel; installing the pinned $K3S_VERSION"
+}
+
 install_k3s() {
   [ "$NO_K3S" = 0 ] || die "no cluster found and --no-k3s was given"
   [ "$(uname -s)" = Linux ] || die "no cluster found, and k3s can only be installed on Linux"
   has curl || die "curl is required"
+  resolve_k3s_version
   confirm "No cluster found. Install k3s $K3S_VERSION (single node) on this host?"
   say "Installing k3s $K3S_VERSION ..."
   # The installer from the same tag as the binary, which it checksums.

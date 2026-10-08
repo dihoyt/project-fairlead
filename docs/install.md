@@ -22,8 +22,13 @@ curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install
 ```
 
 It uses the cluster it finds (`--kubeconfig`, else the current context, else
-this host's k3s) and installs a pinned single-node k3s only when there is none,
-asking first unless `--yes`. It generates `SECRETS_KEY` and
+this host's k3s) and installs a single-node k3s only when there is none,
+asking first unless `--yes`. That k3s is the newest release on the k3s stable
+channel, read at install time, or the version pinned in the script when the
+channel can't be reached. A re-run never upgrades a k3s that is already
+there: an older one (some current charts, such as Longhorn 1.13, need
+Kubernetes 1.34 or newer) is upgraded with k3s's own tooling, for example
+`curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL=stable sh -`. It generates `SECRETS_KEY` and
 `BOOTSTRAP_ADMIN_PASSWORD` into `<release>-secrets` on the first install only,
 installs the chart from ghcr, waits for the rollout and prints the URL and the
 password. Re-running upgrades in place and keeps earlier values; `--values`

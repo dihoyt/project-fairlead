@@ -47,7 +47,9 @@ jobs:
           cache-to: type=gha,mode=max
       - uses: helm/kind-action@v1
         with:
-          version: v0.24.0
+          version: v0.33.0
+          # The same minor as the k3s that install.sh pins as its fallback.
+          node_image: kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed
           cluster_name: kind
       - name: Load image and run chart smoke test
         run: |
