@@ -295,11 +295,7 @@ export function AccessStep({ onFinish }: StepProps) {
         </Group>
       ) : null}
       {action.error ? <Alert color="red">{action.error}</Alert> : null}
-      {current?.mode === "cloudflare-tunnel" ? (
-        <CloudflareSetup view={current} manual={manual} />
-      ) : (
-        manual
-      )}
+      {current?.mode === "cloudflare-tunnel" ? <CloudflareSetup view={current} manual={manual} /> : manual}
     </StepFrame>
   );
 }
