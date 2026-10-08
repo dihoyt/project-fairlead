@@ -238,6 +238,9 @@ export interface CloudflareView {
   syncedAt?: string;
   // The last sync failed before reaching the hosts: why, one sentence.
   error?: string;
+  // Things the connector doesn't own that break its hosts (a wildcard
+  // record pointing at another tunnel), one sentence each.
+  warnings?: string[];
 }
 
 // Per-app choices, keyed by hostname. `access` is honoured under "per-app" only.
