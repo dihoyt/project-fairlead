@@ -8,6 +8,9 @@ import type {
   AccountView,
   AdminOverview,
   AuditRow,
+  AuthentikWirePlan,
+  AuthentikWireRequest,
+  AuthentikWireResult,
   AuthMethods,
   LoginResponse,
   Me,
@@ -106,6 +109,15 @@ export interface ApiRoutes {
   "DELETE /api/admin/settings/:key": Route<{ key: string }, None, None, { key: string; value: SettingValue }>;
   "PUT /api/admin/oidc/secret": Route<None, None, { value: string }, { hasSecret: boolean }>;
   "POST /api/admin/oidc/test": Route<None, None, None, { ok: boolean; issuer?: string; error?: string }>;
+  // Admin. 400 for a missing or non-http(s) url.
+  "GET /api/admin/oidc/authentik": Route<None, { url: string }, None, AuthentikWirePlan>;
+  // Admin, audited (never with the token or secret). Creates or reuses the
+  // provider and application, saves auth.oidc.{issuer,clientId,label,enabled}
+  // (and adminGroups when given) and the client secret. 400: bad url, no
+  // token given or stored, no public URL; 409: SECRETS_KEY not set; 502:
+  // Authentik unreachable, refused the token, or answered unexpectedly, with
+  // its status in the error.
+  "POST /api/admin/oidc/authentik": Route<None, None, AuthentikWireRequest, AuthentikWireResult>;
   "GET /api/admin/users": Route<None, None, None, UserView[]>;
   "POST /api/admin/users": Route<None, None, NewUserRequest, { user: UserView; temporaryPassword: string | null }>;
   "PATCH /api/admin/users/:id": Route<{ id: string }, None, UserChangesRequest, UserView>;
