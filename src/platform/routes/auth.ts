@@ -6,10 +6,13 @@ import {
   CALLBACK_PATH,
   OidcError,
   OidcInteractionRequired,
+  emailAllowed,
+  emailIsAdmin,
   finishSignIn,
   groupAllowed,
   groupIsAdmin,
   oidcUnavailableReason,
+  publicIssuer,
   safeReturnTo,
   startSignIn,
   type OidcProfile,
@@ -346,6 +349,18 @@ export function oidcRouter(core: Core): Router {
     if (!s.bool("auth.oidc.autoProvision")) {
       return { error: "There is no account for you here yet. Ask an admin to create one." };
     }
+    // Anyone in the world has a Google or Microsoft account; without a list
+    // saying who is wanted, creating accounts would let them all in.
+    if (
+      publicIssuer(s.string("auth.oidc.issuer")) &&
+      s.list("auth.oidc.allowedEmails").length === 0 &&
+      s.list("auth.oidc.allowedGroups").length === 0
+    ) {
+      return {
+        error:
+          "Sign-in is open to anyone with this provider, so no account is created until an admin lists allowed email addresses.",
+      };
+    }
     const username = provisionedUsername(profile);
     if (username === null) return { error: "Your provider did not send a usable username or email." };
     if (userByUsername(core.db, username) !== null) {
@@ -358,7 +373,11 @@ export function oidcRouter(core: Core): Router {
       email: profile.email,
       passwordHash: null,
       role:
-        groupIsAdmin(core, profile.groups) || envAdmin([username, profile.email], profile.groups) ? "admin" : "user",
+        groupIsAdmin(core, profile.groups) ||
+        emailIsAdmin(core, profile) ||
+        envAdmin([username, profile.email], profile.groups)
+          ? "admin"
+          : "user",
     });
     linkIdentity(core.db, profile.provider, profile.subject, account.id, profile.email);
     return { account };
@@ -394,6 +413,23 @@ export function oidcRouter(core: Core): Router {
           result: "denied",
         });
         redirectWithError(req, res, "Your account is not in a group allowed to sign in here.");
+        return;
+      }
+      if (!emailAllowed(core, profile)) {
+        core.audit.record({
+          actor: who,
+          ip,
+          action: "auth.sign-in",
+          detail: profile.emailVerified ? "oidc: email not allowed" : "oidc: no verified email",
+          result: "denied",
+        });
+        redirectWithError(
+          req,
+          res,
+          profile.emailVerified
+            ? `${profile.email} is not allowed to sign in here.`
+            : "Your provider did not send a verified email address, which this console needs to let you in."
+        );
         return;
       }
       const resolved = resolveAccount(profile, link);
@@ -432,6 +468,17 @@ export function oidcRouter(core: Core): Router {
         return;
       }
 
+      if (account.role !== "admin" && emailIsAdmin(core, profile)) {
+        updateUser(core.db, account.id, { role: "admin" });
+        core.audit.record({
+          actor: account.username,
+          ip,
+          action: "auth.oidc.admin-email",
+          target: account.username,
+          detail: `role=admin from auth.oidc.adminEmails (${profile.email})`,
+          result: "ok",
+        });
+      }
       touchIdentity(core.db, profile.provider, profile.subject, profile.email);
       if (link === null) {
         // The new cookie replaces whatever this browser held, so its row would

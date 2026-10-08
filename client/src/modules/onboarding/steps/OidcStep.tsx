@@ -7,6 +7,7 @@ import { AppOffer, useDiscovery } from "../discovery";
 import { StepFrame, useAction, type StepProps } from "../shared";
 import { AuthentikWire, authentikAddresses } from "./AuthentikWire";
 import { EntraWire } from "./EntraWire";
+import { PublicSignIn } from "./PublicSignIn";
 
 // Offered when there is no identity provider yet. Once Authentik is in the
 // cluster, wiring it creates the provider and application inside it through
@@ -83,6 +84,10 @@ export function OidcStep({ onFinish, onGoTo }: StepProps) {
   }, [settings, loaded]);
 
   const oidc = overview.data?.oidc;
+  const listOf = (key: string) => {
+    const value = settingOf(settings, key);
+    return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+  };
 
   async function saveAndTest() {
     const tested = await save.run(async () => {
@@ -111,7 +116,7 @@ export function OidcStep({ onFinish, onGoTo }: StepProps) {
     <StepFrame
       onFinish={onFinish}
       what="An identity provider is one place that holds everyone's login, so people sign in here with the same account they use elsewhere."
-      intro="Sign in through your identity provider (Entra ID, Authentik, Keycloak, Google, …) instead of local passwords. The local admin keeps working as a fallback. Skip this to stay on local accounts."
+      intro="Sign in through your identity provider (Entra ID, Authentik, Keycloak, …) or with Google and Microsoft accounts instead of local passwords. The local admin keeps working as a fallback. Skip this to stay on local accounts."
       fullPage={{ to: "/admin/sign-in", label: "All sign-in settings" }}
       canFinish={result?.ok === true}
     >
@@ -126,6 +131,26 @@ export function OidcStep({ onFinish, onGoTo }: StepProps) {
         }}
         onOpenAccess={onGoTo ? () => onGoTo("access") : undefined}
       />
+      {oidc ? (
+        <PublicSignIn
+          redirectUri={oidc.redirectUri}
+          current={{
+            issuer: stringSetting(settings, "auth.oidc.issuer"),
+            clientId: stringSetting(settings, "auth.oidc.clientId"),
+            hasSecret: oidc.hasSecret,
+            allowedEmails: listOf("auth.oidc.allowedEmails"),
+            adminEmails: listOf("auth.oidc.adminEmails"),
+          }}
+          onSaved={(saved) => {
+            setLoaded(false);
+            overview.reload();
+            setResult(
+              saved.discovery.ok ? { ok: true, issuer: saved.issuer } : { ok: false, error: saved.discovery.error }
+            );
+          }}
+          onOpenAccess={onGoTo ? () => onGoTo("access") : undefined}
+        />
+      ) : null}
       {oidc ? (
         <Stack gap="sm">
           <Text size="sm">
