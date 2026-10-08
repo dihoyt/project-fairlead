@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { ClusterBasic } from "@contracts/catalog";
 import { StatusBadge, relativeTime, useApi } from "../../../ui";
 import { DeployButton } from "../../../ui/deploy";
+import { AddNode } from "../../nodes/AddNode";
 import { DiscoveryNote, useDiscovery, type Discovery } from "../discovery";
 import { StepFrame, type StepProps } from "../shared";
 
@@ -88,6 +89,7 @@ export function ClusterStep({ onFinish }: StepProps) {
       fullPage={{ to: "/admin/system", label: "System page" }}
     >
       <ClusterBasics discovery={discovery} />
+      <AddNode canCreate framed={false} />
       {report.loading && !report.data ? <Loader size="sm" /> : null}
       {report.error ? (
         <Alert color="red" title="Cannot reach the cluster">
