@@ -907,3 +907,21 @@ test("authentik: bootstrap credentials in its values, https restored behind a tu
   };
   assert.match(secret.stringData["values.yaml"]!, /bootstrap_password: s3cret-Authentik/);
 });
+
+test("the bundle's apps ask for what they use idle and are capped in memory", async () => {
+  const e = await setup({ catalog: createMockCatalogService({ entries: withAuthentikPassword() }) });
+  const plans: Array<[string, Record<string, unknown>, RegExp[]]> = [
+    [
+      "authentik",
+      { host: "auth.example.test", adminEmail: "ops@example.test" },
+      [/worker:\n\s+resources:\n\s+requests:\n\s+cpu: "50m"\n\s+memory: "448Mi"\n\s+limits:\n\s+memory: "1Gi"/],
+    ],
+    ["cert-manager", {}, [/webhook:\n\s+resources:/, /cainjector:\n\s+resources:/]],
+    ["cloudflared", { tunnelToken: "tok" }, [/resources:\n\s+requests:\n\s+cpu: "10m"\n\s+memory: "32Mi"/]],
+  ];
+  for (const [appId, inputs, patterns] of plans) {
+    const p = await call<DeployPlan>(e, "POST", "/plan", { appId, inputs });
+    for (const pattern of patterns) assert.match(p.values, pattern, appId);
+    assert.doesNotMatch(p.values, /limits:\n\s+cpu/, `${appId}: no CPU limit`);
+  }
+});
