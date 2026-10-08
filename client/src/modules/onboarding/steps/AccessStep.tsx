@@ -8,6 +8,7 @@ import {
   Code,
   CopyButton,
   Group,
+  List,
   Loader,
   Radio,
   SegmentedControl,
@@ -104,20 +105,29 @@ export function AccessInstructions({ view }: { view: AccessView }) {
     case "cloudflare-tunnel":
       steps = (
         <>
-          <Text size="sm">
-            In Cloudflare Zero Trust, open Networks &gt; Tunnels, pick this cluster&apos;s tunnel and add one public
-            hostname: subdomain <b>*</b>, domain <b>{view.baseDomain}</b>, service type <b>HTTP</b>, URL:
-          </Text>
-          {view.ingressService ? (
-            <CopyBlock value={hostPort(view.ingressService)} label="Copy service URL" />
-          ) : (
-            <Text size="sm" c="yellow">
-              No ingress controller found yet; it appears here once one is installed.
-            </Text>
-          )}
-          <Text size="sm">
-            If Cloudflare does not add the DNS record itself, add a proxied CNAME named <b>*</b> in the{" "}
-            {view.baseDomain} zone pointing at <Code>&lt;tunnel id&gt;.cfargotunnel.com</Code>.
+          <List type="ordered" size="sm" spacing="xs" data-cloudflare-steps>
+            <List.Item>
+              In Cloudflare Zero Trust, open Networks &gt; Tunnels, pick this cluster&apos;s tunnel and add a{" "}
+              <b>published application route</b>: Subdomain <Code>*</Code>, Domain <b>{view.baseDomain}</b>, Path empty,
+              Service Type <b>HTTP</b>, URL:
+              {view.ingressService ? (
+                <CopyBlock value={hostPort(view.ingressService)} label="Copy service URL" />
+              ) : (
+                <Text size="sm" c="yellow">
+                  No ingress controller found yet; it appears here once one is installed.
+                </Text>
+              )}
+            </List.Item>
+            <List.Item>
+              Cloudflare adds no DNS record for a wildcard route, so add one in the {view.baseDomain} zone under DNS
+              &gt; Records: Type <b>CNAME</b>, Name <Code>*</Code>, Target{" "}
+              <Code>&lt;Tunnel ID&gt;.cfargotunnel.com</Code>, Proxied on. The Tunnel ID is on the tunnel&apos;s
+              overview page.
+            </List.Item>
+          </List>
+          <Text size="xs" c="dimmed">
+            Connecting with a Cloudflare API token instead of a tunnel token does both steps for you and adds a record
+            for each app.
           </Text>
         </>
       );
