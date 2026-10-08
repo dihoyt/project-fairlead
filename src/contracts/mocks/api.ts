@@ -566,9 +566,24 @@ export const apiMocks: ApiMocks = {
     ],
   },
 
-  "GET /api/admin/tokens": [mockApiToken],
+  "GET /api/admin/tokens": [
+    mockApiToken,
+    {
+      ...mockApiToken,
+      id: "tok_2",
+      name: "Claude",
+      kind: "oauth",
+      client: "Claude",
+      prefix: "api_Q7mz",
+      expiresAt: null,
+    },
+  ],
   "POST /api/admin/tokens": { token: mockApiToken, secret: "api_Xk3dMockSecretNotReal0000000000000000000" },
   "DELETE /api/admin/tokens/:id": { ok: true },
+  "POST /api/admin/oauth/consent": {
+    client: { id: "cli_1", name: "Claude", redirectUri: "https://claude.ai/api/mcp/auth_callback" },
+    requestedScope: "write",
+  },
 
   "GET /api/health/board": mockHealthBoard,
   "GET /api/health/categories/:category": mockCategoryDetail,

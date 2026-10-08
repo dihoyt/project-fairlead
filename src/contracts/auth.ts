@@ -165,6 +165,12 @@ export interface ApiTokenView {
   lastUsedAt: string | null;
   // Past expiresAt, or the account behind it is disabled or no longer an admin.
   inactive?: string;
+  // "oauth": a grant an MCP client got through the OAuth flow (claude.ai's
+  // connectors, say). Its access token is short-lived and refreshed by the
+  // client; revoking the grant ends both. Absent: a token made on this page.
+  kind?: "oauth";
+  // oauth only: the name the client registered with.
+  client?: string;
 }
 
 export interface NewApiTokenRequest {
@@ -178,6 +184,62 @@ export interface NewApiToken {
   token: ApiTokenView;
   // Shown once; never retrievable again.
   secret: string;
+}
+
+// --- OAuth for MCP clients -------------------------------------------------
+// The platform is an OAuth 2.1 authorization server for /mcp, as the MCP
+// authorization spec describes, so a client that can't be given a token
+// (claude.ai's custom connectors) can get one by having an admin sign in and
+// approve it. Served outside /api, without a session unless noted:
+//
+//   GET  /.well-known/oauth-protected-resource[/mcp]  RFC 9728 metadata
+//   GET  /.well-known/oauth-authorization-server     RFC 8414 metadata
+//   POST /oauth/register   RFC 7591 dynamic client registration (public
+//                          clients only; https redirect URIs, or http on
+//                          localhost); rate-limited
+//   GET  /oauth/authorize  authorization code with PKCE S256 only; checks
+//                          the client and redirect URI, then sends the
+//                          browser to the console's #/oauth/consent page
+//                          with the same query
+//   POST /oauth/token      form-encoded; authorization_code (with
+//                          code_verifier) and refresh_token grants; refresh
+//                          tokens rotate on use
+//
+// A 401 from /mcp carries WWW-Authenticate: Bearer resource_metadata="...".
+// Approving creates an ApiTokenView with kind "oauth", listed and revoked
+// under Admin > API tokens like any other.
+
+export const OAUTH_SCOPES: readonly ApiTokenScope[] = ["read", "write"];
+
+// The /oauth/authorize query, passed on to the consent page unchanged.
+export interface OAuthAuthorizeParams {
+  response_type: string;
+  client_id: string;
+  redirect_uri: string;
+  code_challenge: string;
+  code_challenge_method: string;
+  state?: string;
+  // Space-separated; "write" asks for read and write.
+  scope?: string;
+  // RFC 8707 resource indicator; when given it must be this install's /mcp.
+  resource?: string;
+}
+
+export interface OAuthConsentRequest {
+  params: OAuthAuthorizeParams;
+  // preview: check the request and describe it. approve: issue a code for
+  // `scope` (default: what the client asked for) and say where to send the
+  // browser. deny: say where to send the browser with access_denied.
+  decision: "preview" | "approve" | "deny";
+  scope?: ApiTokenScope;
+}
+
+export interface OAuthConsentView {
+  client: { id: string; name: string; redirectUri: string };
+  // What the client asked for, read when it named no scope.
+  requestedScope: ApiTokenScope;
+  // approve and deny: the client's redirect URI with code or error and state.
+  redirect?: string;
 }
 
 // Wiring sign-in through an Authentik instance: an OAuth2/OpenID provider

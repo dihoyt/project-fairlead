@@ -18,6 +18,8 @@ import type {
   NewApiToken,
   NewApiTokenRequest,
   NewUserRequest,
+  OAuthConsentRequest,
+  OAuthConsentView,
   SessionView,
   SettingValue,
   TotpEnrollment,
@@ -169,6 +171,11 @@ export interface ApiRoutes {
   "POST /api/admin/tokens": Route<None, None, NewApiTokenRequest, NewApiToken>;
   // Revokes at once: the next request with it is a 401. Unknown id: 404.
   "DELETE /api/admin/tokens/:id": Route<{ id: string }, None, None, Ok>;
+  // The consent page of the MCP OAuth flow (see OAuthAuthorizeParams). Admin
+  // with a signed-in session; approve and deny are audited. 400 with the
+  // reason for an unknown client, an unregistered redirect URI or a request
+  // that isn't code + PKCE S256.
+  "POST /api/admin/oauth/consent": Route<None, None, OAuthConsentRequest, OAuthConsentView>;
 
   // --- k8s (A1) -----------------------------------------------------------
   "GET /api/k8s/capabilities": Route<None, { refresh?: "1" }, None, CapabilityReport>;
