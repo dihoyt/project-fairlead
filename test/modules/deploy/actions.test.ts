@@ -219,7 +219,7 @@ test("actions: migrate-to-longhorn isn't available yet; bad bodies are 400", asy
   const missing = await post<{ error: string }>(
     e,
     "/actions/plan",
-    { kind: "migrate-to-longhorn", namespace: "gitea", pvc: "data-gitea-0" },
+    { kind: "migrate-to-longhorn", appId: "gitea" },
     400
   );
   assert.match(missing.error, /not available yet/);

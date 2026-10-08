@@ -6,6 +6,7 @@ import type {
   DeployActionPlan,
   DeployActionRequest,
   DeployedRelease,
+  DeployJobView,
 } from "../../../contracts/deploy.js";
 import type { K8sApi } from "../../../contracts/k8s.js";
 import type { CallInput } from "../../../contracts/module.js";
@@ -14,6 +15,9 @@ import { replicasAction } from "./replicas.js";
 
 // What an action renders from. Reads only: nothing here changes the cluster.
 export interface ActionContext {
+  // false for a plan, true when the action is about to run: per-run values
+  // (tokens, generated names) are made only then.
+  run: boolean;
   enabled: boolean;
   // Set when deploys are off: the command that turns them on.
   enableHint?: string;
@@ -46,6 +50,11 @@ export interface ActionRendered {
   // The Job's activeDeadlineSeconds; default 900.
   deadlineSeconds?: number;
   files: Record<string, string>;
+  // Values the run carries that its log must never show.
+  secrets?: string[];
+  // Called once the Job is created, e.g. to keep a per-run token under the
+  // job's id. A throw is logged; the job keeps running.
+  onStarted?(job: DeployJobView): Promise<void> | void;
 }
 
 export interface ActionRecipe<R extends DeployActionRequest = DeployActionRequest> {
@@ -63,22 +72,12 @@ export function actionRecipe<K extends DeployActionKind>(
   return recipes[kind];
 }
 
-const NAME = /^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$/;
-
 export const actionSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("longhorn-replicas"),
     replicas: z.number().int().min(1).max(3).optional(),
     existingVolumes: z.boolean(),
   }),
-  z.object({
-    kind: z.literal("migrate-to-longhorn"),
-    namespace: z.string().regex(NAME, { message: "must be a namespace name" }),
-    pvc: z
-      .string()
-      .max(253)
-      .regex(/^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$/, { message: "must be a PVC name" }),
-    replicas: z.number().int().min(1).max(3).optional(),
-    backupFirst: z.boolean().optional(),
-  }),
+  z.object({ kind: z.literal("migrate-to-longhorn"), appId: z.string().min(1).max(100) }),
+  z.object({ kind: z.literal("backup-volumes"), appId: z.string().min(1).max(100) }),
 ]);

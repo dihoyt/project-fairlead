@@ -350,11 +350,12 @@ export class Deployer {
 
   // --- actions -------------------------------------------------------------
 
-  async renderAction(request: DeployActionRequest, call: ActionContext["call"]): Promise<ActionRendered> {
+  async renderAction(request: DeployActionRequest, call: ActionContext["call"], run = false): Promise<ActionRendered> {
     const recipe = actionRecipe(request.kind) as ActionRecipe | undefined;
     if (!recipe) throw new HttpError(400, `The ${request.kind} action is not available yet.`);
     const enabled = await this.enabled();
     const rendered = await recipe.render(request, {
+      run,
       enabled,
       ...(enabled ? {} : { enableHint: enableHint(this.config) }),
       call,
@@ -375,9 +376,9 @@ export class Deployer {
   }
 
   async startAction(actor: string, request: DeployActionRequest, call: ActionContext["call"]): Promise<DeployJobView> {
-    const rendered = await this.renderAction(request, call);
+    const rendered = await this.renderAction(request, call, true);
     if (!rendered.plan.allowed) throw new HttpError(400, rendered.plan.blockedBy ?? "This action is not allowed.");
-    return this.launch(
+    const view = await this.launch(
       actor,
       {
         appId: rendered.appId,
@@ -389,9 +390,15 @@ export class Deployer {
       },
       Object.keys(rendered.files).length > 0 ? rendered.files : { "values.yaml": "{}\n" },
       rendered.steps,
-      [],
+      rendered.secrets ?? [],
       { script: rendered.script, deadlineSeconds: rendered.deadlineSeconds }
     );
+    try {
+      await rendered.onStarted?.(view);
+    } catch (err) {
+      this.ctx.log.warn("A deploy action's start hook failed", { job: view.id, error: errorMessage(err) });
+    }
+    return view;
   }
 
   private async launch(
