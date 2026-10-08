@@ -3,6 +3,7 @@ import http, { type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, test } from "node:test";
 import type { AuditRow, AuthentikWirePlan, AuthentikWireResult } from "../../src/contracts/auth.js";
+import { authentikUrlProblem } from "../../src/platform/auth/authentik.js";
 import { product } from "../../src/product.js";
 import { boot, type Booted } from "./harness.js";
 
@@ -253,4 +254,32 @@ test("only admins may wire", async () => {
   const plain = (await app.login("plain", "plain password!")).cookie;
   assert.equal((await wire({ authentikUrl: authentik.url, token: authentik.token }, plain)).status, 403);
   assert.equal(authentik.requests.length, 0);
+});
+
+test("the API may be called over http only at a cluster Service or this machine", () => {
+  assert.equal(authentikUrlProblem("http://authentik-server.authentik.svc:80", "api"), null);
+  assert.equal(authentikUrlProblem("http://authentik-server.authentik.svc.cluster.local", "api"), null);
+  assert.equal(authentikUrlProblem("http://127.0.0.1:9000", "api"), null);
+  assert.equal(authentikUrlProblem("https://auth.example.test", "api"), null);
+  assert.match(authentikUrlProblem("http://auth.example.test", "api")!, /in-cluster Service/);
+  assert.match(authentikUrlProblem("http://svc.example.test", "api")!, /in-cluster Service/);
+  assert.equal(authentikUrlProblem("http://auth.example.test", "public"), null);
+  assert.ok(authentikUrlProblem("ftp://auth.example.test", "public"));
+});
+
+test("with an apiUrl the token goes there and the issuer is built on the public URL", async () => {
+  const publicUrl = "http://auth.example.test";
+  const plan = (await (
+    await app.get(`/api/admin/oidc/authentik?url=${publicUrl}&apiUrl=${encodeURIComponent(authentik.url)}`, cookie)
+  ).json()) as AuthentikWirePlan;
+  assert.equal(plan.apiUrl, authentik.url);
+  assert.equal(plan.issuer, `${publicUrl}/application/o/${product.slug}/`);
+
+  const res = await wire({ authentikUrl: publicUrl, apiUrl: authentik.url, token: authentik.token });
+  assert.equal(res.status, 200);
+  const result = (await res.json()) as AuthentikWireResult;
+  assert.equal(result.issuer, `${publicUrl}/application/o/${product.slug}/`);
+  assert.equal(result.discovery.ok, false, "http issuers are refused by sign-in, and the result says why");
+  assert.equal(authentik.applications.get(product.slug)!.provider, 1);
+  assert.ok(authentik.requests.every((r) => r.auth === `Bearer ${authentik.token}`));
 });

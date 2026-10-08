@@ -67,9 +67,9 @@ function networksOf(raw: unknown): string[] {
 const AUTHENTIK_TOKEN = { scope: "auth", id: "authentik-api" } as const;
 const WIRED_KEYS = ["auth.oidc.issuer", "auth.oidc.clientId", "auth.oidc.label", "auth.oidc.enabled"];
 
-const authentikBase = (raw: unknown): string => {
+const authentikBase = (raw: unknown, use: "public" | "api" = "public"): string => {
   const value = typeof raw === "string" ? raw.trim().replace(/\/+$/, "") : "";
-  const problem = authentikUrlProblem(value);
+  const problem = authentikUrlProblem(value, use);
   if (problem !== null) throw new AdminError(400, problem);
   return value;
 };
@@ -288,9 +288,11 @@ export function adminRouter(core: Core): Router {
     "/oidc/authentik",
     route(async (req): Promise<AuthentikWirePlan> => {
       const base = authentikBase(req.query.url);
+      const apiUrl = authentikBase(req.query.apiUrl || base, "api");
       const origin = publicOrigin(core);
       return {
         authentikUrl: base,
+        ...(apiUrl !== base ? { apiUrl } : {}),
         applicationName: product.displayName,
         slug: product.slug,
         redirectUri: origin ? `${origin}${CALLBACK_PATH}` : "",
@@ -306,6 +308,7 @@ export function adminRouter(core: Core): Router {
     route(async (req, _res, admin): Promise<AuthentikWireResult> => {
       const body = (req.body ?? {}) as Record<string, unknown>;
       const base = authentikBase(body.authentikUrl);
+      const apiUrl = authentikBase(body.apiUrl || base, "api");
       let adminGroups: string[] | undefined;
       if (body.adminGroups !== undefined) {
         if (!Array.isArray(body.adminGroups)) throw new AdminError(400, "Admin groups must be a list.");
@@ -323,7 +326,8 @@ export function adminRouter(core: Core): Router {
       let outcome;
       try {
         outcome = await wireAuthentik({
-          baseUrl: base,
+          apiUrl,
+          publicUrl: base,
           token,
           slug: product.slug,
           name: product.displayName,

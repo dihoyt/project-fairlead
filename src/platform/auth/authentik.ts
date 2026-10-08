@@ -29,7 +29,10 @@ const SELF_SIGNED = "authentik Self-signed Certificate";
 export class AuthentikError extends Error {}
 
 export interface AuthentikTarget {
-  baseUrl: string;
+  // Where the API is called.
+  apiUrl: string;
+  // Authentik as browsers reach it, which the issuer is built on.
+  publicUrl: string;
   token: string;
   slug: string;
   name: string;
@@ -66,20 +69,22 @@ interface Application {
 
 export const issuerFor = (baseUrl: string, slug: string): string => `${baseUrl}/application/o/${slug}/`;
 
-// The token travels in a header, so it must not cross the network in the
-// clear: plain http only for a host on this machine.
-export function authentikUrlProblem(raw: string): string | null {
+const isLocal = (host: string) => host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+const isClusterService = (host: string) => host.endsWith(".svc") || host.endsWith(".svc.cluster.local");
+
+// `api`: the token goes there in a header, so plain http only to this
+// machine or a cluster Service, where it never leaves the cluster network.
+export function authentikUrlProblem(raw: string, use: "public" | "api"): string | null {
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
     return "Enter Authentik's address, starting with https://.";
   }
-  const local = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
-  if (url.protocol === "https:" || (url.protocol === "http:" && local)) return null;
-  if (url.protocol === "http:")
-    return "Authentik must be reached over https, or the token and sign-ins would cross the network in the clear.";
-  return "Enter Authentik's address, starting with https://.";
+  if (url.protocol === "https:") return null;
+  if (url.protocol !== "http:") return "Enter Authentik's address, starting with https://.";
+  if (use === "public" || isLocal(url.hostname) || isClusterService(url.hostname)) return null;
+  return "Authentik's API must be reached over https or through its in-cluster Service, or the token would cross the network in the clear.";
 }
 
 export function authentikClient(baseUrl: string, token: string) {
@@ -171,7 +176,7 @@ const hasRedirect = (provider: Provider, uri: string) =>
   );
 
 export async function wireAuthentik(target: AuthentikTarget): Promise<AuthentikOutcome> {
-  const api = authentikClient(target.baseUrl, target.token);
+  const api = authentikClient(target.apiUrl, target.token);
   const existing = await api.call<Application>("GET", `/core/applications/${target.slug}/`);
 
   let provider: Provider | null = null;
@@ -212,7 +217,7 @@ export async function wireAuthentik(target: AuthentikTarget): Promise<AuthentikO
     );
   }
   return {
-    issuer: issuerFor(target.baseUrl, target.slug),
+    issuer: issuerFor(target.publicUrl, target.slug),
     clientId: provider.client_id,
     clientSecret: provider.client_secret,
     application: existing === null ? "created" : "found",
