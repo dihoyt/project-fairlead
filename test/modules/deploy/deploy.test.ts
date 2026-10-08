@@ -698,3 +698,44 @@ test("releases() lists the latest install job per release; values and Ingresses 
   const ntfy = await call<DeployPlan>(e, "POST", "/plan", { appId: "ntfy", inputs: {} });
   assert.match(ntfy.values, new RegExp(`labels:\\n    ${key}: deploy`));
 });
+
+test("plan: a chart's kubeVersion picks the newest pin the cluster fits, or blocks", async () => {
+  const notInstalled = { ...mockDiscovery, apps: mockDiscovery.apps.filter((app) => app.appId !== "longhorn") };
+  const request = { appId: "longhorn", inputs: { host: "longhorn.example.test" } };
+
+  let e = await setup({ catalog: createMockCatalogService({ discovery: notInstalled }) });
+  let plan = await call<DeployPlan>(e, "POST", "/plan", request);
+  assert.equal(plan.allowed, true, plan.blockedBy);
+  assert.equal(plan.version, "1.98.0-mock");
+  assert.match(plan.commands[0]!, / --version 1\.98\.0-mock /);
+  assert.ok(
+    plan.warnings.includes(
+      "Installs Longhorn 1.98.0-mock, the newest version that supports Kubernetes v1.31.4+k3s1; 1.99.0-mock needs >=1.99.0-0."
+    ),
+    JSON.stringify(plan.warnings)
+  );
+  await env!.server.close();
+  env!.deployer.stop();
+  await env!.mock.close();
+  env = undefined;
+
+  e = await setup({
+    catalog: createMockCatalogService({ discovery: { ...notInstalled, kubernetesVersion: "v1.20.3" } }),
+  });
+  plan = await call<DeployPlan>(e, "POST", "/plan", request);
+  assert.equal(plan.allowed, false);
+  assert.match(plan.blockedBy ?? "", /^Longhorn: Needs Kubernetes .*this cluster runs v1\.20\.3\.$/);
+  await env!.server.close();
+  env!.deployer.stop();
+  await env!.mock.close();
+  env = undefined;
+
+  // Without a version from discovery, the API server's is used.
+  const { kubernetesVersion: _unknown, ...noVersion } = notInstalled;
+  e = await setup({
+    catalog: createMockCatalogService({ discovery: noVersion }),
+    k8s: createFakeK8s({ version: { major: "1", minor: "20", gitVersion: "v1.20.3" } }),
+  });
+  plan = await call<DeployPlan>(e, "POST", "/plan", request);
+  assert.match(plan.blockedBy ?? "", /this cluster runs v1\.20\.3\.$/);
+});
