@@ -6,6 +6,7 @@
 //
 // Server-free on purpose: the client imports this file.
 
+import type { CatalogEntry } from "./catalog.js";
 import type { DiskCheck } from "./disk.js";
 
 export type DeployValue = string | boolean;
@@ -293,4 +294,13 @@ export interface DeployedRelease {
 export interface DeployService {
   // The latest install or upgrade job per release, newest first; dry runs excluded.
   releases(): Promise<DeployedRelease[]>;
+  // A CatalogEntry another module built (a template instance: install kind
+  // "manifest", bundled), planned and run exactly as a catalog app with
+  // that id would be: same defaults, access-mode Ingress from its "host"
+  // input, jobs, audit and deploy.finished. request.appId must be entry.id.
+  // planEntry is POST /api/deploy/plan's result; startEntry answers as
+  // POST /api/deploy/jobs does (HttpError 400 when not allowed, 409 while
+  // the release has a job running).
+  planEntry(entry: CatalogEntry, request: DeployRequest): Promise<DeployPlan>;
+  startEntry(actor: string, entry: CatalogEntry, request: DeployJobRequest): Promise<DeployJobView>;
 }

@@ -36,6 +36,7 @@ import {
   mockUpgradeRun,
 } from "./catalog.js";
 import { mockCheckResults } from "./health.js";
+import { mockTemplateJob, mockTemplatePlan, mockTemplatesView } from "./templates.js";
 import { mockSeriesResults } from "./metrics.js";
 import { mockClusterUsage, mockSpaceUsage } from "./workloads.js";
 import { DAY, HOUR, MOCK_NOW, isoAgo } from "./time.js";
@@ -745,6 +746,10 @@ export const apiMocks: ApiMocks = {
   },
   "GET /api/deploy/upgrades": mockUpgradeReport,
   "POST /api/deploy/upgrades": mockUpgradeRun,
+
+  "GET /api/templates": mockTemplatesView,
+  "POST /api/templates/plan": mockTemplatePlan,
+  "POST /api/templates/jobs": mockTemplateJob,
 
   "POST /api/mcp": {
     jsonrpc: "2.0",
