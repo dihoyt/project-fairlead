@@ -44,6 +44,14 @@ export function CloudflarePanel({ baseDomain, pollMs }: { baseDomain?: string; p
           Sync now
         </Button>
       </Group>
+      {data.publicAddress ? (
+        <Text size="xs" c="dimmed" data-public-address>
+          Direct apps point at <b>{data.publicAddress}</b>
+          {data.publicAddressSource === "detected"
+            ? ", detected from this cluster; the records follow it when it changes."
+            : ", set on the connector."}
+        </Text>
+      ) : null}
       {data.error ? <Alert color="yellow">{data.error}</Alert> : null}
       {(data.warnings ?? []).map((warning) => (
         <Alert key={warning} color="yellow" data-cloudflare-warning>

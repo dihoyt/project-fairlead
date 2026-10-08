@@ -6,6 +6,7 @@ import type {
   CloudflareObjectState,
   OwnedStore,
 } from "../../contracts/connectors.js";
+import type { AppGateState } from "../../contracts/deploy.js";
 import type { Status } from "../../contracts/health.js";
 import type { DriftItem } from "../../contracts/ownership.js";
 import type {
@@ -45,11 +46,13 @@ export interface SyncInput {
   tunnelId?: string;
   ingressService?: string;
   publicAddress?: string;
+  // Why there is no publicAddress, for direct hosts' DNS state.
+  publicAddressMissing?: string;
   // Emails and @domains Access lets in.
   allow: string[];
   accessPolicy: CloudflareAccessPolicy;
   defaultExposure: CloudflareExposure;
-  hosts: Array<{ host: string; appId?: string; noLogin?: boolean }>;
+  hosts: Array<{ host: string; appId?: string; noLogin?: boolean; gate?: AppGateState }>;
   prefs: Map<string, HostPrefs>;
   owned: OwnedStore;
   marker: Marker;
@@ -164,10 +167,17 @@ export async function sync(input: SyncInput): Promise<SyncResult> {
   const recordedAccess = owned.list(ACCESS).length > 0;
   const apps: AccessApp[] = wantAccess || recordedAccess ? await client.accessApps(accountId) : [];
 
-  for (const { host, appId, noLogin } of input.hosts) {
+  for (const { host, appId, noLogin, gate } of input.hosts) {
     const exposure = exposureOf(host);
     const access = wantsAccess(input.accessPolicy, input.prefs.get(host), noLogin);
-    const base = { host, ...(appId ? { appId } : {}), exposure, access, ...(noLogin ? { noLogin } : {}) };
+    const base = {
+      host,
+      ...(appId ? { appId } : {}),
+      exposure,
+      access,
+      ...(noLogin ? { noLogin } : {}),
+      ...(gate ? { gate } : {}),
+    };
     if (!inZone(host, zone.name)) {
       views.push({
         ...base,
@@ -203,7 +213,7 @@ export async function sync(input: SyncInput): Promise<SyncResult> {
       dns,
       ...(route ? { route } : {}),
       ...(accessApp ? { accessApp } : {}),
-      ...judge(exposure, dns, route, accessApp, noLogin === true && !access),
+      ...judge(exposure, dns, route, accessApp, noLogin === true && !access, gate),
     });
   }
 
@@ -232,24 +242,30 @@ function judge(
   dns: CloudflareObjectState,
   route: CloudflareObjectState | undefined,
   accessApp: CloudflareObjectState | undefined,
-  open = false
+  noSignIn = false,
+  gate?: AppGateState
 ): { status: Status; detail: string } {
   const parts = [dns, route, accessApp].filter((p): p is CloudflareObjectState => p !== undefined);
   const conflict = parts.find((p) => p.state === "conflict-unowned");
   if (conflict) return { status: "crit", detail: conflict.detail };
   const pending = parts.find((p) => p.state === "pending");
   if (pending) return { status: "warn", detail: pending.detail };
-  if (open) {
+  const gated = gate === "gated" || gate === "tailnet";
+  if (noSignIn && !gated) {
     return {
       status: "warn",
-      detail: "It has no sign-in of its own and no Cloudflare Access: anyone with the link can use it",
+      detail:
+        gate === "public"
+          ? "It's public, with no sign-in of its own and no Cloudflare Access: anyone with the link can use it"
+          : "It has no sign-in of its own and no Cloudflare Access: anyone with the link can use it",
     };
   }
-  if (exposure === "direct") return { status: "ok", detail: `Straight to your public address (${dns.detail})` };
-  return {
-    status: "ok",
-    detail: accessApp ? "Routed over the tunnel behind Cloudflare Access" : "Routed over the tunnel",
-  };
+  const behind = [gated ? "the console sign-in" : "", accessApp ? "Cloudflare Access" : ""].filter(Boolean);
+  const guard = behind.length ? ` behind ${behind.join(" and ")}` : "";
+  if (exposure === "direct") {
+    return { status: "ok", detail: `Straight to your public address (${dns.detail})${guard}` };
+  }
+  return { status: "ok", detail: `Routed over the tunnel${guard}` };
 }
 
 async function syncDns(
@@ -271,7 +287,9 @@ async function syncDns(
       comment: marker.tag,
     };
   } else {
-    if (!input.publicAddress) return { state: "pending", detail: "Set the public address for direct apps" };
+    if (!input.publicAddress) {
+      return { state: "pending", detail: input.publicAddressMissing ?? "Set the public address for direct apps" };
+    }
     const type = input.publicAddress.includes(":") ? "AAAA" : "A";
     want = { type, name: host, content: input.publicAddress, proxied: false, ttl: 1, comment: marker.tag };
   }
