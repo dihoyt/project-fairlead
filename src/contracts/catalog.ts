@@ -161,22 +161,25 @@ export interface DiscoveryReport {
   };
 }
 
-// "Deploy bundle": the whole self-hosted set in one go, from a handful of
-// answers given once. Items run in order; each app's own inputs are filled
-// from the bundle's answers, literal defaults, and "<hostPrefix>.<baseDomain>"
-// for its host. Storage, ingress class and issuer come from the deploy
-// module's defaults, as for a single deploy.
+// A "Deploy bundle": a set of catalog apps rolled out in order from a few
+// answers given once. How an app's inputs are filled, first match wins:
+// the request's per-app value, the item's `bind` (app key <- shared key),
+// a shared input with the same key, the item's literal `values`, the app's
+// own default. An app's "host" defaults to "<hostPrefix ?? appId>.<baseDomain>".
+// The shared "storageClass" (and the deploy module's defaults) set storage,
+// ingress class and issuer as for a single deploy.
 export interface BundleItem {
   appId: string;
-  // Required items are always part of the rollout; optional ones can be
-  // unticked (and some start unticked, see BundleItemView.selected).
+  // Required items are always rolled out unless already installed; optional
+  // ones can be left out (and some start unticked, see BundleItemView).
   required: boolean;
   // Host label for apps with a "host" input: "git" makes git.<baseDomain>.
   hostPrefix?: string;
-  // App input key -> bundle input key it takes its value from.
-  bind: Record<string, string>;
+  // App input key -> shared input key, where the names differ
+  // (cert-manager's acmeEmail <- adminEmail).
+  bind?: Record<string, string>;
   // App input key -> literal value.
-  values: Record<string, string | boolean>;
+  values?: Record<string, string | boolean>;
   // One sentence shown beside the item: why it is optional, what it needs.
   note?: string;
 }
@@ -185,18 +188,19 @@ export interface CatalogBundle {
   id: string;
   name: string;
   summary: string;
-  // Asked once for the whole bundle: "baseDomain", "adminEmail", "adminPassword".
-  inputs: CatalogInput[];
+  // Install order: each item's requires come before it.
   items: BundleItem[];
+  // Asked once: "baseDomain", "adminEmail", "adminPassword", "storageClass".
+  inputs: CatalogInput[];
 }
 
 export interface BundleItemView extends BundleItem {
   detected: DetectedApp;
-  // Already installed (or its job already done, like a default storage
-  // class): the rollout skips it.
+  // Already installed, or its job already done (a default storage class
+  // exists): the rollout skips it.
   skip: boolean;
-  // Ticked by default: required items and optional ones whose
-  // prerequisites cannot be checked from here start unticked.
+  // Ticked by default: optional items whose prerequisites can't be checked
+  // from here start unticked.
   selected: boolean;
   // Why it is skipped or unticked, when it is.
   reason?: string;
@@ -204,17 +208,16 @@ export interface BundleItemView extends BundleItem {
 
 export interface CatalogBundleView extends Omit<CatalogBundle, "items"> {
   items: BundleItemView[];
-  // Discovery's suggestion for baseDomain, to prefill the one question
-  // that matters most.
-  suggestedBaseDomain?: string;
+  // Discovery's suggestions, to prefill the shared "baseDomain" and "storageClass".
+  suggested: { baseDomain?: string; storageClass?: string };
 }
 
 // Provided by module "catalog" as ctx.services.get("catalog").
 export interface CatalogService {
   entries(): readonly CatalogEntry[];
   get(appId: string): CatalogEntry | undefined;
-  // The "Deploy bundle" definition, ordered so each item's requires come first.
-  bundle(): CatalogBundle;
+  // The Deploy bundles, the default one first.
+  bundles(): readonly CatalogBundle[];
   // Cached for a short interval; refresh forces a new look.
   discover(refresh?: boolean): Promise<DiscoveryReport>;
 }

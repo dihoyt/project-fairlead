@@ -23,7 +23,16 @@ import type {
 import type { BackupPosture, RestoreTestMark } from "./backups.js";
 import type { CatalogAppView, CatalogBundleView, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
-import type { DeployJobRequest, DeployJobView, DeployPlan, DeployRequest, DeployStatus } from "./deploy.js";
+import type {
+  BundlePlan,
+  BundleRequest,
+  BundleRunView,
+  DeployJobRequest,
+  DeployJobView,
+  DeployPlan,
+  DeployRequest,
+  DeployStatus,
+} from "./deploy.js";
 import type { Category, CategoryDetail, CheckHistory, CheckResult, HealthBoard } from "./health.js";
 import type { HostKeypair, HostRequest, HostTestResult, HostView } from "./hosts.js";
 import type { CapabilityReport } from "./k8s.js";
@@ -204,8 +213,8 @@ export interface ApiRoutes {
   "GET /api/catalog/apps": Route<None, { slot?: string; refresh?: "1" }, None, CatalogAppView[]>;
   "GET /api/catalog/apps/:id": Route<{ id: string }, None, None, CatalogAppView>;
   "GET /api/catalog/discovery": Route<None, { refresh?: "1" }, None, DiscoveryReport>;
-  // The "Deploy bundle" with what discovery found for each item.
-  "GET /api/catalog/bundle": Route<None, { refresh?: "1" }, None, CatalogBundleView>;
+  // The Deploy bundles, default first, with what discovery found per item.
+  "GET /api/catalog/bundles": Route<None, { refresh?: "1" }, None, CatalogBundleView[]>;
 
   // --- deploy (v0.1.x) ----------------------------------------------------
   "GET /api/deploy/status": Route<None, None, None, DeployStatus>;
@@ -222,6 +231,16 @@ export interface ApiRoutes {
   "GET /api/deploy/jobs/:id/logs/stream": Route<{ id: string }, None, None, EventStream<{ line: string }>>;
   // Admin, audited. Deletes the Job; what helm already applied stays.
   "POST /api/deploy/jobs/:id/cancel": Route<{ id: string }, None, None, DeployJobView>;
+  // Admin. Every step's plan, in order, with the skipped ones marked; runs nothing.
+  "POST /api/deploy/bundles/plan": Route<None, None, BundleRequest, BundlePlan>;
+  // Admin, audited. One step at a time, each an ordinary deploy job; stops
+  // at the first failure. 409 while another bundle run is running.
+  "POST /api/deploy/bundles": Route<None, None, BundleRequest, BundleRunView>;
+  // Newest first.
+  "GET /api/deploy/bundles": Route<None, None, None, BundleRunView[]>;
+  "GET /api/deploy/bundles/:id": Route<{ id: string }, None, None, BundleRunView>;
+  // Admin, audited. Cancels the running step and leaves the rest pending.
+  "POST /api/deploy/bundles/:id/cancel": Route<{ id: string }, None, None, BundleRunView>;
 
   // --- onboarding (A14) ---------------------------------------------------
   "GET /api/onboarding/state": Route<None, None, None, OnboardingState>;
