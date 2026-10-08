@@ -133,6 +133,24 @@ jobs:
           # No release to update: it says so and points at install.sh.
           ! sh update.sh --yes --chart ./chart --release absent 2> "$RUNNER_TEMP/absent.err"
           grep -q 'install it with install.sh' "$RUNNER_TEMP/absent.err"
+      - name: A webhook with no pods behind it stops the run before any write
+        run: |
+          hook() {
+            printf '%s\n' "apiVersion: admissionregistration.k8s.io/v1" "kind: ValidatingWebhookConfiguration" \
+              "metadata: {name: $1}" "webhooks:" "- name: $1.example.com" \
+              "  clientConfig: {service: {namespace: default, name: gone-webhook}}" \
+              "  rules: [{apiGroups: ['*'], apiVersions: ['*'], operations: [CREATE, UPDATE], resources: [$2]}]" \
+              "  sideEffects: None" "  admissionReviewVersions: [v1]"
+          }
+          { hook dead-secrets secrets; echo ---; hook dead-widgets widgets; } | sudo k3s kubectl apply -f -
+          ! sh update.sh --yes --chart ./chart 2> "$RUNNER_TEMP/webhook.err"
+          cat "$RUNNER_TEMP/webhook.err"
+          grep -q 'validatingwebhookconfiguration/dead-secrets: webhook dead-secrets.example.com -> service default/gone-webhook' "$RUNNER_TEMP/webhook.err"
+          grep -q 'kubectl delete validatingwebhookconfiguration/dead-secrets$' "$RUNNER_TEMP/webhook.err"
+          grep -q 'warning: admission webhook dead-widgets.example.com' "$RUNNER_TEMP/webhook.err"
+          # Stopped before writing: the release is untouched and both webhooks are still there.
+          [ "$(sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml history "$RELEASE" -n "$NS" -o json | jq length)" = 3 ]
+          sudo k3s kubectl delete validatingwebhookconfiguration dead-secrets dead-widgets
       - name: Uninstall removes the release and leaves k3s
         run: |
           sh install.sh --yes --uninstall
