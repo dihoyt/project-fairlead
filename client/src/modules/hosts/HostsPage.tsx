@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { Alert, Button, Group, Modal, SimpleGrid, Skeleton, Stack, Text, Title } from "@mantine/core";
+import { Alert, Button, Group, Modal, Paper, SimpleGrid, Skeleton, Stack, Text, Title } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
 import type { HostRequest } from "@contracts/hosts";
 import { Tile, apiRequest, useApi, useSession } from "../../ui";
+import { GeneratedKey, useKeypair } from "./GeneratedKey";
 import { HostForm } from "./HostForm";
 import { hostSummary } from "./labels";
 
 export function HostsPage() {
   const { me } = useSession();
   const hosts = useApi("GET /api/hosts", undefined, { pollMs: 15_000 });
+  const keypair = useKeypair();
   const [adding, setAdding] = useState(false);
 
   async function create(req: HostRequest) {
@@ -67,8 +69,15 @@ export function HostsPage() {
         </SimpleGrid>
       )}
 
+      <Paper withBorder p="md">
+        <Stack gap="xs">
+          <Title order={4}>SSH key</Title>
+          <GeneratedKey resource={keypair} canGenerate={me.admin} allowRotate />
+        </Stack>
+      </Paper>
+
       <Modal opened={adding} onClose={() => setAdding(false)} title="Add a host" size="lg">
-        {adding && <HostForm onSubmit={create} onCancel={() => setAdding(false)} />}
+        {adding && <HostForm keypair={keypair} onSubmit={create} onCancel={() => setAdding(false)} />}
       </Modal>
     </Stack>
   );
