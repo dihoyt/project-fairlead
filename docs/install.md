@@ -87,7 +87,7 @@ Two extras, both off unless asked for, and both only for this host's k3s:
   "Installer").
 
 `update.sh` is `install.sh` with one line changed, and takes the same flags
-(`update.sh --help`). `scripts/install/gen-update.sh` regenerates it, and CI
+(`update.sh --help`). `scripts/install/gen-scripts.sh` regenerates it, and CI
 fails if it falls out of step.
 
 ## Adding nodes
@@ -112,6 +112,12 @@ curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/add-nod
 - `--server` joins them as additional servers instead. That needs a cluster
   started with embedded etcd (`--cluster-init`); the script refuses on a
   SQLite-backed server.
+
+What runs on each node is `scripts/install/join-node.sh` (prerequisites, then
+k3s with `K3S_URL`, `K3S_TOKEN` and `INSTALL_K3S_VERSION` from the
+environment). `add-node.sh` carries a copy of it, kept in step by
+`scripts/install/gen-scripts.sh`, so the same steps can be run on a node by
+other means.
 
 ## Install with Helm
 
