@@ -505,7 +505,7 @@ export const mockBundle: CatalogBundle = {
       hostPrefix: "longhorn",
       bind: {},
       values: {},
-      note: "Every node needs open-iscsi; tick it once yours do.",
+      note: "Every node needs open-iscsi; untick it if yours don't have it.",
     },
     { appId: "authentik", required: true, hostPrefix: "auth", bind: { adminEmail: "adminEmail" }, values: {} },
     {
@@ -530,7 +530,7 @@ export const mockBundleView: CatalogBundleView = {
   items: mockBundle.items.map((item): BundleItemView => {
     const detected = mockDetected.find((d) => d.appId === item.appId)!;
     const skip = detected.state === "installed" || item.appId === "local-path-provisioner";
-    const selected = !skip && (item.required || item.appId !== "longhorn");
+    const selected = !skip;
     return {
       ...item,
       detected,

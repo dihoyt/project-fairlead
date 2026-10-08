@@ -132,7 +132,7 @@ test("bundle plan: order, skips with reasons, shared answers fill each app", asy
   const step = (id: string) => plan.steps.find((s) => s.appId === id)!;
   assert.match(step("traefik").reason ?? "", /^Already installed/);
   assert.equal(step("local-path-provisioner").reason, "The cluster already has what it provides");
-  assert.equal(step("longhorn").reason, "Every node needs open-iscsi; tick it once yours do.");
+  assert.equal(step("longhorn").reason, "Every node needs open-iscsi; untick it if yours don't have it.");
   assert.deepEqual(step("gitea").plan?.inputs, {
     host: "git.example.test",
     adminUser: "gitea-admin",
