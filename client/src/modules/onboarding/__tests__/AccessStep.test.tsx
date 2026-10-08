@@ -37,6 +37,11 @@ describe("Access step", () => {
     expect(screen.getByText("no DNS yet")).toBeInTheDocument();
     expect(screen.getByText("DNS set up")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+    const steps = document.querySelectorAll("[data-cloudflare-steps] li");
+    expect(steps).toHaveLength(2);
+    expect(steps[0]).toHaveTextContent(/published application route: Subdomain \*, Domain example\.test, Path empty/);
+    expect(steps[1]).toHaveTextContent(/Type CNAME, Name \*, Target <Tunnel ID>\.cfargotunnel\.com, Proxied on/);
+    expect(screen.getByRole("button", { name: "Copy service URL" })).toBeInTheDocument();
   });
 
   it("saves a new choice and shows the hosts block for a local network", async () => {
