@@ -2,6 +2,7 @@ import type { Request, Express } from "express";
 import type { Server } from "node:http";
 import type { ZodType } from "zod";
 import type { Database } from "better-sqlite3";
+import type { ApiTokenScope } from "./auth.js";
 import type { Migration } from "./runtime.js";
 
 // Everything in this file is implemented by the platform (S2, src/platform/).
@@ -18,14 +19,18 @@ export interface User {
   email: string;
   groups: string[];
   admin: boolean;
-  source: SignInMethod | "dev-bypass";
+  source: SignInMethod | "dev-bypass" | "token";
   mustChangePassword: boolean;
   mustEnrollTotp?: boolean;
   orgId: string;
+  // Set when the request carried an API token (source "token"): which one,
+  // and the scope that caps what can() allows.
+  token?: { id: string; scope: ApiTokenScope };
 }
 
 // Tenancy A: "read" is any signed-in user; "write" and "admin" are admins.
-// S2 may refine "write" with roles; the three names are the contract.
+// S2 may refine "write" with roles; the three names are the contract. A
+// "read"-scoped API token allows only "read", whoever created it.
 export type Action = "read" | "write" | "admin";
 
 export interface SettingSpec<T> {
@@ -92,14 +97,24 @@ export interface Platform {
   install(app: Express): void;
   identify(req: Request): User | null;
   can(user: User, action: Action): boolean;
+  // A single-use ticket, valid for a few seconds, that makes one internal
+  // request (ModuleContext.call) carry this request's identity without
+  // resolving it again. Throws on a request with no identity. Only this
+  // process can mint one, so a ticket from outside never matches.
+  vouch(req: Request): string;
   settings: SettingsRegistry;
   secrets: SecretStore;
   audit: AuditLog;
   // Removes UI overrides from the settings table so each falls back to its
-  // environment value or default. Selects every override, then drops any
-  // key in `except` or starting with one of `exceptPrefixes`. Returns the
-  // rows removed. Same-connection statements, so it joins an open transaction.
-  clearSettings(options: { except?: readonly string[]; exceptPrefixes?: readonly string[] }): number;
+  // environment value or default. Considers the keys in `only` (every
+  // override when absent), then drops any key in `except` or starting with
+  // one of `exceptPrefixes`. Returns the rows removed. Same-connection
+  // statements, so it joins an open transaction.
+  clearSettings(options: {
+    only?: readonly string[];
+    except?: readonly string[];
+    exceptPrefixes?: readonly string[];
+  }): number;
   // Gives the built-in "admin" account a new random password, marks it to be
   // changed at the next sign-in. Returns the password once. Throws if no such account exists.
   resetAdminPassword(): Promise<string>;
@@ -117,5 +132,8 @@ export interface PlatformDeps {
   // request without signing in. The server entrypoint never passes it.
   identify?: (req: Request) => User | null;
 }
+
+// The header an internal request carries its vouch() ticket in.
+export const INTERNAL_CALL_HEADER = "x-internal-call";
 
 export type CreatePlatform = (deps: PlatformDeps) => Platform;

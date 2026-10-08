@@ -19,6 +19,7 @@ const mod: Module = {
   migrations,
   register(ctx) {
     const health = startHealth(ctx);
+    ctx.reset.add({ scope: "links", settingKeys: ["health.links"] });
 
     ctx.route("GET /api/health/board", () => health.board());
 

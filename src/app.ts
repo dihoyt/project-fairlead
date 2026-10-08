@@ -1,7 +1,9 @@
 import express, { type Express } from "express";
+import { MCP_PATH } from "./contracts/mcp.js";
 import type { ModuleStatus } from "./contracts/system.js";
 import { apiErrorHandler } from "./runtime/http.js";
 import type { Runtime } from "./runtime/index.js";
+import { parseResetRequest, runReset } from "./runtime/reset.js";
 
 export interface AppOptions {
   // The client's built output; absent in tests.
@@ -15,6 +17,13 @@ export function createApp(runtime: Runtime, options: AppOptions = {}): Express {
   app.disable("x-powered-by");
 
   platform.early(app);
+
+  // MCP clients are given the short path; it is served by the mcp module's
+  // /api/mcp so it passes through the same authentication as the rest of /api.
+  app.use((req, _res, next) => {
+    if (req.path === MCP_PATH) req.url = `/api/mcp${req.url.slice(MCP_PATH.length)}`;
+    next();
+  });
 
   // Unauthenticated: k8s probes hit these and they disclose nothing.
   // /healthz is readiness and fails during a drain so the Service stops
@@ -45,6 +54,19 @@ export function createApp(runtime: Runtime, options: AppOptions = {}): Express {
       return;
     }
     res.json(runtime.scheduler.list());
+  });
+
+  app.post("/api/system/reset", (req, res, next) => {
+    const user = platform.identify(req);
+    if (!user || !platform.can(user, "admin")) {
+      res.status(403).json({ error: "You don't have permission to do that." });
+      return;
+    }
+    runReset(
+      { db: runtime.db, platform, registry: runtime.reset, log: runtime.log },
+      parseResetRequest(req.body),
+      user.id
+    ).then((result) => res.json(result), next);
   });
 
   runtime.mountModules(app);

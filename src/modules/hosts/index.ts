@@ -122,6 +122,34 @@ function register(ctx: ModuleContext): HostsService {
   });
   const { store, keypair } = service;
 
+  // Secrets are keyed by row id and cannot join the transaction, so the ids
+  // are read before the rows go.
+  let doomed: string[] = [];
+  ctx.reset.add({
+    scope: "hosts",
+    clear() {
+      doomed = store.list().map((row) => row.id);
+      for (const id of doomed) service.forget(id);
+      return ctx.db.prepare("DELETE FROM hosts_inventory WHERE org_id = ?").run(ctx.orgId).changes;
+    },
+    async clearAfter() {
+      let removed = 0;
+      for (const id of doomed) {
+        if (await ctx.secrets.has("hosts", id)) {
+          await ctx.secrets.delete("hosts", id);
+          removed++;
+        }
+      }
+      return removed;
+    },
+  });
+  ctx.reset.add({
+    scope: "sshKey",
+    async clearAfter() {
+      return (await keypair.remove()) ? 1 : 0;
+    },
+  });
+
   ctx.health.addProvider(service.provider);
   service.syncCapacities();
   ctx.scheduler.every("collect", TICK_MS, (signal) => service.collectDue(signal), { timeoutMs: 120_000 });

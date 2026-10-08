@@ -122,7 +122,7 @@ export function adminRouter(core: Core): Router {
   // Would this admin still get in from where they are now, after a change to
   // their own network list?
   const assertStillReachable = (req: Request, admin: PlatformUser, account: Pick<UserRow, "allowedNetworks">) => {
-    if (admin.source === "dev-bypass") return;
+    if (admin.source === "dev-bypass" || admin.source === "token") return;
     const ip = clientIp(req);
     if (!ruleAllows(effectiveRule(s, account, admin.source), ip)) {
       throw new AdminError(

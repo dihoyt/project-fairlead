@@ -2,6 +2,7 @@ import type { Database } from "better-sqlite3";
 import type { CatalogService } from "./catalog.js";
 import type { DeployService } from "./deploy.js";
 import type { K8sApi } from "./k8s.js";
+import type { SeriesQuery, SeriesResult } from "./metrics.js";
 import type { ResetScope } from "./reset.js";
 import type { JobStatus } from "./system.js";
 
@@ -51,6 +52,14 @@ export interface Services {
   catalog: CatalogService;
   // Provided by module "deploy".
   deploy: DeployService;
+  // Provided by module "metrics" (A3).
+  metrics: MetricsQuery;
+}
+
+// The store behind GET /api/metrics/query, for modules that summarise
+// series server-side. Same semantics as the route, without its limits.
+export interface MetricsQuery {
+  query(query: SeriesQuery): SeriesResult[];
 }
 
 export interface ServiceRegistry {
