@@ -214,15 +214,9 @@ test("run: a deploy job in mode action with the patches in its values Secret; au
   assert.match(busy.error, /dj_1/);
 });
 
-test("actions: migrate-to-longhorn isn't available yet; bad bodies are 400", async () => {
+test("actions: bad bodies are 400", async () => {
   const e = await setup();
-  const missing = await post<{ error: string }>(
-    e,
-    "/actions/plan",
-    { kind: "migrate-to-longhorn", appId: "gitea" },
-    400
-  );
-  assert.match(missing.error, /not available yet/);
+  await post(e, "/actions/plan", { kind: "migrate-to-longhorn" }, 400);
   await post(e, "/actions/plan", { kind: "longhorn-replicas" }, 400);
   await post(e, "/actions/plan", { kind: "longhorn-replicas", existingVolumes: true, replicas: 9 }, 400);
   await post(e, "/actions/plan", { kind: "reboot-everything" }, 400);

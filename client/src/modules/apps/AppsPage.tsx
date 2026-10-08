@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import {
   Alert,
   Anchor,
@@ -16,9 +16,10 @@ import {
 } from "@mantine/core";
 import { IconExternalLink, IconRefresh } from "@tabler/icons-react";
 import type { CatalogAppView, CatalogSlot } from "@contracts/catalog";
-import type { DeployJobView } from "@contracts/deploy";
+import type { DeployActionKind, DeployJobView } from "@contracts/deploy";
 import { PageHeader } from "../../shell/PageHeader";
 import { relativeTime, useApi } from "../../ui";
+import { SessionContext } from "../../ui/session";
 import {
   DETECT_COLOR,
   DETECT_LABEL,
@@ -29,10 +30,21 @@ import {
   WhatIsThis,
   isFinished,
 } from "../../ui/deploy";
+import { ConvertToLonghornButton } from "./ConvertToLonghorn";
 import { SLOT_LABEL, SLOT_ORDER } from "./labels";
 import { UpgradesSection } from "./Upgrades";
 
 const JOBS_POLL_MS = 5_000;
+
+const MODE_LABEL: Record<DeployJobView["mode"] | DeployActionKind, string> = {
+  install: "install",
+  "dry-run": "dry run",
+  upgrade: "upgrade",
+  action: "action",
+  "longhorn-replicas": "replicas",
+  "migrate-to-longhorn": "convert",
+  "backup-volumes": "backup",
+};
 
 // An app offered in several slots is listed under its first one only.
 export function groupBySlot(apps: CatalogAppView[]): Array<{ slot: CatalogSlot; apps: CatalogAppView[] }> {
@@ -55,6 +67,7 @@ function AppCard({
   onDeployed: () => void;
 }) {
   const { detected } = app;
+  const admin = useContext(SessionContext)?.me.admin ?? true;
   return (
     <Card withBorder padding="sm" data-app={app.id} data-detect-state={detected.state}>
       <Stack gap={6} h="100%">
@@ -107,6 +120,11 @@ function AppCard({
             <DeployButton appId={app.id} size="xs" onDeployed={onDeployed} />
           </Group>
         ) : null}
+        {detected.state === "installed" && detected.ownedByUs && app.storage && admin ? (
+          <Group mt="auto" pt={4}>
+            <ConvertToLonghornButton appId={app.id} name={app.name} onFinished={onDeployed} />
+          </Group>
+        ) : null}
       </Stack>
     </Card>
   );
@@ -147,9 +165,7 @@ function JobsTable({
               <Table.Td>{names[job.appId] ?? job.appId}</Table.Td>
               <Table.Td>
                 <Badge color={JOB_STATE_COLOR[job.state]} variant={isFinished(job.state) ? "light" : "dot"} radius="xs">
-                  {job.mode === "install"
-                    ? job.state
-                    : `${job.mode === "dry-run" ? "dry run" : "upgrade"} ${job.state}`}
+                  {job.mode === "install" ? job.state : `${MODE_LABEL[job.action ?? job.mode]} ${job.state}`}
                 </Badge>
               </Table.Td>
               <Table.Td>

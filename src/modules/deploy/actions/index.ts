@@ -11,6 +11,8 @@ import type {
 import type { K8sApi } from "../../../contracts/k8s.js";
 import type { CallInput } from "../../../contracts/module.js";
 import type { Step } from "../apps.js";
+import { backupAction } from "./backup.js";
+import { migrateAction } from "./migrate.js";
 import { replicasAction } from "./replicas.js";
 
 // What an action renders from. Reads only: nothing here changes the cluster.
@@ -66,6 +68,8 @@ export interface ActionRecipe<R extends DeployActionRequest = DeployActionReques
 
 const recipes: { [K in DeployActionKind]?: ActionRecipe<Extract<DeployActionRequest, { kind: K }>> } = {
   "longhorn-replicas": replicasAction,
+  "migrate-to-longhorn": migrateAction,
+  "backup-volumes": backupAction,
 };
 
 export function actionRecipe<K extends DeployActionKind>(
