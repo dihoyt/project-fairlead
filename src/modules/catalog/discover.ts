@@ -3,7 +3,7 @@ import type { DeployedRelease } from "../../contracts/deploy.js";
 import { isDeployedByUs } from "../../contracts/deployed.js";
 import { RESOURCES, type K8sApi, type KubeObject, type ResourceRef } from "../../contracts/k8s.js";
 import { nodeDisks } from "./disks.js";
-import { chartName, parseImage, signatures, type Signature } from "./signatures.js";
+import { chartName, chartVersion, parseImage, signatures, type Signature } from "./signatures.js";
 
 const DEFAULT_SC = "storageclass.kubernetes.io/is-default-class";
 const DEFAULT_SC_BETA = "storageclass.beta.kubernetes.io/is-default-class";
@@ -192,12 +192,14 @@ function detectFromWorkloads(k8s: K8sApi, entry: CatalogEntry, matches: AppMatch
   const release =
     workload.metadata.annotations?.["meta.helm.sh/release-name"] ??
     (labels["app.kubernetes.io/managed-by"] === "Helm" ? labels["app.kubernetes.io/instance"] : undefined);
+  const chart = chartVersion(labels["helm.sh/chart"]);
   return {
     appId: entry.id,
     state: "installed",
     ...(workload.metadata.namespace ? { namespace: workload.metadata.namespace } : {}),
     ...(release ? { release } : {}),
     ...(primary.version ? { version: primary.version } : {}),
+    ...(chart ? { chartVersion: chart } : {}),
     urls: [],
     evidence: `${primary.kind} ${qualified(workload)} (${primary.reason})`,
     managedBy,
