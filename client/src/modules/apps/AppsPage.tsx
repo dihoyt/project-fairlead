@@ -47,6 +47,7 @@ const MODE_LABEL: Record<DeployJobView["mode"] | DeployActionKind, string> = {
   "backup-volumes": "backup",
   "remove-app": "remove",
   "app-gate": "sign-in gate",
+  "traefik-ports": "ports",
 };
 
 // An app offered in several slots is listed under its first one only.

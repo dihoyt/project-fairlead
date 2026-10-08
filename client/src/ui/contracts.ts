@@ -81,6 +81,10 @@ export interface NavItem {
   // Lower sorts first; default 100.
   order?: number;
   section?: "main" | "admin";
+  // A parent entry in the sidebar this item sits under ("Apps"), shown open
+  // while one of its items is active. The parent takes its place and icon
+  // from its lowest-ordered item; its items sort by order among themselves.
+  group?: string;
 }
 
 export interface ModuleRoute {

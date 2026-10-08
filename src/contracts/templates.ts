@@ -11,10 +11,23 @@
 // Server-free on purpose: the client imports this file.
 
 import type { CatalogEntry, DiskFootprint } from "./catalog.js";
-import type { DeployJobView, DeployMode, DeployPlan } from "./deploy.js";
+import type { DeployJobView, DeployMode, DeployPlan, WantedPort } from "./deploy.js";
 
 // The template id of the Custom app form.
 export const CUSTOM_TEMPLATE = "custom";
+
+// The template id of the External service form: something running outside
+// the cluster (a VM, a NAS, a game server) published through the cluster's
+// Traefik. It renders no workload: a selector-less Service and an
+// EndpointSlice at the address, plus, for TCP and UDP, a Traefik
+// IngressRouteTCP or IngressRouteUDP on the entrypoint for its public port
+// (traefikEntrypoint() in ./deploy.ts). HTTP and HTTPS get the deploy
+// runner's Ingress like any template, so the access mode, the sign-in gate
+// and the Cloudflare connector treat them like any app. TCP and UDP can't
+// ride a Cloudflare tunnel (Spectrum is a paid plan): they are reached at
+// the cluster's own address on the public port, through ports forwarded to
+// it ("deploy.forwardedPorts").
+export const EXTERNAL_TEMPLATE = "external";
 
 // A namespace an instance runs in carries `<labelDomain>/app-template:
 // <template id>` (plus the deployed-by label and Pod Security "baseline"
@@ -62,6 +75,28 @@ export interface CustomAppSpec {
   volume?: { size: string; mountPath: string };
 }
 
+// http, https: a web page or API, published on a hostname by the Ingress.
+// https: the target speaks TLS itself (a NAS or hypervisor UI).
+// tcp, udp: published on publicPort of the cluster's address.
+export type ExternalProtocol = "http" | "https" | "tcp" | "udp";
+
+export interface ExternalServiceSpec {
+  // An IPv4 or IPv6 address outside the cluster, "10.0.0.50". Not a
+  // hostname: an EndpointSlice holds addresses only.
+  address: string;
+  // The port the service listens on there, 1-65535.
+  port: number;
+  protocol: ExternalProtocol;
+  // tcp and udp only: the port people connect to on the cluster's address,
+  // one of the "deploy.forwardedPorts" range. Default: port. When it
+  // differs from port, protocols that carry their own port inside their
+  // messages (server browsers of some games, FTP, SIP) may only work when
+  // the service is reached directly; the plan warns.
+  publicPort?: number;
+  // https only: accept the target's self-signed certificate. Default false.
+  insecureSkipVerify?: boolean;
+}
+
 export interface TemplateDeployRequest {
   templateId: string;
   // The instance's name: its release, its namespace and the first label of
@@ -79,6 +114,9 @@ export interface TemplateDeployRequest {
   storageClass?: string;
   // Required when templateId is CUSTOM_TEMPLATE, refused otherwise.
   custom?: CustomAppSpec;
+  // Required when templateId is EXTERNAL_TEMPLATE, refused otherwise. host
+  // applies to http and https only; volumeSize and storageClass are refused.
+  external?: ExternalServiceSpec;
   // Passed on as DeployRequest.public: reachable without signing in to the
   // console. Default false.
   public?: boolean;
@@ -98,7 +136,9 @@ export interface TemplateJobRequest extends TemplateDeployRequest {
 //   verbs, resources or API groups.
 // - kind: any other kind than Namespace, Deployment, Service,
 //   PersistentVolumeClaim, ConfigMap, Secret, ServiceAccount, Role,
-//   RoleBinding, or an object outside the instance's namespace.
+//   RoleBinding (for EXTERNAL_TEMPLATE also EndpointSlice, IngressRouteTCP,
+//   IngressRouteUDP and ServersTransport), or an object outside the
+//   instance's namespace.
 export type GuardrailRule =
   | "privileged"
   | "privilege-escalation"
@@ -139,6 +179,11 @@ export interface TemplatePlan {
   // The deploy runner's plan for it: commands, Ingress, URL, warnings.
   // Absent when field errors stop the render.
   deploy?: DeployPlan;
+  // EXTERNAL_TEMPLATE over tcp or udp: the Traefik entrypoint it needs and
+  // whether Traefik serves it yet. When open is false the route is applied
+  // anyway (Traefik ignores it until the entrypoint exists) and the
+  // "traefik-ports" action opens it.
+  entrypoint?: { name: string; port: number; protocol: "tcp" | "udp"; open: boolean };
 }
 
 export interface TemplateInstance {
@@ -157,6 +202,8 @@ export interface TemplateInstance {
   storageClass?: string;
   // The custom template's spec, to prefill the form for a redeploy.
   custom?: CustomAppSpec;
+  // The external service's spec, likewise.
+  external?: ExternalServiceSpec;
   // Its latest deploy job, when the runner still has it.
   lastJob?: DeployJobView;
   createdBy: string;
@@ -165,7 +212,7 @@ export interface TemplateInstance {
 }
 
 export interface TemplatesView {
-  // Library order, the custom template last.
+  // Library order, then the custom and external templates.
   templates: AppTemplate[];
   // Newest first.
   instances: TemplateInstance[];
@@ -178,4 +225,7 @@ export interface TemplatesService {
   // runner's upgrade report and upgrade jobs cover template instances. Each
   // id is the instance name.
   entries(): readonly CatalogEntry[];
+  // The public ports external services over tcp and udp ask Traefik for,
+  // by instance name, so the "traefik-ports" action opens exactly these.
+  forwardedPorts(): readonly WantedPort[];
 }
