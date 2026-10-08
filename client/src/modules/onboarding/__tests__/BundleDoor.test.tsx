@@ -14,7 +14,7 @@ import { apiMocks } from "../../../ui/mocks/api";
 import { SessionContext, type Session } from "../../../ui/session";
 import { stubApi } from "../../../ui/deploy/__tests__/stubApi";
 import { renderWithApp } from "../../../test-utils";
-import { BundleDoor, initialBundleValues, initialInclude } from "../BundleDoor";
+import { BundleDoor, defaultStorageClass, initialBundleValues, initialInclude } from "../BundleDoor";
 import { landedSteps, linksForLanded, runFailures } from "../bundle";
 import { WelcomePage, startsAtDoors } from "../WelcomePage";
 
@@ -163,6 +163,35 @@ describe("BundleDoor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start rollout" }));
     await waitFor(() => expect(calls.some((c) => c.key === "POST /api/deploy/bundles")).toBe(true));
     expect(await screen.findByRole("button", { name: "Continue setup" })).toBeDisabled();
+  });
+
+  it("puts the storage class on Longhorn while Longhorn is ticked, unless the user typed one", async () => {
+    const withLonghorn: CatalogBundleView = {
+      ...mockBundleView,
+      suggested: { ...mockBundleView.suggested, storageClass: "local-path" },
+      items: mockBundleView.items.map((item) =>
+        item.appId === "longhorn" ? { ...item, skip: false, selected: true, reason: undefined } : item
+      ),
+    };
+    expect(defaultStorageClass(withLonghorn, ["longhorn"])).toBe("longhorn");
+    expect(defaultStorageClass(withLonghorn, [])).toBe("local-path");
+
+    stubApi({ ...noRuns, "GET /api/catalog/bundles": [withLonghorn] });
+    renderWithApp(<BundleDoor onDone={() => {}} />);
+    const field = await screen.findByLabelText(/Storage class/);
+    await waitFor(() => expect(field).toHaveValue("longhorn"));
+    expect(screen.getByText(/Longhorn, which this rollout installs/)).toBeInTheDocument();
+
+    const longhorn = within(document.querySelector('[data-item="longhorn"]') as HTMLElement).getByRole("checkbox");
+    fireEvent.click(longhorn);
+    await waitFor(() => expect(field).toHaveValue("local-path"));
+    fireEvent.click(longhorn);
+    await waitFor(() => expect(field).toHaveValue("longhorn"));
+
+    fireEvent.change(field, { target: { value: "nfs-nas" } });
+    fireEvent.click(longhorn);
+    fireEvent.click(longhorn);
+    expect(field).toHaveValue("nfs-nas");
   });
 
   it("offers no start while deploys are off", async () => {
