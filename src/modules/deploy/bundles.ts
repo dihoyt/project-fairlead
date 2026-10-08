@@ -447,6 +447,13 @@ export class Bundles {
     });
   }
 
+  // An optional item that fails is recorded and the rollout moves on; a
+  // required one stops it. An item gone from the catalog counts as required.
+  private optional(run: Run, appId: string): boolean {
+    const item = this.bundle(run.bundleId).items.find((i) => i.appId === appId);
+    return item ? !item.required : false;
+  }
+
   // Moves a run on from its current step: records a finished job, starts
   // the next pending step, or finishes the run.
   private async advance(run: Run): Promise<void> {
@@ -457,15 +464,20 @@ export class Bundles {
         if (this.now() - claimed < CLAIM_TIMEOUT_MS) return;
         current.state = "failed";
         current.message = "The step was claimed but its job never started.";
-        await this.finishRun(run, "failed");
-        return;
+        delete current.claimedAt;
+        if (!this.optional(run, current.appId)) {
+          await this.finishRun(run, "failed");
+          return;
+        }
+        if (!this.runs.save(run)) return;
+        return this.advance(run);
       }
       const job = this.deployer.mustGet(current.jobId).view;
       if (!isFinal(job.state)) return;
       current.state = job.state as BundleStepState;
       if (job.message) current.message = job.message;
       if (job.url) current.url = job.url;
-      if (job.state !== "succeeded") {
+      if (job.state === "cancelled" || (job.state === "failed" && !this.optional(run, current.appId))) {
         await this.finishRun(run, job.state === "cancelled" ? "cancelled" : "failed");
         return;
       }
@@ -474,7 +486,7 @@ export class Bundles {
 
     const next = run.steps.find((step) => step.state === "pending");
     if (!next) {
-      await this.finishRun(run, "succeeded");
+      await this.finishRun(run, run.steps.some((step) => step.state === "failed") ? "failed" : "succeeded");
       return;
     }
     const request = await this.request(run);
@@ -516,11 +528,14 @@ export class Bundles {
       next.state = "failed";
       next.message = errorMessage(err);
       delete next.claimedAt;
-      await this.finishRun(run, "failed");
-      return;
+      if (!this.optional(run, next.appId)) {
+        await this.finishRun(run, "failed");
+        return;
+      }
     }
     if (!this.runs.save(run)) return;
-    // A skipped step leaves nothing to wait for.
-    if (next.state === "skipped") await this.advance(run);
+    // A skipped step, or an optional one that failed to start, leaves
+    // nothing to wait for.
+    if (next.state === "skipped" || next.state === "failed") await this.advance(run);
   }
 }
