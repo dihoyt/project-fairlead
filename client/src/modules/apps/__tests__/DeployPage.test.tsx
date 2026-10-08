@@ -3,7 +3,8 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { mockCatalogApps, mockDeployDisabled, mockFailedJob } from "@contracts/mocks/catalog";
 import { renderWithApp } from "../../../test-utils";
 import { stubApi, stubEventSource } from "../../../ui/deploy/__tests__/stubApi";
-import { AppsPage, groupBySlot } from "../AppsPage";
+import { groupBySlot } from "../CatalogTab";
+import { DeployPage } from "../DeployPage";
 
 const card = (appId: string) =>
   waitFor(() => {
@@ -12,7 +13,7 @@ const card = (appId: string) =>
     return el!;
   });
 
-describe("AppsPage", () => {
+describe("DeployPage", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("lists each app once, under its first slot, in slot order", () => {
@@ -33,11 +34,12 @@ describe("AppsPage", () => {
 
   it("shows what discovery found and offers Deploy only for what is missing", async () => {
     stubApi();
-    renderWithApp(<AppsPage />);
+    renderWithApp(<DeployPage />);
     const longhorn = await card("longhorn");
     expect(longhorn.dataset.detectState).toBe("installed");
     expect(within(longhorn).getByText("https://longhorn.example.test")).toBeInTheDocument();
     expect(within(longhorn).queryByRole("button", { name: "Deploy" })).toBeNull();
+    expect(within(longhorn).getByText(/Apps > Installed/)).toBeInTheDocument();
 
     const metrics = await card("metrics-server");
     expect(within(metrics).getByText("unknown")).toBeInTheDocument();
@@ -55,7 +57,7 @@ describe("AppsPage", () => {
   it("lists recent deploys and opens a job's log", async () => {
     stubApi({ "GET /api/deploy/jobs/:id": mockFailedJob });
     stubEventSource();
-    renderWithApp(<AppsPage />);
+    renderWithApp(<DeployPage />);
     const row = await waitFor(() => {
       const el = document.querySelector<HTMLElement>(`[data-job="${mockFailedJob.id}"]`);
       expect(el).not.toBeNull();
@@ -68,14 +70,14 @@ describe("AppsPage", () => {
 
   it("says deploys are off with the line that turns them on", async () => {
     stubApi({ "GET /api/deploy/status": mockDeployDisabled });
-    renderWithApp(<AppsPage />);
+    renderWithApp(<DeployPage />);
     expect(await screen.findByText("Deploys are off")).toBeInTheDocument();
     expect(screen.getByText(mockDeployDisabled.enableHint!)).toBeInTheDocument();
   });
 
   it("forces a new look when asked", async () => {
     const { calls } = stubApi();
-    renderWithApp(<AppsPage />);
+    renderWithApp(<DeployPage />);
     await card("longhorn");
     fireEvent.click(screen.getByRole("button", { name: "Look again" }));
     await waitFor(() =>
@@ -83,5 +85,13 @@ describe("AppsPage", () => {
         true
       )
     );
+  });
+
+  it("has the catalog, templates and external service as tabs", async () => {
+    stubApi();
+    renderWithApp(<DeployPage />);
+    expect(await screen.findByRole("tab", { name: "Catalog", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Templates and custom apps" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "External service" })).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
-import { Alert, Badge, Button, Group, Loader, Modal, Stack, Switch, Table, Text, Title, Tooltip } from "@mantine/core";
+import { Alert, Badge, Button, Group, Loader, Modal, Stack, Switch, Text, Tooltip } from "@mantine/core";
 import type { AppGateState, AppGateView, DeployActionPlan } from "@contracts/deploy";
-import { apiRequest, useApi } from "../../ui";
+import { apiRequest } from "../../ui";
 import { ActionPlanView, DeployJobProgress } from "../../ui/deploy";
 import { SessionContext } from "../../ui/session";
 
@@ -11,68 +11,6 @@ const STATE: Record<AppGateState, { label: string; color: string }> = {
   open: { label: "Open to anyone", color: "red" },
   tailnet: { label: "Tailnet only", color: "blue" },
 };
-
-// Apps the console deployed sit behind its own sign-in unless made public.
-// Each row's switch runs the app-gate action, shown first as a plan.
-export function SignInGateSection({ onFinished }: { onFinished?: () => void }) {
-  const gate = useApi("GET /api/deploy/gate");
-  const data = gate.data;
-  if (!data || (data.apps.length === 0 && data.ready)) return null;
-  const done = () => {
-    gate.reload();
-    onFinished?.();
-  };
-
-  return (
-    <section aria-label="Sign-in gate">
-      <Title order={4}>Sign-in gate</Title>
-      <Text size="sm" c="dimmed" mb="sm">
-        Apps deployed from here open only for people signed in to this console, until you make one public. Once sign-in
-        goes through Authentik or Entra, so do they.
-      </Text>
-      {!data.ready && data.reason ? (
-        <Alert color="yellow" variant="light" mb="sm" title="The gate can't be put in front of apps">
-          {data.reason}
-        </Alert>
-      ) : null}
-      {gate.error ? (
-        <Alert color="red" variant="light" mb="sm">
-          {gate.error}
-        </Alert>
-      ) : null}
-      {data.apps.length > 0 ? (
-        <Table.ScrollContainer minWidth={560}>
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>App</Table.Th>
-                <Table.Th>Address</Table.Th>
-                <Table.Th>State</Table.Th>
-                <Table.Th>Public</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {data.apps.map((app) => (
-                <Table.Tr key={app.appId} data-gate-app={app.appId} data-gate-state={app.state}>
-                  <Table.Td>{app.name}</Table.Td>
-                  <Table.Td>
-                    <Text size="sm">{app.hosts.join(", ")}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <GateStateBadge app={app} />
-                  </Table.Td>
-                  <Table.Td>
-                    <GatePublicSwitch app={app} onChanged={done} />
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      ) : null}
-    </section>
-  );
-}
 
 export function GateStateBadge({ app }: { app: AppGateView }) {
   return (

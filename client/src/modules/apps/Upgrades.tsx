@@ -1,8 +1,8 @@
 import { useContext, useState } from "react";
-import { Alert, Badge, Button, Code, Group, List, Modal, Stack, Table, Text, Title, Tooltip } from "@mantine/core";
+import { Alert, Badge, Button, Code, Group, List, Modal, Stack, Text, Tooltip } from "@mantine/core";
 import { IconArrowUpCircle } from "@tabler/icons-react";
 import type { UpgradeCandidate, UpgradeReport, UpgradeState } from "@contracts/deploy";
-import { apiRequest, useApi } from "../../ui";
+import { apiRequest } from "../../ui";
 import { DeployRolloutProgress } from "../../ui/deploy";
 import { SessionContext } from "../../ui/session";
 
@@ -25,7 +25,7 @@ const selectable = (app: UpgradeCandidate) => app.state === "available" || app.s
 // What "Upgrade all" covers: unknown versions only when named one by one.
 export const upgradeAll = (report: UpgradeReport) => report.apps.filter((app) => app.state === "available");
 
-function FromTo({ app }: { app: UpgradeCandidate }) {
+export function FromTo({ app }: { app: UpgradeCandidate }) {
   return (
     <Text size="sm">
       {app.currentVersion ?? "?"} → {app.targetVersion ?? app.pinnedVersion}
@@ -120,118 +120,72 @@ function Preview({
   );
 }
 
-export function UpgradesSection({ names, onFinished }: { names: Record<string, string>; onFinished: () => void }) {
-  const session = useContext(SessionContext);
-  const admin = session?.me.admin ?? true;
-  const report = useApi("GET /api/deploy/upgrades");
-  const [picked, setPicked] = useState<UpgradeCandidate[] | null>(null);
+// The preview for the picked apps, then their upgrade run's progress.
+export function UpgradeModal({
+  apps,
+  names,
+  onClose,
+  onFinished,
+}: {
+  apps: UpgradeCandidate[] | null;
+  names: Record<string, string>;
+  onClose: () => void;
+  onFinished: () => void;
+}) {
   const [runId, setRunId] = useState<string | null>(null);
-  const reload = report.reload;
-
   const close = () => {
-    setPicked(null);
     setRunId(null);
+    onClose();
   };
-
-  if (report.error) {
-    return (
-      <Alert color="red" variant="light">
-        {report.error}
-      </Alert>
-    );
-  }
-  const data = report.data;
-  if (!data || data.apps.length === 0) return null;
-  const all = upgradeAll(data);
-
   return (
-    <section aria-label="Upgrades">
-      <Group justify="space-between" mb="sm">
-        <div>
-          <Title order={4}>Upgrades</Title>
-          <Text size="sm" c="dimmed">
-            Apps deployed from here, against the versions this release of the console ships with. Nothing upgrades by
-            itself.
-          </Text>
-        </div>
-        <Tooltip label="Only admins can upgrade apps" disabled={admin}>
-          <span>
-            <Button
-              size="xs"
-              leftSection={<IconArrowUpCircle size={14} />}
-              disabled={!admin || all.length === 0 || !data.enabled}
-              onClick={() => setPicked(all)}
-            >
-              {all.length === 0 ? "Everything is up to date" : `Upgrade all (${all.length})`}
-            </Button>
-          </span>
-        </Tooltip>
-      </Group>
-      <Table.ScrollContainer minWidth={640}>
-        <Table verticalSpacing="xs">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>App</Table.Th>
-              <Table.Th>Version</Table.Th>
-              <Table.Th>State</Table.Th>
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {data.apps.map((app) => (
-              <Table.Tr key={app.appId} data-upgrade={app.appId} data-upgrade-state={app.state}>
-                <Table.Td>{names[app.appId] ?? app.appId}</Table.Td>
-                <Table.Td>
-                  <FromTo app={app} />
-                </Table.Td>
-                <Table.Td>
-                  <Tooltip label={app.reason} disabled={!app.reason} multiline maw={360}>
-                    <Badge color={STATE_COLOR[app.state]} variant="light" radius="xs">
-                      {STATE_LABEL[app.state]}
-                    </Badge>
-                  </Tooltip>
-                  {app.notes.length > 0 ? (
-                    <Text size="xs" c="dimmed">
-                      {app.notes.length === 1 ? "1 upgrade note" : `${app.notes.length} upgrade notes`}
-                    </Text>
-                  ) : null}
-                </Table.Td>
-                <Table.Td>
-                  {selectable(app) ? (
-                    <Button
-                      size="compact-xs"
-                      variant="light"
-                      disabled={!admin || !data.enabled}
-                      onClick={() => setPicked([app])}
-                    >
-                      Upgrade
-                    </Button>
-                  ) : null}
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
-      <Modal
-        opened={picked !== null}
-        onClose={close}
-        title={runId ? "Upgrading" : picked?.length === 1 ? "Upgrade an app" : "Upgrade all"}
-        size="xl"
-      >
-        {runId ? (
-          <DeployRolloutProgress
-            runId={runId}
-            names={names}
-            onFinished={() => {
-              reload();
-              onFinished();
-            }}
-          />
-        ) : picked ? (
-          <Preview apps={picked} names={names} onStarted={setRunId} onCancel={close} />
-        ) : null}
-      </Modal>
-    </section>
+    <Modal
+      opened={apps !== null}
+      onClose={close}
+      title={runId ? "Upgrading" : apps?.length === 1 ? "Upgrade an app" : "Upgrade all"}
+      size="xl"
+    >
+      {runId ? (
+        <DeployRolloutProgress runId={runId} names={names} onFinished={onFinished} />
+      ) : apps ? (
+        <Preview apps={apps} names={names} onStarted={setRunId} onCancel={close} />
+      ) : null}
+    </Modal>
+  );
+}
+
+export function UpgradeStateBadge({ app }: { app: UpgradeCandidate }) {
+  return (
+    <Tooltip label={app.reason} disabled={!app.reason} multiline maw={360}>
+      <Badge color={STATE_COLOR[app.state]} variant="light" radius="xs">
+        {STATE_LABEL[app.state]}
+      </Badge>
+    </Tooltip>
+  );
+}
+
+export const canUpgrade = selectable;
+
+export function UpgradeAllButton({
+  report,
+  onPick,
+}: {
+  report: UpgradeReport | undefined;
+  onPick: (apps: UpgradeCandidate[]) => void;
+}) {
+  const admin = useContext(SessionContext)?.me.admin ?? true;
+  const all = report ? upgradeAll(report) : [];
+  return (
+    <Tooltip label="Only admins can upgrade apps" disabled={admin}>
+      <span>
+        <Button
+          size="xs"
+          leftSection={<IconArrowUpCircle size={14} />}
+          disabled={!admin || all.length === 0 || !report?.enabled}
+          onClick={() => onPick(all)}
+        >
+          {all.length === 0 ? "Everything is up to date" : `Upgrade all (${all.length})`}
+        </Button>
+      </span>
+    </Tooltip>
   );
 }

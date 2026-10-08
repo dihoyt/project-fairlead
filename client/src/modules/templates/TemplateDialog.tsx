@@ -9,6 +9,7 @@ import {
   Modal,
   NumberInput,
   ScrollArea,
+  SegmentedControl,
   Stack,
   Switch,
   Text,
@@ -17,13 +18,22 @@ import {
 } from "@mantine/core";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import type { DeployJobView, DeployMode } from "@contracts/deploy";
-import { CUSTOM_TEMPLATE, type AppTemplate, type TemplatePlan } from "@contracts/templates";
+import {
+  CUSTOM_TEMPLATE,
+  EXTERNAL_TEMPLATE,
+  type ExternalProtocol,
+  type AppTemplate,
+  type TemplatePlan,
+} from "@contracts/templates";
 import { apiRequest } from "../../ui";
 import { DeployJobProgress, DeployPlanView, WhatIsThis } from "../../ui/deploy";
-import { addCheck, toRequest, type TemplateForm } from "./request";
+import { OpenPortsButton } from "./ForwardedPorts";
+import { addCheck, isForwardedProtocol, toRequest, type TemplateForm } from "./request";
 
 type Step =
-  { kind: "form" } | { kind: "preview"; plan: TemplatePlan; dryRunId?: string } | { kind: "install"; jobId: string };
+  | { kind: "form" }
+  | { kind: "preview"; plan: TemplatePlan; dryRunId?: string }
+  | { kind: "install"; jobId: string; plan: TemplatePlan };
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
@@ -47,6 +57,7 @@ export function TemplateDialog({
   onDeployed,
 }: TemplateDialogProps) {
   const custom = template.id === CUSTOM_TEMPLATE;
+  const external = template.id === EXTERNAL_TEMPLATE;
   const [form, setForm] = useState<TemplateForm>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [step, setStep] = useState<Step>({ kind: "form" });
@@ -56,6 +67,7 @@ export function TemplateDialog({
   const set = <K extends keyof TemplateForm>(key: K, value: TemplateForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
   const keepsData = custom ? form.volume : Boolean(template.volume);
+  const forwarded = external && isForwardedProtocol(form.protocol);
   const defaultHost = form.name.trim() && baseDomain ? `${form.name.trim()}.${baseDomain}` : undefined;
 
   async function preview() {
@@ -77,7 +89,9 @@ export function TemplateDialog({
     setActionError(null);
     try {
       const job = await apiRequest("POST /api/templates/jobs", { body: { ...toRequest(template, form), mode } });
-      setStep(mode === "install" ? { kind: "install", jobId: job.id } : { kind: "preview", plan, dryRunId: job.id });
+      setStep(
+        mode === "install" ? { kind: "install", jobId: job.id, plan } : { kind: "preview", plan, dryRunId: job.id }
+      );
       if (mode === "install") onDeployed();
     } catch (err) {
       setActionError(message(err));
@@ -110,7 +124,9 @@ export function TemplateDialog({
           <Stack gap="sm">
             <TextInput
               label="Name"
-              description="Its namespace and the first part of its hostname."
+              description={
+                forwarded ? "Its namespace in the cluster." : "Its namespace and the first part of its hostname."
+              }
               value={form.name}
               error={field("name")}
               onChange={(e) => set("name", e.currentTarget.value)}
@@ -217,6 +233,7 @@ export function TemplateDialog({
                 ) : null}
               </>
             ) : null}
+            {external ? <ExternalFields form={form} set={set} field={field} /> : null}
             {keepsData ? (
               <Group grow align="flex-start">
                 <TextInput
@@ -235,13 +252,15 @@ export function TemplateDialog({
                 />
               </Group>
             ) : null}
-            <Switch
-              label="Reachable at a hostname"
-              description="Off: reachable inside the cluster only."
-              checked={form.exposed}
-              onChange={(e) => set("exposed", e.currentTarget.checked)}
-            />
-            {form.exposed ? (
+            {forwarded ? null : (
+              <Switch
+                label="Reachable at a hostname"
+                description="Off: reachable inside the cluster only."
+                checked={form.exposed}
+                onChange={(e) => set("exposed", e.currentTarget.checked)}
+              />
+            )}
+            {form.exposed && !forwarded ? (
               <TextInput
                 label="Hostname"
                 placeholder={defaultHost ?? "app.example.com"}
@@ -295,6 +314,23 @@ export function TemplateDialog({
         ) : null}
 
         {step.kind === "install" ? <DeployJobProgress jobId={step.jobId} onFinished={finished} /> : null}
+        {step.kind !== "form" && step.plan.entrypoint && !step.plan.entrypoint.open ? (
+          <Alert color="yellow" variant="light" p="xs" title="Traefik doesn't serve this port yet">
+            <Stack gap="xs">
+              <Text size="sm">
+                The route is applied either way, but nothing answers on {step.plan.entrypoint.protocol.toUpperCase()}{" "}
+                {step.plan.entrypoint.port} until Traefik opens it. That restarts Traefik once.
+              </Text>
+              {step.kind === "install" ? (
+                <Group>
+                  <OpenPortsButton
+                    label={`Open ${step.plan.entrypoint.protocol.toUpperCase()} ${step.plan.entrypoint.port} on Traefik`}
+                  />
+                </Group>
+              ) : null}
+            </Stack>
+          </Alert>
+        ) : null}
 
         {note ? (
           <Text size="sm" c="dimmed">
@@ -348,5 +384,98 @@ export function TemplateDialog({
         </Group>
       </Stack>
     </Modal>
+  );
+}
+
+const PROTOCOLS: Array<{ value: ExternalProtocol; label: string }> = [
+  { value: "http", label: "HTTP" },
+  { value: "https", label: "HTTPS" },
+  { value: "tcp", label: "TCP" },
+  { value: "udp", label: "UDP" },
+];
+
+function ExternalFields({
+  form,
+  set,
+  field,
+}: {
+  form: TemplateForm;
+  set: <K extends keyof TemplateForm>(key: K, value: TemplateForm[K]) => void;
+  field: (key: string) => string | undefined;
+}) {
+  const forwarded = isForwardedProtocol(form.protocol);
+  const publicPort = form.publicPort.trim() || form.port;
+  const mismatch = forwarded && form.port !== "" && publicPort !== "" && publicPort !== form.port;
+  return (
+    <>
+      <Group grow align="flex-start">
+        <TextInput
+          label="Address"
+          description="The machine's IP address on your network."
+          placeholder="10.0.0.50"
+          value={form.address}
+          error={field("external.address")}
+          onChange={(e) => set("address", e.currentTarget.value)}
+        />
+        <NumberInput
+          label="Port"
+          description="The port the service listens on there."
+          value={form.port === "" ? "" : Number(form.port)}
+          min={1}
+          max={65535}
+          allowDecimal={false}
+          error={forwarded ? undefined : field("external.port")}
+          onChange={(value) => set("port", value === "" ? "" : String(value))}
+        />
+      </Group>
+      <Stack gap={4}>
+        <Text size="sm" fw={500}>
+          Protocol
+        </Text>
+        <SegmentedControl
+          aria-label="Protocol"
+          data={PROTOCOLS}
+          value={form.protocol}
+          onChange={(value) => set("protocol", value as ExternalProtocol)}
+        />
+        {field("external.protocol") ? (
+          <Text size="xs" c="red">
+            {field("external.protocol")}
+          </Text>
+        ) : null}
+      </Stack>
+      {form.protocol === "https" ? (
+        <Switch
+          label="Accept a self-signed certificate"
+          description="For a NAS or hypervisor page with its own certificate."
+          checked={form.insecureSkipVerify}
+          onChange={(e) => set("insecureSkipVerify", e.currentTarget.checked)}
+        />
+      ) : null}
+      {forwarded ? (
+        <NumberInput
+          label="Public port"
+          description="The port people connect to on your public address, one your router forwards to the cluster. Empty: the same as Port."
+          placeholder={form.port || undefined}
+          value={form.publicPort === "" ? "" : Number(form.publicPort)}
+          min={1024}
+          max={65535}
+          allowDecimal={false}
+          error={field("external.publicPort") ?? field("external.port")}
+          onChange={(value) => set("publicPort", value === "" ? "" : String(value))}
+        />
+      ) : null}
+      {mismatch ? (
+        <Alert color="yellow" variant="light" p="xs" data-testid="port-mismatch">
+          People connect on {publicPort} while the service listens on {form.port}. Games and protocols that tell clients
+          their own port (server browsers, FTP, SIP) may only work when reached directly at the machine.
+        </Alert>
+      ) : null}
+      <Alert color="blue" variant="light" p="xs" data-testid="cloudflare-note">
+        {forwarded
+          ? "Direct only: TCP and UDP can't go through a Cloudflare tunnel on the free plan. People reach it on your public address at the public port, through the ports your router forwards to the cluster."
+          : "Published on a hostname like any app: through your access mode, behind the console's sign-in unless made public, and, with the Cloudflare connector, on its tunnel with a DNS record."}
+      </Alert>
+    </>
   );
 }

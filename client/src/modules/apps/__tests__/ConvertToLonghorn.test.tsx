@@ -4,7 +4,7 @@ import { mockCatalogApps, mockMigrateJob, mockMigratePlan, mockVolumeBackup } fr
 import type { CatalogAppView } from "@contracts/catalog";
 import { renderWithApp } from "../../../test-utils";
 import { stubApi, stubEventSource } from "../../../ui/deploy/__tests__/stubApi";
-import { AppsPage } from "../AppsPage";
+import { InstalledPage } from "../InstalledPage";
 import { ConvertDialog } from "../ConvertToLonghorn";
 
 const backupJob = { ...mockMigrateJob, id: "dj_8", action: "backup-volumes" as const };
@@ -27,14 +27,14 @@ describe("Convert to Longhorn", () => {
         : app
     );
     stubApi({ "GET /api/catalog/apps": apps });
-    renderWithApp(<AppsPage />);
+    renderWithApp(<InstalledPage />);
     const gitea = await waitFor(() => {
-      const el = document.querySelector<HTMLElement>('[data-app="gitea"]');
+      const el = document.querySelector<HTMLElement>('[data-installed="gitea"]');
       expect(el).not.toBeNull();
       return el!;
     });
     expect(within(gitea).getByRole("button", { name: "Convert to Longhorn" })).toBeInTheDocument();
-    const longhorn = document.querySelector<HTMLElement>('[data-app="longhorn"]')!;
+    const longhorn = document.querySelector<HTMLElement>('[data-installed="longhorn"]')!;
     expect(within(longhorn).queryByRole("button", { name: "Convert to Longhorn" })).toBeNull();
   });
 

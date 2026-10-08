@@ -2,15 +2,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { mockDeployDisabled } from "@contracts/mocks/catalog";
 import {
+  mockExternalInstances,
+  mockExternalPlan,
+  mockPortsView,
   mockTemplatePlanRefused,
-  mockTemplateRemoveJob,
-  mockTemplateRemovePlan,
   mockTemplates,
 } from "@contracts/mocks/templates";
 import { renderWithApp } from "../../../test-utils";
 import { stubApi, stubEventSource } from "../../../ui/deploy/__tests__/stubApi";
 import { emptyForm, formFromInstance, toRequest } from "../request";
-import { TemplatesPage } from "../TemplatesPage";
+import { ExternalTab, TemplatesTab } from "../TemplatesTab";
 
 const card = (id: string) =>
   waitFor(() => {
@@ -83,24 +84,20 @@ describe("template requests", () => {
   });
 });
 
-describe("TemplatesPage", () => {
+describe("TemplatesTab", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("lists the library with Custom app and the deployed instances", async () => {
+  it("lists the library with Custom app, and External service only on its own tab", async () => {
     stubApi();
-    renderWithApp(<TemplatesPage />);
+    renderWithApp(<TemplatesTab onDeployed={() => {}} />);
     for (const id of ["whoami", "uptime-kuma", "it-tools", "custom"]) await card(id);
-    const status = await waitFor(() => document.querySelector<HTMLElement>('[data-instance="status"]')!);
-    expect(within(status).getByText("1.23.16 available")).toBeInTheDocument();
-    const api = document.querySelector<HTMLElement>('[data-instance="my-api"]')!;
-    expect(within(api).getByText("inside the cluster only")).toBeInTheDocument();
-    expect(within(api).getByText("failed")).toBeInTheDocument();
+    expect(document.querySelector('[data-template="external"]')).toBeNull();
   });
 
   it("previews the manifests and the runner's plan, then deploys", async () => {
     const { calls } = stubApi();
     stubEventSource();
-    renderWithApp(<TemplatesPage />);
+    renderWithApp(<TemplatesTab onDeployed={() => {}} />);
     fireEvent.click(within(await card("whoami")).getByRole("button", { name: "Deploy" }));
     fireEvent.click(await screen.findByRole("button", { name: "Preview" }));
     expect((await screen.findByTestId("manifests")).textContent).toMatch(/kind: Namespace/);
@@ -115,7 +112,7 @@ describe("TemplatesPage", () => {
 
   it("shows what the guardrail refused and keeps Deploy off", async () => {
     stubApi({ "POST /api/templates/plan": mockTemplatePlanRefused });
-    renderWithApp(<TemplatesPage />);
+    renderWithApp(<TemplatesTab onDeployed={() => {}} />);
     fireEvent.click(within(await card("whoami")).getByRole("button", { name: "Deploy" }));
     fireEvent.click(await screen.findByRole("button", { name: "Preview" }));
     expect(await screen.findByText("Refused by the guardrail")).toBeInTheDocument();
@@ -131,60 +128,93 @@ describe("TemplatesPage", () => {
         fieldErrors: { "custom.image": "needs a tag or digest, like nginx:1.27" },
       },
     });
-    renderWithApp(<TemplatesPage />);
+    renderWithApp(<TemplatesTab onDeployed={() => {}} />);
     fireEvent.click(within(await card("custom")).getByRole("button", { name: "Deploy" }));
     fireEvent.click(await screen.findByRole("button", { name: "Preview" }));
     expect(await screen.findByText("needs a tag or digest, like nginx:1.27")).toBeInTheDocument();
   });
 
-  it("explains how to turn deploys on and disables Deploy while off", async () => {
+  it("disables Deploy while deploys are off", async () => {
     stubApi({ "GET /api/deploy/status": mockDeployDisabled });
-    renderWithApp(<TemplatesPage />);
-    expect(await screen.findByText(/Deploying apps from here is turned off/)).toBeInTheDocument();
+    renderWithApp(<TemplatesTab onDeployed={() => {}} />);
     await waitFor(async () =>
       expect(within(await card("whoami")).getByRole("button", { name: "Deploy" })).toBeDisabled()
     );
   });
+});
 
-  it("removes an app, keeping its volume unless asked, and names what goes", async () => {
-    const { calls } = stubApi({
-      "POST /api/deploy/actions/plan": (_url: URL, body: unknown) =>
-        (body as { deleteVolumes?: boolean }).deleteVolumes
-          ? {
-              ...mockTemplateRemovePlan,
-              deletes: [...mockTemplateRemovePlan.deletes!, { kind: "Namespace", name: "status" }],
-              warnings: ["The data on status-data is deleted for good."],
-            }
-          : mockTemplateRemovePlan,
-      "POST /api/deploy/actions/run": mockTemplateRemoveJob,
-      "GET /api/deploy/jobs/:id": mockTemplateRemoveJob,
+describe("ExternalTab", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const external = mockTemplates.find((t) => t.id === "external")!;
+
+  it("sends an external service with its public port, and no host for UDP", () => {
+    const form = {
+      ...emptyForm(external),
+      name: "valheim",
+      address: " 10.0.0.50 ",
+      port: "2456",
+      protocol: "udp" as const,
+      publicPort: "25565",
+      host: "ignored.example.test",
+    };
+    expect(toRequest(external, form)).toEqual({
+      templateId: "external",
+      name: "valheim",
+      host: "",
+      external: { address: "10.0.0.50", port: 2456, protocol: "udp", publicPort: 25565 },
     });
-    stubEventSource();
-    renderWithApp(<TemplatesPage />);
-    const row = await waitFor(() => {
-      const el = document.querySelector<HTMLElement>('[data-instance="status"]');
-      expect(el).not.toBeNull();
-      return el!;
+    expect(formFromInstance(external, mockExternalInstances[1]!)).toMatchObject({
+      address: "10.0.0.20",
+      port: "5001",
+      protocol: "https",
+      insecureSkipVerify: true,
+      host: "nas.example.test",
     });
-    fireEvent.click(within(row).getByRole("button", { name: "Remove" }));
+  });
+
+  it("notes mismatched ports and that TCP and UDP skip the Cloudflare tunnel, then shows the open-port step", async () => {
+    const { calls } = stubApi({ "POST /api/templates/plan": mockExternalPlan });
+    renderWithApp(<ExternalTab onDeployed={() => {}} />);
+    expect(await screen.findByTestId("forwarded-ports")).toHaveTextContent("25565-25575");
+    fireEvent.click(await screen.findByRole("button", { name: "Add an external service" }));
     const dialog = await screen.findByRole("dialog");
-    expect(await within(dialog).findByText('the HTTP check "https://status.example.test"')).toBeInTheDocument();
-    expect(within(dialog).getByText(/its volume stay/)).toBeInTheDocument();
-    expect(calls.find((c) => c.key === "POST /api/deploy/actions/plan")?.body).toEqual({
-      kind: "remove-app",
-      appId: "status",
-      deleteVolumes: false,
+    expect(within(dialog).getByTestId("cloudflare-note")).toHaveTextContent(/like any app/);
+    fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "valheim" } });
+    fireEvent.change(within(dialog).getByLabelText("Address"), { target: { value: "10.0.0.50" } });
+    fireEvent.change(within(dialog).getByLabelText("Port"), { target: { value: "2456" } });
+    fireEvent.click(within(dialog).getByRole("radio", { name: "UDP" }));
+    expect(within(dialog).queryByLabelText("Hostname")).toBeNull();
+    expect(within(dialog).getByTestId("cloudflare-note")).toHaveTextContent(/Direct only/);
+    fireEvent.change(within(dialog).getByLabelText("Public port"), { target: { value: "25565" } });
+    expect(within(dialog).getByTestId("port-mismatch")).toHaveTextContent(/People connect on 25565/);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Preview" }));
+    expect(await within(dialog).findByText("Traefik doesn't serve this port yet")).toBeInTheDocument();
+    expect(calls.find((c) => c.key === "POST /api/templates/plan")?.body).toEqual({
+      templateId: "external",
+      name: "valheim",
+      host: "",
+      external: { address: "10.0.0.50", port: 2456, protocol: "udp", publicPort: 25565 },
     });
+  });
 
-    fireEvent.click(within(dialog).getByRole("checkbox", { name: /Delete its volume too \(status-data, 1Gi\)/ }));
-    expect(await within(dialog).findByText("Namespace status")).toBeInTheDocument();
-    expect(within(dialog).getByText("The data on status-data is deleted for good.")).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Remove status and its data" }));
-    await waitFor(() => expect(calls.some((c) => c.key === "POST /api/deploy/actions/run")).toBe(true));
-    expect(calls.find((c) => c.key === "POST /api/deploy/actions/run")?.body).toEqual({
-      kind: "remove-app",
-      appId: "status",
-      deleteVolumes: true,
+  it("opens the wanted ports on Traefik from the panel", async () => {
+    const { calls } = stubApi({
+      "GET /api/deploy/ports": mockPortsView,
+      "POST /api/deploy/actions/plan": {
+        kind: "traefik-ports",
+        title: "Open UDP 25565 on Traefik",
+        allowed: true,
+        steps: [{ label: "Open UDP 25565", commands: [] }],
+        changes: [],
+        creates: [],
+        warnings: [],
+      },
     });
+    renderWithApp(<ExternalTab onDeployed={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Open UDP 25565 on Traefik" }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText("Open UDP 25565");
+    expect(calls.find((c) => c.key === "POST /api/deploy/actions/plan")?.body).toEqual({ kind: "traefik-ports" });
   });
 });
