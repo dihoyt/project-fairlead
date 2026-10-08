@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Alert, Anchor, Button, Group, Stack, Text } from "@mantine/core";
 import { Link } from "react-router";
+import { WhatIsThis } from "../../ui/deploy";
 
 export function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -31,6 +32,7 @@ export interface StepProps {
 }
 
 export function StepFrame({
+  what,
   intro,
   children,
   fullPage,
@@ -39,6 +41,9 @@ export function StepFrame({
   onFinish,
   optional = true,
 }: StepProps & {
+  // The "What is this?" line: the step's subject in one plain sentence for
+  // someone who has never run a cluster.
+  what?: ReactNode;
   intro: ReactNode;
   children: ReactNode;
   fullPage?: { to: string; label: string };
@@ -49,6 +54,7 @@ export function StepFrame({
   const { busy, error, run } = useAction();
   return (
     <Stack gap="md" maw={960}>
+      {what ? <WhatIsThis>{what}</WhatIsThis> : null}
       <Text size="sm">{intro}</Text>
       {children}
       {error ? <Alert color="red">{error}</Alert> : null}
