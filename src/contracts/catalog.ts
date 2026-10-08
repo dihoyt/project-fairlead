@@ -49,6 +49,11 @@ export type InstallSource =
       chart: string;
       // Pinned; a catalog change is how an app's version moves.
       version: string;
+      // The chart's own kubeVersion constraint (">=1.25.0-0"), when it has one.
+      kubeVersion?: string;
+      // Older pins to fall back to, newest first, when the cluster is outside
+      // `kubeVersion`. pickVersion() (./kubeversion.ts) makes the choice.
+      fallbacks?: Array<{ version: string; kubeVersion?: string }>;
     }
   | {
       // Plain manifests, exactly one of: a pinned, published URL
@@ -59,6 +64,7 @@ export type InstallSource =
       url?: string;
       bundled?: string;
       version: string;
+      kubeVersion?: string;
     }
   | {
       // A change to something already installed, from a fixed template:
@@ -147,6 +153,8 @@ export interface ClusterBasic {
 
 export interface DiscoveryReport {
   checkedAt: string;
+  // The API server's gitVersion ("v1.31.4+k3s1"); absent when it couldn't be read.
+  kubernetesVersion?: string;
   apps: DetectedApp[];
   ingressHosts: IngressHost[];
   basics: ClusterBasic[];
