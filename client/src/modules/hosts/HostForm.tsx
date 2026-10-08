@@ -15,16 +15,27 @@ import {
 } from "@mantine/core";
 import type { HostKind, HostRequest, HostTestResult, HostView } from "@contracts/hosts";
 import { CheckList, apiRequest } from "../../ui";
+import { GeneratedKey, useKeypair, type KeypairResource } from "./GeneratedKey";
 import { KIND_LABEL } from "./labels";
+
+type SignIn = "generated" | "key" | "password";
+
+export const SIGN_IN_OPTIONS: Array<{ value: SignIn; label: string }> = [
+  { value: "generated", label: "Generated key" },
+  { value: "key", label: "Own key" },
+  { value: "password", label: "Password" },
+];
 
 const KIND_OPTIONS = (Object.keys(KIND_LABEL) as HostKind[]).map((value) => ({ value, label: KIND_LABEL[value] }));
 
 export function HostForm({
   host,
+  keypair: sharedKeypair,
   onSubmit,
   onCancel,
 }: {
   host?: HostView;
+  keypair?: KeypairResource;
   onSubmit: (req: HostRequest) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -33,7 +44,8 @@ export function HostForm({
   const [address, setAddress] = useState(host?.address ?? "");
   const [port, setPort] = useState<number>(host?.port ?? 22);
   const [username, setUsername] = useState(host?.username ?? "monitor");
-  const [auth, setAuth] = useState<"key" | "password">(host?.auth ?? "key");
+  const [signIn, setSignIn] = useState<SignIn>(host ? (host.generatedKey ? "generated" : host.auth) : "generated");
+  const keypair = useKeypair(sharedKeypair);
   const [credential, setCredential] = useState("");
   const [kind, setKind] = useState<HostKind>(host?.kind ?? "auto");
   const [paths, setPaths] = useState((host?.backupTargetPaths ?? []).join("\n"));
@@ -48,13 +60,14 @@ export function HostForm({
       address: address.trim(),
       port,
       username: username.trim(),
-      auth,
+      auth: signIn === "password" ? "password" : "key",
+      ...(signIn === "generated" ? { useGeneratedKey: true } : {}),
       kind,
       backupTargetPaths: paths
         .split("\n")
         .map((p) => p.trim())
         .filter(Boolean),
-      ...(credential ? { credential } : {}),
+      ...(credential && signIn !== "generated" ? { credential } : {}),
       ...(fingerprint.trim() ? { hostKeyFingerprint: fingerprint.trim() } : {}),
     };
   }
@@ -85,7 +98,10 @@ export function HostForm({
     }
   }
 
-  const keepHint = editing && host.hasCredential ? "Leave empty to keep the stored one." : undefined;
+  const keepHint =
+    editing && host.hasCredential && !host.generatedKey && signIn === host.auth
+      ? "Leave empty to keep the stored one."
+      : undefined;
 
   return (
     <Stack>
@@ -128,16 +144,11 @@ export function HostForm({
         <Text size="sm" fw={500}>
           Sign in with
         </Text>
-        <SegmentedControl
-          value={auth}
-          onChange={(v) => setAuth(v as "key" | "password")}
-          data={[
-            { value: "key", label: "Private key" },
-            { value: "password", label: "Password" },
-          ]}
-        />
+        <SegmentedControl value={signIn} onChange={(v) => setSignIn(v as SignIn)} data={SIGN_IN_OPTIONS} />
       </Stack>
-      {auth === "key" ? (
+      {signIn === "generated" ? (
+        <GeneratedKey resource={keypair} canGenerate />
+      ) : signIn === "key" ? (
         <Textarea
           label="Private key"
           description={

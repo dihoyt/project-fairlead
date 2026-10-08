@@ -96,7 +96,7 @@ function Facts({ host }: { host: HostView }) {
     ["CPUs", facts.cpus?.toString()],
     ["Memory", facts.memoryBytes ? formatValue(facts.memoryBytes, "bytes") : undefined],
     ["Uptime", facts.uptimeSeconds !== undefined ? uptime(facts.uptimeSeconds).replace(/^up /, "") : undefined],
-    ["Signs in with", host.auth === "key" ? "Private key" : "Password"],
+    ["Signs in with", host.generatedKey ? "Generated key" : host.auth === "key" ? "Own key" : "Password"],
     ["Backup targets", host.backupTargetPaths.join(", ") || undefined],
     ["Last seen", relativeTime(host.lastSeenAt)],
   ];
