@@ -41,7 +41,17 @@ import type { NodeSummary, SeriesInfo, SeriesResult } from "./metrics.js";
 import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
 import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
-import type { EventView, LogLines, NamespaceView, PodView, WorkloadLinks, WorkloadView } from "./workloads.js";
+import type {
+  ClusterUsageReport,
+  EventView,
+  LogLines,
+  NamespaceView,
+  PodView,
+  SpaceUsageReport,
+  UsageRange,
+  WorkloadLinks,
+  WorkloadView,
+} from "./workloads.js";
 
 type None = Record<string, never>;
 
@@ -206,6 +216,14 @@ export interface ApiRoutes {
     { object?: string },
     None,
     EventView[]
+  >;
+  // range defaults to "1h"; any other value is a 400.
+  "GET /api/workloads/usage": Route<None, { range?: UsageRange }, None, ClusterUsageReport>;
+  "GET /api/workloads/namespaces/:namespace/usage": Route<
+    { namespace: string },
+    { range?: UsageRange },
+    None,
+    SpaceUsageReport
   >;
   "GET /api/workloads/namespaces/:namespace/pods/:pod/logs": Route<
     { namespace: string; pod: string },

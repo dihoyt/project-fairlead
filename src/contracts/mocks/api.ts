@@ -34,6 +34,7 @@ import {
 } from "./catalog.js";
 import { mockCheckResults } from "./health.js";
 import { mockSeriesResults } from "./metrics.js";
+import { mockClusterUsage, mockSpaceUsage } from "./workloads.js";
 import { DAY, HOUR, MOCK_NOW, isoAgo } from "./time.js";
 
 const now = new Date(MOCK_NOW).toISOString();
@@ -613,6 +614,8 @@ export const apiMocks: ApiMocks = {
       lastSeen: isoAgo(60_000),
     },
   ],
+  "GET /api/workloads/usage": mockClusterUsage,
+  "GET /api/workloads/namespaces/:namespace/usage": mockSpaceUsage,
   "GET /api/workloads/namespaces/:namespace/pods/:pod/logs": {
     lines: [
       "[INF] Starting Jellyfin",
