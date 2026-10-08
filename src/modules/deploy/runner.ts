@@ -127,6 +127,8 @@ export interface DeployerOptions {
   now?: () => number;
   // Overrides the random secrets a run generates, for tests.
   generate?: () => string;
+  // Requests to a volume backup pod, for tests.
+  fetch?: typeof fetch;
 }
 
 export class Deployer {
@@ -527,6 +529,10 @@ export class Deployer {
       detail: `${record.view.appId} ${record.view.mode} (Job ${record.view.job.namespace}/${record.view.job.name})`,
     });
     return this.mustGet(id).view;
+  }
+
+  get(id: string): DeployJobView | undefined {
+    return this.store.get(id)?.view;
   }
 
   mustGet(id: string): JobRecord {
