@@ -331,7 +331,8 @@ export class Bundles {
           .filter((s) => !s.skip)
           .map((s) => s.appId),
       });
-      out.push({ appId: step.appId, skip: false, plan });
+      const memoryBytes = this.entry(step.appId)?.memoryBytes;
+      out.push({ appId: step.appId, skip: false, plan, ...(memoryBytes ? { memoryBytes } : {}) });
     }
     const errors = this.sharedErrors(bundle, request);
     const disk = checkDisk(
@@ -339,12 +340,14 @@ export class Bundles {
       found.discovery?.nodeDisks
     );
     const noRoom = disk.status === "crit";
+    const memoryBytes = out.reduce((sum, step) => sum + (step.memoryBytes ?? 0), 0);
     return {
       bundleId: bundle.id,
       allowed: errors.length === 0 && !noRoom && out.every((step) => step.skip || step.plan?.allowed),
       ...(noRoom ? { blockedBy: disk.detail } : {}),
       steps: out,
       disk,
+      ...(memoryBytes ? { memoryBytes } : {}),
     };
   }
 

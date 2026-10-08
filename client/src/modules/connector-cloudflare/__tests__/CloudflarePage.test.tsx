@@ -23,6 +23,8 @@ function serve(view: CloudflareView, connectors: unknown[] = [], access: unknown
     if (url.endsWith("api/connectors")) return json(connectors);
     if (url.includes("api/connectors/") && url.endsWith("/reconcile")) return json(apiMocks["POST /api/connectors"]);
     if (url.includes("api/connectors/") && method === "PUT") return json(apiMocks["PUT /api/connectors/:id"]);
+    if (url.includes("api/connectors/")) return json(apiMocks["GET /api/connectors/:id"]);
+    if (url.includes("api/admin/settings/")) return json({ key: "connector-cloudflare.accessApps", value: "per-app" });
     return json({});
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -71,6 +73,23 @@ describe("CloudflarePage", () => {
     const grafana = await screen.findByText("grafana.example.test");
     fireEvent.click(within(grafana.closest("tr")!).getByText("Direct"));
     await waitFor(() => expect(body(fetchMock, "hosts/grafana.example.test")).toEqual({ exposure: "direct" }));
+  });
+
+  it("sets the Access mode and allow list in one place, then syncs", async () => {
+    const fetchMock = serve(apiMocks["GET /api/connector-cloudflare/view"]);
+    renderWithApp(<CloudflarePage />);
+    fireEvent.click(await screen.findByText("Per app"));
+    fireEvent.change(screen.getByLabelText(/Who may sign in/), { target: { value: "me@example.test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save and sync" }));
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([url, init]) => String(url).endsWith("connector-cloudflare/sync") && init?.method === "POST"
+        )
+      ).toBe(true)
+    );
+    expect(body(fetchMock, "api/connectors/")).toEqual({ values: { accessEmails: "me@example.test" } });
+    expect(body(fetchMock, "settings/connector-cloudflare.accessApps")).toEqual({ value: "per-app" });
   });
 
   it("shows the Access switch only when the setting is per app", async () => {

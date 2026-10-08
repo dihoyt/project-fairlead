@@ -342,6 +342,22 @@ const imageMiB: Record<string, number> = {
   "tailscale-operator": 250,
 };
 
+// Memory each default install asks for, in MiB: the requests ../deploy/apps.ts
+// sets, or rough idle use where the chart sets none (Longhorn on one node,
+// Traefik, metrics-server). cloudflared counts its two replicas.
+const memoryMiB: Record<string, number> = {
+  "cert-manager": 120,
+  traefik: 64,
+  "metrics-server": 48,
+  "local-path-provisioner": 16,
+  longhorn: 640,
+  gitea: 160,
+  authentik: 1056,
+  ntfy: 32,
+  cloudflared: 64,
+  "tailscale-operator": 64,
+};
+
 const MiB = 1024 ** 2;
 const UNITS: Record<string, number> = { Mi: MiB, Gi: 1024 * MiB, Ti: 1024 * 1024 * MiB };
 
@@ -356,6 +372,8 @@ const footprint = (entry: CatalogEntry): DiskFootprint => ({
   imageBytes: (imageMiB[entry.id] ?? 0) * MiB,
 });
 
-export const catalog: readonly CatalogEntry[] = entries.map((entry) =>
-  entry.install.kind === "patch" ? entry : { ...entry, disk: footprint(entry) }
-);
+export const catalog: readonly CatalogEntry[] = entries.map((entry) => {
+  if (entry.install.kind === "patch") return entry;
+  const memory = memoryMiB[entry.id];
+  return { ...entry, disk: footprint(entry), ...(memory ? { memoryBytes: memory * MiB } : {}) };
+});

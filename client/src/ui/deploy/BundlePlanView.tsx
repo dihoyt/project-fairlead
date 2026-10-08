@@ -1,5 +1,6 @@
 import { Accordion, Alert, Anchor, Badge, Group, Stack, Text } from "@mantine/core";
 import type { BundlePlan } from "@contracts/deploy";
+import { formatBytes } from "@contracts/disk";
 import { DeployPlanView } from "./DeployPlanView";
 
 // The preview of a bundle rollout: every app in install order, what each
@@ -31,6 +32,11 @@ export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?:
           {plan.disk.detail}
         </Text>
       ) : null}
+      {plan.memoryBytes ? (
+        <Text size="xs" c="dimmed" data-memory>
+          Once running, these apps ask for about {formatBytes(plan.memoryBytes)} of memory between them.
+        </Text>
+      ) : null}
       <Accordion variant="separated" chevronPosition="left" multiple>
         {plan.steps.map((step, index) => (
           <Accordion.Item key={step.appId} value={step.appId} data-step={step.appId}>
@@ -59,7 +65,12 @@ export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?:
                     </Anchor>
                   ) : null}
                 </Group>
-                <Group gap={4} wrap="nowrap">
+                <Group gap="xs" wrap="nowrap">
+                  {!step.skip && step.memoryBytes ? (
+                    <Text size="xs" c="dimmed" data-step-memory>
+                      {formatBytes(step.memoryBytes)}
+                    </Text>
+                  ) : null}
                   {step.plan?.gate?.state === "gated" ? (
                     <Badge color="green" variant="light" radius="xs" data-gate={step.appId}>
                       behind sign-in

@@ -6,6 +6,8 @@ import type {
   OAuthConsentView,
   AuthentikWirePlan,
   AuthentikWireResult,
+  PublicSignInProvider,
+  PublicSignInResult,
   Role,
   SessionView,
   SettingValue,
@@ -15,7 +17,15 @@ import { product } from "../../product.js";
 import { AuthentikError, authentikUrlProblem, issuerFor, wireAuthentik } from "../auth/authentik.js";
 import { authOf, envAdmin, refuseUnready, type PlatformUser } from "../auth/identity.js";
 import { effectiveRule, ruleAllows } from "../auth/networks.js";
-import { CALLBACK_PATH, OIDC_SECRET, OidcError, discover, oidcUnavailableReason } from "../auth/oidc.js";
+import {
+  CALLBACK_PATH,
+  GOOGLE_ISSUER,
+  MICROSOFT_COMMON_ISSUER,
+  OIDC_SECRET,
+  OidcError,
+  discover,
+  oidcUnavailableReason,
+} from "../auth/oidc.js";
 import { generateTempPassword, hashPassword, passwordProblem } from "../auth/passwords.js";
 import { revokeAllSessions, revokeSession, sessionHandle, sessionsOf } from "../auth/sessions.js";
 import { OAuthError, checkAuthorizeRequest, issueCode, redirectWith, scopeOf } from "../auth/oauth.js";
@@ -393,6 +403,114 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
         tokenKept,
         discovery,
         testSignIn: "auth/oidc/start?link=1",
+      };
+    })
+  );
+
+  // --- Google and Microsoft accounts -------------------------------------
+
+  const PUBLIC_PROVIDERS: Record<PublicSignInProvider, { issuer: string; label: string }> = {
+    google: { issuer: GOOGLE_ISSUER, label: "Sign in with Google" },
+    microsoft: { issuer: MICROSOFT_COMMON_ISSUER, label: "Sign in with Microsoft" },
+  };
+  // Saved beside the OIDC client: what makes a public provider safe to open.
+  const PUBLIC_KEYS = [
+    "auth.oidc.scopes",
+    "auth.oidc.usernameClaim",
+    "auth.oidc.autoProvision",
+    "auth.oidc.allowedGroups",
+    "auth.oidc.allowedEmails",
+    "auth.oidc.adminEmails",
+  ];
+  const EMAIL_ENTRY = /^(?:[^\s@]+@)?@?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i;
+
+  const emailEntries = (raw: unknown, what: string): string[] => {
+    if (raw === undefined) return [];
+    if (!Array.isArray(raw)) throw new AdminError(400, `${what} must be a list.`);
+    const entries = raw.map((entry) => String(entry).trim().toLowerCase()).filter(Boolean);
+    const bad = entries.find((entry) => !EMAIL_ENTRY.test(entry) || entry.includes("@@"));
+    if (bad !== undefined)
+      throw new AdminError(
+        400,
+        `${what}: "${bad}" is neither an address (ann@example.com) nor a domain (@example.com).`
+      );
+    return [...new Set(entries)];
+  };
+
+  router.post(
+    "/oidc/public",
+    route(async (req, _res, admin): Promise<PublicSignInResult> => {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const provider = body.provider;
+      if (provider !== "google" && provider !== "microsoft")
+        throw new AdminError(400, 'Provider must be "google" or "microsoft".');
+      const preset = PUBLIC_PROVIDERS[provider];
+      const clientId = typeof body.clientId === "string" ? body.clientId.trim() : "";
+      if (!clientId) throw new AdminError(400, "Enter the client ID.");
+      const allowedEmails = emailEntries(body.allowedEmails, "Allowed email addresses");
+      if (allowedEmails.length === 0)
+        throw new AdminError(
+          400,
+          "List at least one allowed address or domain: anyone with a Google or Microsoft account could sign in otherwise."
+        );
+      const adminEmails = emailEntries(body.adminEmails, "Admin email addresses");
+
+      const blocked = signIn.blocked([...WIRED_KEYS, "auth.oidc.adminGroups", ...PUBLIC_KEYS]);
+      if (blocked !== null) throw new AdminError(blocked.status, blocked.message);
+
+      let clientSecret = typeof body.clientSecret === "string" ? body.clientSecret.trim() : "";
+      if (!clientSecret) {
+        const same = s.string("auth.oidc.issuer") === preset.issuer && s.string("auth.oidc.clientId") === clientId;
+        clientSecret = same ? ((await core.secrets.get(OIDC_SECRET.scope, OIDC_SECRET.id)) ?? "") : "";
+        if (!clientSecret) throw new AdminError(400, "Paste the client secret.");
+      }
+
+      // The allow list goes in before sign-in is pointed at the provider, so
+      // there is no moment where it is open to everyone.
+      s.set("auth.oidc.allowedEmails", allowedEmails, admin.id);
+      s.set("auth.oidc.adminEmails", adminEmails, admin.id);
+      s.set("auth.oidc.allowedGroups", [], admin.id);
+      s.set("auth.oidc.scopes", "openid profile email", admin.id);
+      s.set("auth.oidc.usernameClaim", "email", admin.id);
+      s.set("auth.oidc.autoProvision", true, admin.id);
+      try {
+        await signIn.setOidcClient(
+          {
+            issuer: preset.issuer,
+            clientId,
+            clientSecret,
+            label: preset.label,
+            adminGroups: [],
+            enabled: true,
+          },
+          admin.id
+        );
+      } catch (err) {
+        if (err instanceof SignInError) throw new AdminError(err.status, err.message);
+        throw err;
+      }
+
+      let discovery: PublicSignInResult["discovery"];
+      try {
+        await discover(preset.issuer);
+        discovery = { ok: true };
+      } catch (err) {
+        discovery = { ok: false, error: err instanceof OidcError ? err.message : "Discovery failed." };
+      }
+      record(
+        req,
+        admin,
+        "oidc-public-wire",
+        preset.issuer,
+        `provider=${provider} allowed=${allowedEmails.length} admins=${adminEmails.length}`
+      );
+      return {
+        provider,
+        issuer: preset.issuer,
+        clientId,
+        redirectUri: `${publicOrigin(core)}${CALLBACK_PATH}`,
+        settings: [...WIRED_KEYS, "auth.oidc.adminGroups", ...PUBLIC_KEYS],
+        discovery,
       };
     })
   );

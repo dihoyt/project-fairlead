@@ -733,7 +733,12 @@ describe("deploy bundles", () => {
     );
     assert.deepEqual(
       view.items.filter((i) => i.selected && !i.when).map((i) => i.appId),
-      ["longhorn", "authentik", "gitea", "ntfy"]
+      ["longhorn", "authentik", "gitea"]
+    );
+    assert.equal(
+      view.items.find((i) => i.appId === "ntfy"),
+      undefined,
+      "ntfy is offered from Notifications"
     );
     assert.deepEqual(view.suggested, { baseDomain: "home.example.com", storageClass: "longhorn" });
   });
@@ -977,4 +982,11 @@ describe("catalog routes", () => {
     assert.equal(report.apps.length, catalog.length);
     assert.equal(report.suggested.baseDomain, "home.example.com");
   });
+});
+
+test("every app the default bundle can roll out says how much memory it asks for", () => {
+  for (const item of bundles[0]!.items) {
+    const entry = catalog.find((e) => e.id === item.appId)!;
+    assert.ok((entry.memoryBytes ?? 0) > 0, `${item.appId} has no memoryBytes`);
+  }
 });
