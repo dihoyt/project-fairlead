@@ -101,6 +101,37 @@ function hasDefaultStorageClass(r: RecipeInput): boolean {
   return !basic || basic.status !== "crit";
 }
 
+// k3s ships local-path as the default class; replicated Longhorn takes the
+// default over from it. Any other default was someone's choice and stays.
+const NODE_LOCAL_CLASS = "local-path";
+const DEFAULT_CLASS_ANNOTATION = "storageclass.kubernetes.io/is-default-class";
+
+// The classes marked default now; undefined when discovery couldn't tell.
+function defaultStorageClasses(r: RecipeInput): string[] | undefined {
+  const basic = r.discovery?.basics.find((b) => b.id === "default-storage-class");
+  if (!basic || basic.status === "unknown") return undefined;
+  return basic.status === "crit" ? [] : basic.found;
+}
+
+function longhornTakesDefault(r: RecipeInput): boolean {
+  const defaults = defaultStorageClasses(r);
+  return defaults !== undefined && defaults.every((name) => name === NODE_LOCAL_CLASS || name === "longhorn");
+}
+
+const unsetDefault = (name: string): Step => ({
+  argv: [
+    "kubectl",
+    "patch",
+    "storageclass",
+    name,
+    "--type",
+    "merge",
+    "-p",
+    `{"metadata":{"annotations":{"${DEFAULT_CLASS_ANNOTATION}":"false"}}}`,
+  ],
+  dryRun: "--dry-run=server",
+});
+
 // Behind a tunnel the edge terminates TLS and the tunnel reaches Traefik over
 // plain http. Traefik trusts no X-Forwarded-* header by default, so it
 // forwards X-Forwarded-Proto: http, and apps that build absolute URLs from
@@ -221,7 +252,7 @@ export const recipes: Record<string, Recipe> = {
     values: (r) => ({
       commonLabels: labels(),
       defaultSettings: { defaultReplicaCount: longhornReplicas(r) },
-      persistence: { defaultClass: !hasDefaultStorageClass(r), defaultClassReplicaCount: longhornReplicas(r) },
+      persistence: { defaultClass: longhornTakesDefault(r), defaultClassReplicaCount: longhornReplicas(r) },
       ingress: {
         enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
@@ -232,11 +263,25 @@ export const recipes: Record<string, Recipe> = {
       },
     }),
     service: () => ({ name: "longhorn-frontend", port: 80 }),
+    after: (r) =>
+      longhornTakesDefault(r) && defaultStorageClasses(r)!.includes(NODE_LOCAL_CLASS)
+        ? [unsetDefault(NODE_LOCAL_CLASS)]
+        : [],
     warnings: (r) => {
       const replicas = longhornReplicas(r);
+      const defaults = defaultStorageClasses(r) ?? [];
+      const others = defaults.filter((name) => name !== "longhorn");
       return [
         "Longhorn's UI has no sign-in of its own: anyone who can reach the hostname can use it.",
         ...(replicas === 1 ? ["1 replica on a single node; raise it in Longhorn when you add nodes."] : []),
+        ...(longhornTakesDefault(r) && others.length > 0
+          ? [
+              `Longhorn becomes the default storage class in place of ${others.join(", ")}; volumes that already exist stay where they are.`,
+            ]
+          : []),
+        ...(!longhornTakesDefault(r) && others.length > 0
+          ? [`${others.join(", ")} stays the default storage class; apps that should use Longhorn must name it.`]
+          : []),
       ];
     },
   },
