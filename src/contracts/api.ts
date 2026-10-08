@@ -47,6 +47,7 @@ import type {
   DeployStatus,
   UpgradeReport,
   UpgradeRequest,
+  VolumeBackupView,
 } from "./deploy.js";
 import type {
   Category,
@@ -65,6 +66,7 @@ import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
 import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
 import type { ResetRequest, ResetResult } from "./reset.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
+import type { TemplateDeployRequest, TemplateJobRequest, TemplatePlan, TemplatesView } from "./templates.js";
 import type {
   ClusterUsageReport,
   EventView,
@@ -91,7 +93,7 @@ export interface EventStream<T> {
   readonly eventStream: T;
 }
 
-// A non-JSON body (CSV export).
+// A non-JSON body (CSV export, a file download).
 export interface TextBody<Type extends string> {
   readonly contentType: Type;
 }
@@ -357,6 +359,32 @@ export interface ApiRoutes {
   // with the plan's blockedBy when it is not allowed, 409 while another job
   // for the same release is running.
   "POST /api/deploy/actions/run": Route<None, None, DeployActionRequest, DeployJobView>;
+  // A backup-volumes job's downloads; 404 for any other job.
+  "GET /api/deploy/actions/backups/:id": Route<{ id: string }, None, None, VolumeBackupView>;
+  // Admin, audited. One volume as tar.gz, streamed from the backup pod as it
+  // is read (no Content-Length); 409 unless the backup is ready.
+  "GET /api/deploy/actions/backups/:id/files/:claim": Route<
+    { id: string; claim: string },
+    None,
+    None,
+    TextBody<"application/gzip">
+  >;
+  // Admin. Stops the backup pod; already stopped is not an error.
+  "POST /api/deploy/actions/backups/:id/done": Route<{ id: string }, None, None, VolumeBackupView>;
+
+  // --- templates ------------------------------------------------------------
+  // The library and every saved instance with its latest job.
+  "GET /api/templates": Route<None, None, None, TemplatesView>;
+  // Admin. Renders and checks the template and asks the deploy runner for
+  // its plan; runs nothing. 404 for an unknown template; field errors and
+  // guardrail findings come back in the plan, not as a 400.
+  "POST /api/templates/plan": Route<None, None, TemplateDeployRequest, TemplatePlan>;
+  // Admin, audited. Starts a deploy job for the instance (job views, logs
+  // and cancel are under /api/deploy/jobs); an install saves the instance,
+  // replacing one of the same name and template. 400 with the plan's
+  // blockedBy when the plan is not allowed; 409 for a name another template
+  // uses, or while the instance has a job running.
+  "POST /api/templates/jobs": Route<None, None, TemplateJobRequest, DeployJobView>;
 
   // --- mcp ------------------------------------------------------------------
   // The MCP streamable-HTTP endpoint, also served at MCP_PATH (/mcp).

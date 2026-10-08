@@ -70,7 +70,15 @@ export function registerDeploy(
   const config = declareConfig(ctx.settings);
   const deployer = new Deployer(ctx, new Store(ctx.db, ctx.orgId), config, options);
   const bundles = new Bundles(ctx, deployer, options.now);
-  ctx.services.provide("deploy", { releases: async () => deployer.releases() });
+  ctx.services.provide("deploy", {
+    releases: async () => deployer.releases(),
+    planEntry: async () => {
+      throw new HttpError(501, "Deploying a template is not available yet.");
+    },
+    startEntry: async () => {
+      throw new HttpError(501, "Deploying a template is not available yet.");
+    },
+  });
 
   ctx.scheduler.every("deploy.reconcile", RECONCILE_MS, async () => {
     await deployer.reconcile();
