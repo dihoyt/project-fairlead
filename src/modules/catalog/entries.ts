@@ -110,6 +110,7 @@ const entries: CatalogEntry[] = [
     requires: [],
     inputs: [host()],
     exposesUi: true,
+    noLogin: true,
     prerequisites: [
       "Every node needs open-iscsi installed and running.",
       "Every node needs an NFSv4 client for volumes shared between pods.",

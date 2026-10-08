@@ -21,7 +21,17 @@ import { directTls, removeAllTls } from "./direct.js";
 import { cleanup, parseAllow, sync, type Marker } from "./sync.js";
 
 const KIND = "cloudflare";
+
+const flagged = (get: () => { noLogin?: boolean } | undefined): boolean => {
+  try {
+    return get()?.noLogin === true;
+  } catch {
+    return false;
+  }
+};
 const SYNC_DEBOUNCE_MS = 5_000;
+// Settings carry no change event; the Access setting is looked at this often.
+const SETTING_POLL_MS = 30_000;
 const TUNNEL_SUFFIX = ".cfargotunnel.com";
 
 // A wildcard record that sends the zone to another tunnel answers for every
@@ -149,6 +159,16 @@ function register(ctx: ModuleContext): void {
   });
 
   const client = (token: string, signal?: AbortSignal) => new CloudflareClient(token, apiBase.get(), signal);
+  // Catalog apps and template instances alike; a missing service means no
+  // flag rather than a failed sync.
+  const noLogin = (appId: string): boolean =>
+    flagged(() => ctx.services.get("catalog").get(appId)) ||
+    flagged(() =>
+      ctx.services
+        .get("templates")
+        .entries()
+        .find((e) => e.id === appId)
+    );
   const tunnelIdOf = (instance: ConnectorInstance) => instance.config.tunnelId || store.tunnel()?.id;
 
   async function verify(values: ConnectorValues, signal: AbortSignal, tunnelId?: string): Promise<CheckResult[]> {
@@ -219,6 +239,16 @@ function register(ctx: ModuleContext): void {
       } catch (err) {
         results.push(check("access", "Access apps", "crit", message(err), { error: message(err) }));
       }
+      if (parseAllow(values.accessEmails).length === 0) {
+        results.push(
+          check(
+            "access-allow",
+            "Access allow list",
+            "warn",
+            "Empty, so no Access app is created: Edit the connector and name who may sign in (emails or @domains)"
+          )
+        );
+      }
     }
     return results;
   }
@@ -277,7 +307,11 @@ function register(ctx: ModuleContext): void {
         allow: parseAllow(instance.config.accessEmails),
         accessPolicy: accessApps.get(),
         defaultExposure: access.mode === "direct" ? "direct" : "tunnel",
-        hosts: access.hosts.map((h) => ({ host: h.host, ...(h.appId ? { appId: h.appId } : {}) })),
+        hosts: access.hosts.map((h) => ({
+          host: h.host,
+          ...(h.appId ? { appId: h.appId } : {}),
+          ...(h.appId && noLogin(h.appId) ? { noLogin: true } : {}),
+        })),
         prefs: store.prefs(),
         owned,
         marker,
@@ -370,6 +404,15 @@ function register(ctx: ModuleContext): void {
       .reconcile(id)
       .catch(() => undefined);
   };
+
+  let policySeen = accessApps.get();
+  ctx.scheduler.every("connector-cloudflare.access-setting", SETTING_POLL_MS, async () => {
+    const policy = accessApps.get();
+    if (policy === policySeen) return;
+    policySeen = policy;
+    const found = await instance();
+    if (found) await syncNow(found.id);
+  });
 
   // New apps get their records shortly after their deploy finishes.
   let timer: NodeJS.Timeout | undefined;

@@ -38,6 +38,7 @@ export const definitionSchema = z
       .regex(/^\/[A-Za-z0-9._/-]*$/)
       .optional(),
     disk: z.object({ volumeBytes: z.number().nonnegative(), imageBytes: z.number().nonnegative() }).strict().optional(),
+    noLogin: z.boolean().optional(),
   })
   .strict();
 
@@ -53,6 +54,7 @@ const library: TemplateDefinition[] = [
     version: "v1.11.0",
     port: 80,
     disk: { volumeBytes: 0, imageBytes: 8 * MiB },
+    noLogin: true,
   },
   {
     id: "uptime-kuma",
@@ -74,6 +76,7 @@ const library: TemplateDefinition[] = [
     version: "2024.10.22-7ca5933",
     port: 80,
     disk: { volumeBytes: 0, imageBytes: 60 * MiB },
+    noLogin: true,
   },
 ];
 
@@ -99,6 +102,7 @@ export function templateView(def: TemplateDefinition): AppTemplate {
     port: def.port,
     ...(def.volume ? { volume: def.volume } : {}),
     ...(def.disk ? { disk: def.disk } : {}),
+    ...(def.noLogin ? { noLogin: true } : {}),
   };
 }
 

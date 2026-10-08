@@ -49,7 +49,7 @@ export interface SyncInput {
   allow: string[];
   accessPolicy: CloudflareAccessPolicy;
   defaultExposure: CloudflareExposure;
-  hosts: Array<{ host: string; appId?: string }>;
+  hosts: Array<{ host: string; appId?: string; noLogin?: boolean }>;
   prefs: Map<string, HostPrefs>;
   owned: OwnedStore;
   marker: Marker;
@@ -67,8 +67,9 @@ export function specHash(spec: Record<string, unknown>): string {
 
 export const inZone = (host: string, zone: string) => host === zone || host.endsWith(`.${zone}`);
 
-export function wantsAccess(policy: CloudflareAccessPolicy, prefs: HostPrefs | undefined): boolean {
-  return policy === "always" || (policy === "per-app" && prefs?.access === true);
+// Under "per-app" an app with no sign-in of its own starts behind Access.
+export function wantsAccess(policy: CloudflareAccessPolicy, prefs: HostPrefs | undefined, noLogin = false): boolean {
+  return policy === "always" || (policy === "per-app" && (prefs?.access ?? noLogin));
 }
 
 export function parseAllow(list: string | undefined): string[] {
@@ -159,14 +160,14 @@ export async function sync(input: SyncInput): Promise<SyncResult> {
   }
 
   // --- DNS records and Access apps, per host ---
-  const wantAccess = managed.some((h) => wantsAccess(input.accessPolicy, input.prefs.get(h.host)));
+  const wantAccess = managed.some((h) => wantsAccess(input.accessPolicy, input.prefs.get(h.host), h.noLogin));
   const recordedAccess = owned.list(ACCESS).length > 0;
   const apps: AccessApp[] = wantAccess || recordedAccess ? await client.accessApps(accountId) : [];
 
-  for (const { host, appId } of input.hosts) {
+  for (const { host, appId, noLogin } of input.hosts) {
     const exposure = exposureOf(host);
-    const access = wantsAccess(input.accessPolicy, input.prefs.get(host));
-    const base = { host, ...(appId ? { appId } : {}), exposure, access };
+    const access = wantsAccess(input.accessPolicy, input.prefs.get(host), noLogin);
+    const base = { host, ...(appId ? { appId } : {}), exposure, access, ...(noLogin ? { noLogin } : {}) };
     if (!inZone(host, zone.name)) {
       views.push({
         ...base,
@@ -202,7 +203,7 @@ export async function sync(input: SyncInput): Promise<SyncResult> {
       dns,
       ...(route ? { route } : {}),
       ...(accessApp ? { accessApp } : {}),
-      ...judge(exposure, dns, route, accessApp),
+      ...judge(exposure, dns, route, accessApp, noLogin === true && !access),
     });
   }
 
@@ -230,13 +231,20 @@ function judge(
   exposure: CloudflareExposure,
   dns: CloudflareObjectState,
   route: CloudflareObjectState | undefined,
-  accessApp: CloudflareObjectState | undefined
+  accessApp: CloudflareObjectState | undefined,
+  open = false
 ): { status: Status; detail: string } {
   const parts = [dns, route, accessApp].filter((p): p is CloudflareObjectState => p !== undefined);
   const conflict = parts.find((p) => p.state === "conflict-unowned");
   if (conflict) return { status: "crit", detail: conflict.detail };
   const pending = parts.find((p) => p.state === "pending");
   if (pending) return { status: "warn", detail: pending.detail };
+  if (open) {
+    return {
+      status: "warn",
+      detail: "It has no sign-in of its own and no Cloudflare Access: anyone with the link can use it",
+    };
+  }
   if (exposure === "direct") return { status: "ok", detail: `Straight to your public address (${dns.detail})` };
   return {
     status: "ok",

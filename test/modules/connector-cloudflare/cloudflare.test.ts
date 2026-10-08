@@ -12,7 +12,13 @@ import type { AccessView, DeployJobView } from "../../../src/contracts/deploy.js
 import { createMockContext } from "../../../src/contracts/mocks/context.js";
 import { createMockConnectorRegistry } from "../../../src/contracts/mocks/connectors/registry.js";
 import { createMockDeployService } from "../../../src/contracts/mocks/deploy.js";
-import { createMockCatalogService, mockAccess, mockDiscovery } from "../../../src/contracts/mocks/catalog.js";
+import {
+  createMockCatalogService,
+  mockAccess,
+  mockCatalog,
+  mockDiscovery,
+} from "../../../src/contracts/mocks/catalog.js";
+import type { CatalogEntry } from "../../../src/contracts/catalog.js";
 import { createFakeK8s } from "../../../src/contracts/mocks/k8s.js";
 import { RESOURCES, type KubeObject } from "../../../src/contracts/k8s.js";
 import cloudflare from "../../../src/modules/connector-cloudflare/index.js";
@@ -56,6 +62,7 @@ async function setup(
     settings?: Record<string, unknown>;
     connected?: boolean;
     issuer?: string | null;
+    entries?: readonly CatalogEntry[];
   } = {}
 ) {
   const cf = await startMockCloudflare(options.state ?? mockCloudflareState());
@@ -66,21 +73,29 @@ async function setup(
   const k8s = createFakeK8s({ objects: [{ ref: RESOURCES.ingresses, items: [giteaIngress] }] });
   const issuer = options.issuer === undefined ? "letsencrypt-prod" : options.issuer;
   const catalog = createMockCatalogService({
+    ...(options.entries ? { entries: options.entries } : {}),
     discovery: {
       ...mockDiscovery,
       suggested: { ...mockDiscovery.suggested, ...(issuer ? { clusterIssuer: issuer } : { clusterIssuer: undefined }) },
     },
   });
+  const settings: Record<string, unknown> = { "connector-cloudflare.apiBase": cf.url, ...options.settings };
   const m = createMockContext("connector-cloudflare", {
     migrations: cloudflare.migrations ?? [],
     services: { connectors: registry, deploy, k8s, catalog },
-    settings: { "connector-cloudflare.apiBase": cf.url, ...options.settings },
+    settings,
     calls: {
       "POST /api/deploy/jobs": (input) =>
         ({ id: "dj_9", appId: input.body!.appId, state: "pending" }) as unknown as DeployJobView,
       "GET /api/deploy/jobs": () => [],
     },
   });
+  const jobs = new Map<string, () => unknown>();
+  const every = m.ctx.scheduler.every.bind(m.ctx.scheduler);
+  m.ctx.scheduler.every = (name, intervalMs, fn, opts) => {
+    jobs.set(name, () => fn(new AbortController().signal));
+    return every(name, intervalMs, fn, opts);
+  };
   await cloudflare.register(m.ctx);
   const server: Server = await new Promise((resolve) => {
     const s = m.app.listen(0, "127.0.0.1", () => resolve(s));
@@ -103,6 +118,8 @@ async function setup(
     registry,
     kind,
     call,
+    settings,
+    jobs,
     setAccess(next: AccessView) {
       current = next;
     },
@@ -599,12 +616,67 @@ test("Access apps follow the setting: per app, then off removes them", async () 
   }
 });
 
+test("an app with no sign-in of its own starts behind Access under per-app, and is flagged when open", async () => {
+  const entries = mockCatalog.map((e) => (e.id === "grafana" ? { ...e, noLogin: true } : e));
+  const s = await setup({
+    entries,
+    config: { accessEmails: "me@example.test" },
+    settings: { "connector-cloudflare.accessApps": "per-app" },
+  });
+  try {
+    let { body } = await s.call<CloudflareView>("POST", "/tunnel", {});
+    const grafana = hostOf(body, `grafana.${MOCK_ZONE}`);
+    assert.equal(grafana.noLogin, true);
+    assert.equal(grafana.access, true);
+    assert.equal(grafana.accessApp!.state, "in-sync");
+    assert.equal(hostOf(body, `gitea.${MOCK_ZONE}`).access, false);
+    assert.deepEqual(
+      s.cf.state.accessApps.map((a) => a.domain),
+      [`grafana.${MOCK_ZONE}`]
+    );
+
+    const off = await s.call<CloudflareHostView>("PUT", `/hosts/grafana.${MOCK_ZONE}`, { access: false });
+    assert.equal(off.body.access, false);
+    assert.equal(off.body.status, "warn");
+    assert.match(off.body.detail, /no sign-in of its own/);
+    assert.equal(s.cf.state.accessApps.length, 0);
+
+    ({ body } = await s.call<CloudflareView>("GET", "/view"));
+    assert.equal(hostOf(body, `gitea.${MOCK_ZONE}`).status, "ok");
+  } finally {
+    await s.close();
+  }
+});
+
 test("Access always without an allow list waits rather than locking everyone out", async () => {
   const s = await setup({ settings: { "connector-cloudflare.accessApps": "always" } });
   try {
     const { body } = await s.call<CloudflareView>("POST", "/tunnel", {});
     assert.equal(s.cf.state.accessApps.length, 0);
     assert.equal(hostOf(body, `grafana.${MOCK_ZONE}`).accessApp!.state, "pending");
+    const checks = await s.kind.verify({ ...instance().config, ...instance().secrets }, new AbortController().signal);
+    const allow = checks.find((c) => c.id === "access-allow");
+    assert.equal(allow?.status, "warn");
+    assert.match(allow!.detail, /name who may sign in/);
+  } finally {
+    await s.close();
+  }
+});
+
+test("changing the Access setting syncs without waiting for the next pass", async () => {
+  const s = await setup({ config: { accessEmails: "me@example.test" } });
+  try {
+    await s.call("POST", "/tunnel", {});
+    assert.equal(s.cf.state.accessApps.length, 0);
+    const poll = s.jobs.get("connector-cloudflare.access-setting")!;
+    await poll();
+    assert.equal(s.cf.state.accessApps.length, 0, "unchanged setting: no sync");
+    s.settings["connector-cloudflare.accessApps"] = "always";
+    await poll();
+    assert.deepEqual(s.cf.state.accessApps.map((a) => a.domain).toSorted(), [
+      `gitea.${MOCK_ZONE}`,
+      `grafana.${MOCK_ZONE}`,
+    ]);
   } finally {
     await s.close();
   }

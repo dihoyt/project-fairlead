@@ -56,6 +56,15 @@ describe("CloudflarePage", () => {
     expect(await screen.findByText(warning)).toBeInTheDocument();
   });
 
+  it("marks an app with no sign-in of its own", async () => {
+    const view = apiMocks["GET /api/connector-cloudflare/view"];
+    serve({ ...view, hosts: view.hosts.map((h, i) => (i === 0 ? { ...h, noLogin: true } : h)) });
+    renderWithApp(<CloudflarePage />);
+    const row = (await screen.findByText(view.hosts[0]!.host)).closest("tr")!;
+    expect(within(row).getByText("No sign-in of its own")).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-no-login]")).toHaveLength(1);
+  });
+
   it("switches an app to direct", async () => {
     const fetchMock = serve(apiMocks["GET /api/connector-cloudflare/view"]);
     renderWithApp(<CloudflarePage />);
