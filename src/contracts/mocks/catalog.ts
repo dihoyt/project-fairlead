@@ -240,7 +240,11 @@ export const mockCatalog: readonly CatalogEntry[] = [
     summary: "Sends alerts as push notifications to your phone, no account needed.",
     slots: ["notifications"],
     homepage: "https://ntfy.sh",
-    install: helm("oci://ghcr.io/example/charts", "ntfy", "0.0.0-mock"),
+    install: {
+      kind: "manifest",
+      bundled: ["apiVersion: v1", "kind: Namespace", "metadata:", "  name: ntfy", ""].join("\n"),
+      version: "v0.0.0-mock",
+    },
     namespace: "ntfy",
     requires: [],
     inputs: [host()],

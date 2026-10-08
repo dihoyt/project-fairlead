@@ -51,9 +51,13 @@ export type InstallSource =
       version: string;
     }
   | {
-      // Plain manifests from a pinned, published URL (local-path-provisioner).
+      // Plain manifests, exactly one of: a pinned, published URL
+      // (local-path-provisioner), or YAML shipped in the catalog itself
+      // (ntfy, which has no upstream manifest). A bundled manifest carries
+      // no Ingress; the deploy module renders one from the "host" input.
       kind: "manifest";
-      url: string;
+      url?: string;
+      bundled?: string;
       version: string;
     }
   | {
