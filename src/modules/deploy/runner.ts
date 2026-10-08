@@ -15,21 +15,38 @@ import type {
   DeployRequest,
   DeployStatus,
   DeployedRelease,
+  GateStatus,
 } from "../../contracts/deploy.js";
 import { RESOURCES, type K8sApi, type KubeObject, type Watch } from "../../contracts/k8s.js";
 import type { ModuleContext } from "../../contracts/module.js";
 import type { LogLines } from "../../contracts/workloads.js";
 import { HttpError } from "../../runtime/http.js";
 import { errorMessage } from "../../runtime/log.js";
+import { type GateActionContext } from "./actions/gate.js";
 import { actionRecipe, type ActionContext, type ActionRecipe, type ActionRendered } from "./actions/index.js";
 import type { Defaults, Step } from "./apps.js";
 import { accessView, AccessStore, type Resolver } from "./access.js";
 import { enableHint, type DeployConfig } from "./config.js";
+import {
+  annotateSteps,
+  appIngresses,
+  applyMiddlewareStep,
+  decide,
+  gateStatus,
+  GateStore,
+  middlewareManifest,
+  MIDDLEWARE_FILE,
+  type GateInput,
+} from "./gate.js";
+import { toYaml } from "./yaml.js";
 import { CONTAINER, DEADLINE_SECONDS, JOB_LABEL, jobManifest, valuesSecret } from "./job.js";
 import { jobName, render, valuesSecretName, type Rendered } from "./plan.js";
 import { createRedactor, type Redactor } from "./redact.js";
 import { isFinal, type JobRecord, type Store } from "./store.js";
 import { upgradeReport, upgradeSteps } from "./upgrades.js";
+
+// The recipe for a TLS-only Ingress beside an app's own (Direct exposure).
+const DIRECT_TLS = "direct-tls";
 
 export const LOG_LINES = 500;
 export const MAX_TAIL = 5000;
@@ -143,6 +160,7 @@ export class Deployer {
   private readonly config: DeployConfig;
   private readonly options: DeployerOptions;
   readonly access: AccessStore;
+  readonly gates: GateStore;
 
   constructor(ctx: ModuleContext, store: Store, config: DeployConfig, options: DeployerOptions = {}) {
     this.ctx = ctx;
@@ -151,6 +169,7 @@ export class Deployer {
     this.options = options;
     this.now = options.now ?? Date.now;
     this.access = new AccessStore(ctx.db, ctx.orgId);
+    this.gates = new GateStore(ctx.db, ctx.orgId);
   }
 
   private iso() {
@@ -263,6 +282,22 @@ export class Deployer {
     ]);
     const namespace = request.namespace?.trim() || entry.namespace;
     const defaults = this.effectiveDefaults(found.discovery);
+    const gateInput = this.gateInput();
+    const ownerId =
+      entry.id === DIRECT_TLS
+        ? found.discovery?.ingressHosts.find((h) => h.host === request.inputs?.domain)?.appId
+        : undefined;
+    const owner = ownerId ? this.entries().find((e) => e.id === ownerId) : undefined;
+    const gate =
+      gateInput && (entry.id !== DIRECT_TLS || owner)
+        ? {
+            gate: {
+              ...gateInput,
+              isPublic: (owner ? undefined : request.public) ?? this.gates.isPublic((owner ?? entry).id),
+              ...(owner ? { owner } : {}),
+            },
+          }
+        : {};
     for (const [key, value] of Object.entries(context.defaults ?? {})) {
       if (value) defaults[key as keyof Defaults] = value;
     }
@@ -279,10 +314,84 @@ export class Deployer {
         jobNamespace: this.config.namespace(),
         jobName: jobName(entry.id, this.store.nextSeq()),
         valuesSecret: valuesSecretName(entry.id),
+        ...gate,
       },
       mode,
       this.options.generate
     );
+  }
+
+  // What the sign-in gate is applied with; undefined without the platform's
+  // gate service (nothing is gated then).
+  gateInput(): GateInput | undefined {
+    if (!this.ctx.services.has("gate")) return undefined;
+    return {
+      console: { namespace: this.config.namespace(), service: this.config.release() },
+      readiness: this.ctx.services.get("gate").readiness(),
+    };
+  }
+
+  async gateStatus(refresh = false): Promise<GateStatus> {
+    const { discovery } = await this.discover(refresh);
+    const input = this.gateInput() ?? {
+      console: { namespace: this.config.namespace(), service: this.config.release() },
+      readiness: { ready: false, reason: "The sign-in gate is not available in this build.", signInUrl: "" },
+    };
+    return gateStatus(
+      this.entries(),
+      this.store.releases(),
+      discovery,
+      this.effectiveDefaults(discovery),
+      input,
+      (id) => this.gates.isPublic(id),
+      await this.ingressObjects()
+    );
+  }
+
+  // Every Ingress in the cluster, or undefined when they can't be listed.
+  async ingressObjects(): Promise<KubeObject[] | undefined> {
+    try {
+      const found = await this.k8s()?.list(RESOURCES.ingresses);
+      return Array.isArray(found) ? found : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async gateActionContext(): Promise<GateActionContext | undefined> {
+    const input = this.gateInput();
+    if (!input) return undefined;
+    const { discovery } = await this.discover();
+    return {
+      input,
+      defaults: this.effectiveDefaults(discovery),
+      entry: (appId) => this.entries().find((e) => e.id === appId),
+      isPublic: (appId) => this.gates.isPublic(appId),
+      ingresses: () => this.ingressObjects(),
+      save: (appId, isPublic, by) => {
+        this.gates.set(appId, isPublic, by, this.iso());
+      },
+    };
+  }
+
+  // Puts the saved choice back on the app's Ingresses after a job that may
+  // have rewritten them (an upgrade from the values it was installed with).
+  async gateSteps(entry: CatalogEntry): Promise<{ steps: Step[]; files: Record<string, string> }> {
+    const input = this.gateInput();
+    const { discovery } = await this.discover();
+    if (!input || !entry.exposesUi || !discovery) return { steps: [], files: {} };
+    const defaults = this.effectiveDefaults(discovery);
+    const decision = decide(entry, defaults, this.gates.isPublic(entry.id), input);
+    if (decision.state === "tailnet" || decision.state === "open") return { steps: [], files: {} };
+    const steps = annotateSteps(
+      appIngresses(discovery.ingressHosts, entry.id, await this.ingressObjects()),
+      decision.middleware
+    );
+    if (!decision.middleware) return { steps, files: {} };
+    return {
+      steps: [applyMiddlewareStep(), ...steps],
+      files: { [MIDDLEWARE_FILE]: toYaml(middlewareManifest(input, defaults, decision.credentials)) },
+    };
   }
 
   async accessView(refresh = false): Promise<AccessView> {
@@ -314,13 +423,17 @@ export class Deployer {
   ): Promise<DeployJobView> {
     const { plan, files, steps, secrets } = await this.rendered(request, request.mode, context, entry);
     if (!plan.allowed) throw new HttpError(400, plan.blockedBy ?? "This deploy is not allowed.");
-    return this.launch(
+    const view = await this.launch(
       actor,
       { ...plan, mode: request.mode, url: request.mode === "install" ? plan.url : undefined },
       files,
       steps,
       secrets
     );
+    if (request.mode === "install" && request.public !== undefined) {
+      this.gates.set(plan.appId, request.public, actor, this.iso());
+    }
+    return view;
   }
 
   async upgradeReport(refresh = false): Promise<UpgradeReport> {
@@ -350,6 +463,9 @@ export class Deployer {
       app.targetVersion
     );
     if (error) throw new HttpError(400, error);
+    const gate = await this.gateSteps(entry);
+    steps.push(...gate.steps);
+    Object.assign(files, gate.files);
     return this.launch(
       actor,
       {
@@ -383,6 +499,7 @@ export class Deployer {
       discover: async () => (await this.discover()).discovery,
       releases: this.store.releases(),
       versions: this.store.installedVersions(),
+      gate: await this.gateActionContext(),
     });
     if (!rendered.plan.allowed) return rendered;
     const namespace = this.config.namespace();

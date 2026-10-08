@@ -3,6 +3,15 @@ import type { CatalogEntry, CatalogInput, DiscoveryReport } from "../../contract
 import type { DeployMode, DeployPlan, DeployRequest, DeployValue, PlannedObject } from "../../contracts/deploy.js";
 import { pickVersion } from "../../contracts/kubeversion.js";
 import { recipes, VALUES_DIR, type Defaults, type RecipeInput, type Step } from "./apps.js";
+import {
+  applyMiddlewareStep,
+  decide,
+  gateWarning,
+  middlewareManifest,
+  MIDDLEWARE_FILE,
+  type GateDecision,
+  type GateInput,
+} from "./gate.js";
 import { ingressFor, manifestParts } from "./manifest.js";
 import { toYaml, type YamlValue } from "./yaml.js";
 
@@ -30,6 +39,9 @@ export interface PlanInput {
   jobNamespace: string;
   jobName: string;
   valuesSecret: string;
+  // The sign-in gate; without it nothing is gated. owner: the app a
+  // direct-tls Ingress serves, whose choice it follows.
+  gate?: GateInput & { isPublic: boolean; owner?: CatalogEntry };
 }
 
 export interface Rendered {
@@ -176,6 +188,13 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
   const url = entry.exposesUi && host ? `${scheme}://${host}` : undefined;
   const tailscaleIngress = access === "tailscale" && entry.exposesUi && entry.install.kind === "helm";
 
+  // A TLS-only Ingress beside an app's own (direct-tls) is gated as the app
+  // it serves is.
+  const gated = input.gate?.owner ?? (entry.exposesUi && host ? entry : undefined);
+  const gate: GateDecision | undefined =
+    gated && input.gate ? decide(gated, input.defaults, input.gate.isPublic, input.gate) : undefined;
+  const middlewares = gate?.middleware ? [gate.middleware] : undefined;
+
   const generatedReal = new Map<string, string>();
   const recipeInput = (real: boolean): RecipeInput => ({
     app: entry,
@@ -186,6 +205,7 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
     tls,
     scheme,
     chartIngress: !tailscaleIngress,
+    ...(middlewares?.length ? { middlewares } : {}),
     defaults: input.defaults,
     discovery: input.discovery,
     generated: (name) => {
@@ -248,9 +268,12 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
     warnings.push("Installed here before: this runs the same install again over it.");
   }
   if (supported) warnings.push(...(recipe?.warnings?.(shown) ?? []));
+  const gateNote = gate && entry.exposesUi ? gateWarning(entry, gate) : undefined;
+  if (gateNote) warnings.push(gateNote);
 
   const all = supported
     ? [
+        ...(gate?.middleware ? [applyMiddlewareStep()] : []),
         ...(entry.install.kind === "patch"
           ? recipe!.patch!(shown)
           : manifest
@@ -300,6 +323,11 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
               .join("---\n")
           : "";
 
+  const gateShown =
+    gate?.middleware && input.gate && supported
+      ? `---\n${toYaml(middlewareManifest(input.gate, input.defaults, gate.credentials))}`
+      : "";
+
   const creates: PlannedObject[] = [
     ...(entry.install.kind === "helm" && input.namespaceExists !== true
       ? [{ kind: "Namespace", name: namespace }]
@@ -319,9 +347,12 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
     inputs: masked(entry, values),
     inputErrors: errors,
     commands: shownSteps.map((step) => display(step.argv)),
-    values: valuesShown,
+    values: valuesShown + gateShown,
     creates,
     ...(url ? { url } : {}),
+    ...(gate && entry.exposesUi
+      ? { gate: { state: gate.state, ...(gate.reason ? { reason: gate.reason } : {}) } }
+      : {}),
     warnings,
   };
 
@@ -336,6 +367,9 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
     const realParts = manifestParts(entry, real);
     Object.assign(files, realParts.raw);
     for (const [file, content] of Object.entries(realParts.files)) files[file] = toYaml(content);
+  }
+  if (gate?.middleware && input.gate) {
+    files[MIDDLEWARE_FILE] = toYaml(middlewareManifest(input.gate, input.defaults, gate.credentials));
   }
   if (Object.keys(files).length === 0) files["values.yaml"] = "{}\n";
 

@@ -110,7 +110,7 @@ function RaiseDialog({ advice, onDone }: { advice: LonghornReplicaAdvice; onDone
   );
 }
 
-function ActionPlanView({ plan }: { plan: DeployActionPlan }) {
+export function ActionPlanView({ plan }: { plan: DeployActionPlan }) {
   return (
     <Stack gap="sm" data-plan-allowed={plan.allowed}>
       {!plan.allowed && plan.blockedBy ? (

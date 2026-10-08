@@ -22,6 +22,7 @@ import {
   toDocuments,
 } from "../../../src/modules/templates/render.js";
 import { listen } from "../../runtime/helpers.js";
+import { product } from "../../../src/product.js";
 
 const NS = "console";
 const IMAGE = "docker.io/alpine/k8s@sha256:1111111111111111111111111111111111111111111111111111111111111111";
@@ -225,11 +226,16 @@ test("plan: whoami gets a host under the base domain, its manifests and the runn
   assert.match(plan.manifests, /image: docker.io\/traefik\/whoami:v1.11.0/);
   assert.equal(plan.deploy?.url, "https://whoami.example.test");
   assert.deepEqual(plan.deploy?.commands, [
+    "kubectl apply -f /values/gate-middleware.yaml",
     "kubectl apply -f /values/manifest.yaml",
     "kubectl apply -f /values/ingress.yaml",
     "kubectl rollout status deployment/whoami --namespace whoami --timeout=5m",
   ]);
   assert.match(plan.deploy!.values, /kind: Ingress/);
+  assert.match(
+    plan.deploy!.values,
+    new RegExp(`router.middlewares: ${NS}-${product.ownerMarker.externalPrefix}gate@kubernetescrd`)
+  );
 
   const internal = await call<TemplatePlan>(e, "POST", "/plan", { templateId: "it-tools", host: "" });
   assert.equal(internal.allowed, true, internal.blockedBy);

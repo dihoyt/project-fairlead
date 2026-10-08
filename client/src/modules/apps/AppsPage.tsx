@@ -32,6 +32,7 @@ import {
 } from "../../ui/deploy";
 import { ConvertToLonghornButton } from "./ConvertToLonghorn";
 import { SLOT_LABEL, SLOT_ORDER } from "./labels";
+import { SignInGateSection } from "./SignInGate";
 import { UpgradesSection } from "./Upgrades";
 
 const JOBS_POLL_MS = 5_000;
@@ -247,6 +248,7 @@ export function AppsPage() {
           </Alert>
         ) : null}
         <UpgradesSection names={names} onFinished={deployed} />
+        <SignInGateSection onFinished={deployed} />
         {groupBySlot(apps.data ?? []).map(({ slot, apps: inSlot }) => (
           <section key={slot} aria-label={SLOT_LABEL[slot].title}>
             <Title order={4}>{SLOT_LABEL[slot].title}</Title>

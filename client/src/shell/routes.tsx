@@ -18,6 +18,7 @@ import { SettingsPage } from "./admin/SettingsPage";
 import { SignInSettingsPage } from "./admin/SignInSettingsPage";
 import { SystemPage } from "./admin/SystemPage";
 import { TokensPage } from "./admin/TokensPage";
+import { GatePage } from "./gate/GatePage";
 import { ConsentPage } from "./oauth/ConsentPage";
 import { UsersPage } from "./admin/UsersPage";
 
@@ -59,6 +60,7 @@ export const shellRoutes: ModuleRoute[] = [
   { path: "/admin/settings", element: admin(<SettingsPage />) },
   { path: "/admin/tokens", element: admin(<TokensPage />) },
   { path: "/oauth/consent", element: <ConsentPage /> },
+  { path: "/gate", element: <GatePage /> },
   { path: "/admin/audit", element: admin(<AuditPage />) },
   { path: "/admin/system", element: admin(<SystemPage />) },
   // Always routable so a module author can open it in any build; only

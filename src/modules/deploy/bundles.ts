@@ -239,7 +239,8 @@ export function stepRequests(
         (input.key === "host" && baseDomain ? `${item.hostPrefix ?? item.appId}.${baseDomain}` : undefined);
       if (value !== undefined) inputs[input.key] = value;
     }
-    return { appId: item.appId, skip: false, request: { appId: item.appId, inputs } };
+    const made = request.public ? { public: request.public.includes(item.appId) } : {};
+    return { appId: item.appId, skip: false, request: { appId: item.appId, inputs, ...made } };
   });
 }
 

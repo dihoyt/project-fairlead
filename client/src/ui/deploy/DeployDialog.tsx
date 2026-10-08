@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Button, Group, List, Loader, Modal, Stack, Text, Title } from "@mantine/core";
+import { Alert, Button, Checkbox, Group, List, Loader, Modal, Stack, Text, Title } from "@mantine/core";
 import type { CatalogAppView } from "@contracts/catalog";
 import type { DeployJobView, DeployMode, DeployPlan, DeployStatus, DeployValue } from "@contracts/deploy";
 import { apiRequest } from "../api";
@@ -62,6 +62,7 @@ export function DeployDialog({ appId, opened, onClose, initial, onDeployed }: De
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<"plan" | DeployMode | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [isPublic, setPublic] = useState(false);
   const initialKey = JSON.stringify(initial ?? {});
 
   useEffect(() => {
@@ -103,14 +104,17 @@ export function DeployDialog({ appId, opened, onClose, initial, onDeployed }: De
 
   const close = useCallback(() => {
     setValues({});
+    setPublic(false);
     onClose();
   }, [onClose]);
 
-  async function preview() {
+  async function preview(makePublic = isPublic) {
     setBusy("plan");
     setActionError(null);
     try {
-      const plan = await apiRequest("POST /api/deploy/plan", { body: { appId, inputs: requestInputs(values) } });
+      const plan = await apiRequest("POST /api/deploy/plan", {
+        body: { appId, inputs: requestInputs(values), public: makePublic },
+      });
       setErrors(plan.inputErrors);
       if (Object.keys(plan.inputErrors).length === 0) setStep({ kind: "preview", plan });
     } catch (err) {
@@ -125,7 +129,7 @@ export function DeployDialog({ appId, opened, onClose, initial, onDeployed }: De
     setActionError(null);
     try {
       const job = await apiRequest("POST /api/deploy/jobs", {
-        body: { appId, namespace: plan.namespace, inputs: requestInputs(values), mode },
+        body: { appId, namespace: plan.namespace, inputs: requestInputs(values), mode, public: isPublic },
       });
       setStep(mode === "install" ? { kind: "install", jobId: job.id } : { kind: "preview", plan, dryRunId: job.id });
     } catch (err) {
@@ -194,6 +198,21 @@ export function DeployDialog({ appId, opened, onClose, initial, onDeployed }: De
 
         {step.kind === "preview" ? (
           <>
+            {app &&
+            app.gate !== "public" &&
+            (step.plan.gate?.state === "gated" || step.plan.gate?.state === "public") ? (
+              <Checkbox
+                label="Public"
+                description="Anyone with its address can open it, without signing in to this console first."
+                checked={isPublic}
+                disabled={busy !== null}
+                onChange={(event) => {
+                  const next = event.currentTarget.checked;
+                  setPublic(next);
+                  void preview(next);
+                }}
+              />
+            ) : null}
             <DeployPlanView plan={step.plan} names={names} />
             {step.dryRunId ? (
               <div>

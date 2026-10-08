@@ -12,6 +12,7 @@ import type { K8sApi } from "../../../contracts/k8s.js";
 import type { CallInput } from "../../../contracts/module.js";
 import type { Step } from "../apps.js";
 import { backupAction } from "./backup.js";
+import { gateAction, type GateActionContext } from "./gate.js";
 import { migrateAction } from "./migrate.js";
 import { removeAction } from "./remove.js";
 import { replicasAction } from "./replicas.js";
@@ -36,6 +37,8 @@ export interface ActionContext {
   releases: readonly DeployedRelease[];
   // Release -> the version of its latest succeeded install or upgrade.
   versions: ReadonlyMap<string, string>;
+  // For app-gate; undefined without the platform's gate service.
+  gate?: GateActionContext;
 }
 
 export interface ActionRendered {
@@ -72,6 +75,7 @@ const recipes: { [K in DeployActionKind]?: ActionRecipe<Extract<DeployActionRequ
   "migrate-to-longhorn": migrateAction,
   "backup-volumes": backupAction,
   "remove-app": removeAction,
+  "app-gate": gateAction,
 };
 
 export function actionRecipe<K extends DeployActionKind>(
@@ -89,4 +93,5 @@ export const actionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("migrate-to-longhorn"), appId: z.string().min(1).max(100) }),
   z.object({ kind: z.literal("backup-volumes"), appId: z.string().min(1).max(100) }),
   z.object({ kind: z.literal("remove-app"), appId: z.string().min(1).max(100), deleteVolumes: z.boolean().optional() }),
+  z.object({ kind: z.literal("app-gate"), appId: z.string().min(1).max(100), public: z.boolean() }),
 ]);

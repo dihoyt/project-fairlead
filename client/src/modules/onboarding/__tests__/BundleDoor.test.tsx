@@ -141,7 +141,7 @@ describe("BundleDoor", () => {
     expect(await screen.findByLabelText(/Base domain/)).toHaveValue("example.test");
     expect(await screen.findByLabelText(/Public URL/)).toBeInTheDocument();
     const traefik = document.querySelector('[data-item="traefik"]') as HTMLElement;
-    expect(within(traefik).getByRole("checkbox")).toBeDisabled();
+    expect(within(traefik).getAllByRole("checkbox")[0]).toBeDisabled();
     expect(within(traefik).getByText("Already installed")).toBeInTheDocument();
 
     expect(screen.getByRole("button", { name: "Preview" })).toBeDisabled();
@@ -198,7 +198,9 @@ describe("BundleDoor", () => {
     await waitFor(() => expect(field).toHaveValue("longhorn"));
     expect(screen.getByText(/Longhorn, which this rollout installs/)).toBeInTheDocument();
 
-    const longhorn = within(document.querySelector('[data-item="longhorn"]') as HTMLElement).getByRole("checkbox");
+    const longhorn = within(document.querySelector('[data-item="longhorn"]') as HTMLElement).getAllByRole(
+      "checkbox"
+    )[0];
     fireEvent.click(longhorn);
     await waitFor(() => expect(field).toHaveValue("local-path"));
     fireEvent.click(longhorn);

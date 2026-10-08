@@ -14,6 +14,7 @@ import { registerBackupRoutes } from "./actions/backup.js";
 import { actionSchema } from "./actions/index.js";
 import { Bundles } from "./bundles.js";
 import { declareConfig } from "./config.js";
+import { registerGate } from "./gateHealth.js";
 import { migrations } from "./migrations.js";
 import { Deployer, LOG_LINES, MAX_TAIL, type DeployerOptions } from "./runner.js";
 import { Store } from "./store.js";
@@ -26,6 +27,7 @@ const requestSchema = z.object({
   appId: z.string().min(1).max(100),
   namespace: z.string().max(63).optional(),
   inputs: z.record(z.string(), z.union([z.string(), z.boolean()])).default({}),
+  public: z.boolean().optional(),
 });
 const jobRequestSchema = requestSchema.extend({ mode: z.enum(["install", "dry-run"]) });
 const values = z.record(z.string(), z.union([z.string(), z.boolean()]));
@@ -44,6 +46,7 @@ const bundleSchema = z.object({
   inputs: values.default({}),
   apps: z.record(z.string(), values).optional(),
   include: z.array(z.string().max(100)).max(100).optional(),
+  public: z.array(z.string().max(100)).max(100).optional(),
 });
 
 const upgradeSchema = z.object({ appIds: z.array(z.string().min(1).max(100)).min(1).max(100).optional() });
@@ -87,6 +90,9 @@ export function registerDeploy(
   ctx.route("GET /api/deploy/status", () => deployer.status());
 
   ctx.route("GET /api/deploy/access", () => deployer.accessView());
+
+  ctx.route("GET /api/deploy/gate", () => deployer.gateStatus());
+  registerGate(ctx, deployer);
 
   ctx.route("PUT /api/deploy/access", async (req, res) => {
     const user = ctx.require(req, res, "write");

@@ -59,19 +59,35 @@ export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?:
                     </Anchor>
                   ) : null}
                 </Group>
-                {step.skip ? (
-                  <Badge color="gray" variant="light" radius="xs">
-                    skipped
-                  </Badge>
-                ) : step.plan && !step.plan.allowed ? (
-                  <Badge color="red" variant="light" radius="xs">
-                    blocked
-                  </Badge>
-                ) : step.plan?.warnings.length ? (
-                  <Badge color="yellow" variant="light" radius="xs">
-                    {step.plan.warnings.length} {step.plan.warnings.length === 1 ? "warning" : "warnings"}
-                  </Badge>
-                ) : null}
+                <Group gap={4} wrap="nowrap">
+                  {step.plan?.gate?.state === "gated" ? (
+                    <Badge color="green" variant="light" radius="xs" data-gate={step.appId}>
+                      behind sign-in
+                    </Badge>
+                  ) : step.plan?.gate?.state === "public" || step.plan?.gate?.state === "open" ? (
+                    <Badge
+                      color={step.plan.gate.state === "open" ? "red" : "gray"}
+                      variant="light"
+                      radius="xs"
+                      data-gate={step.appId}
+                    >
+                      public
+                    </Badge>
+                  ) : null}
+                  {step.skip ? (
+                    <Badge color="gray" variant="light" radius="xs">
+                      skipped
+                    </Badge>
+                  ) : step.plan && !step.plan.allowed ? (
+                    <Badge color="red" variant="light" radius="xs">
+                      blocked
+                    </Badge>
+                  ) : step.plan?.warnings.length ? (
+                    <Badge color="yellow" variant="light" radius="xs">
+                      {step.plan.warnings.length} {step.plan.warnings.length === 1 ? "warning" : "warnings"}
+                    </Badge>
+                  ) : null}
+                </Group>
               </Group>
             </Accordion.Control>
             {step.plan ? (

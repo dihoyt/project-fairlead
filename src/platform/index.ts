@@ -23,6 +23,7 @@ import { originGuard } from "./originGuard.js";
 import { mcpChallenge, oauthRouter } from "./routes/oauth.js";
 import { adminRouter } from "./routes/admin.js";
 import { authApiRouter, meRoute, oidcRouter } from "./routes/auth.js";
+import { gateForwardRouter, gateRouter } from "./routes/gate.js";
 import { totpRouter } from "./routes/totp.js";
 import { createSecrets } from "./secrets.js";
 import { createSettings } from "./settings.js";
@@ -93,6 +94,7 @@ export const createPlatform: CreatePlatform = (deps) => {
       // point, and nothing is served before it.
       if (!deps.identify) bootstrapAdmin(core);
 
+      app.use(gateForwardRouter(core, gate));
       app.use((req, res, next) => {
         try {
           setAuth(req, resolve(req, res));
@@ -121,6 +123,7 @@ export const createPlatform: CreatePlatform = (deps) => {
         next();
       });
       app.use(oidcRouter(core));
+      app.use(gateRouter(core, gate));
       app.get("/api/me", meRoute());
       app.use("/api/auth/totp", totpRouter(core));
       app.use("/api/auth", authApiRouter(core));
