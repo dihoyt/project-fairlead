@@ -22,15 +22,42 @@ curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install
 ```
 
 It uses the cluster it finds (`--kubeconfig`, else the current context, else
-this host's k3s) and installs a pinned single-node k3s only when there is none,
-asking first unless `--yes`. It generates `SECRETS_KEY` and
+this host's k3s) and installs a single-node k3s only when there is none,
+asking first unless `--yes`. That k3s is the newest release on the k3s stable
+channel, read at install time, or the version pinned in the script when the
+channel can't be reached. A re-run never upgrades a k3s that is already
+there: an older one (some current charts, such as Longhorn 1.13, need
+Kubernetes 1.34 or newer) is upgraded with k3s's own tooling, for example
+`curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL=stable sh -`. It generates `SECRETS_KEY` and
 `BOOTSTRAP_ADMIN_PASSWORD` into `<release>-secrets` on the first install only,
 installs the chart from ghcr, waits for the rollout and prints the URL and the
-password. Re-running upgrades in place and keeps earlier values; `--values`
+password. Without `--host` the console is served on NodePort 32450 of every
+node (`http://<node IP>:32450/`); `--port <n>` picks another in 30000-32767. If
+the port is already taken by another Service the install stops and names it,
+rather than falling back to a random port. A re-run moves an install that got a
+random port earlier onto 32450 (or `--port`). Re-running upgrades in place and keeps earlier values; `--values`
 files are applied last. `--uninstall` keeps the namespace, Secret and volume.
 `--enable-deploy` turns on app deploys (see "Deploying apps from the console");
 they stay off unless it is given, and a later re-run without it leaves them as
 they are.
+
+When the cluster is this host's k3s, the installer also installs Longhorn's
+node prerequisites, `open-iscsi` (with `iscsid` enabled and started) and the
+NFS client (`nfs-common` / `nfs-utils` / `nfs-client`), through apt, dnf, yum,
+zypper or apk. They are small (a few MB) and are skipped when already there,
+when no known package manager is found, or with `--no-node-packages`. The
+installer cannot reach other nodes: on a multi-node cluster, run the same on
+each agent node before deploying Longhorn, for example on Debian or Ubuntu
+
+```
+sudo apt-get install -y open-iscsi nfs-common && sudo systemctl enable --now iscsid
+```
+
+or on Fedora, RHEL and their relatives
+
+```
+sudo dnf install -y iscsi-initiator-utils nfs-utils && sudo systemctl enable --now iscsid
+```
 
 While the repository and packages are private, fetch the script with a token
 and pass `REGISTRY_USER` / `REGISTRY_TOKEN`; the steps and every flag are in
@@ -65,6 +92,7 @@ private until made public in the package settings.
 | `config.trustedProxies`, `config.clientIpHeader`                 | Take the client address from a header only when the peer is a listed proxy.                   |
 | `secrets.existingSecret`                                         | Secret with `SECRETS_KEY` and `BOOTSTRAP_ADMIN_PASSWORD`. `secrets.create` is for tests only. |
 | `persistence.*`                                                  | The data volume (`existingClaim`, `storageClass`, `size`). Kept on `helm uninstall`.          |
+| `service.type`, `service.nodePort`                               | `ClusterIP` by default; with `NodePort`, `nodePort` (default 32450, 0 for random) fixes the port. |
 | `ingress.*`, `networkPolicy.*`                                   | Off by default.                                                                               |
 | `rollout.sameNode`                                               | Keeps the overlapping pods of a rollout on one node so a ReadWriteOnce volume can attach.     |
 | `rbac.create`, `rbac.nodesProxy`, `rbac.secrets.*`               | See below.                                                                                    |

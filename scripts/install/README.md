@@ -3,8 +3,10 @@
 `install.sh` at the repository root installs or upgrades the console on a Linux
 host in one command. It uses the cluster it finds (`--kubeconfig`, else the
 current kube context, else this host's k3s; with no `KUBECONFIG` and no
-`~/.kube/config`, this host's k3s comes first) and installs a pinned single-node
-k3s only when there is none, asking first unless `--yes` is given. It installs a
+`~/.kube/config`, this host's k3s comes first) and installs a single-node
+k3s only when there is none (the k3s stable channel's newest release, or the
+pinned `K3S_VERSION` when the channel can't be read), asking first unless
+`--yes` is given. It installs a
 pinned, checksum-verified Helm when Helm is missing.
 
 ## Fetching it
@@ -36,7 +38,8 @@ curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install
    re-run never replaces it, since the database is sealed with that key.
 3. `helm upgrade --install` of the chart from ghcr (newest published version,
    edge builds included, unless `--version`). Without `--host` the Service is a
-   NodePort; with it, an Ingress on the cluster's default class (or the only
+   NodePort on 32450 (`--port` overrides; a port another Service holds stops
+   the install with its name); with it, an Ingress on the cluster's default class (or the only
    one, such as k3s's Traefik) and `config.publicOrigin` of `http://<host>`
    (`--origin` overrides). Storage is the cluster's default class.
 4. Waits for the rollout, prints the URL and, on the first install only, the

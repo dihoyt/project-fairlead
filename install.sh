@@ -18,7 +18,10 @@ CHART_NAME="fairlead" # brand:generated chartName
 IMAGE_REGISTRY="ghcr.io/dihoyt" # brand:generated imageRegistry
 OWNER_LABEL="fairlead" # brand:generated ownerLabelDomain
 
-K3S_VERSION="v1.31.4+k3s1"
+# A fresh k3s is the stable channel's newest release, read at install time;
+# this pin is used only when the channel can't be read.
+K3S_VERSION="v1.36.5+k3s1"
+K3S_CHANNEL_URL="https://update.k3s.io/v1-release/channels/stable"
 HELM_VERSION="v3.16.2"
 HELM_SHA256_AMD64="9318379b847e333460d33d291d4c088156299a26cd93d570a7f5d0c36e50b5bb"
 HELM_SHA256_ARM64="1888301aeb7d08a03b6d9f4d2b73dcd09b89c41577e80e3455c113629fc657a4"
@@ -38,9 +41,12 @@ NO_K3S=0
 YES=0
 DRY_RUN=0
 UNINSTALL=0
+NODE_PACKAGES=1
 ENABLE_DEPLOY=0
 PURGE=0
 TIMEOUT="5m"
+NODE_PORT=""
+DEFAULT_NODE_PORT=32450
 
 usage() {
   cat <<EOF
@@ -57,11 +63,13 @@ Usage: install.sh [flags]
   --host HOST           Serve through an Ingress at this hostname instead of a NodePort
   --origin URL          Externally visible origin (default: http://HOST when --host is given)
   --ingress-class NAME  Ingress class (default: the cluster's default class)
+  --port PORT           NodePort to serve on without --host (default: $DEFAULT_NODE_PORT)
   --values FILE         Extra Helm values file; repeatable, applied last
   --enable-deploy       Let the console deploy apps from its catalog. Creates an installer
                         ServiceAccount bound to cluster-admin; off unless given
   --kubeconfig PATH     Use this kubeconfig instead of detecting a cluster
   --no-k3s              Never install k3s; fail if no cluster is found
+  --no-node-packages    Don't install open-iscsi and the NFS client on this host's k3s node
   --timeout DURATION    How long to wait for the rollout (default: $TIMEOUT)
   --yes                 Don't ask before installing k3s or changing a cluster
   --dry-run             Print the changes instead of making them
@@ -105,6 +113,7 @@ while [ "$#" -gt 0 ]; do
     --host) need_arg "$@"; HOST="$2"; shift 2 ;;
     --origin) need_arg "$@"; ORIGIN="$2"; shift 2 ;;
     --ingress-class) need_arg "$@"; INGRESS_CLASS="$2"; shift 2 ;;
+    --port) need_arg "$@"; NODE_PORT="$2"; shift 2 ;;
     --values)
       need_arg "$@"
       [ -r "$2" ] || die "cannot read values file $2"
@@ -116,6 +125,7 @@ while [ "$#" -gt 0 ]; do
     --timeout) need_arg "$@"; TIMEOUT="$2"; shift 2 ;;
     --enable-deploy) ENABLE_DEPLOY=1; shift ;;
     --no-k3s) NO_K3S=1; shift ;;
+    --no-node-packages) NODE_PACKAGES=0; shift ;;
     --yes | -y) YES=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     --uninstall) UNINSTALL=1; shift ;;
@@ -142,6 +152,12 @@ case "$ORIGIN" in
 esac
 case "$IMAGE_TAG" in *[!A-Za-z0-9._-]*) die "--image-tag has unexpected characters: $IMAGE_TAG" ;; esac
 case "$INGRESS_CLASS" in *[!a-z0-9.-]*) die "--ingress-class has unexpected characters" ;; esac
+case "$NODE_PORT" in
+  "") ;;
+  *[!0-9]*) die "--port must be a number: $NODE_PORT" ;;
+  *) if [ "$NODE_PORT" -lt 30000 ] || [ "$NODE_PORT" -gt 32767 ]; then die "--port must be in the NodePort range 30000-32767"; fi ;;
+esac
+[ -z "$NODE_PORT" ] || [ -z "$HOST" ] || die "--port is for the NodePort install; --host serves through an Ingress"
 [ "$PURGE" = 0 ] || [ "$UNINSTALL" = 1 ] || die "--purge only goes with --uninstall"
 [ "$ENABLE_DEPLOY" = 0 ] || [ "$UNINSTALL" = 0 ] || die "--enable-deploy does not go with --uninstall"
 [ -n "$ORIGIN" ] || [ -z "$HOST" ] || ORIGIN="http://$HOST"
@@ -210,10 +226,25 @@ use_k3s_kubeconfig() {
   pick_kubectl
 }
 
+# The channel answers with a redirect to its newest release's tag page.
+resolve_k3s_version() {
+  tag=$(curl -sS -o /dev/null -w '%{redirect_url}' --max-time 15 "$K3S_CHANNEL_URL" 2>/dev/null || true)
+  tag=$(printf '%s' "${tag##*/}" | sed 's/%2[Bb]/+/g')
+  case "$tag" in
+    *[!A-Za-z0-9.+]*) ;;
+    v1.[0-9]*+k3s[0-9]*)
+      K3S_VERSION="$tag"
+      return 0
+      ;;
+  esac
+  warn "could not read the k3s stable channel; installing the pinned $K3S_VERSION"
+}
+
 install_k3s() {
   [ "$NO_K3S" = 0 ] || die "no cluster found and --no-k3s was given"
   [ "$(uname -s)" = Linux ] || die "no cluster found, and k3s can only be installed on Linux"
   has curl || die "curl is required"
+  resolve_k3s_version
   confirm "No cluster found. Install k3s $K3S_VERSION (single node) on this host?"
   say "Installing k3s $K3S_VERSION ..."
   # The installer from the same tag as the binary, which it checksums.
@@ -229,6 +260,63 @@ install_k3s() {
     sleep 2
   done
   kube wait --for=condition=Ready node --all --timeout=180s >/dev/null
+}
+
+# Longhorn needs iscsid on every node, and an NFS client for its backups and
+# ReadWriteMany volumes. Only this host is reachable from here, and only when
+# it is the k3s node; other nodes are a documented manual step.
+node_packages() {
+  [ "$NODE_PACKAGES" = 1 ] || return 0
+  if has iscsiadm && { has mount.nfs || [ -x /sbin/mount.nfs ] || [ -x /usr/sbin/mount.nfs ]; }; then
+    start_iscsid
+    return 0
+  fi
+  if has apt-get; then
+    set -- open-iscsi nfs-common
+  elif has dnf; then
+    set -- iscsi-initiator-utils nfs-utils
+  elif has yum; then
+    set -- iscsi-initiator-utils nfs-utils
+  elif has zypper; then
+    set -- open-iscsi nfs-client
+  elif has apk; then
+    set -- open-iscsi nfs-utils
+  else
+    say "Longhorn needs open-iscsi and an NFS client on each node; no known package manager here, so install them yourself."
+    return 0
+  fi
+  if [ "$YES" = 0 ] && tty_ok; then
+    printf 'Install %s on this host (Longhorn needs them)? [Y/n] ' "$*" >/dev/tty
+    read -r answer </dev/tty || answer=""
+    case "$answer" in n | N | no | NO) say "Skipped $*; Longhorn will not start on this node without them."; return 0 ;; esac
+  fi
+  say "Installing $* ..."
+  # shellcheck disable=SC2086
+  if has apt-get; then
+    run $SUDO env DEBIAN_FRONTEND=noninteractive apt-get update -qq >/dev/null &&
+      run $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@" >/dev/null
+  elif has dnf; then
+    run $SUDO dnf install -y -q "$@" >/dev/null
+  elif has yum; then
+    run $SUDO yum install -y -q "$@" >/dev/null
+  elif has zypper; then
+    run $SUDO zypper --non-interactive --quiet install "$@" >/dev/null
+  else
+    run $SUDO apk add --quiet "$@" >/dev/null
+  fi || {
+    warn "could not install $*; Longhorn will not start on this node until they are installed"
+    return 0
+  }
+  start_iscsid
+}
+
+start_iscsid() {
+  # shellcheck disable=SC2086
+  if has systemctl; then
+    run $SUDO systemctl enable --now iscsid >/dev/null 2>&1
+  elif has rc-update; then
+    run $SUDO rc-update add iscsid >/dev/null 2>&1 && run $SUDO rc-service iscsid start >/dev/null 2>&1
+  fi || warn "could not start iscsid; Longhorn needs it running"
 }
 
 use_host_k3s() {
@@ -381,12 +469,28 @@ write_values() {
       say "    - host: \"$HOST\""
     else
       [ -z "$ORIGIN" ] || printf 'config:\n  publicOrigin: "%s"\n' "$ORIGIN"
-      if [ "$first" = 1 ]; then
+      if [ "$first" = 1 ] || [ -n "$NODE_PORT" ]; then
         say "service:"
         say "  type: NodePort"
+        [ -z "$NODE_PORT" ] || say "  nodePort: $NODE_PORT"
       fi
     fi
   } >"$f"
+}
+
+# A taken port fails the install here, with its owner named, rather than
+# in Helm's error or by falling back to a random port. On a re-run without
+# --port the port is the one the release asked for before, else the default.
+check_node_port() {
+  want="$NODE_PORT"
+  if [ -z "$want" ] && [ "$1" = 1 ]; then
+    [ "$(kube -n "$NAMESPACE" get svc "$RELEASE" -o jsonpath='{.spec.type}' 2>/dev/null || true)" = NodePort ] || return 0
+    want=$(hh get values "$RELEASE" -n "$NAMESPACE" -o yaml 2>/dev/null | sed -n 's/^  nodePort: *"*\([0-9]*\)"*$/\1/p' | head -n 1)
+  fi
+  want="${want:-$DEFAULT_NODE_PORT}"
+  owner=$(kube get svc -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name} {.spec.ports[*].nodePort}{"\n"}{end}' 2>/dev/null \
+    | awk -v port="$want" -v self="$NAMESPACE/$RELEASE" '$1 != self { for (i = 2; i <= NF; i++) if ($i == port) print $1 }' | head -n 1)
+  [ -z "$owner" ] || die "NodePort $want is already used by Service $owner; pick another with --port (30000-32767)"
 }
 
 node_ip() {
@@ -428,6 +532,7 @@ do_uninstall() {
 
 do_install() {
   find_cluster
+  [ "$KUBECONFIG_PATH" != "$K3S_KUBECONFIG" ] || node_packages
   install_helm
   if [ "$DRY_RUN" = 1 ] && ! helm_ok; then
     say "+ helm upgrade --install $RELEASE $CHART_REF --namespace $NAMESPACE ..."
@@ -440,6 +545,7 @@ do_install() {
   ensure_secret
   registry_auth
   [ -z "$HOST" ] || default_ingress_class
+  [ -n "$HOST" ] || check_node_port "$existing"
   if [ "$existing" = 1 ]; then write_values 0; else write_values 1; fi
 
   set -- upgrade --install "$RELEASE" "$CHART_REF" --namespace "$NAMESPACE" \
