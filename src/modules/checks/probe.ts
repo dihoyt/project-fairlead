@@ -175,6 +175,8 @@ export function probe(spec: CheckSpec, options: ProbeOptions = {}): Promise<Prob
   return spec.kind === "http" ? probeHttp(spec, options.now ?? Date.now, options) : probeTcp(spec);
 }
 
+const LOGIN_REQUIRED = new Set([401, 403]);
+
 function statusExpected(spec: CheckSpec, status: number): boolean {
   if (spec.expectStatus?.length) return spec.expectStatus.includes(status);
   return status >= 200 && status < 400;
@@ -213,6 +215,18 @@ export function judge(spec: CheckSpec, outcome: ProbeOutcome, observedAt: string
   }
 
   const httpStatus = outcome.httpStatus ?? 0;
+  // A login wall in front of the target (SSO portal, basic auth) answers 401
+  // or 403: the target is up, just not open. With an auth header configured
+  // the same answer means the stored credential was refused, which is a failure.
+  if (!spec.expectStatus?.length && !spec.authHeader && LOGIN_REQUIRED.has(httpStatus)) {
+    return {
+      ...base,
+      status: "warn",
+      value,
+      detail: `HTTP ${httpStatus} in ${latency} ms; up, login required. Accept this status if the login is expected`,
+      raw,
+    };
+  }
   if (!statusExpected(spec, httpStatus)) {
     return {
       ...base,
