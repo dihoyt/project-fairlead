@@ -124,8 +124,10 @@ export interface CatalogEntry {
   //   Authorization header goes straight to the app, which checks it (git
   //   over HTTPS, API and phone clients). Only for apps with a login of
   //   their own, never with noLogin.
-  // "public": never gated, because people sign in through it (an identity
-  //   provider): gating it would lock everyone out of the console too.
+  // "public": never gated: people sign in through it (an identity
+  //   provider, where a gate would lock everyone out of the console too),
+  //   or its clients are never browsers (ntfy's phone apps, the console's
+  //   own alerts).
   gate?: "credentials" | "public";
 }
 
