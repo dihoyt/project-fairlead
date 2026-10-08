@@ -9,5 +9,6 @@ export * from "./deploy.js";
 export * from "./health.js";
 export * from "./k8s.js";
 export * from "./metrics.js";
+export * from "./templates.js";
 export * from "./time.js";
 export * from "./workloads.js";

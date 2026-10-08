@@ -71,6 +71,12 @@ export function registerDeploy(
   ctx.services.provide("deploy", {
     releases: async () => deployer.releases(),
     access: () => deployer.accessView(),
+    planEntry: async () => {
+      throw new HttpError(501, "Deploying a template is not available yet.");
+    },
+    startEntry: async () => {
+      throw new HttpError(501, "Deploying a template is not available yet.");
+    },
   });
 
   ctx.scheduler.every("deploy.reconcile", RECONCILE_MS, async () => {

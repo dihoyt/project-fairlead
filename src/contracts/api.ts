@@ -28,7 +28,7 @@ import type {
   UserChangesRequest,
   UserView,
 } from "./auth.js";
-import type { BackupPosture, RestoreTestMark } from "./backups.js";
+import type { BackupPosture, LonghornReplicaAdvice, RestoreTestMark } from "./backups.js";
 import type { CatalogAppView, CatalogBundleView, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
 import type {
@@ -54,6 +54,8 @@ import type {
   BundlePlan,
   BundleRequest,
   BundleRunView,
+  DeployActionPlan,
+  DeployActionRequest,
   DeployJobRequest,
   DeployJobView,
   DeployPlan,
@@ -79,6 +81,7 @@ import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
 import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
 import type { ResetRequest, ResetResult } from "./reset.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
+import type { TemplateDeployRequest, TemplateJobRequest, TemplatePlan, TemplatesView } from "./templates.js";
 import type {
   ClusterUsageReport,
   EventView,
@@ -268,6 +271,11 @@ export interface ApiRoutes {
   // --- metrics-k8s (A11) --------------------------------------------------
   "GET /api/metrics-k8s/nodes": Route<None, None, None, NodeSummary[]>;
 
+  // --- longhorn (A6) ------------------------------------------------------
+  // Volumes, StorageClasses and the default Setting against min(2,
+  // schedulable nodes). Reads only.
+  "GET /api/longhorn/replicas": Route<None, None, None, LonghornReplicaAdvice>;
+
   // --- backups (A12) ------------------------------------------------------
   "GET /api/backups/posture": Route<None, None, None, BackupPosture>;
   "GET /api/backups/posture.csv": Route<None, None, None, TextBody<"text/csv">>;
@@ -360,6 +368,26 @@ export interface ApiRoutes {
   // not ours or not upgradable, or when nothing is available; 409 while
   // another bundle or upgrade run is running.
   "POST /api/deploy/upgrades": Route<None, None, UpgradeRequest, BundleRunView>;
+  // Admin. What the action would change, from reads only; runs nothing.
+  "POST /api/deploy/actions/plan": Route<None, None, DeployActionRequest, DeployActionPlan>;
+  // Admin, audited. Starts the action as a deploy job (mode "action"); 400
+  // with the plan's blockedBy when it is not allowed, 409 while another job
+  // for the same release is running.
+  "POST /api/deploy/actions/run": Route<None, None, DeployActionRequest, DeployJobView>;
+
+  // --- templates ------------------------------------------------------------
+  // The library and every saved instance with its latest job.
+  "GET /api/templates": Route<None, None, None, TemplatesView>;
+  // Admin. Renders and checks the template and asks the deploy runner for
+  // its plan; runs nothing. 404 for an unknown template; field errors and
+  // guardrail findings come back in the plan, not as a 400.
+  "POST /api/templates/plan": Route<None, None, TemplateDeployRequest, TemplatePlan>;
+  // Admin, audited. Starts a deploy job for the instance (job views, logs
+  // and cancel are under /api/deploy/jobs); an install saves the instance,
+  // replacing one of the same name and template. 400 with the plan's
+  // blockedBy when the plan is not allowed; 409 for a name another template
+  // uses, or while the instance has a job running.
+  "POST /api/templates/jobs": Route<None, None, TemplateJobRequest, DeployJobView>;
 
   // --- mcp ------------------------------------------------------------------
   // The MCP streamable-HTTP endpoint, also served at MCP_PATH (/mcp).

@@ -6,6 +6,7 @@ import type { K8sApi } from "./k8s.js";
 import type { SeriesQuery, SeriesResult } from "./metrics.js";
 import type { ResetScope } from "./reset.js";
 import type { JobStatus } from "./system.js";
+import type { TemplatesService } from "./templates.js";
 
 export type { JobStatus };
 
@@ -53,6 +54,8 @@ export interface Services {
   catalog: CatalogService;
   // Provided by module "deploy".
   deploy: DeployService;
+  // Provided by module "templates".
+  templates: TemplatesService;
   // Provided by module "metrics" (A3).
   metrics: MetricsQuery;
   // Provided by module "connectors" (B1).

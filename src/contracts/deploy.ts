@@ -6,6 +6,7 @@
 //
 // Server-free on purpose: the client imports this file.
 
+import type { CatalogEntry } from "./catalog.js";
 import type { DiskCheck } from "./disk.js";
 
 export type DeployValue = string | boolean;
@@ -77,8 +78,8 @@ export type DeployMode = "install" | "dry-run";
 
 // What a job did. "upgrade" jobs come only from POST /api/deploy/upgrades:
 // `helm upgrade` with --reuse-values (no --install), or the pinned manifest
-// applied again.
-export type DeployJobMode = DeployMode | "upgrade";
+// applied again. "action" jobs come only from POST /api/deploy/actions/run.
+export type DeployJobMode = DeployMode | "upgrade" | "action";
 
 export type DeployJobState = "pending" | "running" | "succeeded" | "failed" | "cancelled";
 
@@ -89,6 +90,8 @@ export interface DeployJobView {
   namespace: string;
   version: string;
   mode: DeployJobMode;
+  // Set for mode "action".
+  action?: DeployActionKind;
   state: DeployJobState;
   startedBy: string;
   createdAt: string;
@@ -224,6 +227,69 @@ export interface UpgradeRequest {
   appIds?: string[];
 }
 
+// --- Deploy actions ----------------------------------------------------------
+// A change to something already in the cluster, made by the deploy runner the
+// same way as an install: a Job under the installer ServiceAccount running
+// fixed kubectl/helm commands, so this product's own ServiceAccount stays
+// read-only. Each run is a deploy job (mode "action"): progress, logs and
+// cancel go through /api/deploy/jobs, one job per release at a time, and it
+// ends with deploy.finished. Needs deploy.enabled, like installs.
+
+export type DeployActionKind = "longhorn-replicas" | "migrate-to-longhorn";
+
+// Raises Longhorn's default-replica-count Setting (what new volumes get),
+// the replica count pinned by a Longhorn StorageClass when it is lower, and,
+// with existingVolumes, spec.numberOfReplicas on every volume below it.
+// Never lowers anything.
+export interface LonghornReplicasAction {
+  kind: "longhorn-replicas";
+  // 1 to 3. Default: LonghornReplicaAdvice.target.
+  replicas?: number;
+  existingVolumes: boolean;
+}
+
+// Moves one PVC's data from its current storage class to Longhorn, keeping
+// the PVC's name.
+export interface MigrateToLonghornAction {
+  kind: "migrate-to-longhorn";
+  namespace: string;
+  pvc: string;
+  // Default: LonghornReplicaAdvice.target.
+  replicas?: number;
+  // Offer a download of the data before the old volume goes.
+  backupFirst?: boolean;
+}
+
+export type DeployActionRequest = LonghornReplicasAction | MigrateToLonghornAction;
+
+export interface DeployActionStep {
+  // "Raise the default replica count to 2".
+  label: string;
+  // The command lines the Job runs for it, display only, as DeployPlan.commands.
+  commands: string[];
+}
+
+// The preview shown before anything runs; built from reads only.
+export interface DeployActionPlan {
+  kind: DeployActionKind;
+  // The button and the job list's line: "Raise Longhorn replicas to 2".
+  title: string;
+  // false when deploys are off, there is nothing to do, or the request
+  // doesn't fit the cluster; blockedBy says which in one sentence.
+  allowed: boolean;
+  blockedBy?: string;
+  steps: DeployActionStep[];
+  // What stops while it runs, in one sentence; absent when nothing does.
+  downtime?: string;
+  // What happens if a step fails, in one sentence.
+  rollback?: string;
+  // Objects it changes in place.
+  changes: PlannedObject[];
+  // Objects it creates, the Job and its Secret included.
+  creates: PlannedObject[];
+  warnings: string[];
+}
+
 // --- Access: how people reach the deployed apps ----------------------------
 
 // Decides how every app's Ingress is written, so it is chosen before any app
@@ -295,4 +361,13 @@ export interface DeployService {
   releases(): Promise<DeployedRelease[]>;
   // What GET /api/deploy/access answers, for work that runs without a request.
   access(): Promise<AccessView>;
+  // A CatalogEntry another module built (a template instance: install kind
+  // "manifest", bundled), planned and run exactly as a catalog app with
+  // that id would be: same defaults, access-mode Ingress from its "host"
+  // input, jobs, audit and deploy.finished. request.appId must be entry.id.
+  // planEntry is POST /api/deploy/plan's result; startEntry answers as
+  // POST /api/deploy/jobs does (HttpError 400 when not allowed, 409 while
+  // the release has a job running).
+  planEntry(entry: CatalogEntry, request: DeployRequest): Promise<DeployPlan>;
+  startEntry(actor: string, entry: CatalogEntry, request: DeployJobRequest): Promise<DeployJobView>;
 }
