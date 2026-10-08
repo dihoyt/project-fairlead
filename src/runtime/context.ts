@@ -8,7 +8,7 @@ import type { ModuleContext, ModuleId } from "../contracts/module.js";
 import type { Platform, SecretStore, SettingsRegistry } from "../contracts/platform.js";
 import type { Logger, ServiceRegistry } from "../contracts/runtime.js";
 import type { SchedulerCore } from "./scheduler.js";
-import { bindRoute } from "./http.js";
+import { bindPublicRoute, bindRoute, publicErrorHandler } from "./http.js";
 
 export interface SharedRuntime {
   db: Database;
@@ -50,6 +50,8 @@ function scopedSecrets(moduleId: string, secrets: SecretStore): SecretStore {
 
 export function buildContext(moduleId: ModuleId, shared: SharedRuntime): ModuleContext {
   const router = express.Router();
+  const publicRouter = express.Router();
+  const log = shared.logFor(moduleId);
   const { platform } = shared;
   const identify: ModuleContext["identify"] = (req) => {
     const user = platform.identify(req);
@@ -60,6 +62,8 @@ export function buildContext(moduleId: ModuleId, shared: SharedRuntime): ModuleC
     moduleId,
     router,
     route: (key, handler) => bindRoute(router, moduleId, key, handler),
+    publicRouter,
+    publicRoute: (key, handler) => bindPublicRoute(publicRouter, moduleId, key, handler, publicErrorHandler(log)),
     db: shared.db,
     settings: scopedSettings(moduleId, platform.settings),
     secrets: scopedSecrets(moduleId, platform.secrets),
@@ -79,6 +83,6 @@ export function buildContext(moduleId: ModuleId, shared: SharedRuntime): ModuleC
     backups: shared.backups,
     services: shared.services,
     orgId: shared.orgId,
-    log: shared.logFor(moduleId),
+    log,
   };
 }

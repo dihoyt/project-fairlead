@@ -3,6 +3,7 @@ export * from "./auth.js";
 export * from "./backups.js";
 export * from "./catalog.js";
 export * from "./checks.js";
+export * from "./cluster.js";
 export * from "./deploy.js";
 export * from "./deployed.js";
 export * from "./events.js";

@@ -6,7 +6,7 @@ import type { BackupsRegistry } from "./backups.js";
 import type { EventBus, Events } from "./events.js";
 import type { Action, AuditLog, SecretStore, SettingsRegistry, User } from "./platform.js";
 import type { Logger, Migration, Scheduler, ServiceRegistry } from "./runtime.js";
-import type { ApiRoutes } from "./api.js";
+import type { ApiRoutes, PublicRouteKey } from "./api.js";
 import type { RouteHandler } from "./routing.js";
 
 // Every planned module, Milestone A then B. Order here is not load order;
@@ -46,6 +46,14 @@ export interface ModuleContext {
   // with typed params, query, body and response. Refuses a route outside
   // /api/<moduleId>/.
   route<K extends keyof ApiRoutes>(key: K, handler: RouteHandler<K>): void;
+  // Mounted at the app root, before the client's static files. Holds only
+  // what publicRoute binds.
+  publicRouter: Router;
+  // Binds a route from PUBLIC_ROUTES (src/contracts/api.ts) that this module
+  // owns: no identity, mounted at the app root after the platform. identify()
+  // and require() are not for these requests; the handler decides who may
+  // have the response. Thrown errors answer as plain text.
+  publicRoute<K extends PublicRouteKey>(key: K, handler: RouteHandler<K>): void;
   // Shared database; this module's migrations are applied before register().
   db: Database;
   settings: SettingsRegistry;

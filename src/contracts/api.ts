@@ -23,6 +23,7 @@ import type {
 import type { BackupPosture, RestoreTestMark } from "./backups.js";
 import type { CatalogAppView, CatalogBundleView, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
+import type { JoinLink, JoinLinkRequest, JoinStatus } from "./cluster.js";
 import type {
   BundlePlan,
   BundleRequest,
@@ -132,6 +133,19 @@ export interface ApiRoutes {
   >;
   // Runs the provider now (write): results as collect() returned them.
   "POST /api/health/providers/:providerId/run": Route<{ providerId: string }, None, None, CheckResult[]>;
+
+  // --- cluster (A5): adding nodes -----------------------------------------
+  "GET /api/cluster/join": Route<None, None, None, JoinStatus>;
+  // Admin, audited. 409 unless GET /api/cluster/join says "on"; 400 for a
+  // role it doesn't list or a baseUrl that isn't http(s).
+  "POST /api/cluster/join-links": Route<None, None, JoinLinkRequest, JoinLink>;
+  // Admin, audited. Revokes an unused link; a used or unknown one is a 404.
+  "DELETE /api/cluster/join-links/:id": Route<{ id: string }, None, None, Ok>;
+  // Public (see PUBLIC_ROUTES): no session, rate-limited. The join script
+  // for an unused, unexpired link, which this request uses up; 404 for any
+  // other token, with the same body whether it never existed, expired or
+  // was used. Cache-Control: no-store.
+  "GET /join/:token": Route<{ token: string }, None, None, TextBody<"text/x-shellscript">>;
 
   // --- metrics (A3) -------------------------------------------------------
   // q: JSON-encoded SeriesQuery[]. One SeriesResult per matching label set.
@@ -253,6 +267,15 @@ export interface ApiRoutes {
 }
 
 export type RouteKey = keyof ApiRoutes;
+
+// Routes served without a session, outside /api, and the module that binds
+// each (ctx.publicRoute refuses any other). Each is reached by something
+// that can't sign in, so each authorises the request itself.
+export const PUBLIC_ROUTES = {
+  "GET /join/:token": "cluster",
+} as const satisfies Partial<Record<RouteKey, string>>;
+
+export type PublicRouteKey = keyof typeof PUBLIC_ROUTES;
 
 // What a mock of a route's response looks like: the response itself, the
 // sequence of events for a stream, the text for a text body.
