@@ -79,4 +79,19 @@ export const migrations: readonly Migration[] = [
       ALTER TABLE deploy_jobs ADD COLUMN action TEXT;
     `,
   },
+  {
+    version: 5,
+    name: "sign-in gate",
+    up: `
+      -- An app made public on purpose; no row means behind the gate.
+      CREATE TABLE deploy_gate (
+        org_id TEXT NOT NULL DEFAULT 'default' REFERENCES orgs(id),
+        app_id TEXT NOT NULL,
+        public INTEGER NOT NULL DEFAULT 0,
+        updated_by TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (org_id, app_id)
+      );
+    `,
+  },
 ];

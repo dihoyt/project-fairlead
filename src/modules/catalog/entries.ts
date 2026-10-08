@@ -138,6 +138,8 @@ const entries: CatalogEntry[] = [
         required: true,
       },
     ],
+    // Sign-in gate: kubectl and the API through Rancher sign in with tokens of their own.
+    gate: "credentials",
     exposesUi: true,
     prerequisites: ["Rancher wants at least 4 GB of free memory in the cluster."],
   },
@@ -170,6 +172,8 @@ const entries: CatalogEntry[] = [
       { key: "adminUser", label: "Admin username", kind: "text", required: true, default: "gitea-admin" },
       { key: "adminPassword", label: "Admin password", kind: "secret", required: true },
     ],
+    // Sign-in gate: git over HTTPS and API clients sign in to Gitea themselves.
+    gate: "credentials",
     exposesUi: true,
     storage: "5Gi",
     prerequisites: [],
@@ -185,6 +189,8 @@ const entries: CatalogEntry[] = [
     namespace: "monitoring",
     requires: [],
     inputs: [host(), { key: "adminPassword", label: "Admin password", kind: "secret", required: true }],
+    // Sign-in gate: API clients sign in to Grafana with keys of their own.
+    gate: "credentials",
     exposesUi: true,
     storage: "2Gi",
     prerequisites: [],
@@ -209,6 +215,8 @@ const entries: CatalogEntry[] = [
         required: false,
       },
     ],
+    // Sign-in gate: people sign in to the console through it.
+    gate: "public",
     exposesUi: true,
     storage: "4Gi",
     prerequisites: [],
@@ -263,6 +271,8 @@ const entries: CatalogEntry[] = [
     namespace: "ntfy",
     requires: [],
     inputs: [host()],
+    // Sign-in gate: phones and the console's own alerts reach it without a browser.
+    gate: "public",
     exposesUi: true,
     storage: "512Mi",
     prerequisites: [],

@@ -50,6 +50,7 @@ describe("DeployButton", () => {
       namespace: "headlamp",
       inputs: { host: "headlamp.example.test" },
       mode: "install",
+      public: false,
     });
     expect(await screen.findByText(/Happy Helming/, { selector: "pre" })).toBeInTheDocument();
   });

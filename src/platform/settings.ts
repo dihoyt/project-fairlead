@@ -253,6 +253,16 @@ const BUILT_IN: readonly BuiltIn[] = [
     max: 365,
   },
   {
+    key: "auth.gate.allow",
+    group: "Sessions",
+    label: "Who can open apps behind the sign-in gate",
+    help: "Apps the console deploys sit behind its sign-in unless made public. Admins only, or everyone who can sign in.",
+    type: "enum",
+    env: "GATE_ALLOW",
+    default: "admins",
+    options: ["admins", "everyone"],
+  },
+  {
     key: "auth.oidc.recheckHours",
     group: "Sessions",
     label: "Re-check OIDC sign-ins every (hours)",

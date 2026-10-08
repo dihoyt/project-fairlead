@@ -7,7 +7,7 @@ import { groupIsAdmin } from "./oidc.js";
 import { sessionDueRecheck, sessionFromRequest, sessionHandle } from "./sessions.js";
 import { bearerOf, tokenFromSecret } from "./tokens.js";
 import { totpEnabledFor, totpRequiredFor } from "./totp.js";
-import { userById } from "./users.js";
+import { userById, type UserRow } from "./users.js";
 
 // Who is making a request is decided once per request, from the session
 // cookie or the API token the platform itself issued. Nothing else a client
@@ -84,6 +84,24 @@ function devUser(orgId: string): PlatformUser {
 const NETWORK_DENIAL_WINDOW_MS = 10 * 60 * 1000;
 const NETWORK_DENIAL_MAX = 1000;
 
+// What a session's account is, the same wherever a session is judged.
+export function sessionAdmin(core: Core, account: UserRow, method: SignInMethod, groups: string[]): boolean {
+  return (
+    account.role === "admin" ||
+    (method === "oidc" && groupIsAdmin(core, groups)) ||
+    envAdmin([account.username, account.email], groups)
+  );
+}
+
+export function sessionMustEnrollTotp(core: Core, userId: number, method: SignInMethod, admin: boolean): boolean {
+  return (
+    method === "password" &&
+    core.settings.bool("auth.totp.enabled") &&
+    totpRequiredFor(admin, core.settings.string("auth.totp.require")) &&
+    !totpEnabledFor(core, userId)
+  );
+}
+
 export function createResolver(core: Core): (req: Request, res: Response | null) => AuthResult {
   const networkDenials = new Map<string, number>();
 
@@ -143,10 +161,7 @@ export function createResolver(core: Core): (req: Request, res: Response | null)
         return { user: null, denied: `This account cannot be used from ${ip}.` };
       }
       const groups = session.method === "oidc" ? session.groups : [];
-      const admin =
-        account.role === "admin" ||
-        (session.method === "oidc" && groupIsAdmin(core, groups)) ||
-        envAdmin([account.username, account.email], groups);
+      const admin = sessionAdmin(core, account, session.method, groups);
       return {
         user: {
           id: account.username,
@@ -158,11 +173,7 @@ export function createResolver(core: Core): (req: Request, res: Response | null)
           userId: account.id,
           session: sessionHandle(session.idHash),
           mustChangePassword: account.mustChangePassword,
-          mustEnrollTotp:
-            session.method === "password" &&
-            core.settings.bool("auth.totp.enabled") &&
-            totpRequiredFor(admin, core.settings.string("auth.totp.require")) &&
-            !totpEnabledFor(core, account.id),
+          mustEnrollTotp: sessionMustEnrollTotp(core, account.id, session.method, admin),
           orgId: account.orgId,
         },
       };

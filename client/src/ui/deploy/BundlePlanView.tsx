@@ -71,6 +71,20 @@ export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?:
                       {formatBytes(step.memoryBytes)}
                     </Text>
                   ) : null}
+                  {step.plan?.gate?.state === "gated" ? (
+                    <Badge color="green" variant="light" radius="xs" data-gate={step.appId}>
+                      behind sign-in
+                    </Badge>
+                  ) : step.plan?.gate?.state === "public" || step.plan?.gate?.state === "open" ? (
+                    <Badge
+                      color={step.plan.gate.state === "open" ? "red" : "gray"}
+                      variant="light"
+                      radius="xs"
+                      data-gate={step.appId}
+                    >
+                      public
+                    </Badge>
+                  ) : null}
                   {step.skip ? (
                     <Badge color="gray" variant="light" radius="xs">
                       skipped

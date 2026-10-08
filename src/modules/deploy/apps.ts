@@ -1,6 +1,7 @@
 import type { CatalogEntry, DiscoveryReport } from "../../contracts/catalog.js";
 import type { AccessMode, DeployValue } from "../../contracts/deploy.js";
 import { deployedLabel } from "../../contracts/deployed.js";
+import { MIDDLEWARES_ANNOTATION } from "./gate.js";
 import type { YamlValue } from "./yaml.js";
 
 export interface Defaults {
@@ -29,6 +30,9 @@ export interface RecipeInput {
   // false with Tailscale: the deploy module writes the app's Ingress itself
   // from `service`, so the chart's own stays off.
   chartIngress: boolean;
+  // Traefik middlewares every Ingress of the app carries: the sign-in gate
+  // (./gate.ts) when it is gated.
+  middlewares?: string[];
   defaults: Defaults;
   discovery?: DiscoveryReport;
   // A random value generated per run (database passwords, signing keys).
@@ -68,8 +72,10 @@ const DNS_NAME = /^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$/;
 export const BACKUP_TARGET = /^(nfs|s3|cifs|azblob):\/\/\S+$/;
 const str = (value: DeployValue | undefined) => (typeof value === "string" ? value : "");
 
-const issuerAnnotations = (r: RecipeInput): Record<string, string> =>
-  r.tls && r.defaults.clusterIssuer ? { "cert-manager.io/cluster-issuer": r.defaults.clusterIssuer } : {};
+export const ingressAnnotations = (r: RecipeInput): Record<string, string> => ({
+  ...(r.tls && r.defaults.clusterIssuer ? { "cert-manager.io/cluster-issuer": r.defaults.clusterIssuer } : {}),
+  ...(r.middlewares?.length ? { [MIDDLEWARES_ANNOTATION]: r.middlewares.join(",") } : {}),
+});
 
 const tlsSecret = (r: RecipeInput) => `${r.release}-tls`;
 
@@ -101,7 +107,6 @@ function hasDefaultStorageClass(r: RecipeInput): boolean {
 // the request (Authentik's API base) hand an https page http URLs the
 // browser blocks as mixed content. A headers Middleware on the app's own
 // router restores https without changing what the cluster's Traefik trusts.
-const TRAEFIK_MIDDLEWARES = "traefik.ingress.kubernetes.io/router.middlewares";
 function forwardedHttps(r: RecipeInput): { name: string; middleware: YamlValue } | undefined {
   if (!r.chartIngress || r.tls || r.scheme !== "https" || r.defaults.ingressClass !== "traefik") return undefined;
   const name = `${r.release}-forwarded-https`;
@@ -223,7 +228,7 @@ export const recipes: Record<string, Recipe> = {
         host: r.host,
         tls: r.tls,
         tlsSecret: r.tls ? tlsSecret(r) : undefined,
-        annotations: issuerAnnotations(r),
+        annotations: ingressAnnotations(r),
       },
     }),
     service: () => ({ name: "longhorn-frontend", port: 80 }),
@@ -244,7 +249,7 @@ export const recipes: Record<string, Recipe> = {
       ingress: {
         enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
-        extraAnnotations: issuerAnnotations(r),
+        extraAnnotations: ingressAnnotations(r),
         // "secret": the issuer annotation has cert-manager fill
         // tls-rancher-ingress. Without an issuer Rancher signs its own.
         tls: { source: r.tls ? "secret" : "rancher" },
@@ -258,7 +263,7 @@ export const recipes: Record<string, Recipe> = {
       ingress: {
         enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
-        annotations: issuerAnnotations(r),
+        annotations: ingressAnnotations(r),
         hosts: [{ host: r.host, paths: [{ path: "/", type: "Prefix" }] }],
         tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
       },
@@ -271,7 +276,7 @@ export const recipes: Record<string, Recipe> = {
       ingress: {
         enabled: r.chartIngress,
         className: r.defaults.ingressClass,
-        annotations: issuerAnnotations(r),
+        annotations: ingressAnnotations(r),
         hosts: [{ host: r.host, paths: [{ path: "/", pathType: "Prefix" }] }],
         tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
       },
@@ -304,7 +309,7 @@ export const recipes: Record<string, Recipe> = {
       ingress: {
         enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
-        annotations: issuerAnnotations(r),
+        annotations: ingressAnnotations(r),
         hosts: [r.host],
         tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
       },
@@ -343,8 +348,8 @@ export const recipes: Record<string, Recipe> = {
             enabled: r.chartIngress,
             ingressClassName: r.defaults.ingressClass,
             annotations: {
-              ...issuerAnnotations(r),
-              ...(https ? { [TRAEFIK_MIDDLEWARES]: `${r.namespace}-${https.name}@kubernetescrd` } : {}),
+              ...ingressAnnotations(r),
+              ...(https ? { [MIDDLEWARES_ANNOTATION]: `${r.namespace}-${https.name}@kubernetescrd` } : {}),
             },
             hosts: [r.host],
             tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
@@ -456,7 +461,10 @@ export const recipes: Record<string, Recipe> = {
           name: str(r.inputs.name),
           namespace: r.namespace,
           labels: labels(),
-          annotations: { "cert-manager.io/cluster-issuer": str(r.inputs.issuer) },
+          annotations: {
+            "cert-manager.io/cluster-issuer": str(r.inputs.issuer),
+            ...(r.middlewares?.length ? { [MIDDLEWARES_ANNOTATION]: r.middlewares.join(",") } : {}),
+          },
         },
         spec: {
           ...(str(r.inputs.ingressClass) ? { ingressClassName: str(r.inputs.ingressClass) } : {}),

@@ -93,6 +93,8 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
   const [runId, setRunId] = useState<string>();
   const [tunnelReady, setTunnelReady] = useState(false);
   const [storageTyped, setStorageTyped] = useState(false);
+  // Apps left reachable without signing in to this console.
+  const [publicIds, setPublicIds] = useState<string[]>([]);
   const action = useAction();
 
   useEffect(() => {
@@ -134,7 +136,12 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
     return !input || holds(input.when, values, bundle.inputs);
   };
   const answers = () => Object.fromEntries(Object.entries(values).filter(([key]) => applies(key)));
-  const request = () => ({ bundleId: bundle.id, inputs: answers(), include });
+  const request = () => ({
+    bundleId: bundle.id,
+    inputs: answers(),
+    include,
+    ...(publicIds.length ? { public: publicIds } : {}),
+  });
 
   async function preview() {
     const next = await action.run(async () => {
@@ -225,16 +232,36 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
         <Title order={5}>What it rolls out</Title>
         {items.map((item) => (
           <Paper key={item.appId} withBorder p="xs" data-item={item.appId}>
-            <Checkbox
-              label={name(item.appId)}
-              description={item.skip || !item.selected ? item.reason : item.note}
-              checked={!item.skip && (item.required || include.includes(item.appId))}
-              disabled={item.skip || item.required}
-              onChange={(e) => {
-                const on = e.currentTarget.checked;
-                setInclude((prev) => (on ? [...prev, item.appId] : prev.filter((id) => id !== item.appId)));
-              }}
-            />
+            <Group justify="space-between" wrap="nowrap" align="flex-start">
+              <Checkbox
+                label={name(item.appId)}
+                description={item.skip || !item.selected ? item.reason : item.note}
+                checked={!item.skip && (item.required || include.includes(item.appId))}
+                disabled={item.skip || item.required}
+                onChange={(e) => {
+                  const on = e.currentTarget.checked;
+                  setInclude((prev) => (on ? [...prev, item.appId] : prev.filter((id) => id !== item.appId)));
+                }}
+              />
+              {!item.skip && discovery.app(item.appId)?.exposesUi && values.access !== "tailscale" ? (
+                discovery.app(item.appId)?.gate === "public" ? (
+                  <Text size="xs" c="dimmed" data-public={item.appId}>
+                    Public: people sign in through it
+                  </Text>
+                ) : (
+                  <Checkbox
+                    size="xs"
+                    label="Public"
+                    data-public={item.appId}
+                    checked={publicIds.includes(item.appId)}
+                    onChange={(e) => {
+                      const on = e.currentTarget.checked;
+                      setPublicIds((prev) => (on ? [...prev, item.appId] : prev.filter((id) => id !== item.appId)));
+                    }}
+                  />
+                )
+              ) : null}
+            </Group>
           </Paper>
         ))}
       </Stack>

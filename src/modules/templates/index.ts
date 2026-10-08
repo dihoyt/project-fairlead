@@ -52,6 +52,7 @@ const requestSchema = z.object({
       volume: z.object({ size: text(20), mountPath: text(300) }).optional(),
     })
     .optional(),
+  public: z.boolean().optional(),
 });
 const jobSchema = requestSchema.extend({ mode: z.enum(["install", "dry-run"]) });
 
@@ -198,8 +199,12 @@ export class Templates {
     };
   }
 
-  private deployRequest(r: Resolution): DeployRequest {
-    return { appId: r.name, inputs: r.host ? { host: r.host } : {} };
+  private deployRequest(r: Resolution, isPublic?: boolean): DeployRequest {
+    return {
+      appId: r.name,
+      inputs: r.host ? { host: r.host } : {},
+      ...(isPublic !== undefined ? { public: isPublic } : {}),
+    };
   }
 
   async plan(
@@ -225,7 +230,7 @@ export class Templates {
     const objects = manifests(resolved);
     const violations = checkManifests(objects, name);
     const entry = entryFor(resolved, objects);
-    const deploy = await this.deploy().planEntry(entry, this.deployRequest(resolution));
+    const deploy = await this.deploy().planEntry(entry, this.deployRequest(resolution, request.public));
     const fieldErrors = { ...errors, ...deploy.inputErrors };
     const firstField = Object.entries(fieldErrors)[0];
     const blockedBy = violations[0]
@@ -256,7 +261,10 @@ export class Templates {
     }
     const { plan, entry, resolution } = await this.plan(request);
     if (!plan.allowed || !entry) throw new HttpError(400, plan.blockedBy ?? "This deploy is not allowed.");
-    const job = await this.deploy().startEntry(actor, entry, { ...this.deployRequest(resolution), mode: request.mode });
+    const job = await this.deploy().startEntry(actor, entry, {
+      ...this.deployRequest(resolution, request.public),
+      mode: request.mode,
+    });
     if (request.mode === "install") {
       const host = plan.deploy?.inputs.host;
       this.store.save(

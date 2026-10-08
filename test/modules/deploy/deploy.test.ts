@@ -210,9 +210,11 @@ test("plan: headlamp gets a host under the base domain, TLS from the issuer, and
   assert.deepEqual(plan.inputs, { host: "headlamp.example.test" });
   assert.equal(plan.url, "https://headlamp.example.test");
   assert.deepEqual(plan.commands, [
+    "kubectl apply -f /values/gate-middleware.yaml",
     "helm upgrade --install headlamp headlamp --repo https://kubernetes-sigs.github.io/headlamp " +
       "--version 0.0.0-mock --namespace headlamp --create-namespace --values /values/values.yaml --wait --timeout 10m",
   ]);
+  assert.deepEqual(plan.gate, { state: "gated" });
   assert.match(plan.values, /ingressClassName: traefik/);
   assert.match(plan.values, /cert-manager.io\/cluster-issuer: letsencrypt-prod/);
   assert.match(plan.values, /- host: headlamp.example.test/);
@@ -234,8 +236,9 @@ test("plan: secrets are masked in inputs and values; OCI charts use the oci ref"
   assert.deepEqual(plan.inputs, { host: "git.example.test", adminUser: "gitea-admin", adminPassword: "********" });
   assert.ok(!JSON.stringify(plan).includes(PASSWORD));
   assert.match(plan.values, /password: "\*\*\*\*\*\*\*\*"/);
-  assert.match(plan.commands[0]!, /^helm upgrade --install gitea oci:\/\/docker.gitea.com\/charts\/gitea --version /);
-  assert.ok(!plan.commands[0]!.includes("--repo"));
+  const helm = plan.commands.find((c) => c.startsWith("helm"))!;
+  assert.match(helm, /^helm upgrade --install gitea oci:\/\/docker.gitea.com\/charts\/gitea --version /);
+  assert.ok(!helm.includes("--repo"));
 });
 
 test("plan: field errors, missing requirements, already installed, deploys off, unknown app", async () => {
@@ -638,6 +641,7 @@ test("a bundled manifest is applied from the values Secret with an Ingress for i
   assert.equal(plan.allowed, true, plan.blockedBy);
   assert.equal(plan.url, "https://ntfy.example.test");
   assert.deepEqual(plan.commands, [
+    "kubectl apply -f /values/gate-middleware.yaml",
     "kubectl apply -f /values/manifest.yaml",
     "kubectl apply -f /values/ingress.yaml",
     "kubectl rollout status deployment/ntfy --namespace ntfy --timeout=5m",
@@ -716,7 +720,10 @@ test("plan: a chart's kubeVersion picks the newest pin the cluster fits, or bloc
   let plan = await call<DeployPlan>(e, "POST", "/plan", request);
   assert.equal(plan.allowed, true, plan.blockedBy);
   assert.equal(plan.version, "1.98.0-mock");
-  assert.match(plan.commands[0]!, / --version 1\.98\.0-mock /);
+  assert.match(
+    plan.commands.find((c) => c.startsWith("helm"))!,
+    / --version 1\.98\.0-mock /
+  );
   assert.ok(
     plan.warnings.includes(
       "Installs Longhorn 1.98.0-mock, the newest version that supports Kubernetes v1.31.4+k3s1; 1.99.0-mock needs >=1.99.0-0."
@@ -874,6 +881,8 @@ const withAuthentikPassword = (): CatalogEntry[] =>
             ...entry.inputs,
             { key: "adminPassword", label: "Admin password", kind: "secret" as const, required: false },
           ],
+          // As the real catalog has it: never behind the console's sign-in.
+          gate: "public" as const,
         }
       : entry
   );
