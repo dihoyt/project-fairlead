@@ -97,6 +97,14 @@ export const createPlatform: CreatePlatform = (deps) => {
         }
       });
       app.use(originGuard(core));
+      // Managing accounts, sign-in and tokens takes a person at a browser.
+      app.use(["/api/admin", "/api/auth"], (req, res, next) => {
+        if (authOf(req)?.user?.source === "token") {
+          res.status(403).json({ error: "API tokens cannot be used here; sign in instead." });
+          return;
+        }
+        next();
+      });
       app.use(oidcRouter(core));
       app.get("/api/me", meRoute());
       app.use("/api/auth/totp", totpRouter(core));

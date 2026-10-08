@@ -114,4 +114,24 @@ export const platformMigrations: readonly Migration[] = [
       CREATE INDEX audit_ts ON audit_log(ts);
     `,
   },
+  {
+    version: 2,
+    name: "api tokens",
+    up: `
+      -- A token acts as the account that created it, capped by its scope.
+      -- Only the SHA-256 of the secret is kept, as for sessions.
+      CREATE TABLE api_tokens (
+        id TEXT PRIMARY KEY,
+        ${org},
+        secret_hash TEXT NOT NULL UNIQUE,
+        prefix TEXT NOT NULL,
+        name TEXT NOT NULL,
+        scope TEXT NOT NULL CHECK (scope IN ('read', 'write')),
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER,
+        last_used_at INTEGER
+      );
+    `,
+  },
 ];

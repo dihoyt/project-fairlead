@@ -2,15 +2,16 @@ import type { Request, Response } from "express";
 import type { SignInMethod, User } from "../../contracts/platform.js";
 import type { Core } from "../core.js";
 import { clientIp } from "../net.js";
-import { networkAllows } from "./networks.js";
+import { networkAllows, ruleAllows } from "./networks.js";
 import { groupIsAdmin } from "./oidc.js";
 import { sessionDueRecheck, sessionFromRequest, sessionHandle } from "./sessions.js";
+import { bearerOf, tokenFromSecret } from "./tokens.js";
 import { totpEnabledFor, totpRequiredFor } from "./totp.js";
 import { userById } from "./users.js";
 
 // Who is making a request is decided once per request, from the session
-// cookie the platform itself issued. Nothing a client sends in a header can
-// assert an identity.
+// cookie or the API token the platform itself issued. Nothing else a client
+// sends can assert an identity.
 
 // The contract's User plus what the platform's own routes need about the
 // account behind it. Modules only ever see the contract's fields.
@@ -105,6 +106,31 @@ export function createResolver(core: Core): (req: Request, res: Response | null)
 
   return (req, res) => {
     const ip = clientIp(req);
+    // A request that brings a token is judged on it alone: a bad one is
+    // refused rather than falling back to a cookie or the dev bypass.
+    const bearer = bearerOf(req);
+    if (bearer !== undefined) {
+      const found = tokenFromSecret(core, bearer);
+      if (found === null) return { user: null, denied: "That API token is not valid, has expired or was revoked." };
+      const { token, account } = found;
+      if (account.allowedNetworks.length > 0 && !ruleAllows({ networks: account.allowedNetworks, from: "user" }, ip)) {
+        return { user: null, denied: `This account cannot be used from ${ip}.` };
+      }
+      return {
+        user: {
+          id: account.username,
+          name: account.displayName || account.username,
+          email: account.email,
+          groups: [],
+          admin: account.role === "admin" || envAdmin([account.username, account.email], []),
+          source: "token",
+          token: { id: token.id, scope: token.scope },
+          userId: account.id,
+          mustChangePassword: false,
+          orgId: account.orgId,
+        },
+      };
+    }
     const session = sessionFromRequest(core, req, res, ip);
     if (session !== null) {
       const account = userById(core.db, session.userId);
