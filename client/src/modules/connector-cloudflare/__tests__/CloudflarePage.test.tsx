@@ -48,6 +48,13 @@ describe("CloudflarePage", () => {
     expect(screen.getByText("healthy")).toBeInTheDocument();
   });
 
+  it("shows what outside the connector will break its hosts", async () => {
+    const warning = '*.example.test points at tunnel "old" (inactive), not this connector\'s tunnel.';
+    serve({ ...apiMocks["GET /api/connector-cloudflare/view"], warnings: [warning] });
+    renderWithApp(<CloudflarePage />);
+    expect(await screen.findByText(warning)).toBeInTheDocument();
+  });
+
   it("switches an app to direct", async () => {
     const fetchMock = serve(apiMocks["GET /api/connector-cloudflare/view"]);
     renderWithApp(<CloudflarePage />);

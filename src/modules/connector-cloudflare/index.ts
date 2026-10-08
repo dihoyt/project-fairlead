@@ -21,6 +21,33 @@ import { cleanup, parseAllow, sync, type Marker } from "./sync.js";
 
 const KIND = "cloudflare";
 const SYNC_DEBOUNCE_MS = 5_000;
+const TUNNEL_SUFFIX = ".cfargotunnel.com";
+
+// A wildcard record that sends the zone to another tunnel answers for every
+// host the connector hasn't published yet, with error 1033 once that
+// tunnel has no cloudflared.
+export async function wildcardWarnings(
+  api: CloudflareClient,
+  accountId: string,
+  zone: { id: string; name: string },
+  tunnelId: string | undefined
+): Promise<string[]> {
+  const name = `*.${zone.name}`;
+  const records = (await api.dnsRecords(zone.id, name)).filter((r) => r.name === name);
+  const warnings: string[] = [];
+  for (const record of records) {
+    const target = record.content.toLowerCase();
+    const other = target.endsWith(TUNNEL_SUFFIX) ? target.slice(0, -TUNNEL_SUFFIX.length) : undefined;
+    if (!other || other === tunnelId?.toLowerCase()) continue;
+    const tunnel = await api.tunnel(accountId, other).catch(() => undefined);
+    const label = tunnel ? `tunnel "${tunnel.name}" (${tunnel.status})` : `tunnel ${other}`;
+    warnings.push(
+      `${name} points at ${label}, not this connector's tunnel: apps without their own record go there. ` +
+        "Delete that record in Cloudflare's DNS, or point it at this tunnel."
+    );
+  }
+  return warnings;
+}
 
 export const marker: Marker = {
   tag: product.ownerMarker.externalTag,
@@ -222,10 +249,12 @@ function register(ctx: ModuleContext): void {
         const kept = store.tunnel();
         tunnel = { id: t.id, name: t.name, status: t.status, adopted: !(kept?.id === t.id && kept.created) };
       }
+      const warnings = await wildcardWarnings(api, instance.config.accountId!, zone, tunnelId).catch(() => []);
       const view: CloudflareView = {
         ...base,
         ...(tunnel ? { tunnel } : {}),
         ...(access.ingressService ? { ingressService: access.ingressService } : {}),
+        ...(warnings.length ? { warnings } : {}),
       };
       if (access.mode !== "cloudflare-tunnel" && access.mode !== "direct") {
         // Nothing is removed: an unset or other mode is not a request to unpublish.
@@ -307,12 +336,26 @@ function register(ctx: ModuleContext): void {
     if (!found) throw new HttpError(409, "Add the Cloudflare connector first (Admin > Connectors).");
     return found;
   };
+  // The tunnel's state as Cloudflare reports it now (healthy means a
+  // cloudflared is connected), not as of the last sync.
+  const freshTunnel = async (found: ConnectorInstance, kept: CloudflareTunnelView) => {
+    try {
+      const t = await client(found.secrets.apiToken ?? "").tunnel(found.config.accountId ?? "", kept.id);
+      return { ...kept, name: t.name, status: t.status };
+    } catch {
+      return kept;
+    }
+  };
   const currentView = async (): Promise<CloudflareView> => {
     const found = await instance();
     if (!found) return { accessPolicy: accessApps.get(), hosts: [] };
     const saved = store.view();
     return saved?.connectorId === found.id
-      ? { ...saved, accessPolicy: accessApps.get() }
+      ? {
+          ...saved,
+          accessPolicy: accessApps.get(),
+          ...(saved.tunnel ? { tunnel: await freshTunnel(found, saved.tunnel) } : {}),
+        }
       : {
           connectorId: found.id,
           accountId: found.config.accountId,

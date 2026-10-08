@@ -9,7 +9,7 @@ import {
 } from "@contracts/mocks/catalog";
 import type { CatalogBundleView } from "@contracts/catalog";
 import type { BundleRunView } from "@contracts/deploy";
-import { mockCloudflareEmpty } from "@contracts/mocks/connectors";
+import { mockCloudflareEmpty, mockCloudflareView } from "@contracts/mocks/connectors";
 import { apiMocks } from "../../../ui/mocks/api";
 import { SessionContext, type Session } from "../../../ui/session";
 import { stubApi } from "../../../ui/deploy/__tests__/stubApi";
@@ -130,7 +130,10 @@ describe("WelcomePage doors", () => {
 });
 
 describe("BundleDoor", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
+  });
 
   it("asks the essentials, previews every step, and starts nothing before Start", async () => {
     const { calls } = stubApi(noRuns);
@@ -163,6 +166,19 @@ describe("BundleDoor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start rollout" }));
     await waitFor(() => expect(calls.some((c) => c.key === "POST /api/deploy/bundles")).toBe(true));
     expect(await screen.findByRole("button", { name: "Continue setup" })).toBeDisabled();
+  });
+
+  it("keeps the answers, but not the password, across leaving the page", async () => {
+    stubApi(noRuns);
+    const first = renderWithApp(<BundleDoor onDone={() => {}} />);
+    await screen.findByLabelText(/Admin email/);
+    fill();
+    first.unmount();
+    expect(sessionStorage.getItem(`bundle-draft:${mockBundleView.id}`)).not.toContain("s3cret-pass");
+
+    renderWithApp(<BundleDoor onDone={() => {}} />);
+    expect(await screen.findByLabelText(/Admin email/)).toHaveValue("me@example.test");
+    expect(screen.getByLabelText(/Admin password/)).toHaveValue("");
   });
 
   it("puts the storage class on Longhorn while Longhorn is ticked, unless the user typed one", async () => {
@@ -310,7 +326,9 @@ describe("BundleDoor", () => {
         "GET /api/connector-cloudflare/view": mockCloudflareEmpty,
       });
       renderWithApp(<BundleDoor onDone={() => {}} />);
-      expect(await screen.findByText("Preview opens once the tunnel exists.")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Preview opens once the tunnel exists and cloudflared is connected to it.")
+      ).toBeInTheDocument();
       expect(document.querySelector("[data-cloudflare-setup]")).toHaveAttribute("data-cloudflare-setup", "api");
       expect(screen.queryByLabelText(/Cloudflare tunnel token/)).toBeNull();
       fill();
@@ -323,7 +341,25 @@ describe("BundleDoor", () => {
       expect(screen.getByRole("button", { name: "Preview" })).toBeEnabled();
     });
 
-    it("previews without a tunnel token once the connector has a tunnel", async () => {
+    it("holds the preview while no cloudflared is connected to the tunnel", async () => {
+      stubApi({
+        ...noRuns,
+        "GET /api/catalog/bundles": [tunnelBundle],
+        "GET /api/connector-cloudflare/view": {
+          ...mockCloudflareView,
+          tunnel: { ...mockCloudflareView.tunnel!, status: "inactive" },
+        },
+      });
+      renderWithApp(<BundleDoor onDone={() => {}} />);
+      expect(
+        await screen.findByText("Preview opens once cloudflared is connected to the tunnel: deploy it above.")
+      ).toBeInTheDocument();
+      fill();
+      expect(screen.getByRole("button", { name: "Preview" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Deploy cloudflared" })).toBeInTheDocument();
+    });
+
+    it("previews without a tunnel token once cloudflared is connected, saving the access choice first", async () => {
       const { calls } = stubApi({ ...noRuns, "GET /api/catalog/bundles": [tunnelBundle] });
       renderWithApp(<BundleDoor onDone={() => {}} />);
       expect(await screen.findByText(/Zone/)).toBeInTheDocument();
@@ -336,6 +372,11 @@ describe("BundleDoor", () => {
       };
       expect(body.inputs.cloudflareSetup).toBe("api");
       expect(body.inputs).not.toHaveProperty("tunnelToken");
+      const keys = calls.map((c) => c.key);
+      const saved = keys.indexOf("PUT /api/deploy/access");
+      expect(calls[saved]?.body).toEqual({ mode: "cloudflare-tunnel", baseDomain: "example.test" });
+      expect(keys.indexOf("POST /api/connector-cloudflare/sync")).toBeGreaterThan(saved);
+      expect(keys.indexOf("POST /api/deploy/bundles/plan")).toBeGreaterThan(saved);
     });
   });
 });

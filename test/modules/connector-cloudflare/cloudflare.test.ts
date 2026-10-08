@@ -322,6 +322,60 @@ test("adopts an existing tunnel and keeps its other routes, ours first", async (
   }
 });
 
+test("a wildcard record on another tunnel is flagged; one on ours is not", async () => {
+  const state = mockCloudflareState();
+  const other = "33333333-3333-4333-8333-333333333333";
+  state.tunnels.push({
+    id: other,
+    account_tag: MOCK_ACCOUNT,
+    name: "old",
+    status: "inactive",
+    config_src: "cloudflare",
+    deleted_at: null,
+    config: { ingress: [{ service: "http_status:404" }] },
+    token: "tok",
+  });
+  state.dns.push({
+    id: "wild",
+    zone_id: "zone-1",
+    type: "CNAME",
+    name: `*.${MOCK_ZONE}`,
+    content: `${other}.cfargotunnel.com`,
+    proxied: true,
+    ttl: 1,
+    comment: null,
+  });
+  const s = await setup({ state });
+  try {
+    let { body } = await s.call<CloudflareView>("POST", "/tunnel", {});
+    assert.equal(body.warnings?.length, 1);
+    assert.match(body.warnings![0]!, new RegExp(`\\*\\.${MOCK_ZONE} points at tunnel "old" \\(inactive\\)`));
+    assert.ok(
+      state.dns.some((r) => r.id === "wild"),
+      "the wildcard is left alone"
+    );
+
+    state.dns.find((r) => r.id === "wild")!.content = `${body.tunnel!.id}.cfargotunnel.com`;
+    ({ body } = await s.call<CloudflareView>("POST", "/sync"));
+    assert.equal(body.warnings, undefined);
+  } finally {
+    await s.close();
+  }
+});
+
+test("the view reports the tunnel's state now, not as of the last sync", async () => {
+  const s = await setup();
+  try {
+    let { body } = await s.call<CloudflareView>("POST", "/tunnel", {});
+    assert.equal(body.tunnel!.status, "inactive");
+    s.cf.state.tunnels[0]!.status = "healthy";
+    ({ body } = await s.call<CloudflareView>("GET", "/view"));
+    assert.equal(body.tunnel!.status, "healthy");
+  } finally {
+    await s.close();
+  }
+});
+
 test("a record or route someone else made is reported and left alone", async () => {
   const state = mockCloudflareState();
   state.dns.push({

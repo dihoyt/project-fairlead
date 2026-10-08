@@ -43,6 +43,38 @@ export function defaultStorageClass(bundle: CatalogBundleView, include: string[]
   return typeof fallback === "string" ? fallback : "";
 }
 
+// The form's answers survive leaving the page, for this browser session.
+// Secret inputs are never written.
+interface BundleDraft {
+  values: Record<string, DeployValue>;
+  include: string[];
+  storageTyped: boolean;
+}
+const draftKey = (bundle: CatalogBundleView) => `bundle-draft:${bundle.id}`;
+
+export function loadDraft(bundle: CatalogBundleView): BundleDraft | undefined {
+  try {
+    const raw = sessionStorage.getItem(draftKey(bundle));
+    return raw ? (JSON.parse(raw) as BundleDraft) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveDraft(bundle: CatalogBundleView, draft: BundleDraft | undefined) {
+  try {
+    if (!draft) {
+      sessionStorage.removeItem(draftKey(bundle));
+      return;
+    }
+    const secret = new Set(bundle.inputs.filter((i) => i.kind === "secret").map((i) => i.key));
+    const values = Object.fromEntries(Object.entries(draft.values).filter(([key]) => !secret.has(key)));
+    sessionStorage.setItem(draftKey(bundle), JSON.stringify({ ...draft, values }));
+  } catch {
+    // Storage blocked: the form still works, it just isn't kept.
+  }
+}
+
 // Optional items to roll out: the ones the bundle view starts ticked.
 export function initialInclude(bundle: CatalogBundleView): string[] {
   return bundle.items.filter((item) => !item.required && !item.skip && item.selected).map((item) => item.appId);
@@ -65,10 +97,16 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     if (!bundle || ready) return;
-    setValues(initialBundleValues(bundle));
-    setInclude(initialInclude(bundle));
+    const draft = loadDraft(bundle);
+    setValues({ ...initialBundleValues(bundle), ...draft?.values });
+    setInclude(draft?.include ?? initialInclude(bundle));
+    setStorageTyped(draft?.storageTyped ?? false);
     setReady(true);
   }, [bundle, ready]);
+
+  useEffect(() => {
+    if (bundle && ready) saveDraft(bundle, { values, include, storageTyped });
+  }, [bundle, ready, values, include, storageTyped]);
 
   // Ticking or unticking Longhorn moves the storage class with it, unless
   // the user typed their own.
@@ -99,13 +137,25 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
   const request = () => ({ bundleId: bundle.id, inputs: answers(), include });
 
   async function preview() {
-    const next = await action.run(() => apiRequest("POST /api/deploy/bundles/plan", { body: request() }));
+    const next = await action.run(async () => {
+      // Through the connector the tunnel already exists: saving the access
+      // choice now lets the connector publish each app as it lands.
+      const baseDomain = typeof values.baseDomain === "string" ? values.baseDomain.trim() : "";
+      if (viaApi && values.access === "cloudflare-tunnel" && baseDomain) {
+        await apiRequest("PUT /api/deploy/access", { body: { mode: "cloudflare-tunnel", baseDomain } });
+        await apiRequest("POST /api/connector-cloudflare/sync").catch(() => undefined);
+      }
+      return apiRequest("POST /api/deploy/bundles/plan", { body: request() });
+    });
     if (next) setPlan(next);
   }
 
   async function start() {
     const run = await action.run(() => apiRequest("POST /api/deploy/bundles", { body: request() }));
-    if (run) setRunId(run.id);
+    if (run) {
+      saveDraft(bundle!, undefined);
+      setRunId(run.id);
+    }
   }
 
   const off = status.data ? !status.data.enabled : false;
@@ -234,13 +284,15 @@ function CloudflareChoice({
 function ConnectorSetup({ baseDomain, onReady }: { baseDomain?: string; onReady: (ready: boolean) => void }) {
   const [ready, setReady] = useState(false);
   // The panel below keeps its own copy of the view; this one only watches
-  // for the tunnel to appear.
+  // for a cloudflared to connect to the tunnel, which the bundle doesn't
+  // deploy on this path.
   const view = useApi("GET /api/connector-cloudflare/view", undefined, { pollMs: ready ? undefined : RUN_POLL_MS });
-  const tunnel = Boolean(view.data?.tunnel);
+  const tunnel = view.data?.tunnel;
+  const connected = tunnel?.status === "healthy" || tunnel?.status === "degraded";
   useEffect(() => {
-    setReady(tunnel);
-    onReady(tunnel);
-  }, [tunnel, onReady]);
+    setReady(connected);
+    onReady(connected);
+  }, [connected, onReady]);
   useEffect(() => () => onReady(false), [onReady]);
   return (
     <Stack gap="sm">
@@ -248,10 +300,12 @@ function ConnectorSetup({ baseDomain, onReady }: { baseDomain?: string; onReady:
         Connect your Cloudflare account, create the tunnel and deploy cloudflared here. The rollout then adds a DNS
         record and tunnel route for each app as it lands.
       </Text>
-      <CloudflarePanel baseDomain={baseDomain} />
-      {view.data && !tunnel ? (
+      <CloudflarePanel baseDomain={baseDomain} {...(ready ? {} : { pollMs: RUN_POLL_MS })} />
+      {view.data && !connected ? (
         <Text size="sm" c="yellow">
-          Preview opens once the tunnel exists.
+          {tunnel
+            ? "Preview opens once cloudflared is connected to the tunnel: deploy it above."
+            : "Preview opens once the tunnel exists and cloudflared is connected to it."}
         </Text>
       ) : null}
     </Stack>
