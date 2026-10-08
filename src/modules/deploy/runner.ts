@@ -1,5 +1,5 @@
 import type { Response } from "express";
-import type { CatalogService, DiscoveryReport } from "../../contracts/catalog.js";
+import type { CatalogEntry, CatalogService, DiscoveryReport } from "../../contracts/catalog.js";
 import type {
   AccessRequest,
   AccessView,
@@ -230,10 +230,21 @@ export class Deployer {
     }
   }
 
-  async rendered(request: DeployRequest, mode: DeployMode, context: RenderContext = {}): Promise<Rendered> {
-    const catalog = this.catalog();
-    const entry = catalog.get(request.appId);
+  // Template instances (Services.templates) after the catalog's own apps.
+  private entries(): CatalogEntry[] {
+    const templates = this.ctx.services.has("templates") ? this.ctx.services.get("templates").entries() : [];
+    return [...this.catalog().entries(), ...templates];
+  }
+
+  async rendered(
+    request: DeployRequest,
+    mode: DeployMode,
+    context: RenderContext = {},
+    given?: CatalogEntry
+  ): Promise<Rendered> {
+    const entry = given ?? this.catalog().get(request.appId);
     if (!entry) throw new HttpError(404, `No app "${request.appId}" in the catalog.`);
+    if (entry.id !== request.appId) throw new HttpError(400, `appId must be ${entry.id}.`);
     const [enabled, found] = await Promise.all([
       context.enabled ?? this.enabled(),
       context.found ?? this.discover(context.refresh),
@@ -277,14 +288,19 @@ export class Deployer {
     });
   }
 
-  async plan(request: DeployRequest): Promise<DeployPlan> {
-    return (await this.rendered(request, "install")).plan;
+  async plan(request: DeployRequest, entry?: CatalogEntry): Promise<DeployPlan> {
+    return (await this.rendered(request, "install", {}, entry)).plan;
   }
 
   // --- running -------------------------------------------------------------
 
-  async start(actor: string, request: DeployJobRequest, context: RenderContext = {}): Promise<DeployJobView> {
-    const { plan, files, steps, secrets } = await this.rendered(request, request.mode, context);
+  async start(
+    actor: string,
+    request: DeployJobRequest,
+    context: RenderContext = {},
+    entry?: CatalogEntry
+  ): Promise<DeployJobView> {
+    const { plan, files, steps, secrets } = await this.rendered(request, request.mode, context, entry);
     if (!plan.allowed) throw new HttpError(400, plan.blockedBy ?? "This deploy is not allowed.");
     return this.launch(
       actor,
@@ -298,7 +314,7 @@ export class Deployer {
   async upgradeReport(refresh = false): Promise<UpgradeReport> {
     const [enabled, found] = await Promise.all([this.enabled(), this.discover(refresh)]);
     return upgradeReport({
-      entries: this.catalog().entries(),
+      entries: this.entries(),
       discovery: found.discovery,
       enabled,
       releases: this.store.releases(),
@@ -316,7 +332,7 @@ export class Deployer {
     if ((app.state !== "available" && app.state !== "unknown") || !app.targetVersion) {
       throw new HttpError(400, `${appId}: ${app.reason ?? `nothing to upgrade (${app.state})`}`);
     }
-    const entry = this.catalog().get(appId)!;
+    const entry = this.entries().find((e) => e.id === appId)!;
     const { steps, files, error } = upgradeSteps(
       { entry, release: app.release, namespace: app.namespace },
       app.targetVersion
