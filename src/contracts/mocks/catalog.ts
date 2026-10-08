@@ -105,7 +105,14 @@ export const mockCatalog: readonly CatalogEntry[] = [
     slots: ["links", "cluster-basics"],
     linkKey: "longhorn",
     homepage: "https://longhorn.io",
-    install: helm("https://charts.longhorn.io", "longhorn", "0.0.0-mock"),
+    install: {
+      kind: "helm",
+      repo: "https://charts.longhorn.io",
+      chart: "longhorn",
+      version: "1.99.0-mock",
+      kubeVersion: ">=1.99.0-0",
+      fallbacks: [{ version: "1.98.0-mock", kubeVersion: ">=1.25.0-0" }],
+    },
     namespace: "longhorn-system",
     requires: [],
     inputs: [host()],
@@ -398,6 +405,7 @@ export const mockIngressHosts: IngressHost[] = [
 
 export const mockDiscovery: DiscoveryReport = {
   checkedAt: new Date(MOCK_NOW).toISOString(),
+  kubernetesVersion: "v1.31.4+k3s1",
   apps: mockDetected,
   ingressHosts: mockIngressHosts,
   basics: [
