@@ -4,6 +4,7 @@ import type { CheckRequest, CheckView } from "../../contracts/checks.js";
 import type { CheckResult } from "../../contracts/health.js";
 import type { Module, ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
+import { ingressHostFor, rateUnresolved, unresolved } from "./fallback.js";
 import { migrations } from "./migrations.js";
 import { judge, parseHostPort, probe, type CheckSpec } from "./probe.js";
 import { createStore, toView, type CheckFields, type CheckRow, type Store } from "./store.js";
@@ -118,8 +119,14 @@ export function createRunner(ctx: ModuleContext, store: Store, now: () => number
     let result: CheckResult;
     try {
       const secret = spec.authHeader ? await ctx.secrets.get("checks", spec.id) : null;
-      const outcome = await probe(spec, { now, ...(secret ? { secret } : {}) });
-      result = judge(spec, outcome, new Date(startedAt).toISOString());
+      const options = { now, ...(secret ? { secret } : {}) };
+      const outcome = await probe(spec, options);
+      const observedAt = new Date(startedAt).toISOString();
+      result = judge(spec, outcome, observedAt);
+      const ingress = unresolved(spec, outcome)
+        ? await ingressHostFor(ctx.services.has("catalog") ? ctx.services.get("catalog") : undefined, spec.target)
+        : undefined;
+      if (ingress) ({ result } = await rateUnresolved(spec, outcome, ingress, observedAt, options));
       if (outcome.latencyMs !== undefined) {
         ctx.metrics.write([
           {
