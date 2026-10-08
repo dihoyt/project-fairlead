@@ -118,7 +118,13 @@ export function WelcomePage() {
   };
 
   const panel = (step: OnboardingStep): ReactNode => {
-    const props: StepProps = { onFinish: finish(step.id) };
+    const props: StepProps = {
+      onFinish: finish(step.id),
+      onGoTo: (id) => {
+        const index = steps.findIndex((s) => s.id === id);
+        if (index >= 0) setActive(index);
+      },
+    };
     switch (step.id) {
       case "password":
         return (
