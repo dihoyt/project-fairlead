@@ -7,7 +7,7 @@ export interface Me {
   email: string;
   groups: string[];
   admin: boolean;
-  source: "password" | "oidc" | "dev-bypass";
+  source: "password" | "oidc" | "dev-bypass" | "token";
   mustChangePassword: boolean;
   mustEnrollTotp?: boolean;
   orgId: string;
@@ -142,6 +142,44 @@ export interface AuditRow {
   result: "ok" | "denied" | "error";
 }
 
+// --- API tokens --------------------------------------------------------------
+// A token acts as the admin who created it, capped by its scope: "read" may
+// only read; "write" may do whatever that admin may. It is sent as
+// `Authorization: Bearer <secret>` to /api and /mcp, never to /api/admin or
+// /api/auth (managing accounts, sign-in and tokens takes a signed-in session).
+// The secret is shown once at creation and only its hash is stored.
+
+export type ApiTokenScope = "read" | "write";
+
+export interface ApiTokenView {
+  id: string;
+  name: string;
+  scope: ApiTokenScope;
+  // The secret's first characters, to tell tokens apart; useless on its own.
+  prefix: string;
+  // The username the token acts as.
+  createdBy: string;
+  createdAt: string;
+  // null: never expires.
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  // Past expiresAt, or the account behind it is disabled or no longer an admin.
+  inactive?: string;
+}
+
+export interface NewApiTokenRequest {
+  name: string;
+  scope: ApiTokenScope;
+  // Whole days from now, 1 to 3650; omitted or null: never expires.
+  expiresInDays?: number | null;
+}
+
+export interface NewApiToken {
+  token: ApiTokenView;
+  // Shown once; never retrievable again.
+  secret: string;
+}
+
 // Wiring sign-in through an Authentik instance: an OAuth2/OpenID provider
 // and an application made in Authentik through its API, and this install's
 // OIDC settings and client secret filled in from them. Re-running finds the
@@ -152,6 +190,8 @@ export interface AuthentikWirePlan {
   // The Authentik base URL the plan was made for, as given (trailing slash
   // removed).
   authentikUrl: string;
+  // Where the API is called, when not at authentikUrl.
+  apiUrl?: string;
   applicationName: string;
   slug: string;
   // Registered on the provider; "" while there is no public URL.
@@ -165,7 +205,15 @@ export interface AuthentikWirePlan {
 }
 
 export interface AuthentikWireRequest {
+  // Authentik as browsers reach it: the issuer and launch URL are built on
+  // it.
   authentikUrl: string;
+  // Where this server calls Authentik's API, when not at authentikUrl:
+  // typically its in-cluster Service (IngressHost.serviceUrl). Plain http is
+  // accepted only for a cluster Service (*.svc, *.svc.cluster.local) or
+  // localhost; anywhere else the token would cross the network in the
+  // clear.
+  apiUrl?: string;
   // An Authentik API token with rights to create providers and applications
   // (the bootstrap token or an admin's). Omitted: the stored one is used.
   // Never logged, never returned.

@@ -1,5 +1,7 @@
 import type { ErrorRequestHandler, NextFunction, Request, Response, Router } from "express";
-import { PUBLIC_ROUTES, type PublicRouteKey, type RouteKey } from "../contracts/api.js";
+import { PUBLIC_ROUTES, type ApiRoutes, type PublicRouteKey, type RouteKey } from "../contracts/api.js";
+import type { CallInput } from "../contracts/module.js";
+import { INTERNAL_CALL_HEADER, type Platform } from "../contracts/platform.js";
 import type { RouteHandler } from "../contracts/routing.js";
 import type { Logger } from "../contracts/runtime.js";
 
@@ -110,4 +112,54 @@ export function apiErrorHandler(log: Logger): ErrorRequestHandler {
     log.error("Unhandled API error", { path: req.path, error: err instanceof Error ? err.stack : String(err) });
     res.status(500).json({ error: "Internal error." });
   };
+}
+
+// The route's path with its params filled in and its query appended.
+export function routeUrl(key: RouteKey, input: CallInput<RouteKey> = {}): { method: string; path: string } {
+  const { method, path } = parseRouteKey(key);
+  const params = (input.params ?? {}) as Record<string, string>;
+  const filled = path.replace(/:([A-Za-z]+)/g, (_match, name: string) => {
+    const value = params[name];
+    if (value === undefined) throw new Error(`Route "${key}" needs param "${name}".`);
+    return encodeURIComponent(value);
+  });
+  const query = new URLSearchParams();
+  for (const [name, value] of Object.entries((input.query ?? {}) as Record<string, unknown>)) {
+    if (value !== undefined) query.set(name, String(value));
+  }
+  const search = query.toString();
+  return { method: method.toUpperCase(), path: search ? `${filled}?${search}` : filled };
+}
+
+// The request goes back in over the socket the caller's request arrived on,
+// so it reaches this same process whatever address the server is bound to,
+// and passes through every middleware a request from outside would.
+export async function callRoute<K extends RouteKey>(
+  platform: Platform,
+  req: Request,
+  key: K,
+  input?: CallInput<K>
+): Promise<ApiRoutes[K]["response"]> {
+  const { method, path } = routeUrl(key, input as CallInput<RouteKey>);
+  const address = req.socket.localAddress ?? "127.0.0.1";
+  const host = address.includes(":") ? `[${address}]` : address;
+  const headers: Record<string, string> = { [INTERNAL_CALL_HEADER]: platform.vouch(req) };
+  let body: string | undefined;
+  if (input?.body !== undefined) {
+    headers["content-type"] = "application/json";
+    body = JSON.stringify(input.body);
+  }
+  const res = await fetch(`http://${host}:${req.socket.localPort}${path}`, { method, headers, body });
+  const text = await res.text();
+  let parsed: unknown;
+  try {
+    parsed = text ? JSON.parse(text) : undefined;
+  } catch {
+    parsed = undefined;
+  }
+  if (!res.ok) {
+    const message = (parsed as { error?: unknown } | undefined)?.error;
+    throw new HttpError(res.status, typeof message === "string" ? message : `${key} answered ${res.status}.`);
+  }
+  return parsed as ApiRoutes[K]["response"];
 }

@@ -12,6 +12,7 @@ import { migrations } from "./migrations.js";
 export const STEPS: ReadonlyArray<{ id: OnboardingStepId; optional: boolean }> = [
   { id: "password", optional: false },
   { id: "cluster", optional: true },
+  { id: "access", optional: true },
   { id: "oidc", optional: true },
   { id: "links", optional: true },
   { id: "hosts", optional: true },

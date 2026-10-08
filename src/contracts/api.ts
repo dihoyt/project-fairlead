@@ -7,6 +7,7 @@
 import type {
   AccountView,
   AdminOverview,
+  ApiTokenView,
   AuditRow,
   AuthentikWirePlan,
   AuthentikWireRequest,
@@ -14,6 +15,8 @@ import type {
   AuthMethods,
   LoginResponse,
   Me,
+  NewApiToken,
+  NewApiTokenRequest,
   NewUserRequest,
   SessionView,
   SettingValue,
@@ -39,15 +42,34 @@ import type {
   DeployRequest,
   DeployStatus,
 } from "./deploy.js";
-import type { Category, CategoryDetail, CheckHistory, CheckResult, HealthBoard } from "./health.js";
+import type {
+  Category,
+  CategoryDetail,
+  CheckHistory,
+  CheckResult,
+  HealthBoard,
+  HealthLinkRequest,
+  HealthLinkView,
+} from "./health.js";
 import type { HostKeypair, HostRequest, HostTestResult, HostView } from "./hosts.js";
 import type { CapabilityReport } from "./k8s.js";
+import type { JsonRpcMessage } from "./mcp.js";
 import type { NodeSummary, SeriesInfo, SeriesResult } from "./metrics.js";
 import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
 import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
 import type { ResetRequest, ResetResult } from "./reset.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
-import type { EventView, LogLines, NamespaceView, PodView, WorkloadLinks, WorkloadView } from "./workloads.js";
+import type {
+  ClusterUsageReport,
+  EventView,
+  LogLines,
+  NamespaceView,
+  PodView,
+  SpaceUsageReport,
+  UsageRange,
+  WorkloadLinks,
+  WorkloadView,
+} from "./workloads.js";
 
 type None = Record<string, never>;
 
@@ -116,8 +138,9 @@ export interface ApiRoutes {
   "DELETE /api/admin/settings/:key": Route<{ key: string }, None, None, { key: string; value: SettingValue }>;
   "PUT /api/admin/oidc/secret": Route<None, None, { value: string }, { hasSecret: boolean }>;
   "POST /api/admin/oidc/test": Route<None, None, None, { ok: boolean; issuer?: string; error?: string }>;
-  // Admin. 400 for a missing or non-http(s) url.
-  "GET /api/admin/oidc/authentik": Route<None, { url: string }, None, AuthentikWirePlan>;
+  // Admin. 400 for a missing or non-http(s) url, or an apiUrl the token may
+  // not be sent to (see AuthentikWireRequest.apiUrl).
+  "GET /api/admin/oidc/authentik": Route<None, { url: string; apiUrl?: string }, None, AuthentikWirePlan>;
   // Admin, audited (never with the token or secret). Creates or reuses the
   // provider and application, saves auth.oidc.{issuer,clientId,label,enabled}
   // (and adminGroups when given) and the client secret. 400: bad url, no
@@ -136,6 +159,14 @@ export interface ApiRoutes {
   "DELETE /api/admin/users/:id/sessions/:handle": Route<{ id: string; handle: string }, None, None, Ok>;
   "DELETE /api/admin/users/:id/identities": Route<{ id: string }, None, { provider: string }, UserView>;
   "GET /api/admin/audit": Route<None, { limit?: string; before?: string }, None, AuditRow[]>;
+  // API tokens (see ApiTokenView). Admin with a signed-in session, audited;
+  // a request carrying a token is refused here like everywhere under
+  // /api/admin. Newest first; revoked tokens are gone.
+  "GET /api/admin/tokens": Route<None, None, None, ApiTokenView[]>;
+  // 400 for an empty name (over 80 characters) or an expiry outside 1-3650 days.
+  "POST /api/admin/tokens": Route<None, None, NewApiTokenRequest, NewApiToken>;
+  // Revokes at once: the next request with it is a 401. Unknown id: 404.
+  "DELETE /api/admin/tokens/:id": Route<{ id: string }, None, None, Ok>;
 
   // --- k8s (A1) -----------------------------------------------------------
   "GET /api/k8s/capabilities": Route<None, { refresh?: "1" }, None, CapabilityReport>;
@@ -152,6 +183,15 @@ export interface ApiRoutes {
   >;
   // Runs the provider now (write): results as collect() returned them.
   "POST /api/health/providers/:providerId/run": Route<{ providerId: string }, None, None, CheckResult[]>;
+  // Settings links first (by category order), then custom ones oldest first.
+  "GET /api/health/links": Route<None, { category?: Category }, None, HealthLinkView[]>;
+  // Write, audited. 400 for an unknown category, a label outside 1-80
+  // characters or a URL that isn't http(s).
+  "POST /api/health/links": Route<None, None, HealthLinkRequest, HealthLinkView>;
+  // Write, audited. Omitted fields keep their value. 404 for an unknown id;
+  // 409 for a settings link (change those in the Links step or settings).
+  "PUT /api/health/links/:id": Route<{ id: string }, None, Partial<HealthLinkRequest>, HealthLinkView>;
+  "DELETE /api/health/links/:id": Route<{ id: string }, None, None, Ok>;
 
   // --- cluster (A5): adding nodes -----------------------------------------
   "GET /api/cluster/join": Route<None, None, None, JoinStatus>;
@@ -226,6 +266,14 @@ export interface ApiRoutes {
     None,
     EventView[]
   >;
+  // range defaults to "1h"; any other value is a 400.
+  "GET /api/workloads/usage": Route<None, { range?: UsageRange }, None, ClusterUsageReport>;
+  "GET /api/workloads/namespaces/:namespace/usage": Route<
+    { namespace: string },
+    { range?: UsageRange },
+    None,
+    SpaceUsageReport
+  >;
   "GET /api/workloads/namespaces/:namespace/pods/:pod/logs": Route<
     { namespace: string; pod: string },
     { container?: string; tail?: string; previous?: "1" },
@@ -279,6 +327,17 @@ export interface ApiRoutes {
   "GET /api/deploy/bundles/:id": Route<{ id: string }, None, None, BundleRunView>;
   // Admin, audited. Cancels the running step and leaves the rest pending.
   "POST /api/deploy/bundles/:id/cancel": Route<{ id: string }, None, None, BundleRunView>;
+
+  // --- mcp ------------------------------------------------------------------
+  // The MCP streamable-HTTP endpoint, also served at MCP_PATH (/mcp).
+  // Stateless: every POST is one JSON-RPC request (or batch) answered with
+  // JSON; no session id, no server-sent stream. Takes an API token as a
+  // bearer (401 with WWW-Authenticate without one; a session cookie is not
+  // accepted here) and is rate-limited per token (429).
+  "POST /api/mcp": Route<None, None, JsonRpcMessage | JsonRpcMessage[], JsonRpcMessage | JsonRpcMessage[]>;
+  // 405: there is no stream to open and no session to end.
+  "GET /api/mcp": Route<None, None, None, ApiError>;
+  "DELETE /api/mcp": Route<None, None, None, ApiError>;
 
   // --- onboarding (A14) ---------------------------------------------------
   "GET /api/onboarding/state": Route<None, None, None, OnboardingState>;

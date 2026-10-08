@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Alert, Badge, Button, Card, Loader, SimpleGrid, Stack, Stepper, Text, Title } from "@mantine/core";
 import { IconAdjustments, IconPackages } from "@tabler/icons-react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import type { OnboardingState, OnboardingStep, OnboardingStepId } from "@contracts/onboarding";
 import { PageHeader } from "../../shell/PageHeader";
 import { apiRequest, useApi, useSession } from "../../ui";
 import { BundleDoor } from "./BundleDoor";
+import { AccessStep } from "./steps/AccessStep";
 import type { StepProps } from "./shared";
 import { ChecksStep } from "./steps/ChecksStep";
 import { ClusterStep } from "./steps/ClusterStep";
@@ -15,7 +16,6 @@ import { LinksStep } from "./steps/LinksStep";
 import { NotificationsStep } from "./steps/NotificationsStep";
 import { OidcStep } from "./steps/OidcStep";
 import { PublicUrlField } from "./steps/PublicUrlField";
-import { RemoteAccess } from "./steps/RemoteAccess";
 import { WhatIsThis } from "../../ui/deploy";
 
 const TITLES: Record<OnboardingStepId, { label: string; description: string }> = {
@@ -81,6 +81,9 @@ export function firstOpenStep(steps: OnboardingStep[]): number {
 export function WelcomePage() {
   const { me } = useSession();
   const navigate = useNavigate();
+  // "?step=access": a link from elsewhere (a check with no DNS yet) opens that step.
+  const [params] = useSearchParams();
+  const wanted = params.get("step");
   const state = useApi("GET /api/onboarding/state", undefined, { enabled: me.admin });
   const [current, setCurrent] = useState<OnboardingState | null>(null);
   const [active, setActive] = useState<number | null>(null);
@@ -89,9 +92,10 @@ export function WelcomePage() {
   useEffect(() => {
     if (!state.data) return;
     setCurrent(state.data);
-    setActive((prev) => prev ?? firstOpenStep(state.data!.steps));
-    setDoor((prev) => prev ?? (startsAtDoors(state.data!.steps) ? null : "custom"));
-  }, [state.data]);
+    const linked = state.data.steps.findIndex((step) => step.id === wanted);
+    setActive((prev) => prev ?? (linked >= 0 ? linked : firstOpenStep(state.data!.steps)));
+    setDoor((prev) => prev ?? (linked >= 0 || !startsAtDoors(state.data!.steps) ? "custom" : null));
+  }, [state.data, wanted]);
 
   if (!me.admin) return <Alert color="yellow">First-run setup is for admins.</Alert>;
   if (state.error && !current) return <Alert color="red">{state.error}</Alert>;
@@ -126,13 +130,12 @@ export function WelcomePage() {
               Your password is changed. Check the public URL below, then carry on with the next step.
             </Text>
             <PublicUrlField />
-            <RemoteAccess />
           </Stack>
         );
       case "cluster":
         return <ClusterStep {...props} />;
       case "access":
-        return <RemoteAccess />;
+        return <AccessStep {...props} />;
       case "oidc":
         return <OidcStep {...props} />;
       case "links":

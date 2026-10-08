@@ -1,4 +1,5 @@
-import type { CatalogAppView, IngressHost } from "@contracts/catalog";
+import type { CatalogAppView, InputCondition, IngressHost } from "@contracts/catalog";
+import type { DeployValue } from "@contracts/deploy";
 import type { BundleRunView } from "@contracts/deploy";
 import { apiRequest } from "../../ui";
 import { LINK_FIELD, type LinkForm } from "./links";
@@ -77,4 +78,12 @@ export function runFailures(run: Pick<BundleRunView, "steps">): RunFailures {
   if (firstUnrun === -1) return { kind: "finished", failed };
   const before = run.steps.slice(0, firstUnrun).filter((s) => s.state === "failed");
   return { kind: "stopped", stoppedAt: before[before.length - 1]?.appId, failed };
+}
+
+// A bundle input or item that applies only for some answers (the tunnel
+// token only for Cloudflare Tunnel); the server applies the same rule.
+export function holds(condition: InputCondition | undefined, values: Record<string, DeployValue>): boolean {
+  if (!condition) return true;
+  const value = values[condition.input];
+  return typeof value === "string" && condition.in.includes(value);
 }

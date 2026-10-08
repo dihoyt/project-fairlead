@@ -1,4 +1,5 @@
 import type { MetricsCollector, Sample, SeriesQuery, SeriesResult } from "../metrics.js";
+import type { MetricsQuery } from "../runtime.js";
 import { HOUR, MOCK_NOW } from "./time.js";
 
 export const mockNodes = ["node-1", "node-2", "node-3"];
@@ -80,3 +81,6 @@ export function createMockCollector(id: string, series = "node.cpu.percent", int
     },
   };
 }
+
+// Services.metrics answering from mockSeries.
+export const mockMetricsQuery: MetricsQuery = { query: mockSeries };
