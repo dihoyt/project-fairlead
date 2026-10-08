@@ -23,6 +23,14 @@ export type LinkKey = "rancher" | "headlamp" | "longhorn" | "gitea" | "grafana";
 
 export type CatalogInputKind = "text" | "hostname" | "secret" | "select" | "boolean" | "size";
 
+// Applies only while another input of the same form (a bundle's shared
+// inputs) has one of these values: the tunnel token only when "access" is
+// "cloudflare-tunnel".
+export interface InputCondition {
+  input: string;
+  in: string[];
+}
+
 export interface CatalogInput {
   // Stable within the app: "host", "adminEmail", "tunnelToken".
   key: string;
@@ -36,6 +44,9 @@ export interface CatalogInput {
   default?: string | boolean;
   // "select" only.
   options?: Array<{ value: string; label: string }>;
+  // Shown, validated and required only while the condition holds; ignored
+  // otherwise.
+  when?: InputCondition;
 }
 
 // What a deploy runs, shown to the user before it does. Every command line is
@@ -131,6 +142,13 @@ export interface IngressHost {
   ingress: string;
   // The backend Service of the first rule for this host.
   service?: string;
+  // That Service as the cluster reaches it, "http://<service>.<namespace>.svc:<port>",
+  // when its port could be resolved to a number. The checks module probes it
+  // when the host doesn't resolve.
+  serviceUrl?: string;
+  // spec.ingressClassName. "tailscale" marks a host that only resolves on the
+  // tailnet; its `host` comes from the Ingress status (the full MagicDNS name).
+  ingressClass?: string;
   // The catalog app this host belongs to, when discovery matched one.
   appId?: string;
 }
@@ -166,6 +184,13 @@ export interface DiscoveryReport {
     clusterIssuer?: string;
     // The domain most Ingress hosts share, for "<app>.<baseDomain>".
     baseDomain?: string;
+    // The default ingress controller's Service as the cluster reaches it,
+    // "http://traefik.kube-system.svc.cluster.local:80": the origin a tunnel
+    // routes to.
+    ingressService?: string;
+    // The address it answers on from the network (its LoadBalancer IP or
+    // hostname), for DNS records and hosts files.
+    ingressAddress?: string;
   };
 }
 
@@ -190,6 +215,10 @@ export interface BundleItem {
   values?: Record<string, string | boolean>;
   // One sentence shown beside the item: why it is optional, what it needs.
   note?: string;
+  // Part of the rollout only while a shared input matches (cloudflared only
+  // for access "cloudflare-tunnel"); otherwise skipped like an item left out.
+  // The bundle view doesn't know the answers, so the client evaluates it.
+  when?: InputCondition;
 }
 
 export interface CatalogBundle {
@@ -198,7 +227,8 @@ export interface CatalogBundle {
   summary: string;
   // Install order: each item's requires come before it.
   items: BundleItem[];
-  // Asked once: "baseDomain", "adminEmail", "adminPassword", "storageClass".
+  // Asked once: "access", "baseDomain", "adminEmail", "adminPassword",
+  // "storageClass", and the access mode's own ("tunnelToken", ...).
   inputs: CatalogInput[];
 }
 

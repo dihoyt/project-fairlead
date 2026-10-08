@@ -1,5 +1,5 @@
 export type OnboardingStepId =
-  "password" | "cluster" | "oidc" | "links" | "hosts" | "checks" | "notifications" | "findings";
+  "password" | "cluster" | "access" | "oidc" | "links" | "hosts" | "checks" | "notifications" | "findings";
 
 export interface OnboardingStep {
   id: OnboardingStepId;

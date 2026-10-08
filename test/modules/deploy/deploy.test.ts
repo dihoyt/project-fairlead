@@ -4,7 +4,7 @@ import type { DeployJobView, DeployPlan, DeployStatus } from "../../../src/contr
 import type { Events } from "../../../src/contracts/events.js";
 import { RESOURCES, type KubeObject } from "../../../src/contracts/k8s.js";
 import type { LogLines } from "../../../src/contracts/workloads.js";
-import { createMockCatalogService, mockDiscovery } from "../../../src/contracts/mocks/catalog.js";
+import { createMockCatalogService, mockDeployStatus, mockDiscovery } from "../../../src/contracts/mocks/catalog.js";
 import { createMockContext, mockAdmin, mockViewer, type MockContext } from "../../../src/contracts/mocks/context.js";
 import { createFakeK8s, type FakeK8s } from "../../../src/contracts/mocks/k8s.js";
 import { MOCK_NOW } from "../../../src/contracts/mocks/time.js";
@@ -172,7 +172,7 @@ test("status: enabled with the image, writes and grants; defaults come from disc
   assert.equal(status.namespace, NS);
   assert.equal(status.image, IMAGE);
   assert.equal(status.installerServiceAccount, `${product.chartName}-installer`);
-  assert.deepEqual(status.defaults, { ...mockDiscovery.suggested, storageClass: "local-path" });
+  assert.deepEqual(status.defaults, { ...mockDeployStatus.defaults, storageClass: "local-path" });
 });
 
 test("status: off with the enable line when the grant, the image or the writes are missing", async () => {
