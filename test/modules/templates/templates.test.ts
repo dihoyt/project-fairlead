@@ -354,3 +354,32 @@ test("a finished upgrade moves the instance to the library's pin and records the
   assert.equal(templates.instances([])[0]?.newerVersion, undefined);
   await mock.close();
 });
+
+test("a succeeded remove-app job forgets the instance; a failed one keeps it with the job", async () => {
+  const mock = createMockContext("templates", { migrations: mod.migrations });
+  const templates = registerTemplates(mock.ctx);
+  templates.store.save(
+    { name: "whoami", templateId: "whoami", version: "v1.11.0", host: "", lastJobId: "dj_1", createdBy: "admin" },
+    "2026-01-01T00:00:00.000Z"
+  );
+  mock.ctx.bus.emit("deploy.finished", {
+    jobId: "dj_2",
+    appId: "whoami",
+    mode: "action",
+    action: "remove-app",
+    state: "failed",
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(templates.store.get("whoami")?.lastJobId, "dj_2");
+  mock.ctx.bus.emit("deploy.finished", {
+    jobId: "dj_3",
+    appId: "whoami",
+    mode: "action",
+    action: "remove-app",
+    state: "succeeded",
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(templates.store.get("whoami"), undefined);
+  assert.deepEqual(templates.entries(), []);
+  await mock.close();
+});

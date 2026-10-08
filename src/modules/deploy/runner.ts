@@ -646,6 +646,7 @@ export class Deployer {
       jobId: view.id,
       appId: view.appId,
       mode: view.mode,
+      ...(view.action ? { action: view.action } : {}),
       state: view.state,
       ...(state === "succeeded" && view.url ? { url: view.url } : {}),
     });

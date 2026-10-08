@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { mockDeployDisabled } from "@contracts/mocks/catalog";
-import { mockTemplatePlanRefused, mockTemplates } from "@contracts/mocks/templates";
+import {
+  mockTemplatePlanRefused,
+  mockTemplateRemoveJob,
+  mockTemplateRemovePlan,
+  mockTemplates,
+} from "@contracts/mocks/templates";
 import { renderWithApp } from "../../../test-utils";
 import { stubApi, stubEventSource } from "../../../ui/deploy/__tests__/stubApi";
 import { emptyForm, formFromInstance, toRequest } from "../request";
@@ -139,5 +144,47 @@ describe("TemplatesPage", () => {
     await waitFor(async () =>
       expect(within(await card("whoami")).getByRole("button", { name: "Deploy" })).toBeDisabled()
     );
+  });
+
+  it("removes an app, keeping its volume unless asked, and names what goes", async () => {
+    const { calls } = stubApi({
+      "POST /api/deploy/actions/plan": (_url: URL, body: unknown) =>
+        (body as { deleteVolumes?: boolean }).deleteVolumes
+          ? {
+              ...mockTemplateRemovePlan,
+              deletes: [...mockTemplateRemovePlan.deletes!, { kind: "Namespace", name: "status" }],
+              warnings: ["The data on status-data is deleted for good."],
+            }
+          : mockTemplateRemovePlan,
+      "POST /api/deploy/actions/run": mockTemplateRemoveJob,
+      "GET /api/deploy/jobs/:id": mockTemplateRemoveJob,
+    });
+    stubEventSource();
+    renderWithApp(<TemplatesPage />);
+    const row = await waitFor(() => {
+      const el = document.querySelector<HTMLElement>('[data-instance="status"]');
+      expect(el).not.toBeNull();
+      return el!;
+    });
+    fireEvent.click(within(row).getByRole("button", { name: "Remove" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText('the HTTP check "https://status.example.test"')).toBeInTheDocument();
+    expect(within(dialog).getByText(/its volume stay/)).toBeInTheDocument();
+    expect(calls.find((c) => c.key === "POST /api/deploy/actions/plan")?.body).toEqual({
+      kind: "remove-app",
+      appId: "status",
+      deleteVolumes: false,
+    });
+
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: /Delete its volume too \(status-data, 1Gi\)/ }));
+    expect(await within(dialog).findByText("Namespace status")).toBeInTheDocument();
+    expect(within(dialog).getByText("The data on status-data is deleted for good.")).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Remove status and its data" }));
+    await waitFor(() => expect(calls.some((c) => c.key === "POST /api/deploy/actions/run")).toBe(true));
+    expect(calls.find((c) => c.key === "POST /api/deploy/actions/run")?.body).toEqual({
+      kind: "remove-app",
+      appId: "status",
+      deleteVolumes: true,
+    });
   });
 });

@@ -333,9 +333,14 @@ export class Templates {
   }
 
   // An upgrade from the Upgrades page installs the library's pin.
-  finished(event: { jobId: string; appId: string; mode: string; state: string }): void {
+  // A succeeded remove-app action forgets the instance.
+  finished(event: { jobId: string; appId: string; mode: string; action?: string; state: string }): void {
     const record = this.store.get(event.appId);
     if (!record || event.mode === "dry-run") return;
+    if (event.action === "remove-app" && event.state === "succeeded") {
+      this.store.delete(record.name);
+      return;
+    }
     const pin = definition(record.templateId)?.version;
     const version = event.mode === "upgrade" && event.state === "succeeded" && pin ? pin : record.version;
     const { createdAt: _c, updatedAt: _u, ...rest } = record;

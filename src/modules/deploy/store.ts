@@ -170,6 +170,10 @@ export class Store {
          WHERE org_id = ? AND mode IN ('install', 'upgrade') AND seq = (
            SELECT MAX(seq) FROM deploy_jobs
            WHERE org_id = j.org_id AND release = j.release AND mode IN ('install', 'upgrade')
+         ) AND NOT EXISTS (
+           SELECT 1 FROM deploy_jobs
+           WHERE org_id = j.org_id AND release = j.release AND seq > j.seq
+             AND action = 'remove-app' AND state = 'succeeded'
          )
          ORDER BY seq DESC`
       )

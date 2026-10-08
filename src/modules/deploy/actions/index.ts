@@ -13,6 +13,7 @@ import type { CallInput } from "../../../contracts/module.js";
 import type { Step } from "../apps.js";
 import { backupAction } from "./backup.js";
 import { migrateAction } from "./migrate.js";
+import { removeAction } from "./remove.js";
 import { replicasAction } from "./replicas.js";
 
 // What an action renders from. Reads only: nothing here changes the cluster.
@@ -70,6 +71,7 @@ const recipes: { [K in DeployActionKind]?: ActionRecipe<Extract<DeployActionRequ
   "longhorn-replicas": replicasAction,
   "migrate-to-longhorn": migrateAction,
   "backup-volumes": backupAction,
+  "remove-app": removeAction,
 };
 
 export function actionRecipe<K extends DeployActionKind>(
@@ -86,4 +88,5 @@ export const actionSchema = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("migrate-to-longhorn"), appId: z.string().min(1).max(100) }),
   z.object({ kind: z.literal("backup-volumes"), appId: z.string().min(1).max(100) }),
+  z.object({ kind: z.literal("remove-app"), appId: z.string().min(1).max(100), deleteVolumes: z.boolean().optional() }),
 ]);
