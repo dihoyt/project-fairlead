@@ -36,6 +36,7 @@ K3S_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
 NAMESPACE="$DEFAULT_NAMESPACE"
 RELEASE="$SLUG"
 CHART_VERSION=""
+CHANNEL="edge"
 IMAGE_TAG=""
 CHART_REF=""
 HOST=""
@@ -80,7 +81,9 @@ EOF
 
   --namespace NS        Namespace (default: $DEFAULT_NAMESPACE)
   --release NAME        Helm release name (default: $SLUG)
-  --version VERSION     Chart version (default: the newest published, including edge builds)
+  --channel NAME        Build channel: edge (default, main's builds) or next (the integration
+                        branch's builds, published to a separate chart path)
+  --version VERSION     Chart version (default: the newest published in the channel)
   --image-tag TAG       Image tag (default: the chart's appVersion)
   --chart REF           Chart to install: a local directory or an oci:// reference
                         (default: oci://$IMAGE_REGISTRY/charts/$CHART_NAME)
@@ -131,6 +134,7 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --namespace) need_arg "$@"; NAMESPACE="$2"; shift 2 ;;
     --release) need_arg "$@"; RELEASE="$2"; shift 2 ;;
+    --channel) need_arg "$@"; CHANNEL="$2"; shift 2 ;;
     --version) need_arg "$@"; CHART_VERSION="$2"; shift 2 ;;
     --image-tag) need_arg "$@"; IMAGE_TAG="$2"; shift 2 ;;
     --chart) need_arg "$@"; CHART_REF="$2"; shift 2 ;;
@@ -176,6 +180,7 @@ case "$ORIGIN" in
   http://* | https://*) ;;
   *) die "--origin must start with http:// or https://" ;;
 esac
+case "$CHANNEL" in edge | next) ;; *) die "--channel must be edge or next: $CHANNEL" ;; esac
 case "$IMAGE_TAG" in *[!A-Za-z0-9._-]*) die "--image-tag has unexpected characters: $IMAGE_TAG" ;; esac
 case "$INGRESS_CLASS" in *[!a-z0-9.-]*) die "--ingress-class has unexpected characters" ;; esac
 case "$NODE_PORT" in
@@ -193,7 +198,9 @@ else
 fi
 [ "$ENABLE_DEPLOY" = 0 ] || [ "$UNINSTALL" = 0 ] || die "--enable-deploy does not go with --uninstall"
 [ -n "$ORIGIN" ] || [ -z "$HOST" ] || ORIGIN="http://$HOST"
-[ -n "$CHART_REF" ] || CHART_REF="oci://$IMAGE_REGISTRY/charts/$CHART_NAME"
+if [ -z "$CHART_REF" ]; then
+  if [ "$CHANNEL" = next ]; then CHART_REF="oci://$IMAGE_REGISTRY/charts-next/$CHART_NAME"; else CHART_REF="oci://$IMAGE_REGISTRY/charts/$CHART_NAME"; fi
+fi
 
 SECRET_NAME="$RELEASE-secrets"
 PULL_SECRET_NAME="$RELEASE-registry"
@@ -702,7 +709,7 @@ do_install() {
       if [ -n "$CHART_VERSION" ]; then
         set -- "$@" --version "$CHART_VERSION"
       else
-        # Only edge builds are published until a release is tagged.
+        # Only prerelease builds are published until a release is tagged.
         set -- "$@" --devel
       fi
       ;;
