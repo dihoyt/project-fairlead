@@ -21,6 +21,14 @@ function takeRedirectError(): string | null {
   return decodeURIComponent(match[1]!);
 }
 
+// Signing in through the provider leaves the page, so the route the
+// browser was on (an MCP client's consent request, say) goes along.
+export function oidcStartUrl(hash: string): string {
+  return hash.startsWith("#/") && hash !== "#/"
+    ? pageUrl(`auth/oidc/start?rd=${encodeURIComponent(`/${hash}`)}`)
+    : pageUrl("auth/oidc/start");
+}
+
 export function SignInPage({ methods, reason, onSignedIn }: Props) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -71,7 +79,7 @@ export function SignInPage({ methods, reason, onSignedIn }: Props) {
         />
       ) : null}
       {pending === null && methods?.oidc ? (
-        <Button component="a" href={pageUrl("auth/oidc/start")} variant="filled">
+        <Button component="a" href={oidcStartUrl(window.location.hash)} variant="filled">
           {methods.oidc.label}
         </Button>
       ) : null}

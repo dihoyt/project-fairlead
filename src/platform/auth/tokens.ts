@@ -22,6 +22,9 @@ interface RawToken {
   created_at: number;
   expires_at: number | null;
   last_used_at: number | null;
+  kind?: "token" | "oauth";
+  client_id?: string | null;
+  access_expires_at?: number | null;
 }
 
 export interface TokenRow {
@@ -33,9 +36,11 @@ export interface TokenRow {
   createdAt: number;
   expiresAt: number | null;
   lastUsedAt: number | null;
+  kind: "token" | "oauth";
+  clientId: string | null;
 }
 
-const hash = (secret: string) => crypto.createHash("sha256").update(secret).digest("hex");
+export const hash = (secret: string) => crypto.createHash("sha256").update(secret).digest("hex");
 
 function fromRaw(raw: RawToken): TokenRow {
   return {
@@ -47,6 +52,8 @@ function fromRaw(raw: RawToken): TokenRow {
     createdAt: raw.created_at,
     expiresAt: raw.expires_at,
     lastUsedAt: raw.last_used_at,
+    kind: raw.kind ?? "token",
+    clientId: raw.client_id ?? null,
   };
 }
 
@@ -59,29 +66,44 @@ export function bearerOf(req: Request): string | undefined {
   return match && match[1]!.startsWith(PREFIX) ? match[1]! : "";
 }
 
+export const newSecret = (): string => PREFIX + crypto.randomBytes(32).toString("base64url");
+export const secretPrefix = (secret: string): string => secret.slice(0, PREFIX_SHOWN);
+
 export function createToken(
   core: Core,
-  input: { name: string; scope: ApiTokenScope; userId: number; expiresInDays: number | null }
+  input: {
+    name: string;
+    scope: ApiTokenScope;
+    userId: number;
+    expiresInDays: number | null;
+    // An OAuth grant: the client and when its access token expires.
+    oauth?: { clientId: string; accessExpiresAt: number; refreshHash: string };
+  }
 ): { row: TokenRow; secret: string } {
-  const secret = PREFIX + crypto.randomBytes(32).toString("base64url");
+  const secret = newSecret();
   const now = Date.now();
   const raw: RawToken = {
     id: `tok_${crypto.randomBytes(9).toString("base64url")}`,
     secret_hash: hash(secret),
-    prefix: secret.slice(0, PREFIX_SHOWN),
+    prefix: secretPrefix(secret),
     name: input.name,
     scope: input.scope,
     user_id: input.userId,
     created_at: now,
     expires_at: input.expiresInDays === null ? null : now + input.expiresInDays * DAY,
     last_used_at: null,
+    kind: input.oauth ? "oauth" : "token",
+    client_id: input.oauth?.clientId ?? null,
+    access_expires_at: input.oauth?.accessExpiresAt ?? null,
   };
   core.db
     .prepare(
-      `INSERT INTO api_tokens (id, org_id, secret_hash, prefix, name, scope, user_id, created_at, expires_at, last_used_at)
-       VALUES (@id, ?, @secret_hash, @prefix, @name, @scope, @user_id, @created_at, @expires_at, @last_used_at)`
+      `INSERT INTO api_tokens (id, org_id, secret_hash, prefix, name, scope, user_id, created_at, expires_at, last_used_at,
+         kind, client_id, refresh_hash, access_expires_at)
+       VALUES (@id, ?, @secret_hash, @prefix, @name, @scope, @user_id, @created_at, @expires_at, @last_used_at,
+         @kind, @client_id, ?, @access_expires_at)`
     )
-    .run(core.orgId, raw);
+    .run(core.orgId, input.oauth?.refreshHash ?? null, raw);
   return { row: fromRaw(raw), secret };
 }
 
@@ -108,6 +130,7 @@ export function tokenFromSecret(
     RawToken | undefined;
   if (raw === undefined) return null;
   if (raw.expires_at !== null && raw.expires_at <= now) return null;
+  if (raw.access_expires_at != null && raw.access_expires_at <= now) return null;
   const account = userById(core.db, raw.user_id);
   if (account === null || account.disabled) return null;
   if (raw.last_used_at === null || now - raw.last_used_at > TOUCH_EVERY) {
@@ -138,5 +161,6 @@ export function tokenView(
     expiresAt: isoOrNull(row.expiresAt),
     lastUsedAt: isoOrNull(row.lastUsedAt),
     ...(inactive ? { inactive } : {}),
+    ...(row.kind === "oauth" ? { kind: "oauth" as const, client: row.name } : {}),
   };
 }

@@ -108,7 +108,10 @@ test("/mcp needs a token, refuses a cookie, rate-limits, and answers 405 to GET"
     assert.equal((await ping({})).status, 401);
     const cookieOnly = await ping({ cookie });
     assert.equal(cookieOnly.status, 401);
-    assert.equal(cookieOnly.headers.get("www-authenticate"), 'Bearer realm="mcp"');
+    assert.equal(
+      cookieOnly.headers.get("www-authenticate"),
+      `Bearer realm="mcp", resource_metadata="${app.url}/.well-known/oauth-protected-resource/mcp"`
+    );
 
     const auth = { authorization: `Bearer ${await mint("read")}` };
     assert.equal((await ping(auth)).status, 200);

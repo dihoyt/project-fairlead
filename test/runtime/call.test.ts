@@ -18,7 +18,7 @@ async function boot(register: Module["register"]) {
   const runtime = await createRuntime({
     db,
     dataDir: "/tmp",
-    modules: [{ id: "mcp", milestone: "A", register }],
+    modules: [{ id: "health", milestone: "A", register }],
     createPlatform,
     identify: (req) => (req.get("x-test-user") ? { ...mockAdmin, id: req.get("x-test-user")! } : null),
     logFor: () => silentLogger,
@@ -45,20 +45,18 @@ test("routeUrl fills params and appends the query", () => {
   assert.throws(() => routeUrl("GET /api/hosts/:id"), /needs param "id"/);
 });
 
-test("ctx.call reaches another route as the caller, through /mcp too", async () => {
+test("ctx.call reaches another route as the caller", async () => {
   const app = await boot((ctx) => {
-    ctx.route("GET /api/mcp", async (req) => {
+    ctx.route("GET /api/health/board", async (req) => {
       const modules = await ctx.call(req, "GET /api/system/modules");
       const me = await ctx.call(req, "GET /api/me");
-      return { error: `${modules.length} ${me.id}` };
+      return { error: `${modules.length} ${me.id}` } as never;
     });
   });
   try {
-    for (const path of ["/api/mcp", "/mcp"]) {
-      const res = await fetch(`${app.url}${path}`, { headers: { "x-test-user": "dana" } });
-      assert.equal(res.status, 200, path);
-      assert.deepEqual(await res.json(), { error: "1 dana" });
-    }
+    const res = await fetch(`${app.url}/api/health/board`, { headers: { "x-test-user": "dana" } });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { error: "1 dana" });
   } finally {
     await app.close();
   }
@@ -66,18 +64,18 @@ test("ctx.call reaches another route as the caller, through /mcp too", async () 
 
 test("ctx.call rejects with the route's status and message", async () => {
   const app = await boot((ctx) => {
-    ctx.route("GET /api/mcp", async (req) => {
+    ctx.route("GET /api/health/board", async (req) => {
       try {
         await ctx.call(req, "GET /api/hosts");
-        return { error: "no error" };
+        return { error: "no error" } as never;
       } catch (err) {
         assert.ok(err instanceof HttpError);
-        return { error: `${err.status} ${err.message}` };
+        return { error: `${err.status} ${err.message}` } as never;
       }
     });
   });
   try {
-    const res = await fetch(`${app.url}/api/mcp`, { headers: { "x-test-user": "dana" } });
+    const res = await fetch(`${app.url}/api/health/board`, { headers: { "x-test-user": "dana" } });
     assert.deepEqual(await res.json(), { error: "404 Not found." });
   } finally {
     await app.close();

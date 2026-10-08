@@ -176,6 +176,11 @@ export function TokensPage() {
                 <Table.Tr key={token.id}>
                   <Table.Td>
                     {token.name}
+                    {token.kind === "oauth" ? (
+                      <Badge size="xs" variant="outline" ml={6}>
+                        connected app
+                      </Badge>
+                    ) : null}
                     {token.inactive ? (
                       <Text size="xs" c="orange">
                         {token.inactive}
