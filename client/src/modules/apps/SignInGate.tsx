@@ -15,11 +15,13 @@ const STATE: Record<AppGateState, { label: string; color: string }> = {
 // Apps the console deployed sit behind its own sign-in unless made public.
 // Each row's switch runs the app-gate action, shown first as a plan.
 export function SignInGateSection({ onFinished }: { onFinished?: () => void }) {
-  const admin = useContext(SessionContext)?.me.admin ?? true;
   const gate = useApi("GET /api/deploy/gate");
-  const [change, setChange] = useState<{ app: AppGateView; public: boolean } | null>(null);
   const data = gate.data;
   if (!data || (data.apps.length === 0 && data.ready)) return null;
+  const done = () => {
+    gate.reload();
+    onFinished?.();
+  };
 
   return (
     <section aria-label="Sign-in gate">
@@ -57,24 +59,10 @@ export function SignInGateSection({ onFinished }: { onFinished?: () => void }) {
                     <Text size="sm">{app.hosts.join(", ")}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Tooltip label={app.reason} disabled={!app.reason} multiline maw={360}>
-                      <Badge color={STATE[app.state].color} variant="light" radius="xs">
-                        {STATE[app.state].label}
-                      </Badge>
-                    </Tooltip>
-                    {app.state === "open" && app.reason ? (
-                      <Text size="xs" c="dimmed" maw={360}>
-                        {app.reason}
-                      </Text>
-                    ) : null}
+                    <GateStateBadge app={app} />
                   </Table.Td>
                   <Table.Td>
-                    <Switch
-                      aria-label={`${app.name} is public`}
-                      checked={app.public}
-                      disabled={!admin || app.mode === "public" || app.state === "tailnet"}
-                      onChange={(event) => setChange({ app, public: event.currentTarget.checked })}
-                    />
+                    <GatePublicSwitch app={app} onChanged={done} />
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -82,26 +70,51 @@ export function SignInGateSection({ onFinished }: { onFinished?: () => void }) {
           </Table>
         </Table.ScrollContainer>
       ) : null}
+    </section>
+  );
+}
+
+export function GateStateBadge({ app }: { app: AppGateView }) {
+  return (
+    <>
+      <Tooltip label={app.reason} disabled={!app.reason} multiline maw={360}>
+        <Badge color={STATE[app.state].color} variant="light" radius="xs">
+          {STATE[app.state].label}
+        </Badge>
+      </Tooltip>
+      {app.state === "open" && app.reason ? (
+        <Text size="xs" c="dimmed" maw={360}>
+          {app.reason}
+        </Text>
+      ) : null}
+    </>
+  );
+}
+
+// The app's Public switch: flipping it previews the app-gate action in a
+// dialog and runs it from there.
+export function GatePublicSwitch({ app, onChanged }: { app: AppGateView; onChanged?: () => void }) {
+  const admin = useContext(SessionContext)?.me.admin ?? true;
+  const [makePublic, setMakePublic] = useState<boolean | null>(null);
+  return (
+    <>
+      <Switch
+        aria-label={`${app.name} is public`}
+        checked={app.public}
+        disabled={!admin || app.mode === "public" || app.state === "tailnet"}
+        onChange={(event) => setMakePublic(event.currentTarget.checked)}
+      />
       <Modal
-        opened={change !== null}
-        onClose={() => setChange(null)}
-        title={
-          change ? (change.public ? `Make ${change.app.name} public` : `Put ${change.app.name} behind sign-in`) : ""
-        }
+        opened={makePublic !== null}
+        onClose={() => setMakePublic(null)}
+        title={makePublic ? `Make ${app.name} public` : `Put ${app.name} behind sign-in`}
         size="lg"
       >
-        {change ? (
-          <GateDialog
-            appId={change.app.appId}
-            makePublic={change.public}
-            onDone={() => {
-              gate.reload();
-              onFinished?.();
-            }}
-          />
+        {makePublic !== null ? (
+          <GateDialog appId={app.appId} makePublic={makePublic} onDone={() => onChanged?.()} />
         ) : null}
       </Modal>
-    </section>
+    </>
   );
 }
 
