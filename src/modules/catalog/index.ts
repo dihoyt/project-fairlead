@@ -20,8 +20,14 @@ const mod: Module = {
   milestone: "A",
   migrations,
   register(ctx) {
-    const service = createCatalogService({ k8s: () => ctx.services.get("k8s"), entries: catalog, bundles });
+    const service = createCatalogService({
+      k8s: () => ctx.services.get("k8s"),
+      entries: catalog,
+      bundles,
+      releases: async () => (ctx.services.has("deploy") ? ctx.services.get("deploy").releases() : []),
+    });
     ctx.services.provide("catalog", service);
+    ctx.bus.on("deploy.finished", () => service.invalidate());
 
     const views = async (refresh: boolean): Promise<CatalogAppView[]> => {
       const report = await service.discover(refresh);
