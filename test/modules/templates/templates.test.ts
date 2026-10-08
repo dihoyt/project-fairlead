@@ -227,13 +227,17 @@ test("plan: whoami gets a host under the base domain, its manifests and the runn
   assert.deepEqual(plan.deploy?.commands, [
     "kubectl apply -f /values/manifest.yaml",
     "kubectl apply -f /values/ingress.yaml",
+    "kubectl rollout status deployment/whoami --namespace whoami --timeout=5m",
   ]);
   assert.match(plan.deploy!.values, /kind: Ingress/);
 
   const internal = await call<TemplatePlan>(e, "POST", "/plan", { templateId: "it-tools", host: "" });
   assert.equal(internal.allowed, true, internal.blockedBy);
   assert.equal(internal.deploy?.url, undefined);
-  assert.deepEqual(internal.deploy?.commands, ["kubectl apply -f /values/manifest.yaml"]);
+  assert.deepEqual(internal.deploy?.commands, [
+    "kubectl apply -f /values/manifest.yaml",
+    "kubectl rollout status deployment/it-tools --namespace it-tools --timeout=5m",
+  ]);
 });
 
 test("plan: field errors for a custom app, a catalog name and a bad host; unknown template 404", async () => {
@@ -336,7 +340,10 @@ test("upgrades cover a template instance on the runner's record and apply the ne
   });
   assert.equal(report.apps[0]?.state, "available");
   assert.equal(report.apps[0]?.targetVersion, "v1.12.0");
-  assert.deepEqual(report.apps[0]?.commands, ["kubectl apply -f /values/manifest.yaml"]);
+  assert.deepEqual(report.apps[0]?.commands, [
+    "kubectl apply -f /values/manifest.yaml",
+    "kubectl rollout status deployment/whoami --namespace whoami --timeout=5m",
+  ]);
 });
 
 test("a finished upgrade moves the instance to the library's pin and records the job", async () => {

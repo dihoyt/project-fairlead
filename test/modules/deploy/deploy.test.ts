@@ -637,7 +637,11 @@ test("a bundled manifest is applied from the values Secret with an Ingress for i
   const plan = await call<DeployPlan>(e, "POST", "/plan", { appId: "ntfy", inputs: {} });
   assert.equal(plan.allowed, true, plan.blockedBy);
   assert.equal(plan.url, "https://ntfy.example.test");
-  assert.deepEqual(plan.commands, ["kubectl apply -f /values/manifest.yaml", "kubectl apply -f /values/ingress.yaml"]);
+  assert.deepEqual(plan.commands, [
+    "kubectl apply -f /values/manifest.yaml",
+    "kubectl apply -f /values/ingress.yaml",
+    "kubectl rollout status deployment/ntfy --namespace ntfy --timeout=5m",
+  ]);
   assert.match(plan.values, /kind: Ingress/);
   assert.match(plan.values, /name: ntfy-web\n\s+port:\n\s+number: 8080/);
   assert.deepEqual(
@@ -660,6 +664,7 @@ test("a bundled manifest is applied from the values Secret with an Ingress for i
   const script = job.spec.template.spec.containers[0]!.command[2]!;
   assert.match(script, /'kubectl' 'apply' '-f' '\/values\/manifest.yaml' '--dry-run=client'/);
   assert.match(script, /'kubectl' 'apply' '-f' '\/values\/ingress.yaml' '--dry-run=client'/);
+  assert.doesNotMatch(script, /rollout/);
 });
 
 test("a bundled manifest with no Service for its host is blocked; a URL manifest applies the URL", async () => {
