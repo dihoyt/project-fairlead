@@ -19,6 +19,8 @@ export interface ActionContext {
   // (tokens, generated names) are made only then.
   run: boolean;
   enabled: boolean;
+  // The helm/kubectl image deploy Jobs run (DeployStatus.image).
+  image: string;
   // Set when deploys are off: the command that turns them on.
   enableHint?: string;
   // Another module's JSON route, in-process, as the user asking.

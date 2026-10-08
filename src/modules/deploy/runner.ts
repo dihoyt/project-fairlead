@@ -357,6 +357,7 @@ export class Deployer {
     const rendered = await recipe.render(request, {
       run,
       enabled,
+      image: this.config.image(),
       ...(enabled ? {} : { enableHint: enableHint(this.config) }),
       call,
       k8s: this.k8s(),
