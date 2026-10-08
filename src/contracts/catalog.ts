@@ -94,9 +94,20 @@ export interface CatalogEntry {
   exposesUi: boolean;
   // Persistent volume size it asks for by default, when it keeps data: "10Gi".
   storage?: string;
+  // Disk it takes once installed with these defaults, for the disk-space
+  // preflight (./disk.ts). Absent for a patch, which installs nothing.
+  disk?: DiskFootprint;
   // Things the user must know or do outside the cluster first, one sentence
   // each: "Every node needs open-iscsi installed."
   prerequisites: string[];
+}
+
+// Rough, in bytes, from the pinned version's defaults.
+export interface DiskFootprint {
+  // Sum of the PersistentVolumeClaims a default install requests.
+  volumeBytes: number;
+  // Container images it pulls, as unpacked on a node.
+  imageBytes: number;
 }
 
 export type DetectState = "installed" | "not-installed" | "unknown";
@@ -158,6 +169,9 @@ export interface DiscoveryReport {
   apps: DetectedApp[];
   ingressHosts: IngressHost[];
   basics: ClusterBasic[];
+  // Each node's free disk, from the kubelet's /stats/summary; absent when
+  // the nodes couldn't be listed.
+  nodeDisks?: NodeDisk[];
   // Defaults a deploy would use, from what was found; the deploy module's
   // settings override them.
   suggested: {
@@ -167,6 +181,20 @@ export interface DiscoveryReport {
     // The domain most Ingress hosts share, for "<app>.<baseDomain>".
     baseDomain?: string;
   };
+}
+
+export interface NodeDisk {
+  node: string;
+  // The kubelet's root filesystem, where local-path and Longhorn keep volume
+  // data by default. Absent when the node's stats couldn't be read.
+  availableBytes?: number;
+  capacityBytes?: number;
+  // The container runtime's image filesystem. Usually the same disk, which
+  // the kubelet reports with the same capacity.
+  imageAvailableBytes?: number;
+  imageCapacityBytes?: number;
+  // Why the numbers are missing: "forbidden", "timeout", "node not ready".
+  error?: string;
 }
 
 // A "Deploy bundle": a set of catalog apps rolled out in order from a few

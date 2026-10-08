@@ -6,6 +6,8 @@
 //
 // Server-free on purpose: the client imports this file.
 
+import type { DiskCheck } from "./disk.js";
+
 export type DeployValue = string | boolean;
 
 export interface DeployRequest {
@@ -121,9 +123,14 @@ export interface BundlePlanStep {
 
 export interface BundlePlan {
   bundleId: string;
-  // False when any step's plan is not allowed.
+  // False when any step's plan is not allowed, or the disk check is crit.
   allowed: boolean;
+  // When no step is blocked but the bundle is: the disk check's detail.
+  blockedBy?: string;
   steps: BundlePlanStep[];
+  // The steps that run, against the nodes' free disk: checkDisk() from
+  // ./disk.ts over their catalog footprints and discovery's nodeDisks.
+  disk?: DiskCheck;
 }
 
 export type BundleStepState = "pending" | "skipped" | "running" | "succeeded" | "failed" | "cancelled";
