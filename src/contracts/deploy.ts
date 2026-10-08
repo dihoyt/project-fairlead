@@ -590,6 +590,9 @@ export interface DeployService {
   releases(): Promise<DeployedRelease[]>;
   // What GET /api/deploy/access answers, for work that runs without a request.
   access(): Promise<AccessView>;
+  // What GET /api/deploy/gate answers: each published app's sign-in gate
+  // state by host, for work that runs without a request.
+  gate(): Promise<GateStatus>;
   // A CatalogEntry another module built (a template instance: install kind
   // "manifest", bundled), planned and run exactly as a catalog app with
   // that id would be: same defaults, access-mode Ingress from its "host"

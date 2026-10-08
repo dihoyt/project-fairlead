@@ -79,6 +79,7 @@ export function registerDeploy(
   ctx.services.provide("deploy", {
     releases: async () => deployer.releases(),
     access: () => deployer.accessView(),
+    gate: () => deployer.gateStatus(),
     planEntry: (entry, request) => deployer.plan(request, entry),
     startEntry: (actor, entry, request) => deployer.start(actor, request, {}, entry),
   });
