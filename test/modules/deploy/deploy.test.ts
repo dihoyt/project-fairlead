@@ -859,3 +859,46 @@ test("access: Ingresses and URLs follow the mode", async () => {
   assert.equal(p.url, "https://headlamp.example.test");
   assert.match(p.values, /cert-manager.io\/cluster-issuer: letsencrypt-prod/);
 });
+
+const withAuthentikPassword = (): CatalogEntry[] =>
+  mockCatalog.map((entry) =>
+    entry.id === "authentik"
+      ? {
+          ...entry,
+          inputs: [
+            ...entry.inputs,
+            { key: "adminPassword", label: "Admin password", kind: "secret" as const, required: false },
+          ],
+        }
+      : entry
+  );
+
+test("authentik: bootstrap credentials in its values, https restored behind a tunnel", async () => {
+  const e = await setup({ catalog: createMockCatalogService({ entries: withAuthentikPassword() }) });
+  const inputs = { host: "auth.example.test", adminEmail: "ops@example.test", adminPassword: "s3cret-Authentik" };
+
+  await call(e, "PUT", "/access", { mode: "cloudflare-tunnel", baseDomain: "example.test" });
+  let p = await call<DeployPlan>(e, "POST", "/plan", { appId: "authentik", inputs });
+  assert.equal(p.allowed, true, p.blockedBy);
+  assert.match(p.values, /bootstrap_email: ops@example.test/);
+  assert.match(p.values, /bootstrap_password: /);
+  assert.doesNotMatch(p.values, /s3cret-Authentik/);
+  assert.match(
+    p.values,
+    /traefik.ingress.kubernetes.io\/router.middlewares: authentik-authentik-forwarded-https@kubernetescrd/
+  );
+  assert.match(p.values, /kind: Middleware/);
+  assert.match(p.values, /X-Forwarded-Proto: https/);
+  assert.ok(p.warnings.some((w) => w.includes("as akadmin")));
+
+  await call(e, "PUT", "/access", { mode: "direct", baseDomain: "example.test" });
+  p = await call<DeployPlan>(e, "POST", "/plan", { appId: "authentik", inputs: { ...inputs, adminPassword: "" } });
+  assert.doesNotMatch(p.values, /Middleware|router.middlewares|bootstrap_password/);
+  assert.ok(p.warnings.some((w) => w.includes("/if/flow/initial-setup/")));
+
+  await call(e, "POST", "/jobs", { appId: "authentik", mode: "dry-run", inputs });
+  const secret = (await e.k8s.get(RESOURCES.secrets, "deploy-authentik-values", NS)) as KubeObject & {
+    stringData: Record<string, string>;
+  };
+  assert.match(secret.stringData["values.yaml"]!, /bootstrap_password: s3cret-Authentik/);
+});

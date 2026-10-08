@@ -95,6 +95,27 @@ function hasDefaultStorageClass(r: RecipeInput): boolean {
   return !basic || basic.status !== "crit";
 }
 
+// Behind a tunnel the edge terminates TLS and the tunnel reaches Traefik over
+// plain http. Traefik trusts no X-Forwarded-* header by default, so it
+// forwards X-Forwarded-Proto: http, and apps that build absolute URLs from
+// the request (Authentik's API base) hand an https page http URLs the
+// browser blocks as mixed content. A headers Middleware on the app's own
+// router restores https without changing what the cluster's Traefik trusts.
+const TRAEFIK_MIDDLEWARES = "traefik.ingress.kubernetes.io/router.middlewares";
+function forwardedHttps(r: RecipeInput): { name: string; middleware: YamlValue } | undefined {
+  if (!r.chartIngress || r.tls || r.scheme !== "https" || r.defaults.ingressClass !== "traefik") return undefined;
+  const name = `${r.release}-forwarded-https`;
+  return {
+    name,
+    middleware: {
+      apiVersion: "traefik.io/v1alpha1",
+      kind: "Middleware",
+      metadata: { name, namespace: r.namespace, labels: labels() },
+      spec: { headers: { customRequestHeaders: { "X-Forwarded-Proto": "https" } } },
+    },
+  };
+}
+
 function hasDefaultIngressClass(r: RecipeInput): boolean {
   const basic = r.discovery?.basics.find((b) => b.id === "ingress-controller");
   return !basic || basic.status === "ok";
@@ -280,9 +301,17 @@ export const recipes: Record<string, Recipe> = {
   authentik: {
     values: (r) => {
       const dbPassword = r.generated("postgresPassword");
+      const password = str(r.inputs.adminPassword);
+      const https = forwardedHttps(r);
       return {
-        global: { env: [{ name: "AUTHENTIK_BOOTSTRAP_EMAIL", value: str(r.inputs.adminEmail) }] },
-        authentik: { secret_key: r.generated("secretKey"), postgresql: { password: dbPassword } },
+        authentik: {
+          secret_key: r.generated("secretKey"),
+          postgresql: { password: dbPassword },
+          // Read once, on first start: the bootstrap blueprint creates akadmin
+          // with it and marks setup done, so /if/flow/initial-setup/ never shows.
+          bootstrap_email: str(r.inputs.adminEmail),
+          ...(password ? { bootstrap_password: password } : {}),
+        },
         postgresql: {
           enabled: true,
           auth: { password: dbPassword },
@@ -292,17 +321,22 @@ export const recipes: Record<string, Recipe> = {
           ingress: {
             enabled: r.chartIngress,
             ingressClassName: r.defaults.ingressClass,
-            annotations: issuerAnnotations(r),
+            annotations: {
+              ...issuerAnnotations(r),
+              ...(https ? { [TRAEFIK_MIDDLEWARES]: `${r.namespace}-${https.name}@kubernetescrd` } : {}),
+            },
             hosts: [r.host],
             tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
           },
         },
+        additionalObjects: https ? [https.middleware] : [],
       };
     },
     service: (r) => ({ name: `${r.release}-server`, port: 80 }),
-    warnings: (r) => [
-      `Finish setup at ${r.scheme}://${r.host ?? "<host>"}/if/flow/initial-setup/ to set the admin password.`,
-    ],
+    warnings: (r) =>
+      str(r.inputs.adminPassword)
+        ? [`Sign in at ${r.scheme}://${r.host ?? "<host>"} as akadmin with the admin password.`]
+        : [`Finish setup at ${r.scheme}://${r.host ?? "<host>"}/if/flow/initial-setup/ to set the admin password.`],
   },
 
   velero: {
