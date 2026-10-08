@@ -25,7 +25,7 @@ import { errorMessage } from "../../runtime/log.js";
 import { type GateActionContext } from "./actions/gate.js";
 import { actionRecipe, type ActionContext, type ActionRecipe, type ActionRendered } from "./actions/index.js";
 import type { Defaults, Step } from "./apps.js";
-import { accessView, AccessStore, type Resolver } from "./access.js";
+import { accessView, AccessStore, resolves as lookupHost, type Resolver } from "./access.js";
 import { enableHint, type DeployConfig } from "./config.js";
 import {
   annotateSteps,
@@ -34,11 +34,12 @@ import {
   decide,
   gateStatus,
   GateStore,
-  middlewareManifest,
+  gateManifests,
+  hostOf,
+  publishesConsole,
   MIDDLEWARE_FILE,
   type GateInput,
 } from "./gate.js";
-import { toYaml } from "./yaml.js";
 import { CONTAINER, DEADLINE_SECONDS, JOB_LABEL, jobManifest, valuesSecret } from "./job.js";
 import { jobName, render, valuesSecretName, type Rendered } from "./plan.js";
 import { createRedactor, type Redactor } from "./redact.js";
@@ -282,7 +283,7 @@ export class Deployer {
     ]);
     const namespace = request.namespace?.trim() || entry.namespace;
     const defaults = this.effectiveDefaults(found.discovery);
-    const gateInput = this.gateInput();
+    const gateInput = await this.gateInput(found.discovery, defaults);
     const ownerId =
       entry.id === DIRECT_TLS
         ? found.discovery?.ingressHosts.find((h) => h.host === request.inputs?.domain)?.appId
@@ -323,17 +324,22 @@ export class Deployer {
 
   // What the sign-in gate is applied with; undefined without the platform's
   // gate service (nothing is gated then).
-  gateInput(): GateInput | undefined {
+  async gateInput(discovery: DiscoveryReport | undefined, defaults: Defaults): Promise<GateInput | undefined> {
     if (!this.ctx.services.has("gate")) return undefined;
-    return {
-      console: { namespace: this.config.namespace(), service: this.config.release() },
-      readiness: this.ctx.services.get("gate").readiness(),
-    };
+    const ref = { namespace: this.config.namespace(), service: this.config.release() };
+    const readiness = this.ctx.services.get("gate").readiness();
+    const host = readiness.ready ? hostOf(readiness.signInUrl) : undefined;
+    if (!host) return { console: ref, readiness };
+    const publish = publishesConsole(host, defaults, ref, discovery?.ingressHosts ?? [], await this.ingressObjects());
+    // The pod isn't where hosts-file names resolve.
+    const resolves = defaults.access === "local" ? undefined : await (this.options.resolve ?? lookupHost)(host);
+    return { console: ref, readiness, consoleHost: { host, publish, ...(resolves === undefined ? {} : { resolves }) } };
   }
 
   async gateStatus(refresh = false): Promise<GateStatus> {
     const { discovery } = await this.discover(refresh);
-    const input = this.gateInput() ?? {
+    const defaults = this.effectiveDefaults(discovery);
+    const input = (await this.gateInput(discovery, defaults)) ?? {
       console: { namespace: this.config.namespace(), service: this.config.release() },
       readiness: { ready: false, reason: "The sign-in gate is not available in this build.", signInUrl: "" },
     };
@@ -341,7 +347,7 @@ export class Deployer {
       this.entries(),
       this.store.releases(),
       discovery,
-      this.effectiveDefaults(discovery),
+      defaults,
       input,
       (id) => this.gates.isPublic(id),
       await this.ingressObjects()
@@ -359,12 +365,13 @@ export class Deployer {
   }
 
   private async gateActionContext(): Promise<GateActionContext | undefined> {
-    const input = this.gateInput();
-    if (!input) return undefined;
     const { discovery } = await this.discover();
+    const defaults = this.effectiveDefaults(discovery);
+    const input = await this.gateInput(discovery, defaults);
+    if (!input) return undefined;
     return {
       input,
-      defaults: this.effectiveDefaults(discovery),
+      defaults,
       entry: (appId) => this.entries().find((e) => e.id === appId),
       isPublic: (appId) => this.gates.isPublic(appId),
       ingresses: () => this.ingressObjects(),
@@ -377,10 +384,11 @@ export class Deployer {
   // Puts the saved choice back on the app's Ingresses after a job that may
   // have rewritten them (an upgrade from the values it was installed with).
   async gateSteps(entry: CatalogEntry): Promise<{ steps: Step[]; files: Record<string, string> }> {
-    const input = this.gateInput();
     const { discovery } = await this.discover();
-    if (!input || !entry.exposesUi || !discovery) return { steps: [], files: {} };
+    if (!entry.exposesUi || !discovery) return { steps: [], files: {} };
     const defaults = this.effectiveDefaults(discovery);
+    const input = await this.gateInput(discovery, defaults);
+    if (!input) return { steps: [], files: {} };
     const decision = decide(entry, defaults, this.gates.isPublic(entry.id), input);
     if (decision.state === "tailnet" || decision.state === "open") return { steps: [], files: {} };
     const steps = annotateSteps(
@@ -390,7 +398,7 @@ export class Deployer {
     if (!decision.middleware) return { steps, files: {} };
     return {
       steps: [applyMiddlewareStep(), ...steps],
-      files: { [MIDDLEWARE_FILE]: toYaml(middlewareManifest(input, defaults, decision.credentials)) },
+      files: { [MIDDLEWARE_FILE]: gateManifests(input, defaults, decision.credentials) },
     };
   }
 

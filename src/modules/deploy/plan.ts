@@ -7,7 +7,8 @@ import {
   applyMiddlewareStep,
   decide,
   gateWarning,
-  middlewareManifest,
+  consoleWarning,
+  gateManifests,
   MIDDLEWARE_FILE,
   type GateDecision,
   type GateInput,
@@ -270,6 +271,8 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
   if (supported) warnings.push(...(recipe?.warnings?.(shown) ?? []));
   const gateNote = gate && entry.exposesUi ? gateWarning(entry, gate) : undefined;
   if (gateNote) warnings.push(gateNote);
+  const consoleNote = gate?.middleware && input.gate ? consoleWarning(input.gate) : undefined;
+  if (consoleNote) warnings.push(consoleNote);
 
   const all = supported
     ? [
@@ -325,7 +328,7 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
 
   const gateShown =
     gate?.middleware && input.gate && supported
-      ? `---\n${toYaml(middlewareManifest(input.gate, input.defaults, gate.credentials))}`
+      ? `---\n${gateManifests(input.gate, input.defaults, gate.credentials)}`
       : "";
 
   const creates: PlannedObject[] = [
@@ -369,7 +372,7 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
     for (const [file, content] of Object.entries(realParts.files)) files[file] = toYaml(content);
   }
   if (gate?.middleware && input.gate) {
-    files[MIDDLEWARE_FILE] = toYaml(middlewareManifest(input.gate, input.defaults, gate.credentials));
+    files[MIDDLEWARE_FILE] = gateManifests(input.gate, input.defaults, gate.credentials);
   }
   if (Object.keys(files).length === 0) files["values.yaml"] = "{}\n";
 
