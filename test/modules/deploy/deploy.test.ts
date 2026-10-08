@@ -752,8 +752,8 @@ test("plan: Longhorn's replica count follows the schedulable node count", async 
   const cases: Array<[DiscoveryReport, number]> = [
     [{ ...notInstalled, nodeDisks: [{ node: "n1", availableBytes: 20 * GiB, capacityBytes: 30 * GiB }] }, 1],
     [notInstalled, 2],
-    [{ ...notInstalled, nodeDisks: ["a", "b", "c", "d"].map((node) => ({ node, error: "timed out" })) }, 3],
-    [{ ...notInstalled, nodeDisks: undefined }, 3],
+    [{ ...notInstalled, nodeDisks: ["a", "b", "c", "d"].map((node) => ({ node, error: "timed out" })) }, 2],
+    [{ ...notInstalled, nodeDisks: undefined }, 2],
   ];
   for (const [discovery, replicas] of cases) {
     const e = await setup({ catalog: createMockCatalogService({ discovery }) });
@@ -761,7 +761,6 @@ test("plan: Longhorn's replica count follows the schedulable node count", async 
     assert.match(plan.values, new RegExp(`defaultReplicaCount: ${replicas}\\n`));
     assert.match(plan.values, new RegExp(`defaultClassReplicaCount: ${replicas}\\n`));
     assert.equal(plan.warnings.includes(single), replicas === 1, JSON.stringify(plan.warnings));
-    if (replicas === 2) assert.ok(plan.warnings.some((w) => w.startsWith("2 replicas on 2 nodes")));
     await env!.server.close();
     env!.deployer.stop();
     await env!.mock.close();

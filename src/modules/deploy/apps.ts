@@ -77,11 +77,12 @@ const tlsSecret = (r: RecipeInput) => `${r.release}-tls`;
 // module's releases().
 const labels = () => deployedLabel();
 
-// Longhorn's default of 3 replicas leaves every volume degraded on fewer
-// nodes. Unknown node count keeps the default.
+// Two replicas, or one on a single node: more replicas than nodes leaves
+// every volume degraded. Users raise it in Longhorn as they add nodes.
+const LONGHORN_REPLICAS = 2;
 const longhornReplicas = (r: RecipeInput) => {
   const nodes = r.discovery?.nodeDisks?.length;
-  return nodes ? Math.min(3, nodes) : 3;
+  return nodes ? Math.min(LONGHORN_REPLICAS, nodes) : LONGHORN_REPLICAS;
 };
 const storageClass = (r: RecipeInput) => r.defaults.storageClass || undefined;
 
@@ -191,11 +192,7 @@ export const recipes: Record<string, Recipe> = {
       const replicas = longhornReplicas(r);
       return [
         "Longhorn's UI has no sign-in of its own: anyone who can reach the hostname can use it.",
-        ...(replicas === 1
-          ? ["1 replica on a single node; raise it in Longhorn when you add nodes."]
-          : replicas < 3
-            ? [`${replicas} replicas on ${replicas} nodes; raise it in Longhorn when you add nodes.`]
-            : []),
+        ...(replicas === 1 ? ["1 replica on a single node; raise it in Longhorn when you add nodes."] : []),
       ];
     },
   },
