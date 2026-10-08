@@ -67,6 +67,41 @@ export interface SecretStore {
   delete(scope: string, id: string): Promise<void>;
 }
 
+// OIDC sign-in as a module sets it up: a connector that creates the app
+// registration this install signs in through. Provided by the platform as
+// ctx.services.get("signin"); the module never sees the settings or the
+// secret store behind it.
+export interface SignInOidcView {
+  enabled: boolean;
+  issuer: string;
+  clientId: string;
+  hasSecret: boolean;
+  // <public URL>/auth/oidc/callback; "" until site.publicUrl or PUBLIC_ORIGIN is set.
+  redirectUri: string;
+  // Why setOidcClient() would refuse now, one sentence; null when it would not.
+  blocked: string | null;
+}
+
+export interface SignInOidcClient {
+  issuer: string;
+  clientId: string;
+  clientSecret: string;
+  // Left out: unchanged.
+  label?: string;
+  adminGroups?: string[];
+  enabled?: boolean;
+}
+
+export interface SignInService {
+  oidc(): Promise<SignInOidcView>;
+  // The same writes as POST /api/admin/oidc/authentik: the client secret and
+  // the auth.oidc.* settings given, audited as "auth.oidc.wire" with `actor`
+  // (the username, or the module id for scheduled work). Throws with the
+  // reason, writing nothing, when no public URL is set, SECRETS_KEY is
+  // unset, or one of the settings is locked by the environment.
+  setOidcClient(client: SignInOidcClient, actor: string): Promise<void>;
+}
+
 export type AuditResult = "ok" | "denied" | "error";
 
 export interface AuditEntry {
@@ -105,6 +140,8 @@ export interface Platform {
   settings: SettingsRegistry;
   secrets: SecretStore;
   audit: AuditLog;
+  // Provided to modules as services "signin".
+  signIn: SignInService;
   // Removes UI overrides from the settings table so each falls back to its
   // environment value or default. Considers the keys in `only` (every
   // override when absent), then drops any key in `except` or starting with

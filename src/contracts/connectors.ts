@@ -271,3 +271,57 @@ export interface CloudflareTunnelRequest {
 // goes from Cloudflare into the deploy job's values Secret on the server and
 // never reaches the browser.
 export type CloudflareTunnelDeploy = DeployJobView;
+
+// --- Microsoft Entra ID (module "connector-entra") --------------------------
+//
+// One instance per install, kind "entra": a tenant id plus the client id and
+// secret of a management app registration holding Microsoft Graph's
+// Application.ReadWrite.OwnedBy application permission (admin consented). It
+// creates the app registration this install signs in through, owned by that
+// management app, with the console's redirect URI and the groups claim, and
+// hands its client id and a client secret to sign-in (services "signin").
+// Reconcile puts a changed redirect URI back and rotates the client secret
+// before it expires. Entra refuses http redirect URIs other than localhost.
+// Entra's groups claim carries group object ids, so auth.oidc.adminGroups
+// holds ids; GET /api/connector-entra/groups is how an admin picks them.
+
+export interface EntraSignInAppView {
+  // The application (client) id.
+  appId: string;
+  objectId: string;
+  displayName: string;
+  redirectUris: string[];
+  // Expiry of the newest client secret this install created.
+  secretExpiresAt?: string;
+  // "pending": not created yet.
+  state: DriftState | "pending";
+}
+
+export interface EntraSignInView {
+  // Unset when no Entra connector is saved; everything else is then empty.
+  connectorId?: string;
+  tenantId?: string;
+  // What the app registration should carry: <public URL>/auth/oidc/callback.
+  // "" until a public URL is set.
+  redirectUri: string;
+  app?: EntraSignInAppView;
+  // Sign-in currently uses this app (auth.oidc.clientId is app.appId).
+  wired: boolean;
+  // Where a tenant admin grants the management app its consent.
+  consentUrl?: string;
+  // One sentence when sign-in cannot be set up as things stand: an http
+  // public URL, no public URL, a missing permission.
+  warning?: string;
+}
+
+export interface EntraSignInRequest {
+  // Group object ids whose members are admins (auth.oidc.adminGroups).
+  adminGroups?: string[];
+  // The sign-in button's text; "Sign in with Microsoft" when left out.
+  label?: string;
+}
+
+export interface EntraGroup {
+  id: string;
+  displayName: string;
+}

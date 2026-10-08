@@ -46,6 +46,9 @@ import type {
   ConnectorTestResult,
   ConnectorUpdate,
   ConnectorView,
+  EntraGroup,
+  EntraSignInRequest,
+  EntraSignInView,
 } from "./connectors.js";
 import type { JoinLink, JoinLinkRequest, JoinStatus } from "./cluster.js";
 import type {
@@ -440,6 +443,18 @@ export interface ApiRoutes {
   "POST /api/connector-cloudflare/tunnel": Route<None, None, CloudflareTunnelRequest, CloudflareView>;
   // 409 without a connector or a tunnel; the deploy's own 400 when deploys are off.
   "POST /api/connector-cloudflare/tunnel/deploy": Route<None, None, None, CloudflareTunnelDeploy>;
+
+  // --- connector-entra (B3) ------------------------------------------------
+  "GET /api/connector-entra/view": Route<None, None, None, EntraSignInView>;
+  // Creates the sign-in app registration (or reuses the one this install
+  // owns), makes a client secret and sets OIDC sign-in to it. Admin. 409
+  // without a connector; 400 when the public URL is unset or http (other
+  // than localhost), or when sign-in settings are locked by the environment;
+  // 502 when Graph refuses.
+  "POST /api/connector-entra/signin": Route<None, None, EntraSignInRequest, EntraSignInView>;
+  // Security groups in the tenant, by display name prefix; at most 50. 409
+  // without a connector; 502 when Graph refuses (it needs Group.Read.All).
+  "GET /api/connector-entra/groups": Route<None, { search?: string }, None, EntraGroup[]>;
 
   // --- onboarding (A14) ---------------------------------------------------
   "GET /api/onboarding/state": Route<None, None, None, OnboardingState>;

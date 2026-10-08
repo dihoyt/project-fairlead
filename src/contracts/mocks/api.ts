@@ -46,6 +46,8 @@ import {
   mockCloudflareView,
   mockConnectorKinds,
   mockConnectors,
+  mockEntraGroups,
+  mockEntraSignIn,
 } from "./connectors/views.js";
 import { mockCheckResults } from "./health.js";
 import { mockTemplateJob, mockTemplatePlan, mockTemplatesView } from "./templates.js";
@@ -789,6 +791,9 @@ export const apiMocks: ApiMocks = {
     release: "cloudflared",
     namespace: "cloudflared",
   },
+  "GET /api/connector-entra/view": mockEntraSignIn,
+  "POST /api/connector-entra/signin": mockEntraSignIn,
+  "GET /api/connector-entra/groups": mockEntraGroups,
   "POST /api/mcp": {
     jsonrpc: "2.0",
     id: 1,

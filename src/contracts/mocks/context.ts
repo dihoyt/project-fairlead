@@ -21,6 +21,7 @@ import type { AuditEntry, Platform, User } from "../platform.js";
 import type { Migration, Services } from "../runtime.js";
 import type { Sample } from "../metrics.js";
 import { apiMocks } from "./api.js";
+import { createMockSignIn } from "./signin.js";
 
 export const mockAdmin: User = {
   id: "admin",
@@ -115,6 +116,7 @@ export function createMockContext(moduleId: ModuleId, options: MockContextOption
       },
     },
     audit: { record: (entry) => void audit.push(entry) },
+    signIn: options.services?.signin ?? createMockSignIn(),
     clearSettings: () => 0,
     resetAdminPassword: async () => "mock-temporary-password",
     draining: () => false,
@@ -125,7 +127,9 @@ export function createMockContext(moduleId: ModuleId, options: MockContextOption
   const metrics = createMetricsRegistry(silentLogger);
   if (options.metricsSink ?? moduleId !== "metrics") metrics.setSink((batch) => void samples.push(...batch));
   const services = createServiceRegistry();
+  services.provide("signin", platform.signIn);
   for (const [name, impl] of Object.entries(options.services ?? {})) {
+    if (name === "signin") continue;
     services.provide(name as keyof Services, impl as Services[keyof Services]);
   }
 
