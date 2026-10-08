@@ -9,7 +9,12 @@ import { CloudflarePage } from "../CloudflarePage";
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-function serve(view: CloudflareView, connectors: unknown[] = [], access: unknown = {}) {
+function serve(
+  view: CloudflareView,
+  connectors: unknown[] = [],
+  access: unknown = {},
+  overview: unknown = apiMocks["GET /api/admin/overview"]
+) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     const method = init?.method ?? "GET";
@@ -24,6 +29,7 @@ function serve(view: CloudflareView, connectors: unknown[] = [], access: unknown
     if (url.includes("api/connectors/") && url.endsWith("/reconcile")) return json(apiMocks["POST /api/connectors"]);
     if (url.includes("api/connectors/") && method === "PUT") return json(apiMocks["PUT /api/connectors/:id"]);
     if (url.includes("api/connectors/")) return json(apiMocks["GET /api/connectors/:id"]);
+    if (url.includes("api/admin/overview")) return json(overview);
     if (url.includes("api/admin/settings/")) return json({ key: "connector-cloudflare.accessApps", value: "per-app" });
     return json({});
   });
@@ -90,6 +96,18 @@ describe("CloudflarePage", () => {
     );
     expect(body(fetchMock, "api/connectors/")).toEqual({ values: { accessEmails: "me@example.test" } });
     expect(body(fetchMock, "settings/connector-cloudflare.accessApps")).toEqual({ value: "per-app" });
+  });
+
+  it("offers the console's Google sign-in list and says how to add Google to Access", async () => {
+    const settings = [
+      { key: "auth.oidc.issuer", value: "https://accounts.google.com" },
+      { key: "auth.oidc.allowedEmails", value: ["ann@example.test", "@example.org"] },
+    ];
+    serve({ ...apiMocks["GET /api/connector-cloudflare/view"], accessPolicy: "per-app" }, [], {}, { settings });
+    renderWithApp(<CloudflarePage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Use the console's sign-in list" }));
+    expect(screen.getByLabelText(/Who may sign in/)).toHaveValue("ann@example.test, @example.org");
+    expect(document.querySelector("[data-access-provider]")?.textContent).toMatch(/add Google under Zero Trust/);
   });
 
   it("shows the Access switch only when the setting is per app", async () => {
