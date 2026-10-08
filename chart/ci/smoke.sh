@@ -53,6 +53,10 @@ extra=$(kubectl get clusterrole "$ns-$release" -o json \
 
 can() { kubectl auth can-i "$@" --as="$sa" 2>/dev/null || true; }
 [ "$(can list pods --all-namespaces)" = yes ] || { echo "cannot list pods"; exit 1; }
+[ "$(can get secret/k3s-join -n "$ns")" = yes ] || { echo "cannot get the k3s-join Secret"; exit 1; }
+for denied in "get secret/$release-secrets -n $ns" "list secrets -n $ns"; do
+  [ "$(can $denied)" = no ] || { echo "unexpectedly allowed: $denied"; exit 1; }
+done
 for denied in "create pods" "delete pods" "patch deployments" "get secrets --all-namespaces" "create pods/exec"; do
   [ "$(can $denied)" = no ] || { echo "unexpectedly allowed: $denied"; exit 1; }
 done

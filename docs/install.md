@@ -119,6 +119,13 @@ environment). `add-node.sh` carries a copy of it, kept in step by
 `scripts/install/gen-scripts.sh`, so the same steps can be run on a node by
 other means.
 
+For the console's own "add a node" one-liner, `install.sh` and `update.sh`
+store the join values in a Secret `k3s-join` in the console's namespace
+(`server-url`, `token`, and `agent-token` when the cluster has a separate
+one), refreshed on every run. They do this only when run on the k3s server
+node; anywhere else they say so and the console's node joining stays off. The
+chart lets the console get that one Secret by name and no other.
+
 ## Install with Helm
 
 ```
