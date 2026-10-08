@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Button,
@@ -12,7 +12,10 @@ import {
 } from "@mantine/core";
 import type { ChannelKind, ChannelRequest, TestSendResult } from "@contracts/notify";
 import { apiRequest, useApi } from "../../../ui";
+import { AppOffer, useDiscovery } from "../discovery";
 import { StepFrame, useAction, type StepProps } from "../shared";
+
+const PUBLIC_NTFY = "https://ntfy.sh";
 
 const SECRET: Record<ChannelKind, { label: string; placeholder: string; required: boolean }> = {
   ntfy: { label: "Access token (protected topics only)", placeholder: "tk_…", required: false },
@@ -24,11 +27,20 @@ export function NotificationsStep({ onFinish }: StepProps) {
   const channels = useApi("GET /api/notify/channels");
   const [kind, setKind] = useState<ChannelKind>("ntfy");
   const [label, setLabel] = useState("");
-  const [server, setServer] = useState("https://ntfy.sh");
+  const [server, setServer] = useState(PUBLIC_NTFY);
   const [topic, setTopic] = useState("");
   const [secret, setSecret] = useState("");
   const [sent, setSent] = useState<{ label: string; result: TestSendResult }>();
   const action = useAction();
+  const discovery = useDiscovery();
+  const ntfy = discovery.app("ntfy");
+  const ownNtfy = ntfy?.detected.state === "installed" ? ntfy.detected.urls[0] : undefined;
+
+  // An ntfy server in the cluster replaces the public one, unless someone
+  // already typed another.
+  useEffect(() => {
+    if (ownNtfy) setServer((prev) => (prev === PUBLIC_NTFY ? ownNtfy.replace(/\/+$/, "") : prev));
+  }, [ownNtfy]);
 
   const ready = kind === "ntfy" ? topic.trim() !== "" : secret.trim() !== "";
 
@@ -58,6 +70,7 @@ export function NotificationsStep({ onFinish }: StepProps) {
   return (
     <StepFrame
       onFinish={onFinish}
+      what="Alerts go to a chat app, a webhook or ntfy, which sends push notifications to the ntfy app on your phone."
       intro="Where a check going to warning or critical is sent, and its recovery. Add one and a test message goes out straight away."
       fullPage={{ to: "/notifications", label: "Notifications page" }}
       canFinish={list.length > 0}
@@ -75,6 +88,16 @@ export function NotificationsStep({ onFinish }: StepProps) {
             </Group>
           ))}
         </Stack>
+      ) : null}
+      {ntfy && ntfy.detected.state !== "installed" ? (
+        <AppOffer
+          app={ntfy}
+          onDeployed={(result) => {
+            setKind("ntfy");
+            if (result.url) setServer(result.url.replace(/\/+$/, ""));
+            discovery.refresh();
+          }}
+        />
       ) : null}
       <SegmentedControl
         value={kind}

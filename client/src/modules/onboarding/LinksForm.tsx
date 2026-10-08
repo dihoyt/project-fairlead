@@ -56,6 +56,22 @@ export function useLinksForm(settings: SettingView[] | undefined, reload: () => 
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  // Fills empty fields only: what someone typed or saved always wins.
+  function fill(values: Partial<LinkForm>) {
+    const next = { ...form };
+    let changed = false;
+    for (const [key, value] of Object.entries(values) as Array<[keyof LinkForm, string]>) {
+      if (value && !form[key].trim()) {
+        next[key] = value;
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    setForm(next);
+    setSaved(false);
+    setDirty(true);
+  }
+
   async function submit(): Promise<boolean> {
     if (!settings) return false;
     const next = linkSettings(form, parseLinks(settingOf(settings, "health.links")));
@@ -75,7 +91,7 @@ export function useLinksForm(settings: SettingView[] | undefined, reload: () => 
     return true;
   }
 
-  return { form, change, submit, saved, dirty, busy: save.busy, error: save.error };
+  return { form, change, fill, loaded, submit, saved, dirty, busy: save.busy, error: save.error };
 }
 
 export function LinksFields({

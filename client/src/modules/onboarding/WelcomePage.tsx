@@ -13,6 +13,8 @@ import { LinksStep } from "./steps/LinksStep";
 import { NotificationsStep } from "./steps/NotificationsStep";
 import { OidcStep } from "./steps/OidcStep";
 import { PublicUrlField } from "./steps/PublicUrlField";
+import { RemoteAccess } from "./steps/RemoteAccess";
+import { WhatIsThis } from "../../ui/deploy";
 
 const TITLES: Record<OnboardingStepId, { label: string; description: string }> = {
   password: { label: "Password", description: "Admin password changed" },
@@ -72,10 +74,14 @@ export function WelcomePage() {
       case "password":
         return (
           <Stack gap="md" maw={960}>
+            <WhatIsThis>
+              The public URL is the address people type to reach this page; sign-in links and alerts point back to it.
+            </WhatIsThis>
             <Text size="sm">
               Your password is changed. Check the public URL below, then carry on with the next step.
             </Text>
             <PublicUrlField />
+            <RemoteAccess />
           </Stack>
         );
       case "cluster":
@@ -85,7 +91,15 @@ export function WelcomePage() {
       case "links":
         return <LinksStep {...props} />;
       case "hosts":
-        return <HostsStep {...props} />;
+        return (
+          <Stack gap="md">
+            <WhatIsThis>
+              Hosts are machines outside Kubernetes, like a NAS or a backup server, that this app logs in to over SSH to
+              read disk space and load.
+            </WhatIsThis>
+            <HostsStep {...props} />
+          </Stack>
+        );
       case "checks":
         return <ChecksStep {...props} />;
       case "notifications":
