@@ -116,8 +116,9 @@ export interface ApiRoutes {
   "DELETE /api/admin/settings/:key": Route<{ key: string }, None, None, { key: string; value: SettingValue }>;
   "PUT /api/admin/oidc/secret": Route<None, None, { value: string }, { hasSecret: boolean }>;
   "POST /api/admin/oidc/test": Route<None, None, None, { ok: boolean; issuer?: string; error?: string }>;
-  // Admin. 400 for a missing or non-http(s) url.
-  "GET /api/admin/oidc/authentik": Route<None, { url: string }, None, AuthentikWirePlan>;
+  // Admin. 400 for a missing or non-http(s) url, or an apiUrl the token may
+  // not be sent to (see AuthentikWireRequest.apiUrl).
+  "GET /api/admin/oidc/authentik": Route<None, { url: string; apiUrl?: string }, None, AuthentikWirePlan>;
   // Admin, audited (never with the token or secret). Creates or reuses the
   // provider and application, saves auth.oidc.{issuer,clientId,label,enabled}
   // (and adminGroups when given) and the client secret. 400: bad url, no

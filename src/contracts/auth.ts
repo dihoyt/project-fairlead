@@ -152,6 +152,8 @@ export interface AuthentikWirePlan {
   // The Authentik base URL the plan was made for, as given (trailing slash
   // removed).
   authentikUrl: string;
+  // Where the API is called, when not at authentikUrl.
+  apiUrl?: string;
   applicationName: string;
   slug: string;
   // Registered on the provider; "" while there is no public URL.
@@ -165,7 +167,15 @@ export interface AuthentikWirePlan {
 }
 
 export interface AuthentikWireRequest {
+  // Authentik as browsers reach it: the issuer and launch URL are built on
+  // it.
   authentikUrl: string;
+  // Where this server calls Authentik's API, when not at authentikUrl:
+  // typically its in-cluster Service (IngressHost.serviceUrl). Plain http is
+  // accepted only for a cluster Service (*.svc, *.svc.cluster.local) or
+  // localhost; anywhere else the token would cross the network in the
+  // clear.
+  apiUrl?: string;
   // An Authentik API token with rights to create providers and applications
   // (the bootstrap token or an admin's). Omitted: the stored one is used.
   // Never logged, never returned.
