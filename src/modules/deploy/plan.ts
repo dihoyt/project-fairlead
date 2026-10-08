@@ -19,6 +19,8 @@ export interface PlanInput {
   entry: CatalogEntry;
   request: DeployRequest;
   enabled: boolean;
+  // Apps an earlier step of the same bundle installs first.
+  installedBefore?: readonly string[];
   defaults: Defaults;
   discovery?: DiscoveryReport;
   discoveryError?: string;
@@ -192,9 +194,10 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
   }
 
   const detected = (appId: string) => input.discovery?.apps.find((app) => app.appId === appId);
-  const missingRequires = entry.requires.filter((id) => detected(id)?.state === "not-installed");
+  const before = new Set(input.installedBefore ?? []);
+  const missingRequires = entry.requires.filter((id) => !before.has(id) && detected(id)?.state === "not-installed");
   for (const id of entry.requires) {
-    if (detected(id)?.state === "unknown")
+    if (!before.has(id) && detected(id)?.state === "unknown")
       warnings.push(`Could not tell whether ${id} is installed; it is needed first.`);
   }
   const self = detected(entry.id);

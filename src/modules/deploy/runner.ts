@@ -11,7 +11,6 @@ import type {
 } from "../../contracts/deploy.js";
 import { RESOURCES, type K8sApi, type KubeObject, type Watch } from "../../contracts/k8s.js";
 import type { ModuleContext } from "../../contracts/module.js";
-import type { User } from "../../contracts/platform.js";
 import type { LogLines } from "../../contracts/workloads.js";
 import { HttpError } from "../../runtime/http.js";
 import { errorMessage } from "../../runtime/log.js";
@@ -90,6 +89,21 @@ function statusOf(err: unknown): number | undefined {
   return typeof status === "number" ? status : undefined;
 }
 
+export interface Found {
+  discovery?: DiscoveryReport;
+  error?: string;
+}
+
+// What a bundle step's plan is made with beyond a single deploy's.
+export interface RenderContext {
+  enabled?: boolean;
+  found?: Found;
+  refresh?: boolean;
+  // Shared bundle answers and what earlier steps will have put in place.
+  defaults?: Defaults;
+  installedBefore?: readonly string[];
+}
+
 export interface DeployerOptions {
   now?: () => number;
   // Overrides the random secrets a run generates, for tests.
@@ -149,10 +163,10 @@ export class Deployer {
     }
   }
 
-  private async discover(): Promise<{ discovery?: DiscoveryReport; error?: string }> {
+  async discover(refresh = false): Promise<Found> {
     if (!this.ctx.services.has("catalog")) return { error: "the app catalog is not available" };
     try {
-      return { discovery: await this.ctx.services.get("catalog").discover() };
+      return { discovery: await this.ctx.services.get("catalog").discover(refresh) };
     } catch (err) {
       return { error: errorMessage(err) };
     }
@@ -191,18 +205,26 @@ export class Deployer {
     }
   }
 
-  private async rendered(request: DeployRequest, mode: DeployMode): Promise<Rendered> {
+  async rendered(request: DeployRequest, mode: DeployMode, context: RenderContext = {}): Promise<Rendered> {
     const catalog = this.catalog();
     const entry = catalog.get(request.appId);
     if (!entry) throw new HttpError(404, `No app "${request.appId}" in the catalog.`);
-    const [enabled, found] = await Promise.all([this.enabled(), this.discover()]);
+    const [enabled, found] = await Promise.all([
+      context.enabled ?? this.enabled(),
+      context.found ?? this.discover(context.refresh),
+    ]);
     const namespace = request.namespace?.trim() || entry.namespace;
+    const defaults = this.effectiveDefaults(found.discovery);
+    for (const [key, value] of Object.entries(context.defaults ?? {})) {
+      if (value) defaults[key as keyof Defaults] = value;
+    }
     return render(
       {
         entry,
         request,
         enabled,
-        defaults: this.effectiveDefaults(found.discovery),
+        installedBefore: context.installedBefore,
+        defaults,
         discovery: found.discovery,
         discoveryError: found.error,
         namespaceExists: await this.namespaceExists(namespace),
@@ -221,8 +243,8 @@ export class Deployer {
 
   // --- running -------------------------------------------------------------
 
-  async start(user: User, request: DeployJobRequest): Promise<DeployJobView> {
-    const { plan, files, steps, secrets } = await this.rendered(request, request.mode);
+  async start(actor: string, request: DeployJobRequest, context: RenderContext = {}): Promise<DeployJobView> {
+    const { plan, files, steps, secrets } = await this.rendered(request, request.mode, context);
     if (!plan.allowed) throw new HttpError(400, plan.blockedBy ?? "This deploy is not allowed.");
     const k8s = this.k8s()!;
     const jobNamespace = this.config.namespace();
@@ -234,7 +256,7 @@ export class Deployer {
         namespace: plan.namespace,
         version: plan.version,
         mode: request.mode,
-        startedBy: user.id,
+        startedBy: actor,
         url: request.mode === "install" ? plan.url : undefined,
         jobNamespace,
         hasSecrets: secrets.length > 0,
@@ -275,7 +297,7 @@ export class Deployer {
       await this.forget(view.id);
       await k8s.delete!(RESOURCES.jobs, view.job.name, jobNamespace).catch(() => undefined);
       this.ctx.audit.record({
-        actor: user.id,
+        actor,
         action: "deploy.start",
         target: view.id,
         detail: `${plan.appId} ${request.mode}: ${message}`,
@@ -285,7 +307,7 @@ export class Deployer {
     }
 
     this.ctx.audit.record({
-      actor: user.id,
+      actor,
       action: "deploy.start",
       target: view.id,
       detail: `${plan.appId} ${plan.version} ${request.mode} into ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`,
@@ -294,7 +316,7 @@ export class Deployer {
     return this.store.get(view.id)!.view;
   }
 
-  async cancel(user: User, id: string): Promise<DeployJobView> {
+  async cancel(actor: string, id: string): Promise<DeployJobView> {
     const record = this.mustGet(id);
     if (isFinal(record.view.state)) throw new HttpError(409, `${id} has already finished (${record.view.state}).`);
     const k8s = this.k8s();
@@ -305,9 +327,9 @@ export class Deployer {
     } catch (err) {
       throw new HttpError(502, `Could not delete the Job: ${errorMessage(err)}`);
     }
-    await this.conclude(record, "cancelled", `Cancelled by ${user.id}.`, log);
+    await this.conclude(record, "cancelled", `Cancelled by ${actor}.`, log);
     this.ctx.audit.record({
-      actor: user.id,
+      actor,
       action: "deploy.cancel",
       target: id,
       detail: `${record.view.appId} ${record.view.mode} (Job ${record.view.job.namespace}/${record.view.job.name})`,

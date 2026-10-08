@@ -53,7 +53,7 @@ async function setup(
     },
   });
   let n = 0;
-  const deployer = registerDeploy(mock.ctx, { now: () => MOCK_NOW, generate: () => `generated-secret-${++n}` });
+  const { deployer } = registerDeploy(mock.ctx, { now: () => MOCK_NOW, generate: () => `generated-secret-${++n}` });
   const events: Env["events"] = [];
   mock.ctx.bus.on("deploy.finished", (payload) => void events.push(payload));
   const server = await listen(mock.app);

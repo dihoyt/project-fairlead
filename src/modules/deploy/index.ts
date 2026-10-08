@@ -1,7 +1,8 @@
 import { z } from "zod";
-import type { DeployJobRequest, DeployRequest } from "../../contracts/deploy.js";
+import type { BundleRequest, DeployJobRequest, DeployRequest } from "../../contracts/deploy.js";
 import type { Module, ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
+import { Bundles } from "./bundles.js";
 import { declareConfig } from "./config.js";
 import { migrations } from "./migrations.js";
 import { Deployer, LOG_LINES, MAX_TAIL, type DeployerOptions } from "./runner.js";
@@ -17,6 +18,13 @@ const requestSchema = z.object({
   inputs: z.record(z.string(), z.union([z.string(), z.boolean()])).default({}),
 });
 const jobRequestSchema = requestSchema.extend({ mode: z.enum(["install", "dry-run"]) });
+const values = z.record(z.string(), z.union([z.string(), z.boolean()]));
+const bundleSchema = z.object({
+  bundleId: z.string().min(1).max(100),
+  inputs: values.default({}),
+  apps: z.record(z.string(), values).optional(),
+  include: z.array(z.string().max(100)).max(100).optional(),
+});
 
 function parse<T>(schema: z.ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body ?? {});
@@ -34,11 +42,19 @@ function positive(value: string | undefined, fallback: number, max: number, name
   return Math.min(n, max);
 }
 
-export function registerDeploy(ctx: ModuleContext, options: DeployerOptions = {}): Deployer {
+export function registerDeploy(
+  ctx: ModuleContext,
+  options: DeployerOptions = {}
+): { deployer: Deployer; bundles: Bundles } {
   const config = declareConfig(ctx.settings);
   const deployer = new Deployer(ctx, new Store(ctx.db, ctx.orgId), config, options);
+  const bundles = new Bundles(ctx, deployer, options.now);
 
-  ctx.scheduler.every("deploy.reconcile", RECONCILE_MS, () => deployer.reconcile());
+  ctx.scheduler.every("deploy.reconcile", RECONCILE_MS, async () => {
+    await deployer.reconcile();
+    await bundles.advanceAll();
+  });
+  ctx.bus.on("deploy.finished", () => bundles.advanceAll());
 
   ctx.route("GET /api/deploy/status", () => deployer.status());
 
@@ -50,7 +66,7 @@ export function registerDeploy(ctx: ModuleContext, options: DeployerOptions = {}
   ctx.route("POST /api/deploy/jobs", async (req, res) => {
     const user = ctx.require(req, res, "write");
     if (!user) return undefined;
-    return deployer.start(user, parse(jobRequestSchema, req.body) as DeployJobRequest);
+    return deployer.start(user.id, parse(jobRequestSchema, req.body) as DeployJobRequest);
   });
 
   ctx.route("GET /api/deploy/jobs", (req) =>
@@ -71,9 +87,30 @@ export function registerDeploy(ctx: ModuleContext, options: DeployerOptions = {}
   ctx.route("POST /api/deploy/jobs/:id/cancel", async (req, res) => {
     const user = ctx.require(req, res, "write");
     if (!user) return undefined;
-    return deployer.cancel(user, req.params.id);
+    return deployer.cancel(user.id, req.params.id);
   });
-  return deployer;
+
+  ctx.route("POST /api/deploy/bundles/plan", async (req, res) => {
+    if (!ctx.require(req, res, "write")) return undefined;
+    return bundles.plan(parse(bundleSchema, req.body) as BundleRequest);
+  });
+
+  ctx.route("POST /api/deploy/bundles", async (req, res) => {
+    const user = ctx.require(req, res, "write");
+    if (!user) return undefined;
+    return bundles.start(user.id, parse(bundleSchema, req.body) as BundleRequest);
+  });
+
+  ctx.route("GET /api/deploy/bundles", () => bundles.list());
+
+  ctx.route("GET /api/deploy/bundles/:id", (req) => bundles.get(req.params.id));
+
+  ctx.route("POST /api/deploy/bundles/:id/cancel", async (req, res) => {
+    const user = ctx.require(req, res, "write");
+    if (!user) return undefined;
+    return bundles.cancel(user.id, req.params.id);
+  });
+  return { deployer, bundles };
 }
 
 const mod: Module = {
