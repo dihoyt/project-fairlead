@@ -55,4 +55,19 @@ export const migrations: readonly Migration[] = [
     name: "check result object",
     up: "ALTER TABLE health_check_results ADD COLUMN object TEXT",
   },
+  {
+    version: 3,
+    name: "custom links",
+    up: `
+      CREATE TABLE health_links (
+        id TEXT PRIMARY KEY,
+        org_id TEXT NOT NULL DEFAULT 'default' REFERENCES orgs(id),
+        category TEXT NOT NULL,
+        label TEXT NOT NULL,
+        url TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+    `,
+  },
 ];

@@ -3,7 +3,7 @@ import type { DeployedRelease } from "../../contracts/deploy.js";
 import { isDeployedByUs } from "../../contracts/deployed.js";
 import { RESOURCES, type K8sApi, type KubeObject, type ResourceRef } from "../../contracts/k8s.js";
 import { nodeDisks } from "./disks.js";
-import { chartName, parseImage, signatures, type Signature } from "./signatures.js";
+import { chartName, chartVersion, parseImage, signatures, type Signature } from "./signatures.js";
 
 const DEFAULT_SC = "storageclass.kubernetes.io/is-default-class";
 const DEFAULT_SC_BETA = "storageclass.beta.kubernetes.io/is-default-class";
@@ -19,20 +19,40 @@ interface Workload extends KubeObject {
   };
 }
 
+interface Backend {
+  service?: { name?: string; port?: { number?: number; name?: string } };
+}
+
+interface LoadBalancerStatus {
+  loadBalancer?: { ingress?: Array<{ ip?: string; hostname?: string }> };
+}
+
 interface Ingress extends KubeObject {
   spec?: {
     ingressClassName?: string;
+    defaultBackend?: Backend;
     tls?: Array<{ hosts?: string[] }>;
     rules?: Array<{
       host?: string;
-      http?: { paths?: Array<{ backend?: { service?: { name?: string } } }> };
+      http?: { paths?: Array<{ backend?: Backend }> };
     }>;
   };
+  status?: LoadBalancerStatus;
 }
 
 interface Service extends KubeObject {
-  spec?: { selector?: Record<string, string> };
+  spec?: {
+    type?: string;
+    selector?: Record<string, string>;
+    ports?: Array<{ name?: string; port?: number }>;
+  };
+  status?: LoadBalancerStatus;
 }
+
+const INGRESS_CLASS_ANNOTATION = "kubernetes.io/ingress.class";
+// The Tailscale operator's class: the Ingress has no rule host, and the
+// MagicDNS name it got appears in its status.
+const TAILSCALE_CLASS = "tailscale";
 
 interface Readiness extends KubeObject {
   status?: { conditions?: Array<{ type?: string; status?: string }> };
@@ -172,12 +192,14 @@ function detectFromWorkloads(k8s: K8sApi, entry: CatalogEntry, matches: AppMatch
   const release =
     workload.metadata.annotations?.["meta.helm.sh/release-name"] ??
     (labels["app.kubernetes.io/managed-by"] === "Helm" ? labels["app.kubernetes.io/instance"] : undefined);
+  const chart = chartVersion(labels["helm.sh/chart"]);
   return {
     appId: entry.id,
     state: "installed",
     ...(workload.metadata.namespace ? { namespace: workload.metadata.namespace } : {}),
     ...(release ? { release } : {}),
     ...(primary.version ? { version: primary.version } : {}),
+    ...(chart ? { chartVersion: chart } : {}),
     urls: [],
     evidence: `${primary.kind} ${qualified(workload)} (${primary.reason})`,
     managedBy,
@@ -228,6 +250,25 @@ function selects(selector: Record<string, string> | undefined, workload: Workloa
   return Object.entries(selector).every(([key, value]) => labels[key] === value);
 }
 
+// The backend as the cluster reaches it, when its port resolves to a number.
+export function serviceUrl(backend: Backend | undefined, namespace: string, service: Service | undefined) {
+  const name = backend?.service?.name;
+  if (!name) return undefined;
+  const wanted = backend.service?.port;
+  const port =
+    wanted?.number ??
+    (wanted?.name ? service?.spec?.ports?.find((p) => p.name === wanted.name)?.port : undefined) ??
+    (wanted ? undefined : service?.spec?.ports?.length === 1 ? service.spec.ports[0]!.port : undefined);
+  if (!port) return undefined;
+  const https = port === 443 || wanted?.name === "https";
+  return `${https ? "https" : "http"}://${name}.${namespace}.svc:${port}`;
+}
+
+const lbAddress = (status: LoadBalancerStatus | undefined) => {
+  const first = status?.loadBalancer?.ingress?.[0];
+  return first?.ip ?? first?.hostname;
+};
+
 function ingressHosts(
   ingresses: Ingress[],
   services: Service[],
@@ -238,11 +279,29 @@ function ingressHosts(
 
   for (const ingress of ingresses.toSorted(byName)) {
     const namespace = ingress.metadata.namespace ?? "";
-    for (const rule of ingress.spec?.rules ?? []) {
-      const host = rule.host;
-      if (!host || host.includes("*")) continue;
-      const tls = (ingress.spec?.tls ?? []).some((t) => t.hosts?.includes(host));
-      const serviceName = rule.http?.paths?.find((p) => p.backend?.service?.name)?.backend?.service?.name;
+    const ingressClass =
+      ingress.spec?.ingressClassName ?? ingress.metadata.annotations?.[INGRESS_CLASS_ANNOTATION] ?? undefined;
+    const rules: Array<{ host: string; backend?: Backend; tls: boolean }> = [];
+    if (ingressClass === TAILSCALE_CLASS) {
+      const host = ingress.status?.loadBalancer?.ingress?.find((i) => i.hostname)?.hostname;
+      const backend =
+        ingress.spec?.defaultBackend ??
+        ingress.spec?.rules?.flatMap((r) => r.http?.paths ?? []).find((p) => p.backend?.service?.name)?.backend;
+      if (host) rules.push({ host, backend, tls: true });
+    } else {
+      for (const rule of ingress.spec?.rules ?? []) {
+        const host = rule.host;
+        if (!host || host.includes("*")) continue;
+        rules.push({
+          host,
+          backend: rule.http?.paths?.find((p) => p.backend?.service?.name)?.backend ?? ingress.spec?.defaultBackend,
+          tls: (ingress.spec?.tls ?? []).some((t) => t.hosts?.includes(host)),
+        });
+      }
+    }
+
+    for (const { host, backend, tls } of rules) {
+      const serviceName = backend?.service?.name;
       const service = serviceName ? serviceAt.get(`${namespace}/${serviceName}`) : undefined;
 
       let appId = apps.find(({ matches }) =>
@@ -262,6 +321,7 @@ function ingressHosts(
         )?.entry.id;
       }
 
+      const url = serviceUrl(backend, namespace, service);
       const view: IngressHost = {
         host,
         url: `${tls ? "https" : "http"}://${host}`,
@@ -269,6 +329,8 @@ function ingressHosts(
         namespace,
         ingress: ingress.metadata.name,
         ...(serviceName ? { service: serviceName } : {}),
+        ...(url ? { serviceUrl: url } : {}),
+        ...(ingressClass ? { ingressClass } : {}),
         ...(appId ? { appId } : {}),
       };
       const existing = hosts.get(host);
@@ -277,6 +339,33 @@ function ingressHosts(
     }
   }
   return [...hosts.values()].toSorted((a, b) => a.host.localeCompare(b.host));
+}
+
+// The ingress controller's front door: a LoadBalancer Service serving port
+// 80, preferring one named after the default ingress class (k3s's
+// kube-system/traefik). Its in-cluster URL is a tunnel's origin; its
+// address is what DNS records and hosts files point at. Falls back to the
+// address any Ingress reports.
+export function ingressFrontDoor(
+  services: Service[],
+  ingresses: Ingress[],
+  ingressClass: string | undefined
+): { ingressService?: string; ingressAddress?: string } {
+  const candidates = services
+    .filter((s) => s.spec?.type === "LoadBalancer" && s.spec.ports?.some((p) => p.port === 80))
+    .toSorted(byName);
+  const named = (s: Service) => Boolean(ingressClass && s.metadata.name.includes(ingressClass));
+  const door = candidates.find(named) ?? candidates[0];
+  const address =
+    lbAddress(door?.status) ??
+    ingresses
+      .filter((i) => (i.spec?.ingressClassName ?? "") !== TAILSCALE_CLASS)
+      .map((i) => lbAddress(i.status))
+      .find(Boolean);
+  return {
+    ...(door ? { ingressService: `http://${door.metadata.name}.${door.metadata.namespace}.svc.cluster.local:80` } : {}),
+    ...(address ? { ingressAddress: address } : {}),
+  };
 }
 
 // The parent domain most hosts share: "grafana.home.example.com" counts
@@ -589,7 +678,9 @@ export async function discover(
   const storage = storageBasic(storageClasses);
   const ingress = ingressBasic(ingressClasses);
   const certs = certManagerBasic(issuers, versionOf("cert-manager"));
-  const domain = baseDomain(hosts.map((h) => h.host));
+  // Tailnet names (*.ts.net) say nothing about the domain apps should use.
+  const domain = baseDomain(hosts.filter((h) => h.ingressClass !== TAILSCALE_CLASS).map((h) => h.host));
+  const door = ingressFrontDoor(itemsOf(services), itemsOf(ingresses), ingress.suggested);
 
   return {
     checkedAt: now().toISOString(),
@@ -603,6 +694,7 @@ export async function discover(
       ...(ingress.suggested ? { ingressClass: ingress.suggested } : {}),
       ...(certs.suggested ? { clusterIssuer: certs.suggested } : {}),
       ...(domain ? { baseDomain: domain } : {}),
+      ...door,
     },
   };
 }

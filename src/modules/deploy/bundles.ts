@@ -10,7 +10,10 @@ import type {
   BundleStepState,
   DeployRequest,
   DeployValue,
+  UpgradeCandidate,
+  UpgradeRequest,
 } from "../../contracts/deploy.js";
+import { UPGRADE_RUN } from "../../contracts/deploy.js";
 import type { ModuleContext } from "../../contracts/module.js";
 import { checkDisk } from "../../contracts/disk.js";
 import { HttpError } from "../../runtime/http.js";
@@ -483,6 +486,7 @@ export class Bundles {
   // An optional item that fails is recorded and the rollout moves on; a
   // required one stops it. An item gone from the catalog counts as required.
   private optional(run: Run, appId: string): boolean {
+    if (run.bundleId === UPGRADE_RUN) return false;
     const item = this.bundle(run.bundleId).items.find((i) => i.appId === appId);
     return item ? !item.required : false;
   }
@@ -522,6 +526,7 @@ export class Bundles {
       await this.finishRun(run, run.steps.some((step) => step.state === "failed") ? "failed" : "succeeded");
       return;
     }
+    if (run.bundleId === UPGRADE_RUN) return this.advanceUpgrade(run, next);
     const request = await this.request(run);
     if (!request) {
       next.state = "failed";
@@ -570,5 +575,68 @@ export class Bundles {
     // A skipped step, or an optional one that failed to start, leaves
     // nothing to wait for.
     if (next.state === "skipped" || next.state === "failed") await this.advance(run);
+  }
+
+  // --- upgrades --------------------------------------------------------------
+
+  async startUpgrade(actor: string, request: UpgradeRequest): Promise<BundleRunView> {
+    const report = await this.deployer.upgradeReport(true);
+    let picked: UpgradeCandidate[];
+    if (request.appIds) {
+      const named = new Set(request.appIds);
+      for (const appId of named) {
+        const app = report.apps.find((a) => a.appId === appId);
+        if (!app) throw new HttpError(400, `${appId} was not deployed from here, so it can't be upgraded here.`);
+        if (app.state !== "available" && app.state !== "unknown") {
+          throw new HttpError(400, `${appId}: ${app.reason ?? `nothing to upgrade (${app.state})`}`);
+        }
+      }
+      picked = report.apps.filter((app) => named.has(app.appId));
+    } else {
+      picked = report.apps.filter((app) => app.state === "available");
+    }
+    if (!report.enabled) throw new HttpError(400, "Deploys are turned off for this install.");
+    if (picked.length === 0) throw new HttpError(400, "Every app deployed from here is up to date.");
+
+    const inserted = this.runs.insert(
+      {
+        bundleId: UPGRADE_RUN,
+        state: "running",
+        startedBy: actor,
+        createdAt: this.iso(),
+        steps: picked.map((app) => ({ appId: app.appId, state: "pending" })),
+      },
+      JSON.stringify(request)
+    );
+    if ("busy" in inserted) throw new HttpError(409, `Bundle run ${inserted.busy} is still running.`);
+    this.ctx.audit.record({
+      actor,
+      action: "deploy.start-upgrade",
+      target: inserted.id,
+      detail: picked.map((app) => `${app.appId} ${app.currentVersion ?? "?"} -> ${app.targetVersion}`).join(", "),
+    });
+    await this.advanceAll();
+    return view(this.runs.get(inserted.id)!);
+  }
+
+  // Each app is upgraded to what the report says now, so a run resumed by
+  // the other pod still never goes to a version the cluster can't run.
+  private async advanceUpgrade(run: Run, next: Step): Promise<void> {
+    next.state = "running";
+    next.claimedAt = this.iso();
+    if (!this.runs.save(run)) return;
+    try {
+      const job = await this.deployer.startUpgrade(run.startedBy, next.appId);
+      next.jobId = job.id;
+      if (job.url) next.url = job.url;
+      delete next.claimedAt;
+    } catch (err) {
+      next.state = "failed";
+      next.message = errorMessage(err);
+      delete next.claimedAt;
+      await this.finishRun(run, "failed");
+      return;
+    }
+    this.runs.save(run);
   }
 }

@@ -1,5 +1,5 @@
 import type { Database } from "better-sqlite3";
-import type { DeployedRelease, DeployJobState, DeployJobView, DeployMode } from "../../contracts/deploy.js";
+import type { DeployedRelease, DeployJobMode, DeployJobState, DeployJobView } from "../../contracts/deploy.js";
 import type { LogLines } from "../../contracts/workloads.js";
 
 interface Row {
@@ -9,7 +9,7 @@ interface Row {
   release: string;
   namespace: string;
   version: string;
-  mode: DeployMode;
+  mode: DeployJobMode;
   state: DeployJobState;
   started_by: string;
   created_at: string;
@@ -39,7 +39,7 @@ export interface NewJob {
   release: string;
   namespace: string;
   version: string;
-  mode: DeployMode;
+  mode: DeployJobMode;
   startedBy: string;
   url?: string;
   jobNamespace: string;
@@ -152,13 +152,14 @@ export class Store {
     return rows.map((row) => toRecord(row).view);
   }
 
-  // The latest install job per release.
+  // The latest install or upgrade job per release.
   releases(): DeployedRelease[] {
     const rows = this.db
       .prepare(
         `SELECT app_id, release, namespace, id, state FROM deploy_jobs AS j
-         WHERE org_id = ? AND mode = 'install' AND seq = (
-           SELECT MAX(seq) FROM deploy_jobs WHERE org_id = j.org_id AND release = j.release AND mode = 'install'
+         WHERE org_id = ? AND mode IN ('install', 'upgrade') AND seq = (
+           SELECT MAX(seq) FROM deploy_jobs
+           WHERE org_id = j.org_id AND release = j.release AND mode IN ('install', 'upgrade')
          )
          ORDER BY seq DESC`
       )
@@ -176,6 +177,20 @@ export class Store {
       jobId: row.id,
       state: row.state,
     }));
+  }
+
+  // Release -> the version of its latest succeeded install or upgrade job.
+  installedVersions(): Map<string, string> {
+    const rows = this.db
+      .prepare(
+        `SELECT release, version FROM deploy_jobs AS j
+         WHERE org_id = ? AND seq = (
+           SELECT MAX(seq) FROM deploy_jobs
+           WHERE org_id = j.org_id AND release = j.release AND mode IN ('install', 'upgrade') AND state = 'succeeded'
+         )`
+      )
+      .all(this.orgId) as Array<{ release: string; version: string }>;
+    return new Map(rows.map((row) => [row.release, row.version]));
   }
 
   active(): JobRecord[] {

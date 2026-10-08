@@ -103,3 +103,8 @@ export function parseImage(image: string): { repo: string; tag?: string } {
 export function chartName(label: string): string {
   return /^(.+?)-v?\d+\.\d+/.exec(label)?.[1] ?? label;
 }
+
+// "gitea-12.7.0" -> "12.7.0", "cert-manager-v1.18.2" -> "v1.18.2".
+export function chartVersion(label: string | undefined): string | undefined {
+  return label ? /^.+?-(v?\d+\.\d+\S*)$/.exec(label)?.[1] : undefined;
+}

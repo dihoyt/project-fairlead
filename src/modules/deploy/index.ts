@@ -1,5 +1,11 @@
 import { z } from "zod";
-import type { AccessMode, BundleRequest, DeployJobRequest, DeployRequest } from "../../contracts/deploy.js";
+import type {
+  AccessMode,
+  BundleRequest,
+  DeployJobRequest,
+  DeployRequest,
+  UpgradeRequest,
+} from "../../contracts/deploy.js";
 import type { Module, ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
 import { ACCESS_MODES } from "./access.js";
@@ -36,6 +42,8 @@ const bundleSchema = z.object({
   apps: z.record(z.string(), values).optional(),
   include: z.array(z.string().max(100)).max(100).optional(),
 });
+
+const upgradeSchema = z.object({ appIds: z.array(z.string().min(1).max(100)).min(1).max(100).optional() });
 
 function parse<T>(schema: z.ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body ?? {});
@@ -130,6 +138,13 @@ export function registerDeploy(
     const user = ctx.require(req, res, "write");
     if (!user) return undefined;
     return bundles.cancel(user.id, req.params.id);
+  });
+  ctx.route("GET /api/deploy/upgrades", (req) => deployer.upgradeReport(req.query.refresh === "1"));
+
+  ctx.route("POST /api/deploy/upgrades", async (req, res) => {
+    const user = ctx.require(req, res, "write");
+    if (!user) return undefined;
+    return bundles.startUpgrade(user.id, parse(upgradeSchema, req.body) as UpgradeRequest);
   });
   return { deployer, bundles };
 }

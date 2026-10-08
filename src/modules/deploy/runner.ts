@@ -7,6 +7,7 @@ import type {
   DeployJobState,
   DeployJobView,
   DeployJobMode,
+  UpgradeReport,
   DeployMode,
   DeployPlan,
   DeployRequest,
@@ -18,13 +19,14 @@ import type { ModuleContext } from "../../contracts/module.js";
 import type { LogLines } from "../../contracts/workloads.js";
 import { HttpError } from "../../runtime/http.js";
 import { errorMessage } from "../../runtime/log.js";
-import type { Defaults } from "./apps.js";
+import type { Defaults, Step } from "./apps.js";
 import { accessView, AccessStore, type Resolver } from "./access.js";
 import { enableHint, type DeployConfig } from "./config.js";
 import { CONTAINER, DEADLINE_SECONDS, JOB_LABEL, jobManifest, valuesSecret } from "./job.js";
 import { jobName, render, valuesSecretName, type Rendered } from "./plan.js";
 import { createRedactor, type Redactor } from "./redact.js";
 import { isFinal, type JobRecord, type Store } from "./store.js";
+import { upgradeReport, upgradeSteps } from "./upgrades.js";
 
 export const LOG_LINES = 500;
 export const MAX_TAIL = 5000;
@@ -284,6 +286,65 @@ export class Deployer {
   async start(actor: string, request: DeployJobRequest, context: RenderContext = {}): Promise<DeployJobView> {
     const { plan, files, steps, secrets } = await this.rendered(request, request.mode, context);
     if (!plan.allowed) throw new HttpError(400, plan.blockedBy ?? "This deploy is not allowed.");
+    return this.launch(
+      actor,
+      { ...plan, mode: request.mode, url: request.mode === "install" ? plan.url : undefined },
+      files,
+      steps,
+      secrets
+    );
+  }
+
+  async upgradeReport(refresh = false): Promise<UpgradeReport> {
+    const [enabled, found] = await Promise.all([this.enabled(), this.discover(refresh)]);
+    return upgradeReport({
+      entries: this.catalog().entries(),
+      discovery: found.discovery,
+      enabled,
+      releases: this.store.releases(),
+      versions: this.store.installedVersions(),
+      busy: new Set(this.store.active().map((record) => record.view.release)),
+      checkedAt: this.iso(),
+    });
+  }
+
+  // One app of an upgrade run, checked against a fresh report.
+  async startUpgrade(actor: string, appId: string): Promise<DeployJobView> {
+    const report = await this.upgradeReport(true);
+    const app = report.apps.find((a) => a.appId === appId);
+    if (!app) throw new HttpError(400, `${appId} was not deployed from here, so it can't be upgraded here.`);
+    if ((app.state !== "available" && app.state !== "unknown") || !app.targetVersion) {
+      throw new HttpError(400, `${appId}: ${app.reason ?? `nothing to upgrade (${app.state})`}`);
+    }
+    const entry = this.catalog().get(appId)!;
+    const { steps, files, error } = upgradeSteps(
+      { entry, release: app.release, namespace: app.namespace },
+      app.targetVersion
+    );
+    if (error) throw new HttpError(400, error);
+    return this.launch(
+      actor,
+      {
+        appId,
+        release: app.release,
+        namespace: app.namespace,
+        version: app.targetVersion,
+        mode: "upgrade",
+        url: app.url,
+      },
+      Object.keys(files).length > 0 ? files : { "values.yaml": "{}\n" },
+      steps,
+      []
+    );
+  }
+
+  private async launch(
+    actor: string,
+    plan: { appId: string; release: string; namespace: string; version: string; mode: DeployJobMode; url?: string },
+    files: Record<string, string>,
+    steps: Step[],
+    secrets: string[]
+  ): Promise<DeployJobView> {
     const k8s = this.k8s()!;
     const jobNamespace = this.config.namespace();
 
@@ -293,9 +354,9 @@ export class Deployer {
         release: plan.release,
         namespace: plan.namespace,
         version: plan.version,
-        mode: request.mode,
+        mode: plan.mode,
         startedBy: actor,
-        url: request.mode === "install" ? plan.url : undefined,
+        url: plan.url,
         jobNamespace,
         hasSecrets: secrets.length > 0,
         jobName: (seq) => jobName(plan.release, seq),
@@ -338,7 +399,7 @@ export class Deployer {
         actor,
         action: "deploy.start",
         target: view.id,
-        detail: `${plan.appId} ${request.mode}: ${message}`,
+        detail: `${plan.appId} ${plan.mode}: ${message}`,
         result: "error",
       });
       throw new HttpError(502, message);
@@ -348,7 +409,7 @@ export class Deployer {
       actor,
       action: "deploy.start",
       target: view.id,
-      detail: `${plan.appId} ${plan.version} ${request.mode} into ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`,
+      detail: `${plan.appId} ${plan.version} ${plan.mode} into ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`,
     });
     void this.ensureWatch();
     return this.store.get(view.id)!.view;

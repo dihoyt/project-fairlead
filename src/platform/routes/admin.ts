@@ -10,11 +10,12 @@ import type {
 } from "../../contracts/auth.js";
 import { product } from "../../product.js";
 import { AuthentikError, authentikUrlProblem, issuerFor, wireAuthentik } from "../auth/authentik.js";
-import { authOf, refuseUnready, type PlatformUser } from "../auth/identity.js";
+import { authOf, envAdmin, refuseUnready, type PlatformUser } from "../auth/identity.js";
 import { effectiveRule, ruleAllows } from "../auth/networks.js";
 import { CALLBACK_PATH, OIDC_SECRET, OidcError, discover, oidcUnavailableReason } from "../auth/oidc.js";
 import { generateTempPassword, hashPassword, passwordProblem } from "../auth/passwords.js";
 import { revokeAllSessions, revokeSession, sessionHandle, sessionsOf } from "../auth/sessions.js";
+import { createToken, listTokens, revokeToken, tokenView } from "../auth/tokens.js";
 import { clearTotp, totpEnabledFor } from "../auth/totp.js";
 import {
   countActiveAdmins,
@@ -63,6 +64,10 @@ function networksOf(raw: unknown): string[] {
   }
   return entries;
 }
+
+// Whether a token's account is an admin without a sign-in: its role or the
+// environment's allowlist (OIDC group membership needs a session).
+const isAdmin = (account: UserRow) => account.role === "admin" || envAdmin([account.username, account.email], []);
 
 const AUTHENTIK_TOKEN = { scope: "auth", id: "authentik-api" } as const;
 const WIRED_KEYS = ["auth.oidc.issuer", "auth.oidc.clientId", "auth.oidc.label", "auth.oidc.enabled"];
@@ -542,6 +547,43 @@ export function adminRouter(core: Core): Router {
       }
       record(req, admin, "identity-unlink", row.username, provider);
       return userView(userById(core.db, row.id)!);
+    })
+  );
+
+  // --- API tokens ---------------------------------------------------------
+
+  router.get(
+    "/tokens",
+    route(() => listTokens(core).map((row) => tokenView(core, row, isAdmin)))
+  );
+
+  router.post(
+    "/tokens",
+    route((req, _res, admin) => {
+      if (admin.userId === undefined) {
+        throw new AdminError(409, "Sign in with an account to create a token: it acts as that account.");
+      }
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const name = typeof body.name === "string" ? body.name.trim() : "";
+      if (!name || name.length > 80) throw new AdminError(400, "Give the token a name of up to 80 characters.");
+      if (body.scope !== "read" && body.scope !== "write") throw new AdminError(400, "Scope must be read or write.");
+      const days = body.expiresInDays ?? null;
+      if (days !== null && (typeof days !== "number" || !Number.isInteger(days) || days < 1 || days > 3650)) {
+        throw new AdminError(400, "Expiry must be a whole number of days from 1 to 3650, or none.");
+      }
+      const { row, secret } = createToken(core, { name, scope: body.scope, userId: admin.userId, expiresInDays: days });
+      record(req, admin, "token-create", row.id, `${name} (${row.scope})`);
+      return { token: tokenView(core, row, isAdmin), secret };
+    })
+  );
+
+  router.delete(
+    "/tokens/:id",
+    route((req, _res, admin) => {
+      const row = revokeToken(core, req.params.id ?? "");
+      if (row === null) throw new AdminError(404, "No such token.");
+      record(req, admin, "token-revoke", row.id, row.name);
+      return { ok: true };
     })
   );
 

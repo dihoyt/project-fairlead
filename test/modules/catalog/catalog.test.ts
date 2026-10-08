@@ -15,13 +15,13 @@ import { pickVersion } from "../../../src/contracts/kubeversion.js";
 import { createMockDeployService } from "../../../src/contracts/mocks/deploy.js";
 import { product } from "../../../src/product.js";
 import mod from "../../../src/modules/catalog/index.js";
-import { baseDomain, discover } from "../../../src/modules/catalog/discover.js";
+import { baseDomain, discover, ingressFrontDoor, serviceUrl } from "../../../src/modules/catalog/discover.js";
 import { bundleView, bundles } from "../../../src/modules/catalog/bundles.js";
 import { catalog } from "../../../src/modules/catalog/entries.js";
 import { nodeDisks } from "../../../src/modules/catalog/disks.js";
 import { ntfyManifest } from "../../../src/modules/catalog/manifests/ntfy.js";
 import { createCatalogService } from "../../../src/modules/catalog/service.js";
-import { chartName, parseImage, signatures } from "../../../src/modules/catalog/signatures.js";
+import { chartName, chartVersion, parseImage, signatures } from "../../../src/modules/catalog/signatures.js";
 import { loadFixtureSet } from "../../support/index.js";
 import { listen } from "../../runtime/helpers.js";
 
@@ -268,6 +268,9 @@ describe("catalog entries", () => {
     assert.equal(chartName("cert-manager-v1.21.1"), "cert-manager");
     assert.equal(chartName("traefik-40.1.3_up40.1.0"), "traefik");
     assert.equal(chartName("valkey-cluster-3.0.24"), "valkey-cluster");
+    assert.equal(chartVersion("cert-manager-v1.21.1"), "v1.21.1");
+    assert.equal(chartVersion("valkey-cluster-3.0.24"), "3.0.24");
+    assert.equal(chartVersion("gitea"), undefined);
   });
 });
 
@@ -717,11 +720,107 @@ describe("deploy bundles", () => {
     assert.deepEqual(skipped, ["traefik", "cert-manager", "metrics-server", "local-path-provisioner"]);
     assert.match(view.items.find((i) => i.appId === "metrics-server")!.reason!, /^Already /);
     assert.match(view.items.find((i) => i.appId === "traefik")!.reason!, /^Already covered: IngressClass traefik/);
+    // Items for one way of reaching the apps are left to the client, which
+    // knows the answer.
     assert.deepEqual(
-      view.items.filter((i) => i.selected).map((i) => i.appId),
+      view.items.filter((i) => i.when).map((i) => [i.appId, i.when!.in]),
+      [
+        ["cloudflared", ["cloudflare-tunnel"]],
+        ["tailscale-operator", ["tailscale"]],
+      ]
+    );
+    assert.deepEqual(
+      view.items.filter((i) => i.selected && !i.when).map((i) => i.appId),
       ["longhorn", "authentik", "gitea", "ntfy"]
     );
     assert.deepEqual(view.suggested, { baseDomain: "home.example.com", storageClass: "longhorn" });
+  });
+});
+
+// --- reaching apps: service URLs, Tailscale hosts, the ingress front door -----
+
+type Service = Parameters<typeof ingressFrontDoor>[0][number];
+const lbService = (namespace: string, name: string, ip: string): Service => ({
+  metadata: { name, namespace },
+  spec: {
+    type: "LoadBalancer",
+    ports: [
+      { name: "web", port: 80 },
+      { name: "websecure", port: 443 },
+    ],
+  },
+  status: { loadBalancer: { ingress: [{ ip }] } },
+});
+
+describe("discovery for the Access step", () => {
+  test("serviceUrl resolves a numbered, a named and a sole port, and gives up otherwise", () => {
+    const service = {
+      metadata: { name: "gitea-http", namespace: "gitea" },
+      spec: { ports: [{ name: "http", port: 3000 }] },
+    };
+    assert.equal(
+      serviceUrl({ service: { name: "gitea-http", port: { number: 3000 } } }, "gitea", undefined),
+      "http://gitea-http.gitea.svc:3000"
+    );
+    assert.equal(
+      serviceUrl({ service: { name: "gitea-http", port: { name: "http" } } }, "gitea", service),
+      "http://gitea-http.gitea.svc:3000"
+    );
+    assert.equal(serviceUrl({ service: { name: "gitea-http" } }, "gitea", service), "http://gitea-http.gitea.svc:3000");
+    assert.equal(serviceUrl({ service: { name: "gitea-http", port: { name: "ssh" } } }, "gitea", service), undefined);
+    assert.equal(
+      serviceUrl({ service: { name: "x", port: { number: 443 } } }, "ns", undefined),
+      "https://x.ns.svc:443"
+    );
+  });
+
+  test("the front door prefers the Service named for the ingress class, else falls back to an Ingress address", () => {
+    const services = [lbService("other", "aaa-lb", "10.0.0.9"), lbService("kube-system", "traefik", "10.0.0.20")];
+    assert.deepEqual(ingressFrontDoor(services, [], "traefik"), {
+      ingressService: "http://traefik.kube-system.svc.cluster.local:80",
+      ingressAddress: "10.0.0.20",
+    });
+    const ing = {
+      metadata: { name: "a", namespace: "b" },
+      status: { loadBalancer: { ingress: [{ ip: "10.0.0.30" }] } },
+    };
+    assert.deepEqual(ingressFrontDoor([], [ing], "traefik"), { ingressAddress: "10.0.0.30" });
+  });
+
+  test("a Tailscale Ingress takes its host from status, and stays out of the base domain", async () => {
+    const objects = healthyCluster();
+    const add = (ref: ResourceRef, item: KubeObject) => {
+      const list = objects.find((o) => o.ref === ref);
+      if (list) list.items.push(item);
+      else objects.push({ ref, items: [item] });
+    };
+    add(RESOURCES.ingresses, {
+      metadata: { name: "gitea", namespace: "gitea" },
+      spec: {
+        ingressClassName: "tailscale",
+        tls: [{ hosts: ["git"] }],
+        rules: [
+          { http: { paths: [{ path: "/", backend: { service: { name: "gitea-http", port: { number: 3000 } } } }] } },
+        ],
+      },
+      status: { loadBalancer: { ingress: [{ hostname: "git.tail1234.ts.net" }] } },
+    });
+    add(RESOURCES.services, lbService("kube-system", "traefik", "10.0.0.20"));
+    const report = await discover(createFakeK8s({ objects }), catalog);
+    const host = report.ingressHosts.find((h) => h.host === "git.tail1234.ts.net");
+    assert.deepEqual(host, {
+      host: "git.tail1234.ts.net",
+      url: "https://git.tail1234.ts.net",
+      tls: true,
+      namespace: "gitea",
+      ingress: "gitea",
+      service: "gitea-http",
+      serviceUrl: "http://gitea-http.gitea.svc:3000",
+      ingressClass: "tailscale",
+    });
+    assert.equal(report.suggested.baseDomain, "home.example.com");
+    assert.equal(report.suggested.ingressService, "http://traefik.kube-system.svc.cluster.local:80");
+    assert.equal(report.suggested.ingressAddress, "10.0.0.20");
   });
 });
 
