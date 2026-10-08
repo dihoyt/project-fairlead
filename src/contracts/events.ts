@@ -1,8 +1,11 @@
+import type { DeployJobState, DeployMode } from "./deploy.js";
 import type { Status } from "./health.js";
 
 // Every event on the bus, by name. Adding one is a contract change.
 export type Events = {
   "health.changed": { providerId: string; checkId: string; label: string; from: Status; to: Status; detail: string };
+  // A deploy job reached a final state. Discovery refreshes on it.
+  "deploy.finished": { jobId: string; appId: string; mode: DeployMode; state: DeployJobState; url?: string };
 };
 
 export type EventName = keyof Events;

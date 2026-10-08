@@ -19,7 +19,7 @@ rules:
     resources: [jobs, cronjobs]
     verbs: [get, list, watch]
   - apiGroups: [networking.k8s.io]
-    resources: [ingresses]
+    resources: [ingresses, ingressclasses]
     verbs: [get, list, watch]
   - apiGroups: [storage.k8s.io]
     resources: [storageclasses]
@@ -42,7 +42,7 @@ rules:
     resources: [gitrepos, bundles]
     verbs: [get, list, watch]
   - apiGroups: [cert-manager.io]
-    resources: [certificates]
+    resources: [certificates, clusterissuers]
     verbs: [get, list, watch]
   {{- if and .Values.rbac.secrets.enabled (not .Values.rbac.secrets.namespaces) }}
   - apiGroups: [""]

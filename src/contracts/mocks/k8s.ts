@@ -80,6 +80,8 @@ export interface FakeK8s extends K8sApi {
   set(ref: ResourceRef, items: KubeObject[]): void;
   upsert(ref: ResourceRef, obj: KubeObject): void;
   remove(ref: ResourceRef, name: string, namespace?: string): void;
+  // Every create() and delete() call, in order.
+  writes: Array<{ verb: "create" | "delete"; ref: ResourceRef; name: string; namespace?: string }>;
 }
 
 // An in-memory K8sApi for module tests: lists, gets and watches over the
@@ -101,7 +103,10 @@ export function createFakeK8s(options: FakeK8sOptions = {}): FakeK8s {
     for (const watcher of watchers.get(refKey(ref)) ?? []) fire(watcher.handlers, watcher.options);
   };
 
+  const writes: FakeK8s["writes"] = [];
+
   const fake: FakeK8s = {
+    writes,
     async list<T extends KubeObject>(ref: ResourceRef, opts?: ListOptions) {
       if (absent.has(ref.group)) return "absent" as const;
       return structuredClone(visible(ref, opts)) as T[];
@@ -126,6 +131,27 @@ export function createFakeK8s(options: FakeK8sOptions = {}): FakeK8s {
         },
       };
       return watch;
+    },
+    async create<T extends KubeObject>(ref: ResourceRef, obj: T) {
+      if (absent.has(ref.group))
+        throw new Error(`fake k8s: the server could not find the requested resource (${ref.plural})`);
+      const { name, namespace } = obj.metadata;
+      if (denied.has(`create ${ref.group}/${ref.plural}`))
+        throw new Error(`fake k8s: forbidden: cannot create ${ref.plural}`);
+      if ((store.get(refKey(ref)) ?? []).some((existing) => sameObject(existing, name, namespace)))
+        throw new Error(`fake k8s: ${ref.plural} "${name}" already exists`);
+      const created = structuredClone(obj);
+      created.metadata.labels = { ...created.metadata.labels, ...fake.ownedLabels() };
+      created.metadata.uid ??= `uid-${ref.plural}-${namespace ?? ""}-${name}`;
+      writes.push({ verb: "create", ref, name, ...(namespace ? { namespace } : {}) });
+      fake.upsert(ref, created);
+      return structuredClone(created);
+    },
+    async delete(ref: ResourceRef, name: string, namespace?: string) {
+      if (denied.has(`delete ${ref.group}/${ref.plural}`))
+        throw new Error(`fake k8s: forbidden: cannot delete ${ref.plural}`);
+      writes.push({ verb: "delete", ref, name, ...(namespace ? { namespace } : {}) });
+      fake.remove(ref, name, namespace);
     },
     async raw(path) {
       if (!options.raw || !(path in options.raw)) throw new Error(`fake k8s: no raw response for ${path}`);

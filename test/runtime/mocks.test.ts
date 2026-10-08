@@ -8,6 +8,16 @@ import {
   mockTargets,
   mockUnprotectedPvcs,
 } from "../../src/contracts/mocks/backups.js";
+import {
+  createMockCatalogService,
+  mockBlockedPlan,
+  mockCatalog,
+  mockCatalogApps,
+  mockDeployDisabled,
+  mockDeployPlan,
+  mockDiscovery,
+  mockHostKeypair,
+} from "../../src/contracts/mocks/catalog.js";
 import { mockCheckResults } from "../../src/contracts/mocks/health.js";
 import { createFakeK8s, mockClusterObjects, mockLonghornObjects } from "../../src/contracts/mocks/k8s.js";
 import { mockSeries } from "../../src/contracts/mocks/metrics.js";
@@ -105,4 +115,80 @@ test("fake k8s marks the Secret capability opt-in and nothing else", async () =>
 // well-formed route keys that the route binder will accept.
 test("every API mock is keyed by a route", () => {
   for (const key of Object.keys(apiMocks)) assert.match(key, /^(GET|POST|PUT|PATCH|DELETE) \//);
+});
+
+test("catalog mocks are consistent: unique ids, known requires, one app per link key", () => {
+  const ids = mockCatalog.map((entry) => entry.id);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const entry of mockCatalog) {
+    for (const required of entry.requires) assert.ok(ids.includes(required), `${entry.id} requires ${required}`);
+    const keys = entry.inputs.map((input) => input.key);
+    assert.equal(new Set(keys).size, keys.length, `${entry.id} input keys`);
+    if (entry.exposesUi) assert.ok(keys.includes("host"), `${entry.id} exposes a UI, so it asks for a host`);
+  }
+  const linkKeys = mockCatalog.flatMap((entry) => (entry.linkKey ? [entry.linkKey] : []));
+  assert.deepEqual(linkKeys.toSorted(), ["gitea", "grafana", "headlamp", "longhorn", "rancher"]);
+  for (const slot of ["links", "sign-in", "cluster-basics", "backups", "notifications", "remote-access"] as const)
+    assert.ok(
+      mockCatalog.some((entry) => entry.slots.includes(slot)),
+      `an app for ${slot}`
+    );
+});
+
+test("discovery mocks cover every detect state and every cluster basic, all pointing at catalog apps", () => {
+  const ids = new Set(mockCatalog.map((entry) => entry.id));
+  assert.deepEqual(
+    new Set(mockDiscovery.apps.map((app) => app.state)),
+    new Set(["installed", "not-installed", "unknown"])
+  );
+  assert.equal(mockDiscovery.apps.length, mockCatalog.length);
+  for (const host of mockDiscovery.ingressHosts) if (host.appId) assert.ok(ids.has(host.appId));
+  assert.deepEqual(mockDiscovery.basics.map((basic) => basic.id).toSorted(), [
+    "cert-manager",
+    "default-storage-class",
+    "ingress-controller",
+    "metrics-server",
+  ]);
+  for (const basic of mockDiscovery.basics) for (const fix of basic.fixAppIds) assert.ok(ids.has(fix));
+  assert.ok(mockCatalogApps.every((app) => app.detected.appId === app.id));
+});
+
+test("mock catalog service resolves entries and returns a copy of discovery", async () => {
+  const catalog = createMockCatalogService();
+  assert.equal(catalog.get("grafana")?.linkKey, "grafana");
+  assert.equal(catalog.get("nope"), undefined);
+  const report = await catalog.discover();
+  report.apps.length = 0;
+  assert.equal((await catalog.discover()).apps.length, mockCatalog.length);
+});
+
+test("deploy mocks: plans mask secrets, jobs cover running, succeeded and failed", () => {
+  assert.equal(mockDeployPlan.allowed, true);
+  assert.equal(mockBlockedPlan.allowed, false);
+  assert.ok(mockBlockedPlan.blockedBy);
+  assert.equal(mockBlockedPlan.inputs.bootstrapPassword, "********");
+  const states = apiMocks["GET /api/deploy/jobs"].map((job) => job.state);
+  assert.deepEqual(states.toSorted(), ["failed", "running", "succeeded"]);
+  assert.equal(mockDeployDisabled.enabled, false);
+  assert.ok(mockDeployDisabled.enableHint);
+  assert.ok(mockHostKeypair.installCommand.includes(mockHostKeypair.publicKey));
+});
+
+test("fake k8s create labels the object as owned, refuses duplicates and records writes", async () => {
+  const k8s = createFakeK8s({ denied: ["create /secrets"] });
+  const job = await k8s.create!(RESOURCES.jobs, { metadata: { name: "deploy-x-1", namespace: "console" } });
+  assert.equal(k8s.isOwned(job), true);
+  assert.equal(((await k8s.list(RESOURCES.jobs)) as KubeObject[]).length, 1);
+  await assert.rejects(
+    k8s.create!(RESOURCES.jobs, { metadata: { name: "deploy-x-1", namespace: "console" } }),
+    /exists/
+  );
+  await assert.rejects(k8s.create!(RESOURCES.secrets, { metadata: { name: "v", namespace: "console" } }), /forbidden/);
+  await k8s.delete!(RESOURCES.jobs, "deploy-x-1", "console");
+  await k8s.delete!(RESOURCES.jobs, "missing", "console");
+  assert.equal(((await k8s.list(RESOURCES.jobs)) as KubeObject[]).length, 0);
+  assert.deepEqual(
+    k8s.writes.map((w) => `${w.verb} ${w.name}`),
+    ["create deploy-x-1", "delete deploy-x-1", "delete missing"]
+  );
 });

@@ -1,4 +1,5 @@
 import type { Database } from "better-sqlite3";
+import type { CatalogService } from "./catalog.js";
 import type { K8sApi } from "./k8s.js";
 import type { JobStatus } from "./system.js";
 
@@ -44,6 +45,8 @@ export interface Scheduler {
 export interface Services {
   // Provided by module "k8s" (A1).
   k8s: K8sApi;
+  // Provided by module "catalog".
+  catalog: CatalogService;
 }
 
 export interface ServiceRegistry {

@@ -13,6 +13,8 @@ import backups from "./backups/index.js";
 import metricsK8s from "./metrics-k8s/index.js";
 import workloads from "./workloads/index.js";
 import onboarding from "./onboarding/index.js";
+import catalog from "./catalog/index.js";
+import deploy from "./deploy/index.js";
 import connectors from "./connectors/index.js";
 import connectorCloudflare from "./connector-cloudflare/index.js";
 import connectorEntra from "./connector-entra/index.js";
@@ -38,6 +40,8 @@ export const modules: readonly Module[] = [
   metricsK8s,
   workloads,
   onboarding,
+  catalog,
+  deploy,
   connectors,
   connectorCloudflare,
   connectorEntra,

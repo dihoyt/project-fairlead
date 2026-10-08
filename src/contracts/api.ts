@@ -21,9 +21,11 @@ import type {
   UserView,
 } from "./auth.js";
 import type { BackupPosture, RestoreTestMark } from "./backups.js";
+import type { CatalogAppView, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
+import type { DeployJobRequest, DeployJobView, DeployPlan, DeployRequest, DeployStatus } from "./deploy.js";
 import type { Category, CategoryDetail, CheckHistory, CheckResult, HealthBoard } from "./health.js";
-import type { HostRequest, HostTestResult, HostView } from "./hosts.js";
+import type { HostKeypair, HostRequest, HostTestResult, HostView } from "./hosts.js";
 import type { CapabilityReport } from "./k8s.js";
 import type { NodeSummary, SeriesInfo, SeriesResult } from "./metrics.js";
 import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
@@ -142,6 +144,12 @@ export interface ApiRoutes {
   "DELETE /api/hosts/:id": Route<{ id: string }, None, None, Ok>;
   // Connects with the given (unsaved) settings; nothing is stored.
   "POST /api/hosts/test": Route<None, None, HostRequest, HostTestResult>;
+  // The install's generated key pair; null until one is generated.
+  "GET /api/hosts/keypair": Route<None, None, None, { keypair: HostKeypair | null }>;
+  // Admin. Generates the key pair; 409 when one exists unless rotate is "1",
+  // which replaces it (hosts using it stop connecting until the new key is
+  // installed on them).
+  "POST /api/hosts/keypair": Route<None, { rotate?: "1" }, None, HostKeypair>;
 
   // --- checks (A10) -------------------------------------------------------
   "GET /api/checks": Route<None, None, None, CheckView[]>;
@@ -189,6 +197,29 @@ export interface ApiRoutes {
     None,
     EventStream<{ line: string }>
   >;
+
+  // --- catalog (v0.1.x) ---------------------------------------------------
+  // Every catalog app with what discovery found for it. slot filters by
+  // CatalogSlot.
+  "GET /api/catalog/apps": Route<None, { slot?: string; refresh?: "1" }, None, CatalogAppView[]>;
+  "GET /api/catalog/apps/:id": Route<{ id: string }, None, None, CatalogAppView>;
+  "GET /api/catalog/discovery": Route<None, { refresh?: "1" }, None, DiscoveryReport>;
+
+  // --- deploy (v0.1.x) ----------------------------------------------------
+  "GET /api/deploy/status": Route<None, None, None, DeployStatus>;
+  // Admin. Resolves defaults and validates inputs; runs nothing.
+  "POST /api/deploy/plan": Route<None, None, DeployRequest, DeployPlan>;
+  // Admin, audited. 409 while another job for the same release is running;
+  // 400 with the plan's blockedBy when the plan is not allowed.
+  "POST /api/deploy/jobs": Route<None, None, DeployJobRequest, DeployJobView>;
+  // Newest first.
+  "GET /api/deploy/jobs": Route<None, { appId?: string; limit?: string }, None, DeployJobView[]>;
+  "GET /api/deploy/jobs/:id": Route<{ id: string }, None, None, DeployJobView>;
+  // Redacted: secret input values never appear.
+  "GET /api/deploy/jobs/:id/logs": Route<{ id: string }, { tail?: string }, None, LogLines>;
+  "GET /api/deploy/jobs/:id/logs/stream": Route<{ id: string }, None, None, EventStream<{ line: string }>>;
+  // Admin, audited. Deletes the Job; what helm already applied stays.
+  "POST /api/deploy/jobs/:id/cancel": Route<{ id: string }, None, None, DeployJobView>;
 
   // --- onboarding (A14) ---------------------------------------------------
   "GET /api/onboarding/state": Route<None, None, None, OnboardingState>;
