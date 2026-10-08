@@ -725,7 +725,7 @@ describe("deploy bundles", () => {
     assert.deepEqual(
       view.items.filter((i) => i.when).map((i) => [i.appId, i.when!.in]),
       [
-        ["cloudflared", ["cloudflare-tunnel"]],
+        ["cloudflared", ["token"]],
         ["tailscale-operator", ["tailscale"]],
       ]
     );

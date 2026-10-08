@@ -350,3 +350,65 @@ test("bundle access: mode items and inputs apply only to their mode; starting sa
   assert.equal(access.baseDomain, "example.test");
   assert.ok(e.mock.audit.some((entry) => entry.action === "deploy.set-access"));
 });
+
+test("bundle access: the tunnel token applies only to a pasted-token setup, which an unanswered setup defaults to", async () => {
+  const bundle: CatalogBundle = {
+    ...mockBundle,
+    inputs: [
+      {
+        key: "access",
+        label: "Access",
+        kind: "select",
+        required: true,
+        options: [
+          { value: "cloudflare-tunnel", label: "Cloudflare" },
+          { value: "local", label: "Local" },
+        ],
+      },
+      ...mockBundle.inputs,
+      {
+        key: "cloudflareSetup",
+        label: "Setup",
+        kind: "select",
+        required: true,
+        default: "token",
+        options: [
+          { value: "api", label: "API token" },
+          { value: "token", label: "Tunnel token" },
+        ],
+        when: { input: "access", in: ["cloudflare-tunnel"] },
+      },
+      {
+        key: "tunnelToken",
+        label: "Tunnel token",
+        kind: "secret",
+        required: true,
+        when: { input: "cloudflareSetup", in: ["token"] },
+      },
+    ],
+    items: [
+      { appId: "cloudflared", required: true, when: { input: "cloudflareSetup", in: ["token"] } },
+      { appId: "headlamp", required: true },
+    ],
+  };
+  const e = await setup([bundle]);
+  const plan = (inputs: Record<string, string>) =>
+    call<BundlePlan>(e, "POST", "/bundles/plan", { bundleId: bundle.id, inputs: { ...answers, ...inputs } });
+
+  const api = await plan({ access: "cloudflare-tunnel", cloudflareSetup: "api" });
+  assert.equal(api.allowed, true);
+  assert.deepEqual(
+    api.steps.map((s) => [s.appId, s.skip]),
+    [
+      ["cloudflared", true],
+      ["headlamp", false],
+    ]
+  );
+
+  const unanswered = await plan({ access: "cloudflare-tunnel" });
+  assert.equal(unanswered.allowed, false);
+
+  const stale = await plan({ access: "local", cloudflareSetup: "token" });
+  assert.equal(stale.allowed, true);
+  assert.equal(stale.steps[0]!.skip, true);
+});
