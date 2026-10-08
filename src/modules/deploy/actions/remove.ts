@@ -53,13 +53,29 @@ function hostOf(url: string): string | undefined {
   }
 }
 
-// HTTP checks watching the instance's address, as the Templates page adds them.
+// "host:port" of an http(s) URL with its default port spelled out.
+function endpointOf(url: string): string | undefined {
+  try {
+    const u = new URL(url);
+    return `${u.hostname}:${u.port || (u.protocol === "https:" ? "443" : "80")}`;
+  } catch {
+    return undefined;
+  }
+}
+
+// HTTP checks watching the instance's address, as the Templates page adds
+// them, and for an external service the check on the target itself.
 export function checksFor(instance: TemplateInstance, checks: readonly CheckView[]): CheckView[] {
   const hosts = new Set(
     [instance.host, instance.url ? hostOf(instance.url) : undefined].filter((h): h is string => Boolean(h))
   );
-  if (hosts.size === 0) return [];
-  return checks.filter((c) => c.kind === "http" && hosts.has(hostOf(c.target) ?? ""));
+  const ext = instance.external;
+  const target = ext ? `${ext.address.includes(":") ? `[${ext.address}]` : ext.address}:${ext.port}` : undefined;
+  return checks.filter(
+    (c) =>
+      (c.kind === "http" && hosts.has(hostOf(c.target) ?? "")) ||
+      (target !== undefined && (c.kind === "tcp" ? c.target === target : endpointOf(c.target) === target))
+  );
 }
 
 interface Claim extends KubeObject {
@@ -177,7 +193,7 @@ export const removeAction: ActionRecipe<RemoveAppAction> = {
         allowed: true,
         steps: [
           ...(checks.length > 0
-            ? [{ label: `Delete the HTTP check ${checks.map((c) => c.label).join(", ")}`, commands: [] }]
+            ? [{ label: `Delete the check ${checks.map((c) => c.label).join(", ")}`, commands: [] }]
             : []),
           {
             label: deleteVolumes

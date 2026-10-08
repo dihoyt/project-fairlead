@@ -16,6 +16,7 @@ import { Bundles } from "./bundles.js";
 import { declareConfig } from "./config.js";
 import { registerGate } from "./gateHealth.js";
 import { migrations } from "./migrations.js";
+import { declarePorts, portsView } from "./ports.js";
 import { Deployer, LOG_LINES, MAX_TAIL, type DeployerOptions } from "./runner.js";
 import { Store } from "./store.js";
 
@@ -72,6 +73,7 @@ export function registerDeploy(
   options: DeployerOptions = {}
 ): { deployer: Deployer; bundles: Bundles } {
   const config = declareConfig(ctx.settings);
+  const forwardedPorts = declarePorts(ctx.settings);
   const deployer = new Deployer(ctx, new Store(ctx.db, ctx.orgId), config, options);
   const bundles = new Bundles(ctx, deployer, options.now);
   ctx.services.provide("deploy", {
@@ -153,6 +155,15 @@ export function registerDeploy(
     if (!user) return undefined;
     return bundles.cancel(user.id, req.params.id);
   });
+  ctx.route("GET /api/deploy/ports", () =>
+    portsView({
+      setting: forwardedPorts,
+      k8s: ctx.services.has("k8s") ? ctx.services.get("k8s") : undefined,
+      releases: deployer.releases(),
+      wanted: ctx.services.has("templates") ? ctx.services.get("templates").forwardedPorts() : [],
+    })
+  );
+
   ctx.route("GET /api/deploy/upgrades", (req) => deployer.upgradeReport(req.query.refresh === "1"));
 
   ctx.route("POST /api/deploy/upgrades", async (req, res) => {

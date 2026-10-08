@@ -1,5 +1,5 @@
 import type { Database } from "better-sqlite3";
-import type { CustomAppSpec } from "../../contracts/templates.js";
+import type { CustomAppSpec, ExternalServiceSpec } from "../../contracts/templates.js";
 
 export interface InstanceRecord {
   name: string;
@@ -9,6 +9,7 @@ export interface InstanceRecord {
   volumeSize?: string;
   storageClass?: string;
   custom?: CustomAppSpec;
+  external?: ExternalServiceSpec;
   lastJobId?: string;
   createdBy: string;
   createdAt: string;
@@ -23,6 +24,7 @@ interface Row {
   volume_size: string | null;
   storage_class: string | null;
   custom: string | null;
+  external: string | null;
   last_job_id: string | null;
   created_by: string;
   created_at: string;
@@ -38,6 +40,7 @@ function toRecord(row: Row): InstanceRecord {
     ...(row.volume_size ? { volumeSize: row.volume_size } : {}),
     ...(row.storage_class ? { storageClass: row.storage_class } : {}),
     ...(row.custom ? { custom: JSON.parse(row.custom) as CustomAppSpec } : {}),
+    ...(row.external ? { external: JSON.parse(row.external) as ExternalServiceSpec } : {}),
     ...(row.last_job_id ? { lastJobId: row.last_job_id } : {}),
     createdBy: row.created_by,
     createdAt: row.created_at,
@@ -73,11 +76,11 @@ export class Store {
     this.db
       .prepare(
         `INSERT INTO templates_instances (org_id, name, template_id, version, host, volume_size, storage_class,
-           custom, last_job_id, created_by, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           custom, external, last_job_id, created_by, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (org_id, name) DO UPDATE SET template_id = excluded.template_id, version = excluded.version,
            host = excluded.host, volume_size = excluded.volume_size, storage_class = excluded.storage_class,
-           custom = excluded.custom, last_job_id = excluded.last_job_id, updated_at = excluded.updated_at`
+           custom = excluded.custom, external = excluded.external, last_job_id = excluded.last_job_id, updated_at = excluded.updated_at`
       )
       .run(
         this.orgId,
@@ -88,6 +91,7 @@ export class Store {
         record.volumeSize ?? null,
         record.storageClass ?? null,
         record.custom ? JSON.stringify(record.custom) : null,
+        record.external ? JSON.stringify(record.external) : null,
         record.lastJobId ?? null,
         record.createdBy,
         at,

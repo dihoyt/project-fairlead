@@ -1,10 +1,14 @@
+import type { Request } from "express";
 import { z } from "zod";
 import type { CatalogEntry } from "../../contracts/catalog.js";
-import type { DeployJobView, DeployRequest, DeployService } from "../../contracts/deploy.js";
+import type { DeployJobView, DeployRequest, DeployService, PortsView, WantedPort } from "../../contracts/deploy.js";
+import { traefikEntrypoint } from "../../contracts/deploy.js";
 import type { Module, ModuleContext } from "../../contracts/module.js";
 import {
   CUSTOM_TEMPLATE,
+  EXTERNAL_TEMPLATE,
   type CustomAppSpec,
+  type ExternalServiceSpec,
   type TemplateDeployRequest,
   type TemplateInstance,
   type TemplatePlan,
@@ -12,6 +16,19 @@ import {
 } from "../../contracts/templates.js";
 import { compareVersions } from "../../contracts/kubeversion.js";
 import { HttpError } from "../../runtime/http.js";
+import {
+  EXTERNAL,
+  EXTERNAL_KINDS,
+  EXTERNAL_VERSION,
+  checkExternal,
+  checkPublicPort,
+  externalCheck,
+  externalWarnings,
+  isForwarded,
+  publicPortOf,
+  tidyExternal,
+  wantedPort,
+} from "./external.js";
 import { checkManifests } from "./guardrail.js";
 import {
   CUSTOM,
@@ -53,6 +70,15 @@ const requestSchema = z.object({
     })
     .optional(),
   public: z.boolean().optional(),
+  external: z
+    .object({
+      address: text(100),
+      port: z.number(),
+      protocol: z.enum(["http", "https", "tcp", "udp"]),
+      publicPort: z.number().optional(),
+      insecureSkipVerify: z.boolean().optional(),
+    })
+    .optional(),
 });
 const jobSchema = requestSchema.extend({ mode: z.enum(["install", "dry-run"]) });
 
@@ -72,6 +98,7 @@ interface Resolution {
   // Absent when field errors stop the render.
   resolved?: Resolved;
   custom?: CustomAppSpec;
+  external?: ExternalServiceSpec;
   host?: string;
   volumeSize?: string;
   storageClass?: string;
@@ -136,10 +163,11 @@ export class Templates {
 
   resolve(request: TemplateDeployRequest): Resolution {
     const custom = request.templateId === CUSTOM_TEMPLATE;
+    const external = request.templateId === EXTERNAL_TEMPLATE;
     const def = definition(request.templateId);
-    if (!custom && !def) throw new HttpError(404, `No template "${request.templateId}".`);
+    if (!custom && !external && !def) throw new HttpError(404, `No template "${request.templateId}".`);
     const errors: Record<string, string> = {};
-    const name = (request.name ?? "").trim().toLowerCase() || (custom ? "" : request.templateId);
+    const name = (request.name ?? "").trim().toLowerCase() || (custom || external ? "" : request.templateId);
     if (!name) errors.name = "required";
     else if (name.length > MAX_NAME || !DNS_LABEL.test(name)) {
       errors.name = `lowercase letters, digits and dashes, at most ${MAX_NAME} characters`;
@@ -149,8 +177,16 @@ export class Templates {
       if (other && other.templateId !== request.templateId) errors.name = `already used by a ${other.templateId} app`;
     }
     if (!custom && request.custom) errors.custom = "only for a custom app";
+    if (!external && request.external) errors.external = "only for an external service";
+    if (external) {
+      checkExternal(request.external, errors);
+      if (request.volumeSize) errors.volumeSize = "an external service keeps no data here";
+      if (request.storageClass) errors.storageClass = "an external service keeps no data here";
+    }
 
-    const host = request.host === undefined ? undefined : request.host.trim().toLowerCase();
+    // tcp and udp never get an Ingress: their route is Traefik's own.
+    const forwarded = external && request.external !== undefined && isForwarded(request.external);
+    const host = forwarded ? "" : request.host === undefined ? undefined : request.host.trim().toLowerCase();
     const volumeSize = request.volumeSize?.trim() || undefined;
     const storageClass = request.storageClass?.trim() || undefined;
     if (volumeSize && !SIZE.test(volumeSize)) errors.volumeSize = "must be a size like 5Gi";
@@ -165,9 +201,34 @@ export class Templates {
       ...(volumeSize ? { volumeSize } : {}),
       ...(storageClass ? { storageClass } : {}),
     };
-    if (Object.keys(errors).length > 0) return { ...base, ...(request.custom ? { custom: request.custom } : {}) };
+    if (Object.keys(errors).length > 0) {
+      return {
+        ...base,
+        ...(request.custom ? { custom: request.custom } : {}),
+        ...(request.external ? { external: request.external } : {}),
+      };
+    }
 
     const exposed = host !== "";
+    if (external) {
+      const spec = tidyExternal(request.external!);
+      return {
+        ...base,
+        external: spec,
+        resolved: {
+          templateId: EXTERNAL_TEMPLATE,
+          name,
+          displayName: EXTERNAL.name,
+          summary: `${spec.protocol.toUpperCase()} to ${spec.address}:${spec.port}`,
+          image: "",
+          version: EXTERNAL_VERSION,
+          port: spec.port,
+          env: [],
+          exposed,
+          external: spec,
+        },
+      };
+    }
     if (def) {
       return { ...base, resolved: fromDefinition(def, name, { exposed, volumeSize, storageClass }) };
     }
@@ -207,10 +268,24 @@ export class Templates {
     };
   }
 
+  // The deploy runner's forwarded-port view, as the user asking; undefined
+  // when it can't be read (the runner is missing), which skips the range
+  // check rather than failing the form.
+  private async ports(req: Request | undefined): Promise<PortsView | undefined> {
+    if (!req || !this.ctx.services.has("deploy")) return undefined;
+    return this.ctx.call(req, "GET /api/deploy/ports").catch(() => undefined);
+  }
+
   async plan(
-    request: TemplateDeployRequest
+    request: TemplateDeployRequest,
+    req?: Request
   ): Promise<{ plan: TemplatePlan; entry?: CatalogEntry; resolution: Resolution }> {
     const resolution = this.resolve(request);
+    const ports = resolution.external && isForwarded(resolution.external) ? await this.ports(req) : undefined;
+    if (resolution.external && Object.keys(resolution.errors).length === 0) {
+      checkPublicPort(resolution.name, resolution.external, ports, resolution.errors);
+      if (Object.keys(resolution.errors).length > 0) delete resolution.resolved;
+    }
     const { resolved, errors, name, templateId } = resolution;
     const base = { templateId, name, namespace: name };
     if (!resolved) {
@@ -228,9 +303,26 @@ export class Templates {
       };
     }
     const objects = manifests(resolved);
-    const violations = checkManifests(objects, name);
+    const violations = checkManifests(objects, name, resolved.external ? EXTERNAL_KINDS : undefined);
     const entry = entryFor(resolved, objects);
     const deploy = await this.deploy().planEntry(entry, this.deployRequest(resolution, request.public));
+    const spec = resolved.external;
+    if (spec) {
+      const host = deploy.inputs.host;
+      deploy.warnings.push(...externalWarnings(spec, entry.exposesUi && typeof host === "string" ? host : undefined));
+    }
+    const entrypoint =
+      spec && isForwarded(spec)
+        ? (() => {
+            const wanted = { port: publicPortOf(spec), protocol: spec.protocol };
+            const ep = traefikEntrypoint(wanted);
+            return {
+              name: ep,
+              ...wanted,
+              open: (ports?.open ?? []).some((p) => traefikEntrypoint(p) === ep),
+            };
+          })()
+        : undefined;
     const fieldErrors = { ...errors, ...deploy.inputErrors };
     const firstField = Object.entries(fieldErrors)[0];
     const blockedBy = violations[0]
@@ -247,19 +339,26 @@ export class Templates {
         violations,
         manifests: toDocuments(objects),
         deploy,
+        ...(entrypoint ? { entrypoint } : {}),
       },
       entry,
       resolution,
     };
   }
 
-  async start(actor: string, request: TemplateDeployRequest & { mode: "install" | "dry-run" }): Promise<DeployJobView> {
-    const name = (request.name ?? "").trim().toLowerCase() || request.templateId;
+  async start(
+    actor: string,
+    request: TemplateDeployRequest & { mode: "install" | "dry-run" },
+    req?: Request
+  ): Promise<DeployJobView> {
+    const name =
+      (request.name ?? "").trim().toLowerCase() ||
+      (request.templateId === CUSTOM_TEMPLATE || request.templateId === EXTERNAL_TEMPLATE ? "" : request.templateId);
     const other = this.store.get(name);
     if (other && other.templateId !== request.templateId) {
       throw new HttpError(409, `${name} is already used by a ${other.templateId} app.`);
     }
-    const { plan, entry, resolution } = await this.plan(request);
+    const { plan, entry, resolution } = await this.plan(request, req);
     if (!plan.allowed || !entry) throw new HttpError(400, plan.blockedBy ?? "This deploy is not allowed.");
     const job = await this.deploy().startEntry(actor, entry, {
       ...this.deployRequest(resolution, request.public),
@@ -276,19 +375,44 @@ export class Templates {
           ...(resolution.volumeSize ? { volumeSize: resolution.volumeSize } : {}),
           ...(resolution.storageClass ? { storageClass: resolution.storageClass } : {}),
           ...(resolution.custom ? { custom: resolution.custom } : {}),
+          ...(resolution.external ? { external: resolution.external } : {}),
           lastJobId: job.id,
           createdBy: other?.createdBy ?? actor,
         },
         new Date(this.now()).toISOString()
       );
     }
+    if (request.mode === "install" && resolution.external && req)
+      await this.addCheck(req, plan.name, resolution.external);
+    const what = resolution.resolved!.image || resolution.resolved!.summary;
     this.ctx.audit.record({
       actor,
       action: "templates.deploy",
       target: plan.name,
-      detail: `${plan.templateId} ${resolution.resolved!.image} ${request.mode} (job ${job.id})`,
+      detail: `${plan.templateId} ${what} ${request.mode} (job ${job.id})`,
     });
     return job;
+  }
+
+  // A failure here never fails the deploy: the check is a convenience.
+  private async addCheck(req: Request, name: string, spec: ExternalServiceSpec): Promise<void> {
+    const check = externalCheck(name, spec);
+    if (!check) return;
+    try {
+      const existing = await this.ctx.call(req, "GET /api/checks");
+      if (existing.some((c) => c.target === check.target)) return;
+      await this.ctx.call(req, "POST /api/checks", { body: check });
+    } catch {
+      // The checks module is missing or refused it.
+    }
+  }
+
+  forwardedPorts(): WantedPort[] {
+    return this.store
+      .list()
+      .flatMap((record) => (record.external ? [wantedPort(record.name, record.external)] : []))
+      .filter((p): p is WantedPort => p !== undefined)
+      .toSorted((a, b) => a.port - b.port || a.protocol.localeCompare(b.protocol));
   }
 
   // The saved answers, re-resolved at the library's current pin.
@@ -301,6 +425,7 @@ export class Templates {
         ...(record.volumeSize ? { volumeSize: record.volumeSize } : {}),
         ...(record.storageClass ? { storageClass: record.storageClass } : {}),
         ...(record.custom ? { custom: record.custom } : {}),
+        ...(record.external ? { external: record.external } : {}),
       });
       return resolution.resolved ? resolution : undefined;
     } catch {
@@ -332,6 +457,7 @@ export class Templates {
         ...(record.volumeSize ? { volumeSize: record.volumeSize } : {}),
         ...(record.storageClass ? { storageClass: record.storageClass } : {}),
         ...(record.custom ? { custom: record.custom } : {}),
+        ...(record.external ? { external: record.external } : {}),
         ...(lastJob ? { lastJob } : {}),
         createdBy: record.createdBy,
         createdAt: record.createdAt,
@@ -358,7 +484,10 @@ export class Templates {
 
 export function registerTemplates(ctx: ModuleContext, now?: () => number): Templates {
   const templates = new Templates(ctx, now);
-  const service: TemplatesService = { entries: () => templates.entries(), forwardedPorts: () => [] };
+  const service: TemplatesService = {
+    entries: () => templates.entries(),
+    forwardedPorts: () => templates.forwardedPorts(),
+  };
   ctx.services.provide("templates", service);
   ctx.bus.on("deploy.finished", (event) => templates.finished(event));
 
@@ -367,20 +496,20 @@ export function registerTemplates(ctx: ModuleContext, now?: () => number): Templ
       ? await ctx.call(req, "GET /api/deploy/jobs", { query: { limit: "200" } }).catch(() => [])
       : [];
     return {
-      templates: [...LIBRARY.map(templateView), CUSTOM],
+      templates: [...LIBRARY.map(templateView), CUSTOM, EXTERNAL],
       instances: templates.instances(jobs),
     };
   });
 
   ctx.route("POST /api/templates/plan", async (req, res) => {
     if (!ctx.require(req, res, "write")) return undefined;
-    return (await templates.plan(parse(requestSchema, req.body) as TemplateDeployRequest)).plan;
+    return (await templates.plan(parse(requestSchema, req.body) as TemplateDeployRequest, req)).plan;
   });
 
   ctx.route("POST /api/templates/jobs", async (req, res) => {
     const user = ctx.require(req, res, "write");
     if (!user) return undefined;
-    return templates.start(user.id, parse(jobSchema, req.body));
+    return templates.start(user.id, parse(jobSchema, req.body), req);
   });
 
   return templates;
