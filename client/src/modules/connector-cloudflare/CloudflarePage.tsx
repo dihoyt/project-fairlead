@@ -16,8 +16,10 @@ const POLICY: Record<CloudflareView["accessPolicy"], string> = {
 
 // Everything the Cloudflare connector keeps for this install. Shared with
 // the Access step, which shows the same panel once connected.
-export function CloudflarePanel({ baseDomain }: { baseDomain?: string }) {
-  const view = useApi("GET /api/connector-cloudflare/view");
+export function CloudflarePanel({ baseDomain, pollMs }: { baseDomain?: string; pollMs?: number }) {
+  const view = useApi("GET /api/connector-cloudflare/view", undefined, pollMs ? { pollMs } : {});
+  const access = useApi("GET /api/deploy/access", undefined, pollMs ? { pollMs } : {});
+  const cloudflaredInstalled = access.data?.appId === "cloudflared" && access.data.appInstalled === true;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const data = view.data;
@@ -49,8 +51,13 @@ export function CloudflarePanel({ baseDomain }: { baseDomain?: string }) {
         </Button>
       </Group>
       {data.error ? <Alert color="yellow">{data.error}</Alert> : null}
+      {(data.warnings ?? []).map((warning) => (
+        <Alert key={warning} color="yellow" data-cloudflare-warning>
+          {warning}
+        </Alert>
+      ))}
       {error ? <Alert color="red">{error}</Alert> : null}
-      <CloudflareTunnel view={data} onChanged={() => view.reload()} />
+      <CloudflareTunnel view={data} onChanged={() => view.reload()} cloudflaredInstalled={cloudflaredInstalled} />
       <Text size="xs" c="dimmed">
         {POLICY[data.accessPolicy]} Change it in Admin &gt; Settings.
       </Text>

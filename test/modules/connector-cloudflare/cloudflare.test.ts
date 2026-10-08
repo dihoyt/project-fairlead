@@ -78,6 +78,7 @@ async function setup(
     calls: {
       "POST /api/deploy/jobs": (input) =>
         ({ id: "dj_9", appId: input.body!.appId, state: "pending" }) as unknown as DeployJobView,
+      "GET /api/deploy/jobs": () => [],
     },
   });
   await cloudflare.register(m.ctx);
@@ -317,6 +318,60 @@ test("adopts an existing tunnel and keeps its other routes, ours first", async (
       state.tunnels[0]!.config!.ingress!.map((r) => r.hostname),
       [`grafana.${MOCK_ZONE}`, `gitea.${MOCK_ZONE}`, `*.${MOCK_ZONE}`, undefined]
     );
+  } finally {
+    await s.close();
+  }
+});
+
+test("a wildcard record on another tunnel is flagged; one on ours is not", async () => {
+  const state = mockCloudflareState();
+  const other = "33333333-3333-4333-8333-333333333333";
+  state.tunnels.push({
+    id: other,
+    account_tag: MOCK_ACCOUNT,
+    name: "old",
+    status: "inactive",
+    config_src: "cloudflare",
+    deleted_at: null,
+    config: { ingress: [{ service: "http_status:404" }] },
+    token: "tok",
+  });
+  state.dns.push({
+    id: "wild",
+    zone_id: "zone-1",
+    type: "CNAME",
+    name: `*.${MOCK_ZONE}`,
+    content: `${other}.cfargotunnel.com`,
+    proxied: true,
+    ttl: 1,
+    comment: null,
+  });
+  const s = await setup({ state });
+  try {
+    let { body } = await s.call<CloudflareView>("POST", "/tunnel", {});
+    assert.equal(body.warnings?.length, 1);
+    assert.match(body.warnings![0]!, new RegExp(`\\*\\.${MOCK_ZONE} points at tunnel "old" \\(inactive\\)`));
+    assert.ok(
+      state.dns.some((r) => r.id === "wild"),
+      "the wildcard is left alone"
+    );
+
+    state.dns.find((r) => r.id === "wild")!.content = `${body.tunnel!.id}.cfargotunnel.com`;
+    ({ body } = await s.call<CloudflareView>("POST", "/sync"));
+    assert.equal(body.warnings, undefined);
+  } finally {
+    await s.close();
+  }
+});
+
+test("the view reports the tunnel's state now, not as of the last sync", async () => {
+  const s = await setup();
+  try {
+    let { body } = await s.call<CloudflareView>("POST", "/tunnel", {});
+    assert.equal(body.tunnel!.status, "inactive");
+    s.cf.state.tunnels[0]!.status = "healthy";
+    ({ body } = await s.call<CloudflareView>("GET", "/view"));
+    assert.equal(body.tunnel!.status, "healthy");
   } finally {
     await s.close();
   }
@@ -627,6 +682,37 @@ test("tunnel deploy starts cloudflared with the token server-side", async () => 
       inputs: { tunnelToken: s.cf.state.tunnels[0]!.token },
     });
     assert.ok(!JSON.stringify(s.m.audit).includes(s.cf.state.tunnels[0]!.token));
+  } finally {
+    await s.close();
+  }
+});
+
+test("Sync now brings up cloudflared when nothing serves the tunnel, once", async () => {
+  const s = await setup();
+  try {
+    await s.call("POST", "/tunnel", {});
+    const deploys = () => s.m.calls.filter((c) => c.key === "POST /api/deploy/jobs");
+    await s.call("POST", "/sync");
+    assert.equal(deploys().length, 1);
+    assert.deepEqual(deploys()[0]!.input.body, {
+      appId: "cloudflared",
+      mode: "install",
+      inputs: { tunnelToken: s.cf.state.tunnels[0]!.token },
+    });
+
+    s.setAccess(access({ appId: "cloudflared", appInstalled: true }));
+    await s.call("POST", "/sync");
+    assert.equal(deploys().length, 1, "cloudflared already installed");
+
+    s.setAccess(access({ appInstalled: false }));
+    s.cf.state.tunnels[0]!.status = "healthy";
+    await s.call("POST", "/sync");
+    assert.equal(deploys().length, 1, "a connected tunnel needs nothing");
+
+    s.cf.state.tunnels[0]!.status = "inactive";
+    s.setAccess(access({ mode: "direct" }));
+    await s.call("POST", "/sync");
+    assert.equal(deploys().length, 1, "direct needs no tunnel");
   } finally {
     await s.close();
   }
