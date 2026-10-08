@@ -40,6 +40,7 @@ import type { CapabilityReport } from "./k8s.js";
 import type { NodeSummary, SeriesInfo, SeriesResult } from "./metrics.js";
 import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
 import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
+import type { ResetRequest, ResetResult } from "./reset.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
 import type { EventView, LogLines, NamespaceView, PodView, WorkloadLinks, WorkloadView } from "./workloads.js";
 
@@ -80,6 +81,10 @@ export interface ApiRoutes {
   "GET /api/system/modules": Route<None, None, None, ModuleStatus[]>;
   // Admin only.
   "GET /api/system/jobs": Route<None, None, None, JobsView>;
+  // Admin only. Clears the chosen scopes in one transaction (secrets after
+  // it commits), audits the reset, and answers 400 unless confirm is
+  // RESET. A scope no loaded module provides is skipped, not an error.
+  "POST /api/system/reset": Route<None, None, ResetRequest, ResetResult>;
 
   // --- platform (S2), same shapes as code-console --------------------------
   // Browser navigations, not JSON: GET /auth/oidc/start[?link=1] and

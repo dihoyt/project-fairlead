@@ -5,7 +5,7 @@ import type { MetricsRegistry } from "./metrics.js";
 import type { BackupsRegistry } from "./backups.js";
 import type { EventBus, Events } from "./events.js";
 import type { Action, AuditLog, SecretStore, SettingsRegistry, User } from "./platform.js";
-import type { Logger, Migration, Scheduler, ServiceRegistry } from "./runtime.js";
+import type { Logger, Migration, ResetRegistry, Scheduler, ServiceRegistry } from "./runtime.js";
 import type { ApiRoutes, PublicRouteKey } from "./api.js";
 import type { RouteHandler } from "./routing.js";
 
@@ -70,6 +70,8 @@ export interface ModuleContext {
   health: HealthRegistry;
   metrics: MetricsRegistry;
   backups: BackupsRegistry;
+  // Registers what this module clears for each reset scope it owns.
+  reset: ResetRegistry;
   services: ServiceRegistry;
   // Always the default org under tenancy A; written into every org_id column.
   orgId: string;

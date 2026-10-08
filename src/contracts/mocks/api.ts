@@ -345,6 +345,15 @@ export const apiMocks: ApiMocks = {
     { id: "k8s", milestone: "A", registered: true, schemaVersion: 0 },
     { id: "health", milestone: "A", registered: true, schemaVersion: 2 },
   ],
+  "POST /api/system/reset": {
+    cleared: [
+      { scope: "settings", cleared: 4 },
+      { scope: "checks", cleared: 3 },
+      { scope: "onboarding", cleared: 5 },
+    ],
+    kept: ["links", "hosts", "notifications", "sshKey", "adminPassword"],
+    wizardReopens: true,
+  },
   "GET /api/system/jobs": [
     {
       name: "collect:cluster",

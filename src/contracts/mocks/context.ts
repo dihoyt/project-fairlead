@@ -6,7 +6,12 @@ import { openDatabase } from "../../runtime/db.js";
 import { apiErrorHandler } from "../../runtime/http.js";
 import { silentLogger } from "../../runtime/log.js";
 import { applyMigrations, DEFAULT_ORG_ID, runtimeMigrations } from "../../runtime/migrations.js";
-import { createBackupsRegistry, createHealthRegistry, createMetricsRegistry } from "../../runtime/registries.js";
+import {
+  createBackupsRegistry,
+  createHealthRegistry,
+  createMetricsRegistry,
+  createResetRegistry,
+} from "../../runtime/registries.js";
 import { createScheduler } from "../../runtime/scheduler.js";
 import { createServiceRegistry } from "../../runtime/services.js";
 import type { Events } from "../events.js";
@@ -92,6 +97,8 @@ export function createMockContext(moduleId: ModuleId, options: MockContextOption
       },
     },
     audit: { record: (entry) => void audit.push(entry) },
+    clearSettings: () => 0,
+    resetAdminPassword: async () => "mock-temporary-password",
     draining: () => false,
     handleSignals() {},
   };
@@ -112,6 +119,7 @@ export function createMockContext(moduleId: ModuleId, options: MockContextOption
     health: createHealthRegistry(silentLogger),
     metrics,
     backups: createBackupsRegistry(silentLogger),
+    reset: createResetRegistry(),
     services,
     orgId: DEFAULT_ORG_ID,
     logFor: () => silentLogger,
