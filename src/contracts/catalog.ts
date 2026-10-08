@@ -109,6 +109,9 @@ export interface CatalogEntry {
   // Disk it takes once installed with these defaults, for the disk-space
   // preflight (./disk.ts). Absent for a patch, which installs nothing.
   disk?: DiskFootprint;
+  // Memory its pods ask for with these defaults (their requests, or rough
+  // idle use where the chart sets none), in bytes, for the bundle preview.
+  memoryBytes?: number;
   // Things the user must know or do outside the cluster first, one sentence
   // each: "Every node needs open-iscsi installed."
   prerequisites: string[];
