@@ -934,3 +934,35 @@ test("the bundle's apps ask for what they use idle and are capped in memory", as
     assert.doesNotMatch(p.values, /limits:\n\s+cpu/, `${appId}: no CPU limit`);
   }
 });
+
+test("plan: Longhorn takes the default storage class over from k3s's local-path only", async () => {
+  const notInstalled = { ...mockDiscovery, apps: mockDiscovery.apps.filter((app) => app.appId !== "longhorn") };
+  const withDefaults = (found: string[]): DiscoveryReport => ({
+    ...notInstalled,
+    basics: notInstalled.basics.map((b) =>
+      b.id === "default-storage-class"
+        ? { ...b, status: found.length === 0 ? "crit" : found.length === 1 ? "ok" : "warn", found }
+        : b
+    ),
+  });
+  const request = { appId: "longhorn", inputs: { host: "longhorn.example.test" } };
+  const unset = `kubectl patch storageclass local-path --type merge -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'`;
+  const cases: Array<[string[], boolean, boolean]> = [
+    [["local-path"], true, true],
+    [["local-path", "longhorn"], true, true],
+    [[], true, false],
+    [["ceph-rbd"], false, false],
+  ];
+  for (const [found, takes, unsets] of cases) {
+    const e = await setup({ catalog: createMockCatalogService({ discovery: withDefaults(found) }) });
+    const plan = await call<DeployPlan>(e, "POST", "/plan", request);
+    assert.match(plan.values, new RegExp(`defaultClass: ${takes}\\n`), found.join());
+    assert.equal(plan.commands.includes(unset), unsets, JSON.stringify(plan.commands));
+    if (found[0] === "ceph-rbd") assert.ok(plan.warnings.some((w) => w.startsWith("ceph-rbd stays the default")));
+    if (unsets) assert.ok(plan.warnings.some((w) => w.includes("in place of local-path")));
+    await env!.server.close();
+    env!.deployer.stop();
+    await env!.mock.close();
+    env = undefined;
+  }
+});
