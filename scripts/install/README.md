@@ -56,10 +56,14 @@ deletes the namespace too. Neither touches k3s; remove that with
 
 Run `install.sh --help` for every flag.
 
-`update.sh` is generated from `install.sh` (`gen-update.sh`; CI runs
-`gen-update.sh --check`): the same script in update mode, which only upgrades an
+`update.sh` is generated from `install.sh` (`gen-scripts.sh`; CI runs
+`gen-scripts.sh --check`): the same script in update mode, which only upgrades an
 existing release and keeps its settings, plus `--k3s` and `--prereqs`. See
 "Updating" in [docs/install.md](../../docs/install.md).
+
+`add-node.sh` (repository root) joins more machines to this host's k3s cluster
+over SSH, with the same node prerequisites; see "Adding nodes" in
+[docs/install.md](../../docs/install.md).
 
 ## Pins
 
