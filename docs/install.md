@@ -90,6 +90,29 @@ Two extras, both off unless asked for, and both only for this host's k3s:
 (`update.sh --help`). `scripts/install/gen-update.sh` regenerates it, and CI
 fails if it falls out of step.
 
+## Adding nodes
+
+`add-node.sh` joins more machines to a k3s cluster from one of its server
+nodes. For each `user@host` it logs in over SSH, installs open-iscsi and the
+NFS client (Longhorn's node prerequisites), installs k3s at the server's own
+version as an agent, and waits until the node is Ready.
+
+```
+curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/add-node.sh | sudo sh -s -- ubuntu@10.0.0.21 ubuntu@10.0.0.22
+```
+
+- Run it as root on a server node: it reads the join token from
+  `/var/lib/rancher/k3s/server/node-token`. The token is sent inside the script
+  piped to the target over SSH, never on a command line or in the output.
+- Each target needs SSH as root or as a user with passwordless sudo, `curl`,
+  and outbound HTTPS. A failed login or a sudo that wants a password stops with
+  the target named. A host already in the cluster is skipped.
+- New nodes reach the server at `https://<this host's IP>:6443`; `--server-url`
+  changes that. `--ssh-key` and `--ssh-port` set how to log in.
+- `--server` joins them as additional servers instead. That needs a cluster
+  started with embedded etcd (`--cluster-init`); the script refuses on a
+  SQLite-backed server.
+
 ## Install with Helm
 
 ```

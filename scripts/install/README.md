@@ -61,6 +61,10 @@ Run `install.sh --help` for every flag.
 existing release and keeps its settings, plus `--k3s` and `--prereqs`. See
 "Updating" in [docs/install.md](../../docs/install.md).
 
+`add-node.sh` (repository root) joins more machines to this host's k3s cluster
+over SSH, with the same node prerequisites; see "Adding nodes" in
+[docs/install.md](../../docs/install.md).
+
 ## Pins
 
 `K3S_VERSION`, `HELM_VERSION` and the Helm checksums are at the top of
