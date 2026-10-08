@@ -4,7 +4,8 @@ import type { CatalogBundleView } from "@contracts/catalog";
 import type { BundlePlan, BundleRunView, DeployValue } from "@contracts/deploy";
 import { apiRequest, useApi } from "../../ui";
 import { BundlePlanView, DeployInputsForm, DeployRolloutProgress, DeploysOff, WhatIsThis } from "../../ui/deploy";
-import { landedSteps, runFailures, wireLanded } from "./bundle";
+import { holds, landedSteps, runFailures, wireLanded } from "./bundle";
+import { AccessInstructions } from "./steps/AccessStep";
 import { useDiscovery } from "./discovery";
 import { useAction } from "./shared";
 import { PublicUrlField } from "./steps/PublicUrlField";
@@ -71,7 +72,9 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
   }
 
   const off = status.data ? !status.data.enabled : false;
-  const missingRequired = bundle.inputs.some(
+  const inputs = bundle.inputs.filter((input) => holds(input.when, values));
+  const items = bundle.items.filter((item) => holds(item.when, values));
+  const missingRequired = inputs.some(
     (input) => input.required && (values[input.key] === undefined || values[input.key] === "")
   );
 
@@ -103,13 +106,13 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
       {off ? <DeploysOff status={status.data!} /> : null}
       <PublicUrlField />
       <DeployInputsForm
-        inputs={bundle.inputs}
+        inputs={inputs}
         values={values}
         onChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
       />
       <Stack gap={6}>
         <Title order={5}>What it rolls out</Title>
-        {bundle.items.map((item) => (
+        {items.map((item) => (
           <Paper key={item.appId} withBorder p="xs" data-item={item.appId}>
             <Checkbox
               label={name(item.appId)}
@@ -142,6 +145,7 @@ function BundleRun({ runId, names, onDone }: { runId: string; names: Record<stri
     { pollMs: finished ? undefined : RUN_POLL_MS }
   );
   const discovery = useDiscovery();
+  const access = useApi("GET /api/deploy/access", undefined, { pollMs: finished ? undefined : RUN_POLL_MS });
   const wired = useRef(new Set<string>());
   const [wireError, setWireError] = useState<string>();
   const data: BundleRunView | null = run.data;
@@ -171,6 +175,7 @@ function BundleRun({ runId, names, onDone }: { runId: string; names: Record<stri
           Links and HTTP checks are set up for each app with a web page. Carry on with the remaining setup steps.
         </Alert>
       ) : null}
+      {data.state !== "running" && access.data ? <AccessInstructions view={access.data} /> : null}
       {data.state === "failed" ? <RunFailed run={data} names={names} /> : null}
       <Group justify="flex-end">
         <Button disabled={data.state === "running"} onClick={onDone}>
