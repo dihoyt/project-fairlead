@@ -1,5 +1,5 @@
 import type { Database } from "better-sqlite3";
-import type { DeployJobState, DeployJobView, DeployMode } from "../../contracts/deploy.js";
+import type { DeployedRelease, DeployJobState, DeployJobView, DeployMode } from "../../contracts/deploy.js";
 import type { LogLines } from "../../contracts/workloads.js";
 
 interface Row {
@@ -150,6 +150,32 @@ export class Store {
             .all(this.orgId, options.limit)
     ) as Row[];
     return rows.map((row) => toRecord(row).view);
+  }
+
+  // The latest install job per release.
+  releases(): DeployedRelease[] {
+    const rows = this.db
+      .prepare(
+        `SELECT app_id, release, namespace, id, state FROM deploy_jobs AS j
+         WHERE org_id = ? AND mode = 'install' AND seq = (
+           SELECT MAX(seq) FROM deploy_jobs WHERE org_id = j.org_id AND release = j.release AND mode = 'install'
+         )
+         ORDER BY seq DESC`
+      )
+      .all(this.orgId) as Array<{
+      app_id: string;
+      release: string;
+      namespace: string;
+      id: string;
+      state: DeployJobState;
+    }>;
+    return rows.map((row) => ({
+      appId: row.app_id,
+      release: row.release,
+      namespace: row.namespace,
+      jobId: row.id,
+      state: row.state,
+    }));
   }
 
   active(): JobRecord[] {
