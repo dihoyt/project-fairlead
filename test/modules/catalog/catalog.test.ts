@@ -1,6 +1,11 @@
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import type { CatalogAppView, CatalogService, DiscoveryReport } from "../../../src/contracts/catalog.js";
+import type {
+  CatalogAppView,
+  CatalogBundleView,
+  CatalogService,
+  DiscoveryReport,
+} from "../../../src/contracts/catalog.js";
 import { RESOURCES, type K8sApi, type KubeObject, type ResourceRef } from "../../../src/contracts/k8s.js";
 import { mockCatalog } from "../../../src/contracts/mocks/catalog.js";
 import { createMockContext, mockViewer, type MockContext } from "../../../src/contracts/mocks/context.js";
@@ -8,6 +13,7 @@ import { createFakeK8s, OWNER_LABEL, type FakeK8sOptions } from "../../../src/co
 import { product } from "../../../src/product.js";
 import mod from "../../../src/modules/catalog/index.js";
 import { baseDomain, discover } from "../../../src/modules/catalog/discover.js";
+import { bundleView, bundles } from "../../../src/modules/catalog/bundles.js";
 import { catalog } from "../../../src/modules/catalog/entries.js";
 import { createCatalogService } from "../../../src/modules/catalog/service.js";
 import { chartName, parseImage, signatures } from "../../../src/modules/catalog/signatures.js";
@@ -512,6 +518,69 @@ describe("app detection edge cases", () => {
   });
 });
 
+// --- bundles ----------------------------------------------------------------
+
+describe("deploy bundles", () => {
+  test("every item is a catalog app, after its requires, with inputs that exist", () => {
+    for (const bundle of bundles) {
+      const shared = new Set(bundle.inputs.map((i) => i.key));
+      assert.ok(shared.has("baseDomain"), bundle.id);
+      bundle.items.forEach((item, index) => {
+        const entry = catalog.find((e) => e.id === item.appId);
+        assert.ok(entry, item.appId);
+        const keys = new Set(entry.inputs.map((i) => i.key));
+        const earlier = bundle.items.slice(0, index).map((i) => i.appId);
+        for (const id of entry.requires) assert.ok(earlier.includes(id), `${item.appId} requires ${id}`);
+        for (const [appKey, sharedKey] of Object.entries(item.bind ?? {})) {
+          assert.ok(keys.has(appKey) && shared.has(sharedKey), `${item.appId} bind ${appKey}`);
+        }
+        for (const key of Object.keys(item.values ?? {})) assert.ok(keys.has(key), `${item.appId} value ${key}`);
+        if (item.hostPrefix) assert.ok(keys.has("host"), `${item.appId} hostPrefix`);
+        // Every required secret input is filled from the shared answers.
+        for (const input of entry.inputs.filter((i) => i.required && i.default === undefined)) {
+          const filled =
+            input.key === "host" ||
+            shared.has(input.key) ||
+            Object.hasOwn(item.bind ?? {}, input.key) ||
+            Object.hasOwn(item.values ?? {}, input.key);
+          assert.ok(filled, `${item.appId}.${input.key} has no value in the bundle`);
+        }
+      });
+    }
+  });
+
+  test("on an empty cluster everything is in, optional Longhorn starts unticked", async () => {
+    const empty = createFakeK8s({ absentGroups: ["cert-manager.io", "metrics.k8s.io"] });
+    const view = bundleView(bundles[0]!, await discover(empty, catalog));
+    const longhorn = view.items.find((i) => i.appId === "longhorn")!;
+    assert.deepEqual([longhorn.skip, longhorn.selected], [false, false]);
+    assert.match(longhorn.reason!, /open-iscsi/);
+    for (const item of view.items.filter((i) => i.appId !== "longhorn")) {
+      assert.deepEqual([item.appId, item.skip, item.selected], [item.appId, false, true]);
+    }
+  });
+
+  test("on a healthy cluster, installed apps and met basics are skipped", async () => {
+    const view = bundleView(bundles[0]!, await discover(createFakeK8s({ objects: healthyCluster() }), catalog));
+    const skipped = view.items.filter((i) => i.skip).map((i) => i.appId);
+    assert.deepEqual(skipped, [
+      "traefik",
+      "cert-manager",
+      "metrics-server",
+      "local-path-provisioner",
+      "grafana",
+      "headlamp",
+    ]);
+    assert.equal(view.items.find((i) => i.appId === "grafana")!.reason, "Already installed");
+    assert.match(view.items.find((i) => i.appId === "traefik")!.reason!, /^Already covered: IngressClass traefik/);
+    assert.deepEqual(
+      view.items.filter((i) => i.selected).map((i) => i.appId),
+      ["authentik", "gitea", "ntfy"]
+    );
+    assert.deepEqual(view.suggested, { baseDomain: "home.example.com", storageClass: "longhorn" });
+  });
+});
+
 // --- the service ------------------------------------------------------------
 
 describe("catalog service caching", () => {
@@ -604,6 +673,16 @@ describe("catalog routes", () => {
     assert.equal(headlamp.detected.appId, "headlamp");
     assert.equal(headlamp.install.kind, "helm");
     await get("/apps/nope", 404);
+  });
+
+  test("bundles, default first, with the service listing the same", async () => {
+    const views = await get<CatalogBundleView[]>("/bundles");
+    assert.deepEqual(
+      views.map((b) => b.id),
+      ["self-hosted"]
+    );
+    assert.equal(mock.ctx.services.get("catalog").bundles()[0]!.id, "self-hosted");
+    assert.ok(views[0]!.items.find((i) => i.appId === "grafana")!.skip);
   });
 
   test("discovery, with refresh", async () => {

@@ -1,4 +1,4 @@
-import type { CatalogEntry, CatalogService, DiscoveryReport } from "../../contracts/catalog.js";
+import type { CatalogBundle, CatalogEntry, CatalogService, DiscoveryReport } from "../../contracts/catalog.js";
 import type { K8sApi } from "../../contracts/k8s.js";
 import { discover } from "./discover.js";
 
@@ -7,6 +7,7 @@ export const DISCOVERY_TTL_MS = 30_000;
 export interface CatalogServiceOptions {
   k8s: () => K8sApi;
   entries: readonly CatalogEntry[];
+  bundles?: readonly CatalogBundle[];
   ttlMs?: number;
   now?: () => number;
 }
@@ -36,6 +37,7 @@ export function createCatalogService(options: CatalogServiceOptions): CatalogSer
   return {
     entries: () => entries,
     get: (appId) => entries.find((entry) => entry.id === appId),
+    bundles: () => options.bundles ?? [],
     async discover(refresh = false) {
       if (!refresh && cached && now() - cached.at < ttl) return structuredClone(cached.report);
       if (!refresh && inflight) return structuredClone(await inflight);

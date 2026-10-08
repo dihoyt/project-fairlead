@@ -1,6 +1,7 @@
 import type { CatalogAppView, CatalogSlot } from "../../contracts/catalog.js";
 import type { Module } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
+import { bundleView, bundles } from "./bundles.js";
 import { catalog } from "./entries.js";
 import { migrations } from "./migrations.js";
 import { createCatalogService } from "./service.js";
@@ -19,7 +20,7 @@ const mod: Module = {
   milestone: "A",
   migrations,
   register(ctx) {
-    const service = createCatalogService({ k8s: () => ctx.services.get("k8s"), entries: catalog });
+    const service = createCatalogService({ k8s: () => ctx.services.get("k8s"), entries: catalog, bundles });
     ctx.services.provide("catalog", service);
 
     const views = async (refresh: boolean): Promise<CatalogAppView[]> => {
@@ -45,6 +46,10 @@ const mod: Module = {
       return { ...structuredClone(entry), detected: report.apps.find((app) => app.appId === entry.id)! };
     });
     ctx.route("GET /api/catalog/discovery", (req) => service.discover(req.query.refresh === "1"));
+    ctx.route("GET /api/catalog/bundles", async (req) => {
+      const report = await service.discover(req.query.refresh === "1");
+      return service.bundles().map((bundle) => bundleView(bundle, report));
+    });
   },
 };
 
