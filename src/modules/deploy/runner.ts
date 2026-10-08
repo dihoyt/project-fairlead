@@ -1,6 +1,8 @@
 import type { Response } from "express";
 import type { CatalogService, DiscoveryReport } from "../../contracts/catalog.js";
 import type {
+  AccessRequest,
+  AccessView,
   DeployJobRequest,
   DeployJobState,
   DeployJobView,
@@ -17,6 +19,7 @@ import type { LogLines } from "../../contracts/workloads.js";
 import { HttpError } from "../../runtime/http.js";
 import { errorMessage } from "../../runtime/log.js";
 import type { Defaults } from "./apps.js";
+import { accessView, AccessStore, type Resolver } from "./access.js";
 import { enableHint, type DeployConfig } from "./config.js";
 import { CONTAINER, DEADLINE_SECONDS, JOB_LABEL, jobManifest, valuesSecret } from "./job.js";
 import { jobName, render, valuesSecretName, type Rendered } from "./plan.js";
@@ -107,6 +110,8 @@ export interface RenderContext {
 }
 
 export interface DeployerOptions {
+  // DNS lookups for the Access view, for tests.
+  resolve?: Resolver;
   now?: () => number;
   // Overrides the random secrets a run generates, for tests.
   generate?: () => string;
@@ -123,6 +128,7 @@ export class Deployer {
   private readonly store: Store;
   private readonly config: DeployConfig;
   private readonly options: DeployerOptions;
+  readonly access: AccessStore;
 
   constructor(ctx: ModuleContext, store: Store, config: DeployConfig, options: DeployerOptions = {}) {
     this.ctx = ctx;
@@ -130,6 +136,7 @@ export class Deployer {
     this.config = config;
     this.options = options;
     this.now = options.now ?? Date.now;
+    this.access = new AccessStore(ctx.db, ctx.orgId);
   }
 
   private iso() {
@@ -188,8 +195,11 @@ export class Deployer {
   private effectiveDefaults(discovery: DiscoveryReport | undefined): Defaults {
     const set = this.config.defaults();
     const found = discovery?.suggested ?? {};
+    const access = this.access.get();
     return {
-      baseDomain: set.baseDomain ?? found.baseDomain,
+      // The Access step is the latest explicit choice of domain.
+      baseDomain: access?.baseDomain || (set.baseDomain ?? found.baseDomain),
+      ...(access ? { access: access.mode } : {}),
       ingressClass: set.ingressClass ?? found.ingressClass,
       clusterIssuer: set.clusterIssuer ?? found.clusterIssuer,
       storageClass: set.storageClass ?? found.storageClass,
@@ -205,7 +215,7 @@ export class Deployer {
       namespace: this.config.namespace(),
       installerServiceAccount: this.config.serviceAccount(),
       image: this.config.image(),
-      defaults: Object.fromEntries(Object.entries(defaults).filter(([, v]) => v !== undefined)),
+      defaults: Object.fromEntries(Object.entries(defaults).filter(([key, v]) => v !== undefined && key !== "access")),
     };
   }
 
@@ -248,6 +258,21 @@ export class Deployer {
       mode,
       this.options.generate
     );
+  }
+
+  async accessView(refresh = false): Promise<AccessView> {
+    const { discovery } = await this.discover(refresh);
+    return accessView(this.access.get(), discovery, this.options.resolve);
+  }
+
+  saveAccess(actor: string, request: AccessRequest): void {
+    this.access.set(request, actor, this.iso());
+    this.ctx.audit.record({
+      actor,
+      action: "deploy.set-access",
+      target: request.mode,
+      detail: `base domain ${request.baseDomain}`,
+    });
   }
 
   async plan(request: DeployRequest): Promise<DeployPlan> {

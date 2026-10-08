@@ -109,7 +109,8 @@ export interface DeployJobRequest extends DeployRequest {
 
 export interface BundleRequest {
   bundleId: string;
-  // The bundle's shared inputs: baseDomain, adminEmail, adminPassword, storageClass.
+  // The bundle's shared inputs: access, baseDomain, adminEmail, adminPassword,
+  // storageClass, and the access mode's own.
   inputs: Record<string, DeployValue>;
   // Per-app overrides, app id -> input key -> value.
   apps?: Record<string, Record<string, DeployValue>>;
@@ -221,6 +222,59 @@ export interface UpgradeRequest {
   // "available" or "unknown"; anything else is a 400 naming the app and its
   // reason. Run in catalog install order whatever order they are given in.
   appIds?: string[];
+}
+
+// --- Access: how people reach the deployed apps ----------------------------
+
+// Decides how every app's Ingress is written, so it is chosen before any app
+// is deployed and saved for later deploys:
+// - cloudflare-tunnel: cloudflared runs in the cluster; one wildcard public
+//   hostname on the tunnel routes to the ingress controller. Cloudflare
+//   terminates TLS, so Ingresses carry none; URLs are https.
+// - tailscale: the Tailscale operator; app Ingresses use its "tailscale"
+//   class and get https://<label>.<tailnet>, reachable on the tailnet only.
+// - local: hostnames only the local network resolves (a hosts file or local
+//   DNS); no certificates, URLs are http.
+// - direct: a public wildcard DNS record at ports forwarded to the ingress;
+//   certificates from cert-manager's issuer.
+export type AccessMode = "cloudflare-tunnel" | "tailscale" | "local" | "direct";
+
+export interface AccessRequest {
+  mode: AccessMode;
+  // Apps get <label>.<baseDomain>. Tailscale: the tailnet's DNS name,
+  // "tail1234.ts.net".
+  baseDomain: string;
+}
+
+export interface AccessHost {
+  appId?: string;
+  host: string;
+  url: string;
+  // The name resolves from this product's pod. Absent when not looked up
+  // (tailscale: the pod is not on the tailnet).
+  resolves?: boolean;
+}
+
+export interface AccessView {
+  // Unset until the Access step is saved.
+  mode?: AccessMode;
+  baseDomain?: string;
+  // The catalog app the mode needs (cloudflared, tailscale-operator) and
+  // whether discovery found it.
+  appId?: string;
+  appInstalled?: boolean;
+  // Ingress hosts under baseDomain (tailscale: the tailscale-class ones).
+  hosts: AccessHost[];
+  // cloudflare-tunnel: the tunnel's public hostname; direct: the DNS record.
+  // "*.example.com".
+  wildcard?: string;
+  // cloudflare-tunnel: the service that public hostname routes to.
+  ingressService?: string;
+  // local and direct: what the names must point at, when discovery found it.
+  ingressAddress?: string;
+  // local: "<address> <host>" per host, ready to paste into a hosts file;
+  // "<ingress IP>" stands in for an address discovery could not find.
+  hostsFile?: string;
 }
 
 // --- For other modules -------------------------------------------------------

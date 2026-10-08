@@ -14,6 +14,7 @@ import type {
 } from "../catalog.js";
 import {
   UPGRADE_RUN,
+  type AccessView,
   type BundlePlan,
   type BundleRunView,
   type DeployJobView,
@@ -404,6 +405,8 @@ export const mockIngressHosts: IngressHost[] = [
     namespace: "monitoring",
     ingress: "grafana",
     service: "grafana",
+    serviceUrl: "http://grafana.monitoring.svc:80",
+    ingressClass: "traefik",
     appId: "grafana",
   },
   {
@@ -413,6 +416,8 @@ export const mockIngressHosts: IngressHost[] = [
     namespace: "longhorn-system",
     ingress: "longhorn-ingress",
     service: "longhorn-frontend",
+    serviceUrl: "http://longhorn-frontend.longhorn-system.svc:80",
+    ingressClass: "traefik",
     appId: "longhorn",
   },
   {
@@ -422,6 +427,7 @@ export const mockIngressHosts: IngressHost[] = [
     namespace: "media",
     ingress: "jellyfin",
     service: "jellyfin",
+    ingressClass: "traefik",
   },
 ];
 
@@ -473,6 +479,8 @@ export const mockDiscovery: DiscoveryReport = {
     ingressClass: "traefik",
     clusterIssuer: "letsencrypt-prod",
     baseDomain: "example.test",
+    ingressService: "http://traefik.kube-system.svc.cluster.local:80",
+    ingressAddress: "10.0.0.20",
   },
 };
 
@@ -514,7 +522,7 @@ export const mockBundle: CatalogBundle = {
       hostPrefix: "longhorn",
       bind: {},
       values: {},
-      note: "Every node needs open-iscsi; tick it once yours do.",
+      note: "Every node needs open-iscsi; untick it if yours don't have it.",
     },
     { appId: "authentik", required: true, hostPrefix: "auth", bind: { adminEmail: "adminEmail" }, values: {} },
     {
@@ -539,7 +547,7 @@ export const mockBundleView: CatalogBundleView = {
   items: mockBundle.items.map((item): BundleItemView => {
     const detected = mockDetected.find((d) => d.appId === item.appId)!;
     const skip = detected.state === "installed" || item.appId === "local-path-provisioner";
-    const selected = !skip && (item.required || item.appId !== "longhorn");
+    const selected = !skip;
     return {
       ...item,
       detected,
@@ -570,7 +578,36 @@ export const mockDeployStatus: DeployStatus = {
   namespace: "console",
   installerServiceAccount: "console-installer",
   image: "docker.io/alpine/k8s@sha256:0000000000000000000000000000000000000000000000000000000000000000",
-  defaults: { ...mockDiscovery.suggested },
+  defaults: {
+    storageClass: mockDiscovery.suggested.storageClass,
+    ingressClass: mockDiscovery.suggested.ingressClass,
+    clusterIssuer: mockDiscovery.suggested.clusterIssuer,
+    baseDomain: mockDiscovery.suggested.baseDomain,
+  },
+};
+
+export const mockAccess: AccessView = {
+  mode: "cloudflare-tunnel",
+  baseDomain: "example.test",
+  appId: "cloudflared",
+  appInstalled: false,
+  hosts: [
+    { appId: "grafana", host: "grafana.example.test", url: "https://grafana.example.test", resolves: true },
+    { appId: "longhorn", host: "longhorn.example.test", url: "https://longhorn.example.test", resolves: false },
+  ],
+  wildcard: "*.example.test",
+  ingressService: "http://traefik.kube-system.svc.cluster.local:80",
+};
+
+export const mockAccessLocal: AccessView = {
+  mode: "local",
+  baseDomain: "example.test",
+  hosts: [
+    { appId: "grafana", host: "grafana.example.test", url: "http://grafana.example.test", resolves: false },
+    { appId: "longhorn", host: "longhorn.example.test", url: "http://longhorn.example.test", resolves: false },
+  ],
+  ingressAddress: "10.0.0.20",
+  hostsFile: "10.0.0.20 grafana.example.test\n10.0.0.20 longhorn.example.test\n",
 };
 
 export const mockDeployDisabled: DeployStatus = {
@@ -805,7 +842,7 @@ export const mockUpgradeReport: UpgradeReport = {
       notes: [{ version: "0.0.0-mock", note: "The bundled database moves to a new chart; back up first." }],
       commands: [
         "helm upgrade gitea oci://docker.gitea.com/charts/gitea --version 0.0.0-mock --namespace gitea " +
-          "--reuse-values --wait --timeout 10m",
+          "--reset-then-reuse-values --wait --timeout 10m",
       ],
       url: "https://gitea.example.test",
     },

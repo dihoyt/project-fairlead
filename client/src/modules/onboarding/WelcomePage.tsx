@@ -21,6 +21,7 @@ import { WhatIsThis } from "../../ui/deploy";
 const TITLES: Record<OnboardingStepId, { label: string; description: string }> = {
   password: { label: "Password", description: "Admin password changed" },
   cluster: { label: "Cluster", description: "Connection and permissions" },
+  access: { label: "Access", description: "How you reach your apps" },
   oidc: { label: "Sign-in", description: "Your identity provider" },
   links: { label: "Links", description: "Rancher, Headlamp, …" },
   hosts: { label: "Hosts", description: "NAS and servers over SSH" },
@@ -130,6 +131,8 @@ export function WelcomePage() {
         );
       case "cluster":
         return <ClusterStep {...props} />;
+      case "access":
+        return <RemoteAccess />;
       case "oidc":
         return <OidcStep {...props} />;
       case "links":

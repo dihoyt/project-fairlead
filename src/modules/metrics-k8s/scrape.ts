@@ -59,8 +59,12 @@ interface Usage {
   txBytes?: number;
 }
 
+interface NetworkUsage extends Usage {
+  interfaces?: Array<{ name?: string; rxBytes?: number; txBytes?: number }>;
+}
+
 interface KubeletSummary {
-  node?: { cpu?: Usage; memory?: Usage; fs?: Usage; network?: Usage };
+  node?: { cpu?: Usage; memory?: Usage; fs?: Usage; network?: NetworkUsage };
   pods?: Array<{
     podRef?: { name?: string; namespace?: string };
     containers?: Array<{ name?: string; cpu?: Usage; memory?: Usage }>;
@@ -173,10 +177,10 @@ export function createScraper(getK8s: () => K8sApi, options: ScraperOptions = {}
   let last: Snapshot | undefined;
   let inFlight: Promise<Snapshot> | undefined;
 
-  function rates(node: string, network: Usage | undefined, fallbackAt: number) {
-    const rx = num(network?.rxBytes);
-    const tx = num(network?.txBytes);
-    if (rx === undefined || tx === undefined) return {};
+  function rates(node: string, network: NetworkUsage | undefined, fallbackAt: number) {
+    const counted = nodeCounters(network);
+    if (!counted) return {};
+    const { rx, tx } = counted;
     const at = (network?.time && Date.parse(network.time)) || fallbackAt;
     const prev = counters.get(node);
     counters.set(node, { at, rx, tx });
@@ -351,6 +355,28 @@ export function createScraper(getK8s: () => K8sApi, options: ScraperOptions = {}
     },
   };
   return scraper;
+}
+
+// Pod and overlay interfaces carry traffic that also crosses the node's own
+// NICs, so counting them would count it twice.
+const VIRTUAL_INTERFACE =
+  /^(lo|veth|cni|flannel|cali|tunl|vxlan|docker|br-|virbr|kube-|cilium|lxc|weave|genev|tailscale|wg|vnet|tap|tun|dummy|nodelocaldns)/;
+
+// The kubelet fills the top-level counters only from an interface named
+// eth0; on a host whose NIC is called anything else (ens18, enp3s0, ...)
+// they are absent and only the per-interface list is set.
+export function nodeCounters(network: NetworkUsage | undefined): { rx: number; tx: number } | undefined {
+  const rx = num(network?.rxBytes);
+  const tx = num(network?.txBytes);
+  if (rx !== undefined && tx !== undefined) return { rx, tx };
+  let sum: { rx: number; tx: number } | undefined;
+  for (const i of network?.interfaces ?? []) {
+    const r = num(i.rxBytes);
+    const t = num(i.txBytes);
+    if (!i.name || VIRTUAL_INTERFACE.test(i.name) || r === undefined || t === undefined) continue;
+    sum = { rx: (sum?.rx ?? 0) + r, tx: (sum?.tx ?? 0) + t };
+  }
+  return sum;
 }
 
 export function toSamples(snapshot: Snapshot): Sample[] {
