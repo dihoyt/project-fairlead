@@ -16,11 +16,47 @@ export const bundles: readonly CatalogBundle[] = [
       "Sets up the whole self-hosted toolkit with sensible defaults: sign-in, Git, dashboards, a cluster browser and phone alerts.",
     inputs: [
       {
+        key: "access",
+        label: "How you reach the apps",
+        help: "Decides how every app is published, so it comes first. You can change it later under Setup.",
+        kind: "select",
+        required: true,
+        options: [
+          { value: "cloudflare-tunnel", label: "Cloudflare Tunnel: from anywhere, no open ports" },
+          { value: "tailscale", label: "Tailscale: from your own devices only" },
+          { value: "local", label: "Local network only" },
+          { value: "direct", label: "Direct: ports 80 and 443 forwarded to the cluster" },
+        ],
+      },
+      {
         key: "baseDomain",
         label: "Base domain",
-        help: "Apps get names under it, like git.example.com. Point a wildcard DNS record for it at your ingress.",
+        help: "Apps get names under it, like git.example.com. With Tailscale, your tailnet's DNS name, like tail1234.ts.net.",
         kind: "text",
         required: true,
+      },
+      {
+        key: "tunnelToken",
+        label: "Cloudflare tunnel token",
+        help: "In Cloudflare Zero Trust, Networks > Tunnels > Create a tunnel (Cloudflared), then copy the token from the install command.",
+        kind: "secret",
+        required: true,
+        when: { input: "access", in: ["cloudflare-tunnel"] },
+      },
+      {
+        key: "tailscaleClientId",
+        label: "Tailscale OAuth client ID",
+        help: "Tailscale admin console > Settings > OAuth clients, with Devices Core and Auth Keys write scopes and tag:k8s-operator.",
+        kind: "text",
+        required: true,
+        when: { input: "access", in: ["tailscale"] },
+      },
+      {
+        key: "tailscaleClientSecret",
+        label: "Tailscale OAuth client secret",
+        kind: "secret",
+        required: true,
+        when: { input: "access", in: ["tailscale"] },
       },
       {
         key: "adminEmail",
@@ -45,6 +81,13 @@ export const bundles: readonly CatalogBundle[] = [
       },
     ],
     items: [
+      { appId: "cloudflared", required: true, when: { input: "access", in: ["cloudflare-tunnel"] } },
+      {
+        appId: "tailscale-operator",
+        required: true,
+        bind: { clientId: "tailscaleClientId", clientSecret: "tailscaleClientSecret" },
+        when: { input: "access", in: ["tailscale"] },
+      },
       { appId: "traefik", required: true },
       { appId: "cert-manager", required: true, bind: { acmeEmail: "adminEmail" } },
       { appId: "metrics-server", required: true },

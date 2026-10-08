@@ -269,7 +269,7 @@ export const catalog: readonly CatalogEntry[] = [
       {
         key: "tunnelToken",
         label: "Tunnel token",
-        help: "Create a tunnel in the Cloudflare dashboard and paste its token.",
+        help: "In Cloudflare Zero Trust, Networks > Tunnels > Create a tunnel (Cloudflared), then copy the token from the install command.",
         kind: "secret",
         required: true,
       },
@@ -291,6 +291,10 @@ export const catalog: readonly CatalogEntry[] = [
       { key: "clientSecret", label: "OAuth client secret", kind: "secret", required: true },
     ],
     exposesUi: false,
-    prerequisites: ["A Tailscale account and an OAuth client with the Devices Core and Auth Keys scopes."],
+    prerequisites: [
+      "A Tailscale account with MagicDNS and HTTPS certificates turned on (admin console > DNS).",
+      'Tags in the tailnet policy: "tag:k8s-operator" owned by you, and "tag:k8s" owned by "tag:k8s-operator".',
+      "An OAuth client with the Devices Core and Auth Keys write scopes and the tag:k8s-operator tag.",
+    ],
   },
 ];
