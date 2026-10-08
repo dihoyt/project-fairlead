@@ -6,6 +6,7 @@ import { putSetting, settingOf, stringSetting } from "../settings";
 import { AppOffer, useDiscovery } from "../discovery";
 import { StepFrame, useAction, type StepProps } from "../shared";
 import { AuthentikWire, authentikAddresses } from "./AuthentikWire";
+import { EntraWire } from "./EntraWire";
 
 // Offered when there is no identity provider yet. Once Authentik is in the
 // cluster, wiring it creates the provider and application inside it through
@@ -54,6 +55,7 @@ function SignInOffers({
             : null}
         </Stack>
       ))}
+      <EntraWire onWired={(_view, test) => onWired(test.issuer ?? "", test.ok)} onOpenAccess={onOpenAccess} />
     </Stack>
   );
 }
