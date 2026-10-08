@@ -1,10 +1,10 @@
 import { afterEach, test } from "node:test";
 import assert from "node:assert/strict";
-import type { CatalogEntry } from "../../../src/contracts/catalog.js";
+import type { CatalogBundle, CatalogEntry } from "../../../src/contracts/catalog.js";
 import type { BundlePlan, BundleRunView, DeployJobView } from "../../../src/contracts/deploy.js";
 import type { Events } from "../../../src/contracts/events.js";
 import { RESOURCES, type KubeObject } from "../../../src/contracts/k8s.js";
-import { createMockCatalogService, mockCatalog } from "../../../src/contracts/mocks/catalog.js";
+import { createMockCatalogService, mockBundle, mockCatalog } from "../../../src/contracts/mocks/catalog.js";
 import { createMockContext, type MockContext } from "../../../src/contracts/mocks/context.js";
 import { createFakeK8s, type FakeK8s } from "../../../src/contracts/mocks/k8s.js";
 import { MOCK_NOW } from "../../../src/contracts/mocks/time.js";
@@ -41,12 +41,12 @@ interface Env {
 }
 let env: Env | undefined;
 
-async function setup(): Promise<Env> {
+async function setup(bundles?: CatalogBundle[]): Promise<Env> {
   const k8s = createFakeK8s();
   const mock = createMockContext("deploy", {
     migrations: mod.migrations,
     settings: { "deploy.image": IMAGE, "deploy.namespace": NS },
-    services: { k8s, catalog: createMockCatalogService({ entries }) },
+    services: { k8s, catalog: createMockCatalogService({ entries, ...(bundles ? { bundles } : {}) }) },
   });
   const { deployer } = registerDeploy(mock.ctx, { now: () => MOCK_NOW });
   const finished: Env["finished"] = [];
@@ -181,6 +181,35 @@ test("bundle run: one step at a time, stops at the first failure", async () => {
   assert.ok(run.finishedAt);
   assert.deepEqual(e.finished, [{ runId: "br_1", bundleId: "self-hosted", state: "failed" }]);
   assert.equal((await call<BundleRunView[]>(e, "GET", "/bundles")).length, 1);
+});
+
+test("bundle run: an optional item that fails is recorded and the rollout carries on", async () => {
+  const bundle: CatalogBundle = {
+    ...mockBundle,
+    items: mockBundle.items.map((item) => (item.appId === "authentik" ? { ...item, required: false } : item)),
+  };
+  const e = await setup([bundle]);
+  await call<BundleRunView>(e, "POST", "/bundles", {
+    bundleId: "self-hosted",
+    inputs: answers,
+    include: ["authentik"],
+  });
+  await finishJob(e, "dj_1", true);
+  await finishJob(e, "dj_2", false);
+  let run = await call<BundleRunView>(e, "GET", "/bundles/br_1");
+  assert.equal(run.state, "running");
+  assert.equal(states(run).authentik, "failed");
+  assert.equal(states(run).gitea, "running");
+  assert.deepEqual(e.finished, []);
+
+  for (let n = 3; n <= 5; n++) await finishJob(e, `dj_${n}`, true);
+  run = await call<BundleRunView>(e, "GET", "/bundles/br_1");
+  assert.equal(run.state, "failed", "a failed item still shows on the run");
+  assert.deepEqual(
+    run.steps.filter((s) => s.state === "succeeded").map((s) => s.appId),
+    ["metrics-server", "gitea", "headlamp", "ntfy"]
+  );
+  assert.deepEqual(e.finished, [{ runId: "br_1", bundleId: "self-hosted", state: "failed" }]);
 });
 
 test("bundle run: every step through to success", async () => {
