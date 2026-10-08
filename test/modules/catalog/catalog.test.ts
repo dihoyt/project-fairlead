@@ -11,6 +11,7 @@ import { mockCatalog } from "../../../src/contracts/mocks/catalog.js";
 import { createMockContext, mockViewer, type MockContext } from "../../../src/contracts/mocks/context.js";
 import { createFakeK8s, OWNER_LABEL, type FakeK8sOptions } from "../../../src/contracts/mocks/k8s.js";
 import { deployedLabel } from "../../../src/contracts/deployed.js";
+import { pickVersion } from "../../../src/contracts/kubeversion.js";
 import { createMockDeployService } from "../../../src/contracts/mocks/deploy.js";
 import { product } from "../../../src/product.js";
 import mod from "../../../src/modules/catalog/index.js";
@@ -212,6 +213,25 @@ describe("catalog entries", () => {
     }
   });
 
+  test("every app installs on a k3s 1.31 cluster; Longhorn falls back to the 1.12 line there", () => {
+    for (const entry of catalog) {
+      if (entry.install.kind === "patch") continue;
+      for (const fallback of entry.install.kind === "helm" ? (entry.install.fallbacks ?? []) : []) {
+        assert.match(fallback.version, /^v?\d+\.\d+\.\d+$/, entry.id);
+      }
+      const picked = pickVersion(entry.install, "v1.31.4+k3s1");
+      assert.ok(picked.ok, `${entry.id}: ${picked.ok ? "" : picked.reason}`);
+    }
+    const longhorn = catalog.find((e) => e.id === "longhorn")!.install;
+    assert.deepEqual(pickVersion(longhorn, "v1.31.4+k3s1"), {
+      ok: true,
+      version: "1.12.1",
+      kubeVersion: ">=1.25.0-0",
+      fellBack: true,
+    });
+    assert.equal((pickVersion(longhorn, "v1.34.2") as { version: string }).version, "1.13.0");
+  });
+
   test("every installable app has a detection signature", () => {
     for (const entry of catalog) {
       if (entry.install.kind === "patch") continue;
@@ -301,6 +321,19 @@ describe("discovery over a healthy synthetic cluster", () => {
   let report: DiscoveryReport;
   before(async () => {
     report = await discover(createFakeK8s({ objects: healthyCluster() }), catalog, () => new Date(0));
+  });
+
+  test("reports the cluster's Kubernetes version, and leaves it out when it can't be read", async () => {
+    assert.equal(report.kubernetesVersion, "v1.31.4+k3s1");
+    const k8s = createFakeK8s();
+    const silent = await discover(
+      {
+        ...k8s,
+        version: () => Promise.reject(new Error("forbidden")),
+      },
+      catalog
+    );
+    assert.equal("kubernetesVersion" in silent, false);
   });
 
   test("Ingress hosts carry scheme by TLS, their service and matched app; wildcards are skipped", () => {

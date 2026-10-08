@@ -12,7 +12,14 @@ const host = (): CatalogInput => ({
   required: true,
 });
 
-const helm = (repo: string, chart: string, version: string): InstallSource => ({ kind: "helm", repo, chart, version });
+// kubeVersion is the chart's own constraint for that version, copied from
+// its Chart.yaml; charts that declare none leave it out.
+const helm = (
+  repo: string,
+  chart: string,
+  version: string,
+  more: { kubeVersion?: string; fallbacks?: Array<{ version: string; kubeVersion?: string }> } = {}
+): InstallSource => ({ kind: "helm", repo, chart, version, ...more });
 
 export const catalog: readonly CatalogEntry[] = [
   {
@@ -42,7 +49,7 @@ export const catalog: readonly CatalogEntry[] = [
     summary: "Routes web traffic from outside the cluster to the right app by hostname.",
     slots: ["cluster-basics"],
     homepage: "https://traefik.io",
-    install: helm("https://traefik.github.io/charts", "traefik", "41.6.1"),
+    install: helm("https://traefik.github.io/charts", "traefik", "41.6.1", { kubeVersion: ">=1.25.0-0" }),
     namespace: "traefik",
     requires: [],
     inputs: [],
@@ -95,7 +102,10 @@ export const catalog: readonly CatalogEntry[] = [
     slots: ["links", "cluster-basics"],
     linkKey: "longhorn",
     homepage: "https://longhorn.io",
-    install: helm("https://charts.longhorn.io", "longhorn", "1.13.0"),
+    install: helm("https://charts.longhorn.io", "longhorn", "1.13.0", {
+      kubeVersion: ">=1.34.0-0",
+      fallbacks: [{ version: "1.12.1", kubeVersion: ">=1.25.0-0" }],
+    }),
     namespace: "longhorn-system",
     requires: [],
     inputs: [host()],
@@ -112,7 +122,9 @@ export const catalog: readonly CatalogEntry[] = [
     slots: ["links"],
     linkKey: "rancher",
     homepage: "https://www.rancher.com",
-    install: helm("https://releases.rancher.com/server-charts/stable", "rancher", "2.15.2"),
+    install: helm("https://releases.rancher.com/server-charts/stable", "rancher", "2.15.2", {
+      kubeVersion: "<1.37.0-0",
+    }),
     namespace: "cattle-system",
     requires: ["cert-manager"],
     inputs: [
@@ -168,7 +180,7 @@ export const catalog: readonly CatalogEntry[] = [
     slots: ["links"],
     linkKey: "grafana",
     homepage: "https://grafana.com/oss/grafana",
-    install: helm("https://grafana-community.github.io/helm-charts", "grafana", "13.3.1"),
+    install: helm("https://grafana-community.github.io/helm-charts", "grafana", "13.3.1", { kubeVersion: "^1.25.0-0" }),
     namespace: "monitoring",
     requires: [],
     inputs: [host(), { key: "adminPassword", label: "Admin password", kind: "secret", required: true }],
@@ -196,7 +208,7 @@ export const catalog: readonly CatalogEntry[] = [
     summary: "Backs up your apps and their volumes to S3-compatible storage, on a schedule.",
     slots: ["backups"],
     homepage: "https://velero.io",
-    install: helm("https://vmware-tanzu.github.io/helm-charts", "velero", "12.2.0"),
+    install: helm("https://vmware-tanzu.github.io/helm-charts", "velero", "12.2.0", { kubeVersion: ">=1.16.0-0" }),
     namespace: "velero",
     requires: [],
     inputs: [
