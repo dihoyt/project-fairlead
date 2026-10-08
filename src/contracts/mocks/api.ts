@@ -18,6 +18,7 @@ import {
   mockTargets,
 } from "./backups.js";
 import {
+  mockBundleView,
   mockCatalogApps,
   mockDeployJob,
   mockDeployLog,
@@ -591,6 +592,7 @@ export const apiMocks: ApiMocks = {
   "GET /api/catalog/apps": mockCatalogApps,
   "GET /api/catalog/apps/:id": mockCatalogApps.find((app) => app.id === "headlamp")!,
   "GET /api/catalog/discovery": mockDiscovery,
+  "GET /api/catalog/bundle": mockBundleView,
 
   "GET /api/deploy/status": mockDeployStatus,
   "POST /api/deploy/plan": mockDeployPlan,

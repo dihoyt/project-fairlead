@@ -161,10 +161,60 @@ export interface DiscoveryReport {
   };
 }
 
+// "Deploy bundle": the whole self-hosted set in one go, from a handful of
+// answers given once. Items run in order; each app's own inputs are filled
+// from the bundle's answers, literal defaults, and "<hostPrefix>.<baseDomain>"
+// for its host. Storage, ingress class and issuer come from the deploy
+// module's defaults, as for a single deploy.
+export interface BundleItem {
+  appId: string;
+  // Required items are always part of the rollout; optional ones can be
+  // unticked (and some start unticked, see BundleItemView.selected).
+  required: boolean;
+  // Host label for apps with a "host" input: "git" makes git.<baseDomain>.
+  hostPrefix?: string;
+  // App input key -> bundle input key it takes its value from.
+  bind: Record<string, string>;
+  // App input key -> literal value.
+  values: Record<string, string | boolean>;
+  // One sentence shown beside the item: why it is optional, what it needs.
+  note?: string;
+}
+
+export interface CatalogBundle {
+  id: string;
+  name: string;
+  summary: string;
+  // Asked once for the whole bundle: "baseDomain", "adminEmail", "adminPassword".
+  inputs: CatalogInput[];
+  items: BundleItem[];
+}
+
+export interface BundleItemView extends BundleItem {
+  detected: DetectedApp;
+  // Already installed (or its job already done, like a default storage
+  // class): the rollout skips it.
+  skip: boolean;
+  // Ticked by default: required items and optional ones whose
+  // prerequisites cannot be checked from here start unticked.
+  selected: boolean;
+  // Why it is skipped or unticked, when it is.
+  reason?: string;
+}
+
+export interface CatalogBundleView extends Omit<CatalogBundle, "items"> {
+  items: BundleItemView[];
+  // Discovery's suggestion for baseDomain, to prefill the one question
+  // that matters most.
+  suggestedBaseDomain?: string;
+}
+
 // Provided by module "catalog" as ctx.services.get("catalog").
 export interface CatalogService {
   entries(): readonly CatalogEntry[];
   get(appId: string): CatalogEntry | undefined;
+  // The "Deploy bundle" definition, ordered so each item's requires come first.
+  bundle(): CatalogBundle;
   // Cached for a short interval; refresh forces a new look.
   discover(refresh?: boolean): Promise<DiscoveryReport>;
 }

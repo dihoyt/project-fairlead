@@ -2,7 +2,10 @@
 // it. Versions here are placeholders for building against, not the pins the
 // catalog module ships.
 import type {
+  BundleItemView,
   CatalogAppView,
+  CatalogBundle,
+  CatalogBundleView,
   CatalogEntry,
   CatalogService,
   DetectedApp,
@@ -444,16 +447,77 @@ export const mockCatalogApps: CatalogAppView[] = mockCatalog.map((entry) => ({
   detected: mockDetected.find((d) => d.appId === entry.id)!,
 }));
 
+export const mockBundle: CatalogBundle = {
+  id: "self-hosted",
+  name: "Deploy bundle",
+  summary: "Everything a small self-hosted cluster needs, with sensible defaults.",
+  inputs: [
+    {
+      key: "baseDomain",
+      label: "Base domain",
+      help: "Apps get names under it, like git.example.test.",
+      kind: "text",
+      required: true,
+    },
+    { key: "adminEmail", label: "Admin email", kind: "text", required: true },
+    { key: "adminPassword", label: "Admin password", kind: "secret", required: true },
+  ],
+  items: [
+    { appId: "traefik", required: true, bind: {}, values: {} },
+    { appId: "cert-manager", required: true, bind: { acmeEmail: "adminEmail" }, values: {} },
+    { appId: "metrics-server", required: true, bind: {}, values: {} },
+    {
+      appId: "longhorn",
+      required: false,
+      hostPrefix: "longhorn",
+      bind: {},
+      values: {},
+      note: "Every node needs open-iscsi; tick it once yours do.",
+    },
+    { appId: "authentik", required: true, hostPrefix: "auth", bind: { adminEmail: "adminEmail" }, values: {} },
+    {
+      appId: "gitea",
+      required: true,
+      hostPrefix: "git",
+      bind: { adminPassword: "adminPassword" },
+      values: { adminUser: "gitea-admin" },
+    },
+    { appId: "grafana", required: true, hostPrefix: "grafana", bind: { adminPassword: "adminPassword" }, values: {} },
+    { appId: "headlamp", required: true, hostPrefix: "headlamp", bind: {}, values: {} },
+    { appId: "ntfy", required: true, hostPrefix: "ntfy", bind: {}, values: {} },
+  ],
+};
+
+// Against mockDiscovery: Traefik, cert-manager, Longhorn and Grafana are
+// there already; metrics-server is unknown, so it stays in.
+export const mockBundleView: CatalogBundleView = {
+  ...mockBundle,
+  suggestedBaseDomain: mockDiscovery.suggested.baseDomain,
+  items: mockBundle.items.map((item): BundleItemView => {
+    const detected = mockDetected.find((d) => d.appId === item.appId)!;
+    const skip = detected.state === "installed";
+    const selected = !skip && (item.required || item.appId !== "longhorn");
+    return {
+      ...item,
+      detected,
+      skip,
+      selected,
+      ...(skip ? { reason: "Already installed" } : selected ? {} : { reason: item.note }),
+    };
+  }),
+};
+
 // A CatalogService over the mock catalog, for modules that look it up
 // (deploy) and for HTTP tests of the catalog routes' consumers.
 export function createMockCatalogService(
-  options: { entries?: readonly CatalogEntry[]; discovery?: DiscoveryReport } = {}
+  options: { entries?: readonly CatalogEntry[]; discovery?: DiscoveryReport; bundle?: CatalogBundle } = {}
 ): CatalogService {
   const entries = options.entries ?? mockCatalog;
   const discovery = options.discovery ?? mockDiscovery;
   return {
     entries: () => entries,
     get: (appId) => entries.find((entry) => entry.id === appId),
+    bundle: () => options.bundle ?? mockBundle,
     discover: async () => structuredClone(discovery),
   };
 }

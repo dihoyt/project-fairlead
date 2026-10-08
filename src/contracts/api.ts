@@ -21,7 +21,7 @@ import type {
   UserView,
 } from "./auth.js";
 import type { BackupPosture, RestoreTestMark } from "./backups.js";
-import type { CatalogAppView, DiscoveryReport } from "./catalog.js";
+import type { CatalogAppView, CatalogBundleView, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
 import type { DeployJobRequest, DeployJobView, DeployPlan, DeployRequest, DeployStatus } from "./deploy.js";
 import type { Category, CategoryDetail, CheckHistory, CheckResult, HealthBoard } from "./health.js";
@@ -204,6 +204,8 @@ export interface ApiRoutes {
   "GET /api/catalog/apps": Route<None, { slot?: string; refresh?: "1" }, None, CatalogAppView[]>;
   "GET /api/catalog/apps/:id": Route<{ id: string }, None, None, CatalogAppView>;
   "GET /api/catalog/discovery": Route<None, { refresh?: "1" }, None, DiscoveryReport>;
+  // The "Deploy bundle" with what discovery found for each item.
+  "GET /api/catalog/bundle": Route<None, { refresh?: "1" }, None, CatalogBundleView>;
 
   // --- deploy (v0.1.x) ----------------------------------------------------
   "GET /api/deploy/status": Route<None, None, None, DeployStatus>;
