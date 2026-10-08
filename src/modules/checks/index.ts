@@ -182,6 +182,29 @@ function register(ctx: ModuleContext): void {
   const store = createStore(ctx.db, ctx.orgId);
   const runner = createRunner(ctx, store);
 
+  // Secrets are keyed by row id and cannot join the transaction, so the ids
+  // are read before the rows go.
+  let doomed: string[] = [];
+  ctx.reset.add({
+    scope: "checks",
+    clear() {
+      doomed = (
+        ctx.db.prepare("SELECT id FROM checks_targets WHERE org_id = ?").all(ctx.orgId) as Array<{ id: string }>
+      ).map((row) => row.id);
+      return ctx.db.prepare("DELETE FROM checks_targets WHERE org_id = ?").run(ctx.orgId).changes;
+    },
+    async clearAfter() {
+      let removed = 0;
+      for (const id of doomed) {
+        if (await ctx.secrets.has("checks", id)) {
+          await ctx.secrets.delete("checks", id);
+          removed++;
+        }
+      }
+      return removed;
+    },
+  });
+
   ctx.health.addProvider({
     id: "checks",
     category: "checks",

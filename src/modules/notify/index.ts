@@ -69,6 +69,29 @@ function storedConfig(req: ChannelRequest): string {
 function register(ctx: ModuleContext): void {
   const { db, orgId } = ctx;
 
+  // Secrets are keyed by channel id and cannot join the transaction, so the
+  // ids are read before the rows go.
+  let doomed: string[] = [];
+  ctx.reset.add({
+    scope: "notifications",
+    clear() {
+      doomed = listChannelRows(db, orgId).map((row) => row.id);
+      db.prepare("DELETE FROM notify_pending WHERE org_id = ?").run(orgId);
+      db.prepare("DELETE FROM notify_sent WHERE org_id = ?").run(orgId);
+      return db.prepare("DELETE FROM notify_channels WHERE org_id = ?").run(orgId).changes;
+    },
+    async clearAfter() {
+      let removed = 0;
+      for (const id of doomed) {
+        if (await ctx.secrets.has("notify", id)) {
+          await ctx.secrets.delete("notify", id);
+          removed++;
+        }
+      }
+      return removed;
+    },
+  });
+
   const debounce = ctx.settings.declare({
     key: "notify.debounceSeconds",
     label: "Hold a change for (seconds)",

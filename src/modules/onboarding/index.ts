@@ -59,6 +59,11 @@ const mod: Module = {
   register(ctx) {
     const store = createStepStore(ctx);
 
+    ctx.reset.add({
+      scope: "onboarding",
+      clear: () => ctx.db.prepare("DELETE FROM onboarding_steps WHERE org_id = ?").run(ctx.orgId).changes,
+    });
+
     const state = async (user: User): Promise<OnboardingState> => {
       const list = steps(store.states(), user);
       const k8s = ctx.services.has("k8s") ? ctx.services.get("k8s") : undefined;
