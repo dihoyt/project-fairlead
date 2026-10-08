@@ -404,6 +404,7 @@ test("bundle access: the tunnel token applies only to a pasted-token setup, whic
       ["headlamp", false],
     ]
   );
+  assert.equal(api.steps[0]!.reason, "Run by the Cloudflare connector");
 
   const unanswered = await plan({ access: "cloudflare-tunnel" });
   assert.equal(unanswered.allowed, false);
@@ -411,4 +412,5 @@ test("bundle access: the tunnel token applies only to a pasted-token setup, whic
   const stale = await plan({ access: "local", cloudflareSetup: "token" });
   assert.equal(stale.allowed, true);
   assert.equal(stale.steps[0]!.skip, true);
+  assert.equal(stale.steps[0]!.reason, "Not needed for how you reach the apps");
 });
