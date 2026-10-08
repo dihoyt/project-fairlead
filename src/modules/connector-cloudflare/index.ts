@@ -30,6 +30,8 @@ const flagged = (get: () => { noLogin?: boolean } | undefined): boolean => {
   }
 };
 const SYNC_DEBOUNCE_MS = 5_000;
+// Settings carry no change event; the Access setting is looked at this often.
+const SETTING_POLL_MS = 30_000;
 const TUNNEL_SUFFIX = ".cfargotunnel.com";
 
 // A wildcard record that sends the zone to another tunnel answers for every
@@ -237,6 +239,16 @@ function register(ctx: ModuleContext): void {
       } catch (err) {
         results.push(check("access", "Access apps", "crit", message(err), { error: message(err) }));
       }
+      if (parseAllow(values.accessEmails).length === 0) {
+        results.push(
+          check(
+            "access-allow",
+            "Access allow list",
+            "warn",
+            "Empty, so no Access app is created: Edit the connector and name who may sign in (emails or @domains)"
+          )
+        );
+      }
     }
     return results;
   }
@@ -392,6 +404,15 @@ function register(ctx: ModuleContext): void {
       .reconcile(id)
       .catch(() => undefined);
   };
+
+  let policySeen = accessApps.get();
+  ctx.scheduler.every("connector-cloudflare.access-setting", SETTING_POLL_MS, async () => {
+    const policy = accessApps.get();
+    if (policy === policySeen) return;
+    policySeen = policy;
+    const found = await instance();
+    if (found) await syncNow(found.id);
+  });
 
   // New apps get their records shortly after their deploy finishes.
   let timer: NodeJS.Timeout | undefined;

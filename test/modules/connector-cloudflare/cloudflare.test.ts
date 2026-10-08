@@ -79,16 +79,23 @@ async function setup(
       suggested: { ...mockDiscovery.suggested, ...(issuer ? { clusterIssuer: issuer } : { clusterIssuer: undefined }) },
     },
   });
+  const settings: Record<string, unknown> = { "connector-cloudflare.apiBase": cf.url, ...options.settings };
   const m = createMockContext("connector-cloudflare", {
     migrations: cloudflare.migrations ?? [],
     services: { connectors: registry, deploy, k8s, catalog },
-    settings: { "connector-cloudflare.apiBase": cf.url, ...options.settings },
+    settings,
     calls: {
       "POST /api/deploy/jobs": (input) =>
         ({ id: "dj_9", appId: input.body!.appId, state: "pending" }) as unknown as DeployJobView,
       "GET /api/deploy/jobs": () => [],
     },
   });
+  const jobs = new Map<string, () => unknown>();
+  const every = m.ctx.scheduler.every.bind(m.ctx.scheduler);
+  m.ctx.scheduler.every = (name, intervalMs, fn, opts) => {
+    jobs.set(name, () => fn(new AbortController().signal));
+    return every(name, intervalMs, fn, opts);
+  };
   await cloudflare.register(m.ctx);
   const server: Server = await new Promise((resolve) => {
     const s = m.app.listen(0, "127.0.0.1", () => resolve(s));
@@ -111,6 +118,8 @@ async function setup(
     registry,
     kind,
     call,
+    settings,
+    jobs,
     setAccess(next: AccessView) {
       current = next;
     },
@@ -645,6 +654,29 @@ test("Access always without an allow list waits rather than locking everyone out
     const { body } = await s.call<CloudflareView>("POST", "/tunnel", {});
     assert.equal(s.cf.state.accessApps.length, 0);
     assert.equal(hostOf(body, `grafana.${MOCK_ZONE}`).accessApp!.state, "pending");
+    const checks = await s.kind.verify({ ...instance().config, ...instance().secrets }, new AbortController().signal);
+    const allow = checks.find((c) => c.id === "access-allow");
+    assert.equal(allow?.status, "warn");
+    assert.match(allow!.detail, /name who may sign in/);
+  } finally {
+    await s.close();
+  }
+});
+
+test("changing the Access setting syncs without waiting for the next pass", async () => {
+  const s = await setup({ config: { accessEmails: "me@example.test" } });
+  try {
+    await s.call("POST", "/tunnel", {});
+    assert.equal(s.cf.state.accessApps.length, 0);
+    const poll = s.jobs.get("connector-cloudflare.access-setting")!;
+    await poll();
+    assert.equal(s.cf.state.accessApps.length, 0, "unchanged setting: no sync");
+    s.settings["connector-cloudflare.accessApps"] = "always";
+    await poll();
+    assert.deepEqual(s.cf.state.accessApps.map((a) => a.domain).toSorted(), [
+      `gitea.${MOCK_ZONE}`,
+      `grafana.${MOCK_ZONE}`,
+    ]);
   } finally {
     await s.close();
   }
