@@ -37,6 +37,7 @@ import {
   mockRunningJob,
   mockUpgradeReport,
   mockUpgradeRun,
+  mockVolumeBackup,
 } from "./catalog.js";
 import {
   mockCloudflareConnector,
@@ -760,6 +761,9 @@ export const apiMocks: ApiMocks = {
   "POST /api/deploy/upgrades": mockUpgradeRun,
   "POST /api/deploy/actions/plan": mockReplicasPlan,
   "POST /api/deploy/actions/run": mockReplicasJob,
+  "GET /api/deploy/actions/backups/:id": mockVolumeBackup,
+  "GET /api/deploy/actions/backups/:id/files/:claim": "",
+  "POST /api/deploy/actions/backups/:id/done": { ...mockVolumeBackup, state: "gone" },
 
   "GET /api/templates": mockTemplatesView,
   "POST /api/templates/plan": mockTemplatePlan,

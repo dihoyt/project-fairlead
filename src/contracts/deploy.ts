@@ -235,7 +235,7 @@ export interface UpgradeRequest {
 // cancel go through /api/deploy/jobs, one job per release at a time, and it
 // ends with deploy.finished. Needs deploy.enabled, like installs.
 
-export type DeployActionKind = "longhorn-replicas" | "migrate-to-longhorn";
+export type DeployActionKind = "longhorn-replicas" | "migrate-to-longhorn" | "backup-volumes";
 
 // Raises Longhorn's default-replica-count Setting (what new volumes get),
 // the replica count pinned by a Longhorn StorageClass when it is lower, and,
@@ -248,19 +248,29 @@ export interface LonghornReplicasAction {
   existingVolumes: boolean;
 }
 
-// Moves one PVC's data from its current storage class to Longhorn, keeping
-// the PVC's name.
+// Moves every local-path volume an app we deployed mounts to Longhorn in one
+// stop: scale its workloads to zero, copy each volume into a new Longhorn
+// volume with a Job, rebind the claim under the same name to the copy, scale
+// back up, check the app answers, then delete the old volumes. Until that
+// last step any failure puts the claims back on their old volumes (kept by
+// setting them to Retain first) and starts the app again.
 export interface MigrateToLonghornAction {
   kind: "migrate-to-longhorn";
-  namespace: string;
-  pvc: string;
-  // Default: LonghornReplicaAdvice.target.
-  replicas?: number;
-  // Offer a download of the data before the old volume goes.
-  backupFirst?: boolean;
+  appId: string;
 }
 
-export type DeployActionRequest = LonghornReplicasAction | MigrateToLonghornAction;
+// A tar.gz of each volume migrate-to-longhorn would move, for the user to
+// download first: a pod in the app's namespace mounts them read-only while
+// the app keeps running, and this product streams each one from it. The job
+// succeeds once the pod serves; downloads go through
+// /api/deploy/actions/backups/:id with the job's id. The pod stops after an
+// hour, at .../done, or when a conversion of the app starts.
+export interface BackupVolumesAction {
+  kind: "backup-volumes";
+  appId: string;
+}
+
+export type DeployActionRequest = LonghornReplicasAction | MigrateToLonghornAction | BackupVolumesAction;
 
 export interface DeployActionStep {
   // "Raise the default replica count to 2".
@@ -288,6 +298,49 @@ export interface DeployActionPlan {
   // Objects it creates, the Job and its Secret included.
   creates: PlannedObject[];
   warnings: string[];
+  // migrate-to-longhorn and backup-volumes: the volumes it moves or saves.
+  volumes?: ActionVolume[];
+  // migrate-to-longhorn: Longhorn can place replicas on more than one node,
+  // so raising replicas (longhorn-replicas) is offered once it is done.
+  offerReplicas?: boolean;
+}
+
+export interface ActionVolume {
+  namespace: string;
+  // The PersistentVolumeClaim; its name stays the same.
+  claim: string;
+  storageClass: string;
+  // Requested size as written, "5Gi".
+  size: string;
+  // In use, from the kubelet, when a running pod mounts it.
+  usedBytes?: number;
+  // The node a local-path volume lives on.
+  node?: string;
+  // migrate-to-longhorn: the Longhorn storage class it moves to.
+  targetStorageClass?: string;
+}
+
+// preparing: the backup job is still starting the pod. ready: downloads
+// work. failed: the job failed; message says why. gone: the pod has
+// stopped (an hour passed, done was called, or a conversion started).
+export type VolumeBackupState = "preparing" | "ready" | "failed" | "gone";
+
+export interface VolumeBackupView {
+  // The backup-volumes job's id.
+  id: string;
+  appId: string;
+  namespace: string;
+  state: VolumeBackupState;
+  message?: string;
+  // When the pod stops by itself.
+  expiresAt?: string;
+  files: Array<{
+    claim: string;
+    // Relative to the API base: "api/deploy/actions/backups/dj_9/files/gitea-shared-storage".
+    path: string;
+    // "gitea-gitea-shared-storage-2026-10-08.tar.gz".
+    filename: string;
+  }>;
 }
 
 // --- Access: how people reach the deployed apps ----------------------------

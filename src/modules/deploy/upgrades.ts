@@ -118,8 +118,9 @@ export interface ReportInput {
   checkedAt: string;
 }
 
-// Ours: discovery says installed by us. Without discovery, the runner's
-// record of a succeeded install stands in.
+// Ours: discovery says installed by us. Without discovery, or for an app
+// discovery doesn't look for, the runner's record of a succeeded install
+// stands in.
 interface Ours {
   entry: CatalogEntry;
   detected?: DetectedApp;
@@ -131,7 +132,9 @@ function ours(input: ReportInput): Ours[] {
     const record = input.releases.find((r) => r.appId === entry.id);
     if (!input.discovery) return record && input.versions.has(record.release) ? [{ entry, record }] : [];
     const detected = input.discovery.apps.find((app) => app.appId === entry.id);
-    return detected?.state === "installed" && detected.ownedByUs ? [{ entry, detected, record }] : [];
+    // Discovery covers the catalog only; a template instance stands on the record.
+    if (!detected) return record && input.versions.has(record.release) ? [{ entry, record }] : [];
+    return detected.state === "installed" && detected.ownedByUs ? [{ entry, detected, record }] : [];
   });
 }
 
