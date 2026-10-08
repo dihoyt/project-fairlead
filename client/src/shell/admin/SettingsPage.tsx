@@ -5,6 +5,7 @@ import type { SettingView } from "@contracts/auth";
 import { CheckRulesEditor } from "./CheckRulesEditor";
 import { groupTitle, isSignInGroup } from "./groups";
 import { LinksSettingEditor } from "./LinksSettingEditor";
+import { ResetSection } from "./ResetSection";
 import { SettingField } from "./SettingField";
 
 export function SettingsPage() {
@@ -38,6 +39,7 @@ export function SettingsPage() {
             </Stack>
           </Paper>
         ))}
+        <ResetSection onDone={overview.reload} />
         <Paper withBorder p="lg">
           <Stack gap="xs">
             <Title order={4}>Set by the environment</Title>
