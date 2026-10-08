@@ -506,7 +506,7 @@ check_webhooks() {
   for kind in validatingwebhookconfigurations mutatingwebhookconfigurations; do
     hooks=$(kube get "$kind" -o go-template="$tpl" 2>/dev/null) || continue
     while read -r config hook svc_ns svc policy resources; do
-      [ -n "$config" ] && [ "$policy" != Ignore ] || continue
+      if [ -z "$config" ] || [ "$policy" = Ignore ]; then continue; fi
       ready=$(kube -n "$svc_ns" get endpointslices -l "kubernetes.io/service-name=$svc" \
         -o go-template='{{range .items}}{{range .endpoints}}{{if .conditions.ready}}y{{end}}{{end}}{{end}}' 2>/dev/null || true)
       [ -z "$ready" ] || continue
