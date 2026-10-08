@@ -2,7 +2,8 @@
 
 `install.sh` at the repository root installs or upgrades the console on a Linux
 host in one command. It uses the cluster it finds (`--kubeconfig`, else the
-current kube context, else this host's k3s) and installs a pinned single-node
+current kube context, else this host's k3s; with no `KUBECONFIG` and no
+`~/.kube/config`, this host's k3s comes first) and installs a pinned single-node
 k3s only when there is none, asking first unless `--yes` is given. It installs a
 pinned, checksum-verified Helm when Helm is missing.
 

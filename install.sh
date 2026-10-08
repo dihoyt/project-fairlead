@@ -226,6 +226,12 @@ install_k3s() {
   kube wait --for=condition=Ready node --all --timeout=180s >/dev/null
 }
 
+use_host_k3s() {
+  use_k3s_kubeconfig
+  reachable || die "k3s is installed but its API server does not answer (systemctl status k3s)"
+  say "Using this host's k3s."
+}
+
 find_cluster() {
   if [ -n "$KUBECONFIG_PATH" ]; then
     [ -r "$KUBECONFIG_PATH" ] || die "cannot read $KUBECONFIG_PATH"
@@ -234,15 +240,20 @@ find_cluster() {
     say "Using the cluster in $KUBECONFIG_PATH."
     return 0
   fi
+  # k3s's kubectl symlink falls back to k3s.yaml when nothing else is
+  # configured, but helm does not, so with no kubeconfig of the caller's own
+  # this host's k3s is used explicitly for both.
+  if [ -z "${KUBECONFIG:-}" ] && [ ! -f "${HOME:-/nonexistent}/.kube/config" ] && [ -f "$K3S_KUBECONFIG" ]; then
+    use_host_k3s
+    return 0
+  fi
   if has kubectl && reachable; then
     say "Using kube context $(kube config current-context 2>/dev/null || echo '(unnamed)')."
     [ "$UNINSTALL" = 1 ] || confirm "Install into this cluster?"
     return 0
   fi
   if [ -f "$K3S_KUBECONFIG" ]; then
-    use_k3s_kubeconfig
-    reachable || die "k3s is installed but its API server does not answer (systemctl status k3s)"
-    say "Using this host's k3s."
+    use_host_k3s
     return 0
   fi
   [ "$UNINSTALL" = 0 ] || die "no cluster found"
