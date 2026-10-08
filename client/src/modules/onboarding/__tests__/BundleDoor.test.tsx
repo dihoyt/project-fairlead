@@ -7,7 +7,9 @@ import {
   mockCatalogApps,
   mockDeployDisabled,
 } from "@contracts/mocks/catalog";
+import type { CatalogBundleView } from "@contracts/catalog";
 import type { BundleRunView } from "@contracts/deploy";
+import { mockCloudflareEmpty } from "@contracts/mocks/connectors";
 import { apiMocks } from "../../../ui/mocks/api";
 import { SessionContext, type Session } from "../../../ui/session";
 import { stubApi } from "../../../ui/deploy/__tests__/stubApi";
@@ -21,6 +23,11 @@ const fresh = {
   ...apiMocks["GET /api/onboarding/state"],
   steps: apiMocks["GET /api/onboarding/state"].steps.map((s) => ({ ...s, done: s.id === "password", skipped: false })),
 };
+
+function fill() {
+  fireEvent.change(screen.getByLabelText(/Admin email/), { target: { value: "me@example.test" } });
+  fireEvent.change(screen.getByLabelText(/Admin password/), { target: { value: "s3cret-pass" } });
+}
 
 const noRuns = { "GET /api/deploy/bundles": [] as BundleRunView[] };
 
@@ -227,5 +234,79 @@ describe("BundleDoor", () => {
     renderWithApp(<BundleDoor onDone={() => {}} />);
     expect(await screen.findByText("Stopped at Authentik")).toBeInTheDocument();
     expect(screen.getByText(/: timed out/)).toBeInTheDocument();
+  });
+
+  describe("with Cloudflare Tunnel", () => {
+    const tunnelBundle: CatalogBundleView = {
+      ...mockBundleView,
+      inputs: [
+        {
+          key: "access",
+          label: "How you reach the apps",
+          kind: "select",
+          required: true,
+          default: "cloudflare-tunnel",
+          options: [
+            { value: "cloudflare-tunnel", label: "Cloudflare Tunnel" },
+            { value: "local", label: "Local network only" },
+          ],
+        },
+        {
+          key: "cloudflareSetup",
+          label: "How the tunnel is set up",
+          kind: "select",
+          required: true,
+          default: "token",
+          options: [
+            { value: "api", label: "Connect with an API token" },
+            { value: "token", label: "Paste a tunnel token" },
+          ],
+          when: { input: "access", in: ["cloudflare-tunnel"] },
+        },
+        {
+          key: "tunnelToken",
+          label: "Cloudflare tunnel token",
+          kind: "secret",
+          required: true,
+          when: { input: "cloudflareSetup", in: ["token"] },
+        },
+        ...mockBundleView.inputs,
+      ],
+    };
+
+    it("starts on the connector and holds the preview until the tunnel exists", async () => {
+      stubApi({
+        ...noRuns,
+        "GET /api/catalog/bundles": [tunnelBundle],
+        "GET /api/connector-cloudflare/view": mockCloudflareEmpty,
+      });
+      renderWithApp(<BundleDoor onDone={() => {}} />);
+      expect(await screen.findByText("Preview opens once the tunnel exists.")).toBeInTheDocument();
+      expect(document.querySelector("[data-cloudflare-setup]")).toHaveAttribute("data-cloudflare-setup", "api");
+      expect(screen.queryByLabelText(/Cloudflare tunnel token/)).toBeNull();
+      fill();
+      expect(screen.getByRole("button", { name: "Preview" })).toBeDisabled();
+
+      fireEvent.click(screen.getByText("Paste a tunnel token"));
+      expect(await screen.findByLabelText(/Cloudflare tunnel token/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Preview" })).toBeDisabled();
+      fireEvent.change(screen.getByLabelText(/Cloudflare tunnel token/), { target: { value: "tok-123" } });
+      expect(screen.getByRole("button", { name: "Preview" })).toBeEnabled();
+    });
+
+    it("previews without a tunnel token once the connector has a tunnel", async () => {
+      const { calls } = stubApi({ ...noRuns, "GET /api/catalog/bundles": [tunnelBundle] });
+      renderWithApp(<BundleDoor onDone={() => {}} />);
+      expect(await screen.findByText(/Zone/)).toBeInTheDocument();
+      fill();
+      await waitFor(() => expect(screen.getByRole("button", { name: "Preview" })).toBeEnabled());
+      fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+      await screen.findByRole("button", { name: "Start rollout" });
+      const body = calls.find((c) => c.key === "POST /api/deploy/bundles/plan")?.body as {
+        inputs: Record<string, unknown>;
+      };
+      expect(body.inputs.cloudflareSetup).toBe("api");
+      expect(body.inputs).not.toHaveProperty("tunnelToken");
+    });
   });
 });

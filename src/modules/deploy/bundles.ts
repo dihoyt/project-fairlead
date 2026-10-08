@@ -1,5 +1,11 @@
 import type { Database } from "better-sqlite3";
-import type { CatalogBundle, CatalogEntry, DiscoveryReport, InputCondition } from "../../contracts/catalog.js";
+import type {
+  CatalogBundle,
+  CatalogEntry,
+  CatalogInput,
+  DiscoveryReport,
+  InputCondition,
+} from "../../contracts/catalog.js";
 import type {
   AccessMode,
   BundlePlan,
@@ -167,9 +173,19 @@ function mask(values: Record<string, DeployValue>, secret: Set<string>): Record<
   return Object.fromEntries(Object.entries(values).map(([k, v]) => [k, secret.has(k) && v !== "" ? MASK : v]));
 }
 
-export function holds(condition: InputCondition | undefined, values: Record<string, DeployValue> | undefined): boolean {
+// A condition on an input that itself doesn't apply never holds, so a stale
+// answer (a tunnel setup left from before access changed) asks for nothing.
+// An unanswered input counts as its default.
+export function holds(
+  condition: InputCondition | undefined,
+  values: Record<string, DeployValue> | undefined,
+  inputs: readonly CatalogInput[] = [],
+  depth = 0
+): boolean {
   if (!condition) return true;
-  const value = values?.[condition.input];
+  const input = inputs.find((i) => i.key === condition.input);
+  if (input?.when && (depth > 8 || !holds(input.when, values, inputs, depth + 1))) return false;
+  const value = values?.[condition.input] ?? input?.default;
   return typeof value === "string" && condition.in.includes(value);
 }
 
@@ -195,7 +211,7 @@ export function stepRequests(
   return bundle.items.map((item): StepRequest => {
     const entry = entries(item.appId);
     if (!entry) return { appId: item.appId, skip: true, reason: "Not in this catalog" };
-    if (!holds(item.when, shared)) {
+    if (!holds(item.when, shared, bundle.inputs)) {
       return { appId: item.appId, skip: true, reason: "Not needed for how you reach the apps" };
     }
     if (!item.required && !included.has(item.appId)) {
@@ -326,7 +342,7 @@ export class Bundles {
 
   private sharedErrors(bundle: CatalogBundle, request: BundleRequest): string[] {
     return bundle.inputs
-      .filter((input) => input.required && holds(input.when, request.inputs))
+      .filter((input) => input.required && holds(input.when, request.inputs, bundle.inputs))
       .filter((input) => {
         const value = request.inputs?.[input.key];
         return value === undefined || value === "";

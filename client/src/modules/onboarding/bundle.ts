@@ -1,4 +1,4 @@
-import type { CatalogAppView, InputCondition, IngressHost } from "@contracts/catalog";
+import type { CatalogAppView, CatalogInput, InputCondition, IngressHost } from "@contracts/catalog";
 import type { DeployValue } from "@contracts/deploy";
 import type { BundleRunView } from "@contracts/deploy";
 import { apiRequest } from "../../ui";
@@ -81,9 +81,18 @@ export function runFailures(run: Pick<BundleRunView, "steps">): RunFailures {
 }
 
 // A bundle input or item that applies only for some answers (the tunnel
-// token only for Cloudflare Tunnel); the server applies the same rule.
-export function holds(condition: InputCondition | undefined, values: Record<string, DeployValue>): boolean {
+// token only for a pasted-token Cloudflare Tunnel); the server applies the
+// same rule. A condition on an input that doesn't apply itself never holds,
+// and an unanswered input counts as its default.
+export function holds(
+  condition: InputCondition | undefined,
+  values: Record<string, DeployValue>,
+  inputs: readonly CatalogInput[] = [],
+  depth = 0
+): boolean {
   if (!condition) return true;
-  const value = values[condition.input];
+  const input = inputs.find((i) => i.key === condition.input);
+  if (input?.when && (depth > 8 || !holds(input.when, values, inputs, depth + 1))) return false;
+  const value = values[condition.input] ?? input?.default;
   return typeof value === "string" && condition.in.includes(value);
 }
