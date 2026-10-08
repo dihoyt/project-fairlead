@@ -39,6 +39,8 @@ export interface AppTemplate {
   // keeps none.
   volume?: { mountPath: string; size: string };
   disk?: DiskFootprint;
+  // Its page has no sign-in of its own (CatalogEntry.noLogin).
+  noLogin?: boolean;
 }
 
 export interface EnvVar {

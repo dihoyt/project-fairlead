@@ -115,6 +115,9 @@ export interface CatalogEntry {
   // What to know when an upgrade crosses a version, oldest first. Shown in
   // the upgrade preview (UpgradeCandidate.notes).
   upgradeNotes?: UpgradeNote[];
+  // Its web UI has no sign-in of its own: anyone who reaches the URL can
+  // use it (Longhorn).
+  noLogin?: boolean;
 }
 
 // Rough, in bytes, from the pinned version's defaults.

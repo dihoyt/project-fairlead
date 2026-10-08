@@ -202,8 +202,11 @@ export interface CloudflareHostView {
   host: string;
   appId?: string;
   exposure: CloudflareExposure;
-  // The Access app is wanted: the setting, or the per-app choice under "per-app".
+  // The Access app is wanted: the setting, or the per-app choice under
+  // "per-app", which defaults to on for an app with no sign-in of its own.
   access: boolean;
+  // The app has no sign-in of its own (CatalogEntry.noLogin).
+  noLogin?: boolean;
   dns: CloudflareObjectState;
   // tunnel exposure only.
   route?: CloudflareObjectState;
