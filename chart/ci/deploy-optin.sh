@@ -31,10 +31,10 @@ subject=$(q "$on" 'select(.kind == "RoleBinding" and .metadata.name == "r-deploy
 
 pod='select(.kind == "Deployment") | .spec.template.spec'
 [ "$(q "$on" "$pod | .serviceAccountName")" = r ] || fail "the console pod does not run as its own account"
-env() { q "$1" "$pod | .containers[0].env[] | select(.name | test(\"^DEPLOY_\")) | .name" | tr '\n' ' '; }
-[ "$(env "$off")" = "DEPLOY_RELEASE DEPLOY_CHART " ] || fail "deploys off sets $(env "$off")"
-[ "$(env "$on")" = "DEPLOY_RELEASE DEPLOY_CHART DEPLOY_INSTALLER_SERVICE_ACCOUNT DEPLOY_IMAGE " ] \
-  || fail "deploys on sets $(env "$on")"
+env() { q "$1" "$pod | .containers[0].env[] | .name" | grep -E '^(POD_NAMESPACE|HELM_RELEASE|DEPLOY_)' | tr '\n' ' '; }
+expected="POD_NAMESPACE HELM_RELEASE DEPLOY_CHART DEPLOY_SERVICE_ACCOUNT DEPLOY_IMAGE "
+[ "$(env "$off")" = "$expected" ] || fail "deploys off sets $(env "$off")"
+[ "$(env "$on")" = "$expected" ] || fail "deploys on sets $(env "$on")"
 q "$on" "$pod | .containers[0].env[] | select(.name == \"DEPLOY_IMAGE\") | .value" | grep -q '@sha256:[0-9a-f]\{64\}$' \
   || fail "deploy.image is not pinned by digest"
 

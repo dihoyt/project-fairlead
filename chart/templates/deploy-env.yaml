@@ -10,19 +10,21 @@
 {{- end -}}
 
 {{- /*
-Container env for the deploy module. The release and chart are always set so
-the console can show the command that turns deploys on; the installer and
-image only when they exist.
+Container env for the deploy module, set whether or not deploys are on: the
+console shows the image and the command that turns deploys on either way, and
+decides whether they are on from its own access, not from this env.
 */ -}}
 {{- define "app.deployEnv" -}}
-- name: DEPLOY_RELEASE
+- name: POD_NAMESPACE
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.namespace
+- name: HELM_RELEASE
   value: {{ .Release.Name | quote }}
 - name: DEPLOY_CHART
   value: {{ include "app.chartRef" . | quote }}
-{{- if .Values.deploy.enabled }}
-- name: DEPLOY_INSTALLER_SERVICE_ACCOUNT
+- name: DEPLOY_SERVICE_ACCOUNT
   value: {{ include "app.installerServiceAccountName" . | quote }}
 - name: DEPLOY_IMAGE
-  value: {{ required "deploy.image is required when deploy.enabled" .Values.deploy.image | quote }}
-{{- end }}
+  value: {{ required "deploy.image is required" .Values.deploy.image | quote }}
 {{- end -}}
