@@ -347,6 +347,15 @@ export const apiMocks: ApiMocks = {
     { id: "k8s", milestone: "A", registered: true, schemaVersion: 0 },
     { id: "health", milestone: "A", registered: true, schemaVersion: 2 },
   ],
+  "POST /api/system/reset": {
+    cleared: [
+      { scope: "settings", cleared: 4 },
+      { scope: "checks", cleared: 3 },
+      { scope: "onboarding", cleared: 5 },
+    ],
+    kept: ["links", "hosts", "notifications", "sshKey", "adminPassword"],
+    wizardReopens: true,
+  },
   "GET /api/system/jobs": [
     {
       name: "collect:cluster",
@@ -437,6 +446,28 @@ export const apiMocks: ApiMocks = {
   "DELETE /api/admin/settings/:key": { key: "site.name", value: "" },
   "PUT /api/admin/oidc/secret": { hasSecret: true },
   "POST /api/admin/oidc/test": { ok: true, issuer: "https://login.example.test/v2.0" },
+  "GET /api/admin/oidc/authentik": {
+    authentikUrl: "https://auth.example.test",
+    applicationName: "Console",
+    slug: "console",
+    redirectUri: "https://console.example.test/auth/oidc/callback",
+    issuer: "https://auth.example.test/application/o/console/",
+    hasStoredToken: false,
+    blocked: null,
+  },
+  "POST /api/admin/oidc/authentik": {
+    authentikUrl: "https://auth.example.test",
+    slug: "console",
+    issuer: "https://auth.example.test/application/o/console/",
+    clientId: "mock-client-id",
+    redirectUri: "https://console.example.test/auth/oidc/callback",
+    application: "created",
+    provider: "created",
+    settings: ["auth.oidc.issuer", "auth.oidc.clientId", "auth.oidc.label", "auth.oidc.enabled"],
+    tokenKept: false,
+    discovery: { ok: true },
+    testSignIn: "auth/oidc/start?link=1",
+  },
   "GET /api/admin/users": [mockUser],
   "POST /api/admin/users": {
     user: { ...mockUser, id: 2, username: "ops", role: "user", mustChangePassword: true },

@@ -286,3 +286,67 @@ test("bundle plan: checks the disk the rollout needs against the nodes' free spa
   );
   assert.match(JSON.stringify(refused), /short: free some space/);
 });
+
+test("bundle access: mode items and inputs apply only to their mode; starting saves the access choice", async () => {
+  const bundle: CatalogBundle = {
+    ...mockBundle,
+    inputs: [
+      {
+        key: "access",
+        label: "Access",
+        kind: "select",
+        required: true,
+        options: [
+          { value: "cloudflare-tunnel", label: "Cloudflare" },
+          { value: "local", label: "Local" },
+        ],
+      },
+      ...mockBundle.inputs,
+      {
+        key: "tunnelToken",
+        label: "Tunnel token",
+        kind: "secret",
+        required: true,
+        when: { input: "access", in: ["cloudflare-tunnel"] },
+      },
+    ],
+    items: [
+      { appId: "cloudflared", required: true, when: { input: "access", in: ["cloudflare-tunnel"] } },
+      { appId: "headlamp", required: true },
+    ],
+  };
+  const e = await setup([bundle]);
+
+  const local = await call<BundlePlan>(e, "POST", "/bundles/plan", {
+    bundleId: bundle.id,
+    inputs: { ...answers, access: "local" },
+  });
+  assert.equal(local.allowed, true);
+  assert.deepEqual(
+    local.steps.map((s) => [s.appId, s.skip, s.reason]),
+    [
+      ["cloudflared", true, "Not needed for how you reach the apps"],
+      ["headlamp", false, undefined],
+    ]
+  );
+  assert.equal(local.steps[1]!.plan!.url, "http://headlamp.example.test");
+
+  const missing = await call<BundlePlan>(e, "POST", "/bundles/plan", {
+    bundleId: bundle.id,
+    inputs: { ...answers, access: "cloudflare-tunnel" },
+  });
+  assert.equal(missing.allowed, false);
+  await call(e, "POST", "/bundles", { bundleId: bundle.id, inputs: { ...answers, access: "cloudflare-tunnel" } }, 400);
+
+  const tunnel = { ...answers, access: "cloudflare-tunnel", tunnelToken: "tok-123" };
+  const plan = await call<BundlePlan>(e, "POST", "/bundles/plan", { bundleId: bundle.id, inputs: tunnel });
+  assert.equal(plan.allowed, true);
+  assert.deepEqual(plan.steps[0]!.plan!.inputs, { tunnelToken: "********" });
+  assert.equal(plan.steps[1]!.plan!.url, "https://headlamp.example.test");
+
+  await call<BundleRunView>(e, "POST", "/bundles", { bundleId: bundle.id, inputs: tunnel });
+  const access = await call<{ mode: string; baseDomain: string }>(e, "GET", "/access");
+  assert.equal(access.mode, "cloudflare-tunnel");
+  assert.equal(access.baseDomain, "example.test");
+  assert.ok(e.mock.audit.some((entry) => entry.action === "deploy.set-access"));
+});

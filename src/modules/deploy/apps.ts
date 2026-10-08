@@ -1,5 +1,5 @@
 import type { CatalogEntry, DiscoveryReport } from "../../contracts/catalog.js";
-import type { DeployValue } from "../../contracts/deploy.js";
+import type { AccessMode, DeployValue } from "../../contracts/deploy.js";
 import { deployedLabel } from "../../contracts/deployed.js";
 import type { YamlValue } from "./yaml.js";
 
@@ -8,6 +8,8 @@ export interface Defaults {
   ingressClass?: string;
   clusterIssuer?: string;
   storageClass?: string;
+  // How the apps are reached; unset reads as "direct".
+  access?: AccessMode;
 }
 
 // What a recipe renders from. In a preview every secret, typed or
@@ -18,8 +20,15 @@ export interface RecipeInput {
   namespace: string;
   inputs: Record<string, DeployValue>;
   host?: string;
-  // An Ingress gets a certificate only when there is an issuer to ask.
+  // An Ingress gets a certificate only when there is an issuer to ask and
+  // the access mode leaves TLS to the cluster.
   tls: boolean;
+  // What the app's own URL starts with: https behind a tunnel or tailnet
+  // even though the Ingress itself carries no certificate.
+  scheme: "http" | "https";
+  // false with Tailscale: the deploy module writes the app's Ingress itself
+  // from `service`, so the chart's own stays off.
+  chartIngress: boolean;
   defaults: Defaults;
   discovery?: DiscoveryReport;
   // A random value generated per run (database passwords, signing keys).
@@ -47,6 +56,8 @@ export interface Recipe {
   // The whole change, for "patch" installs.
   patch?(r: RecipeInput): Step[];
   warnings?(r: RecipeInput): string[];
+  // The Service the app's UI is on, for an Ingress written outside the chart.
+  service?(r: RecipeInput): { name: string; port: number };
   // Field errors beyond what the input's kind checks, by input key.
   validate?(inputs: Record<string, DeployValue>): Record<string, string>;
 }
@@ -167,7 +178,7 @@ export const recipes: Record<string, Recipe> = {
       defaultSettings: { defaultReplicaCount: longhornReplicas(r) },
       persistence: { defaultClass: !hasDefaultStorageClass(r), defaultClassReplicaCount: longhornReplicas(r) },
       ingress: {
-        enabled: true,
+        enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
         host: r.host,
         tls: r.tls,
@@ -175,6 +186,7 @@ export const recipes: Record<string, Recipe> = {
         annotations: issuerAnnotations(r),
       },
     }),
+    service: () => ({ name: "longhorn-frontend", port: 80 }),
     warnings: (r) => {
       const replicas = longhornReplicas(r);
       return [
@@ -194,6 +206,7 @@ export const recipes: Record<string, Recipe> = {
       bootstrapPassword: str(r.inputs.bootstrapPassword),
       replicas: 1,
       ingress: {
+        enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
         extraAnnotations: issuerAnnotations(r),
         // "secret": the issuer annotation has cert-manager fill
@@ -201,24 +214,26 @@ export const recipes: Record<string, Recipe> = {
         tls: { source: r.tls ? "secret" : "rancher" },
       },
     }),
+    service: (r) => ({ name: r.release, port: 80 }),
   },
 
   headlamp: {
     values: (r) => ({
       ingress: {
-        enabled: true,
+        enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
         annotations: issuerAnnotations(r),
         hosts: [{ host: r.host, paths: [{ path: "/", type: "Prefix" }] }],
         tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
       },
     }),
+    service: (r) => ({ name: r.release, port: 80 }),
   },
 
   gitea: {
     values: (r) => ({
       ingress: {
-        enabled: true,
+        enabled: r.chartIngress,
         className: r.defaults.ingressClass,
         annotations: issuerAnnotations(r),
         hosts: [{ host: r.host, paths: [{ path: "/", pathType: "Prefix" }] }],
@@ -229,7 +244,7 @@ export const recipes: Record<string, Recipe> = {
         // SQLite and in-process queues: the chart's HA Postgres and Valkey
         // clusters are far more than a first Git server needs.
         config: {
-          server: { DOMAIN: r.host, ROOT_URL: `${r.tls ? "https" : "http"}://${r.host}/` },
+          server: { DOMAIN: r.host, ROOT_URL: `${r.scheme}://${r.host}/` },
           database: { DB_TYPE: "sqlite3" },
           session: { PROVIDER: "memory" },
           cache: { ADAPTER: "memory" },
@@ -242,6 +257,7 @@ export const recipes: Record<string, Recipe> = {
       "valkey-cluster": { enabled: false },
       valkey: { enabled: false },
     }),
+    service: (r) => ({ name: `${r.release}-http`, port: 3000 }),
   },
 
   grafana: {
@@ -249,7 +265,7 @@ export const recipes: Record<string, Recipe> = {
       extraLabels: labels(),
       adminPassword: str(r.inputs.adminPassword),
       ingress: {
-        enabled: true,
+        enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
         annotations: issuerAnnotations(r),
         hosts: [r.host],
@@ -257,6 +273,7 @@ export const recipes: Record<string, Recipe> = {
       },
       persistence: { enabled: true, size: r.app.storage, storageClassName: storageClass(r) },
     }),
+    service: (r) => ({ name: r.release, port: 80 }),
   },
 
   authentik: {
@@ -272,7 +289,7 @@ export const recipes: Record<string, Recipe> = {
         },
         server: {
           ingress: {
-            enabled: true,
+            enabled: r.chartIngress,
             ingressClassName: r.defaults.ingressClass,
             annotations: issuerAnnotations(r),
             hosts: [r.host],
@@ -281,8 +298,9 @@ export const recipes: Record<string, Recipe> = {
         },
       };
     },
+    service: (r) => ({ name: `${r.release}-server`, port: 80 }),
     warnings: (r) => [
-      `Finish setup at ${r.tls ? "https" : "http"}://${r.host ?? "<host>"}/if/flow/initial-setup/ to set the admin password.`,
+      `Finish setup at ${r.scheme}://${r.host ?? "<host>"}/if/flow/initial-setup/ to set the admin password.`,
     ],
   },
 

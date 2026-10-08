@@ -58,4 +58,17 @@ export const migrations: readonly Migration[] = [
       );
     `,
   },
+  {
+    version: 3,
+    name: "deploy access",
+    up: `
+      CREATE TABLE deploy_access (
+        org_id TEXT NOT NULL DEFAULT 'default' REFERENCES orgs(id) PRIMARY KEY,
+        mode TEXT NOT NULL,
+        base_domain TEXT NOT NULL,
+        updated_by TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `,
+  },
 ];

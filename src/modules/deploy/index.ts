@@ -1,7 +1,8 @@
 import { z } from "zod";
-import type { BundleRequest, DeployJobRequest, DeployRequest } from "../../contracts/deploy.js";
+import type { AccessMode, BundleRequest, DeployJobRequest, DeployRequest } from "../../contracts/deploy.js";
 import type { Module, ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
+import { ACCESS_MODES } from "./access.js";
 import { Bundles } from "./bundles.js";
 import { declareConfig } from "./config.js";
 import { migrations } from "./migrations.js";
@@ -19,6 +20,16 @@ const requestSchema = z.object({
 });
 const jobRequestSchema = requestSchema.extend({ mode: z.enum(["install", "dry-run"]) });
 const values = z.record(z.string(), z.union([z.string(), z.boolean()]));
+const accessSchema = z.object({
+  mode: z.enum(ACCESS_MODES as [AccessMode, ...AccessMode[]]),
+  baseDomain: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^(?=.{1,253}$)[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?(\.[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?)+$/, {
+      message: "must be a domain like example.com",
+    }),
+});
 const bundleSchema = z.object({
   bundleId: z.string().min(1).max(100),
   inputs: values.default({}),
@@ -58,6 +69,15 @@ export function registerDeploy(
   ctx.bus.on("deploy.finished", () => bundles.advanceAll());
 
   ctx.route("GET /api/deploy/status", () => deployer.status());
+
+  ctx.route("GET /api/deploy/access", () => deployer.accessView());
+
+  ctx.route("PUT /api/deploy/access", async (req, res) => {
+    const user = ctx.require(req, res, "write");
+    if (!user) return undefined;
+    deployer.saveAccess(user.id, parse(accessSchema, req.body));
+    return deployer.accessView(true);
+  });
 
   ctx.route("POST /api/deploy/plan", async (req, res) => {
     if (!ctx.require(req, res, "write")) return undefined;

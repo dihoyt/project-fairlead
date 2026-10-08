@@ -6,13 +6,18 @@ import type { HealthRegistry } from "../contracts/health.js";
 import type { MetricsRegistry } from "../contracts/metrics.js";
 import type { Module } from "../contracts/module.js";
 import type { CreatePlatform, Platform, User } from "../contracts/platform.js";
-import type { Logger, ServiceRegistry } from "../contracts/runtime.js";
+import type { Logger, ResetRegistry, ServiceRegistry } from "../contracts/runtime.js";
 import type { ModuleStatus } from "../contracts/system.js";
 import { createEventBus } from "./bus.js";
 import { buildContext, type SharedRuntime } from "./context.js";
 import { createLogger, errorMessage } from "./log.js";
 import { applyMigrations, DEFAULT_ORG_ID, runtimeMigrations, schemaVersion } from "./migrations.js";
-import { createBackupsRegistry, createHealthRegistry, createMetricsRegistry } from "./registries.js";
+import {
+  createBackupsRegistry,
+  createHealthRegistry,
+  createMetricsRegistry,
+  createResetRegistry,
+} from "./registries.js";
 import { createScheduler, type SchedulerCore } from "./scheduler.js";
 import { createServiceRegistry } from "./services.js";
 
@@ -34,6 +39,7 @@ export interface Runtime {
   health: HealthRegistry;
   metrics: MetricsRegistry;
   backups: BackupsRegistry;
+  reset: ResetRegistry;
   services: ServiceRegistry;
   orgId: string;
   log: Logger;
@@ -68,6 +74,7 @@ export async function createRuntime(options: RuntimeOptions): Promise<Runtime> {
     health: createHealthRegistry(logFor("health-registry")),
     metrics: createMetricsRegistry(logFor("metrics-registry")),
     backups: createBackupsRegistry(logFor("backups-registry")),
+    reset: createResetRegistry(),
     services: createServiceRegistry(),
     orgId: DEFAULT_ORG_ID,
     logFor,
@@ -112,6 +119,7 @@ export async function createRuntime(options: RuntimeOptions): Promise<Runtime> {
     health: shared.health,
     metrics: shared.metrics,
     backups: shared.backups,
+    reset: shared.reset,
     services: shared.services,
     orgId: DEFAULT_ORG_ID,
     log,

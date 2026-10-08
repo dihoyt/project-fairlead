@@ -1,6 +1,6 @@
 import { afterEach, test } from "node:test";
 import assert from "node:assert/strict";
-import type { DeployJobView, DeployPlan, DeployStatus } from "../../../src/contracts/deploy.js";
+import type { AccessView, DeployJobView, DeployPlan, DeployStatus } from "../../../src/contracts/deploy.js";
 import type { Events } from "../../../src/contracts/events.js";
 import { RESOURCES, type KubeObject } from "../../../src/contracts/k8s.js";
 import type { LogLines } from "../../../src/contracts/workloads.js";
@@ -53,7 +53,11 @@ async function setup(
     },
   });
   let n = 0;
-  const { deployer } = registerDeploy(mock.ctx, { now: () => MOCK_NOW, generate: () => `generated-secret-${++n}` });
+  const { deployer } = registerDeploy(mock.ctx, {
+    now: () => MOCK_NOW,
+    generate: () => `generated-secret-${++n}`,
+    resolve: async (host) => host.startsWith("grafana."),
+  });
   const events: Env["events"] = [];
   mock.ctx.bus.on("deploy.finished", (payload) => void events.push(payload));
   const server = await listen(mock.app);
@@ -69,13 +73,13 @@ afterEach(async () => {
   env = undefined;
 });
 
-async function call<T>(e: Env, method: "GET" | "POST", path: string, body?: unknown, expect = 200): Promise<T> {
+async function call<T>(e: Env, method: "GET" | "POST" | "PUT", path: string, body?: unknown, expect = 200): Promise<T> {
   const url = `${e.server.url}/api/deploy${path}`;
   const res =
     method === "GET"
       ? await fetch(url)
       : await fetch(url, {
-          method: "POST",
+          method: method === "PUT" ? "PUT" : "POST",
           headers: { "content-type": "application/json" },
           body: body === undefined ? undefined : JSON.stringify(body),
         });
@@ -763,4 +767,77 @@ test("plan: Longhorn's replica count follows the schedulable node count", async 
     await env!.mock.close();
     env = undefined;
   }
+});
+
+// --- access ------------------------------------------------------------------
+
+test("access: unset until saved; PUT validates, saves, audits and answers the view", async () => {
+  const e = await setup();
+  assert.deepEqual(await call<AccessView>(e, "GET", "/access"), { hosts: [] });
+  await call(e, "PUT", "/access", { mode: "carrier-pigeon", baseDomain: "example.test" }, 400);
+  await call(e, "PUT", "/access", { mode: "local", baseDomain: "not a domain" }, 400);
+
+  const view = await call<AccessView>(e, "PUT", "/access", { mode: "cloudflare-tunnel", baseDomain: "Example.Test" });
+  assert.deepEqual(view, {
+    mode: "cloudflare-tunnel",
+    baseDomain: "example.test",
+    appId: "cloudflared",
+    appInstalled: false,
+    hosts: [
+      { appId: "grafana", host: "grafana.example.test", url: "https://grafana.example.test", resolves: true },
+      { host: "jellyfin.example.test", url: "https://jellyfin.example.test", resolves: false },
+      { appId: "longhorn", host: "longhorn.example.test", url: "https://longhorn.example.test", resolves: false },
+    ],
+    wildcard: "*.example.test",
+    ingressService: "http://traefik.kube-system.svc.cluster.local:80",
+  });
+  assert.deepEqual(e.mock.audit.at(-1), {
+    actor: mockAdmin.id,
+    action: "deploy.set-access",
+    target: "cloudflare-tunnel",
+    detail: "base domain example.test",
+  });
+  const status = await call<DeployStatus>(e, "GET", "/status");
+  assert.equal("access" in status.defaults, false);
+
+  const local = await call<AccessView>(e, "PUT", "/access", { mode: "local", baseDomain: "example.test" });
+  assert.equal(
+    local.hostsFile,
+    "10.0.0.20 grafana.example.test\n10.0.0.20 jellyfin.example.test\n10.0.0.20 longhorn.example.test\n"
+  );
+  assert.equal(local.ingressAddress, "10.0.0.20");
+});
+
+test("access: Ingresses and URLs follow the mode", async () => {
+  const e = await setup();
+  const plan = () => call<DeployPlan>(e, "POST", "/plan", { appId: "headlamp", inputs: {} });
+
+  await call(e, "PUT", "/access", { mode: "cloudflare-tunnel", baseDomain: "example.test" });
+  let p = await plan();
+  assert.equal(p.allowed, true, p.blockedBy);
+  assert.equal(p.url, "https://headlamp.example.test");
+  assert.doesNotMatch(p.values, /cluster-issuer/);
+  assert.match(p.values, /tls: \[\]/);
+  assert.ok(p.warnings.some((w) => w.includes("tunnel routes headlamp.example.test")));
+
+  await call(e, "PUT", "/access", { mode: "local", baseDomain: "home.arpa" });
+  p = await plan();
+  assert.equal(p.url, "http://headlamp.home.arpa");
+  assert.doesNotMatch(p.values, /cluster-issuer/);
+  assert.ok(p.warnings.some((w) => w.includes("hosts file or local DNS")));
+
+  await call(e, "PUT", "/access", { mode: "tailscale", baseDomain: "tail1234.ts.net" });
+  p = await plan();
+  assert.equal(p.allowed, true, p.blockedBy);
+  assert.equal(p.url, "https://headlamp.tail1234.ts.net");
+  assert.match(p.values, /^ {2}enabled: false$/m);
+  assert.match(p.values, /ingressClassName: tailscale/);
+  assert.match(p.values, /tls:\n {2}- hosts:\n {4}- headlamp\n$/);
+  assert.match(p.values, /name: headlamp\n\s+port:\n\s+number: 80/);
+  assert.deepEqual(p.commands.at(-1), "kubectl apply -f /values/tailscale-ingress.yaml");
+
+  await call(e, "PUT", "/access", { mode: "direct", baseDomain: "example.test" });
+  p = await plan();
+  assert.equal(p.url, "https://headlamp.example.test");
+  assert.match(p.values, /cert-manager.io\/cluster-issuer: letsencrypt-prod/);
 });
