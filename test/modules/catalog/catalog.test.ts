@@ -182,6 +182,19 @@ describe("catalog entries", () => {
     }
   });
 
+  test("a manifest install has exactly one of url and bundled; ntfy's carries no Ingress", () => {
+    for (const entry of catalog) {
+      if (entry.install.kind !== "manifest") continue;
+      assert.equal(Number(Boolean(entry.install.url)) + Number(Boolean(entry.install.bundled)), 1, entry.id);
+    }
+    const ntfy = catalog.find((e) => e.id === "ntfy")!.install;
+    assert.equal(ntfy.kind, "manifest");
+    const yaml = ntfy.kind === "manifest" ? (ntfy.bundled ?? "") : "";
+    assert.match(yaml, /kind: Service\nmetadata:\n  name: ntfy\n  namespace: ntfy/);
+    assert.match(yaml, /image: docker\.io\/binwiederhier\/ntfy:v\d+\.\d+\.\d+/);
+    assert.doesNotMatch(yaml, /kind: Ingress/);
+  });
+
   test("apps that fill a link or take a host expose a UI; inputs are unique per app", () => {
     for (const entry of catalog) {
       if (entry.linkKey) assert.ok(entry.exposesUi, entry.id);

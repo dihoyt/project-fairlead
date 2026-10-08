@@ -1,4 +1,5 @@
 import type { CatalogEntry, CatalogInput, InstallSource } from "../../contracts/catalog.js";
+import { NTFY_VERSION, ntfyManifest } from "./manifests/ntfy.js";
 
 // Versions are pinned to stable releases; moving one is a catalog change,
 // reviewed like any other.
@@ -235,7 +236,7 @@ export const catalog: readonly CatalogEntry[] = [
     summary: "Sends alerts as push notifications to your phone, no account needed.",
     slots: ["notifications"],
     homepage: "https://ntfy.sh",
-    install: { kind: "manifest", url: "PENDING", version: "v2.29.0" },
+    install: { kind: "manifest", bundled: ntfyManifest, version: NTFY_VERSION },
     namespace: "ntfy",
     requires: [],
     inputs: [host()],
