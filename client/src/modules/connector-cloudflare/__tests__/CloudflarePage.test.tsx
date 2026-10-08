@@ -9,7 +9,7 @@ import { CloudflarePage } from "../CloudflarePage";
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-function serve(view: CloudflareView) {
+function serve(view: CloudflareView, connectors: unknown[] = []) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     const method = init?.method ?? "GET";
@@ -19,6 +19,9 @@ function serve(view: CloudflareView) {
     if (url.includes("tunnel/deploy")) return json(apiMocks["POST /api/connector-cloudflare/tunnel/deploy"]);
     if (url.includes("connector-cloudflare/tunnel")) return json(apiMocks["POST /api/connector-cloudflare/tunnel"]);
     if (url.endsWith("api/connectors") && method === "POST") return json(apiMocks["POST /api/connectors"]);
+    if (url.endsWith("api/connectors")) return json(connectors);
+    if (url.includes("api/connectors/") && url.endsWith("/reconcile")) return json(apiMocks["POST /api/connectors"]);
+    if (url.includes("api/connectors/") && method === "PUT") return json(apiMocks["PUT /api/connectors/:id"]);
     return json({});
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -26,7 +29,9 @@ function serve(view: CloudflareView) {
 }
 
 const body = (fetchMock: ReturnType<typeof serve>, part: string) => {
-  const call = fetchMock.mock.calls.find(([url, init]) => String(url).includes(part) && init?.method !== undefined);
+  const call = fetchMock.mock.calls.find(
+    ([url, init]) => String(url).includes(part) && init?.method !== undefined && init.method !== "GET"
+  );
   return call ? (JSON.parse(String(call[1]!.body ?? "null")) as unknown) : undefined;
 };
 
@@ -95,5 +100,27 @@ describe("CloudflarePage", () => {
         values: { apiToken: "cf-token", accountId: "0123456789abcdef0123456789abcdef", zone: "example.test" },
       })
     );
+  });
+
+  it("updates the saved connector instead of adding a second one, and drops stale results", async () => {
+    const existing = { ...apiMocks["POST /api/connectors"], id: "cn_saved", status: "crit" };
+    const fetchMock = serve(mockCloudflareEmpty, [existing]);
+    renderWithApp(<CloudflarePage />);
+    fireEvent.change(await screen.findByLabelText("API token"), { target: { value: "cf-token-2" } });
+    fireEvent.click(screen.getByText("Check token"));
+    fireEvent.click(await screen.findByText("Connect"));
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([url, init]) => String(url).endsWith("api/connectors/cn_saved") && init?.method === "PUT"
+        )
+      ).toBe(true)
+    );
+    expect(body(fetchMock, "api/connectors/cn_saved")).toEqual({
+      values: { apiToken: "cf-token-2", accountId: "0123456789abcdef0123456789abcdef", zone: "example.test" },
+    });
+    expect(
+      fetchMock.mock.calls.some(([url, init]) => String(url).endsWith("api/connectors") && init?.method === "POST")
+    ).toBe(false);
   });
 });

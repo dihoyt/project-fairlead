@@ -24,6 +24,7 @@ export function CloudflareConnect({
   async function discover() {
     setBusy("discover");
     setError(null);
+    setSaved(null);
     try {
       const next = await apiRequest("POST /api/connector-cloudflare/discover", { body: { token: token.trim() } });
       setFound(next);
@@ -43,9 +44,21 @@ export function CloudflareConnect({
     setBusy("connect");
     setError(null);
     try {
-      const view = await apiRequest("POST /api/connectors", {
-        body: { kind: "cloudflare", name: "Cloudflare", values: { apiToken: token.trim(), accountId, zone } },
-      });
+      const values = { apiToken: token.trim(), accountId, zone };
+      // Only one Cloudflare connector may exist: a second Connect, here or
+      // after an earlier attempt saved a failing one, updates it.
+      const existing = (await apiRequest("GET /api/connectors")).find((c) => c.kind === "cloudflare");
+      let view: ConnectorView;
+      if (existing) {
+        view = await apiRequest("PUT /api/connectors/:id", { params: { id: existing.id }, body: { values } });
+        if (view.status !== "crit") {
+          view = await apiRequest("POST /api/connectors/:id/reconcile", { params: { id: existing.id } }).catch(
+            () => view
+          );
+        }
+      } else {
+        view = await apiRequest("POST /api/connectors", { body: { kind: "cloudflare", name: "Cloudflare", values } });
+      }
       setSaved(view);
       if (view.status !== "crit") onConnected(view);
     } catch (err) {
@@ -59,13 +72,15 @@ export function CloudflareConnect({
   return (
     <Stack gap="sm" data-cloudflare-connect>
       <Text size="sm">
-        Create an API token in Cloudflare with these permissions, then paste it here. It is stored encrypted and used
-        only to manage what this install publishes.
+        In Cloudflare, open My Profile &gt; API Tokens &gt; Create Token &gt; Create Custom Token and add these
+        permissions, with your zone under Zone Resources. Paste the token here; it is stored encrypted and used only to
+        manage what this install publishes.
       </Text>
-      <List size="sm">
+      <List size="sm" data-cloudflare-permissions>
         <List.Item>Account &gt; Cloudflare Tunnel &gt; Edit</List.Item>
         <List.Item>Zone &gt; DNS &gt; Edit</List.Item>
         <List.Item>Account &gt; Access: Apps and Policies &gt; Edit (only for Cloudflare Access)</List.Item>
+        <List.Item>Account &gt; Account Settings &gt; Read (optional: shows the account&apos;s name)</List.Item>
       </List>
       <Anchor href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer" size="sm">
         Create a token in Cloudflare

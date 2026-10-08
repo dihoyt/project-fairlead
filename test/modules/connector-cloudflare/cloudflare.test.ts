@@ -221,6 +221,33 @@ test("discover lists what the token can see without storing it", async () => {
   }
 });
 
+test("a token without Account Settings or Tunnel: the account comes from the zone, the refusal names the permission", async () => {
+  const state = mockCloudflareState();
+  state.accounts = [];
+  const s = await setup({ connected: false, state });
+  try {
+    const { status, body } = await s.call<CloudflareDiscovery>("POST", "/discover", { token: MOCK_TOKEN });
+    assert.equal(status, 200, body.error);
+    assert.deepEqual(body.accounts, [{ id: MOCK_ACCOUNT, name: "Example account" }]);
+    assert.deepEqual(body.zones, [{ id: "zone-1", name: MOCK_ZONE, accountId: MOCK_ACCOUNT }]);
+
+    const results = await s.kind.verify(
+      { apiToken: MOCK_TOKEN, accountId: MOCK_ACCOUNT, zone: MOCK_ZONE },
+      AbortSignal.timeout(5000)
+    );
+    const byId = Object.fromEntries(results.map((r) => [r.id, r]));
+    assert.equal(byId.account?.status, "ok");
+    assert.match(byId.account?.detail ?? "", /"Example account" \(seen through zone example\.test\)/);
+    assert.equal(byId.tunnel?.status, "crit");
+    assert.match(
+      byId.tunnel?.detail ?? "",
+      /^List tunnels: the API token is missing the "Account > Cloudflare Tunnel > Edit" permission \(Cloudflare said: .*\(9109\)\)$/
+    );
+  } finally {
+    await s.close();
+  }
+});
+
 test("without a connector the view is empty and actions are 409", async () => {
   const s = await setup({ connected: false });
   try {

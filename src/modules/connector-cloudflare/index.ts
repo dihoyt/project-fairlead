@@ -13,7 +13,7 @@ import type { Module, ModuleContext } from "../../contracts/module.js";
 import type { DriftReport } from "../../contracts/ownership.js";
 import { ownerMarkers, product } from "../../product.js";
 import { HttpError } from "../../runtime/http.js";
-import { CloudflareClient, DEFAULT_API_BASE, type Tunnel } from "./api.js";
+import { CloudflareClient, CloudflareError, DEFAULT_API_BASE, type Tunnel } from "./api.js";
 import { migrations } from "./migrations.js";
 import { CloudflareStore } from "./store.js";
 import { directTls, removeAllTls } from "./direct.js";
@@ -140,8 +140,18 @@ function register(ctx: ModuleContext): void {
       const account = await api.account(accountId);
       results.push(check("account", "Account", "ok", `Account "${account.name}"`));
     } catch (err) {
-      results.push(check("account", "Account", "crit", message(err), { error: message(err) }));
-      return results;
+      // Reading the account needs Account Settings, which nothing else
+      // does: a zone on the account proves the token reaches it.
+      const viaZone =
+        err instanceof CloudflareError && err.missingPermission
+          ? (await api.zones(accountId).catch(() => []))[0]
+          : undefined;
+      if (!viaZone) {
+        results.push(check("account", "Account", "crit", message(err), { error: message(err) }));
+        return results;
+      }
+      const name = viaZone.account.name ? `"${viaZone.account.name}"` : accountId;
+      results.push(check("account", "Account", "ok", `Account ${name} (seen through zone ${viaZone.name})`));
     }
     try {
       const zones = await api.zones(accountId, values.zone);
@@ -380,20 +390,33 @@ function register(ctx: ModuleContext): void {
       // accounts below is the real test.
       tokenStatus = "unverified";
     }
-    let accounts: CloudflareDiscovery["accounts"];
+    let accounts: CloudflareDiscovery["accounts"] = [];
+    let accountsError: unknown;
     try {
       accounts = (await api.accounts()).map((a) => ({ id: a.id, name: a.name }));
     } catch (err) {
-      throw new HttpError(400, `The token can't list accounts: ${message(err)}`);
+      accountsError = err;
+    }
+    const rawZones = await api.zones().catch(() => []);
+    // Without Account Settings the account list is refused or empty; the
+    // zones still name their account.
+    for (const zone of rawZones) {
+      if (!accounts.some((a) => a.id === zone.account.id)) {
+        accounts.push({ id: zone.account.id, name: zone.account.name ?? zone.account.id });
+      }
+    }
+    if (!accounts.length) {
+      throw new HttpError(
+        400,
+        accountsError
+          ? `The token can't list accounts: ${message(accountsError)}`
+          : 'The token sees no account or zone: give it "Zone > DNS > Edit" on your zone'
+      );
     }
     if (tokenStatus === "unverified" && accounts[0]) {
       tokenStatus = (await api.verifyToken(accounts[0].id).catch(() => ({ status: "unverified" }))).status;
     }
-    const zones = (await api.zones().catch(() => [])).map((zone) => ({
-      id: zone.id,
-      name: zone.name,
-      accountId: zone.account.id,
-    }));
+    const zones = rawZones.map((zone) => ({ id: zone.id, name: zone.name, accountId: zone.account.id }));
     const tunnels: CloudflareDiscovery["tunnels"] = [];
     for (const account of accounts) {
       const found = await api.tunnels(account.id).catch(() => []);
