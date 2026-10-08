@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Accordion, Alert, Badge, Button, Checkbox, Group, Loader, Paper, Stack, Text, Title } from "@mantine/core";
+import { Alert, Button, Checkbox, Group, Loader, Paper, Stack, Text, Title } from "@mantine/core";
 import type { CatalogBundleView } from "@contracts/catalog";
 import type { BundlePlan, BundleRunView, DeployValue } from "@contracts/deploy";
 import { apiRequest, useApi } from "../../ui";
-import { DeployInputsForm, DeployPlanView, DeploysOff, WhatIsThis } from "../../ui/deploy";
-import { DeployRolloutProgress } from "../../ui/deploy";
+import { BundlePlanView, DeployInputsForm, DeployRolloutProgress, DeploysOff, WhatIsThis } from "../../ui/deploy";
 import { landedSteps, wireLanded } from "./bundle";
 import { useDiscovery } from "./discovery";
 import { useAction } from "./shared";
@@ -77,7 +76,6 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
   );
 
   if (plan) {
-    const steps = plan.steps;
     return (
       <Stack gap="md" maw={960} data-bundle-preview>
         <Text size="sm">
@@ -85,48 +83,7 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
           before it succeeds, and the rollout stops at the first failure.
         </Text>
         {off ? <DeploysOff status={status.data!} /> : null}
-        {!plan.allowed ? (
-          <Alert color="red" variant="light" title="Can't roll out yet">
-            Open the steps marked blocked to see why.
-          </Alert>
-        ) : null}
-        <Accordion variant="separated" multiple>
-          {steps.map((step, index) => (
-            <Accordion.Item key={step.appId} value={step.appId} data-step={step.appId}>
-              <Accordion.Control disabled={step.skip}>
-                <Group gap="xs">
-                  <Text size="sm">
-                    {index + 1}. {name(step.appId)}
-                  </Text>
-                  {step.skip ? (
-                    <Badge color="gray" variant="light">
-                      skipped
-                    </Badge>
-                  ) : step.plan && !step.plan.allowed ? (
-                    <Badge color="red" variant="light">
-                      blocked
-                    </Badge>
-                  ) : null}
-                  {step.skip && step.reason ? (
-                    <Text size="xs" c="dimmed">
-                      {step.reason}
-                    </Text>
-                  ) : null}
-                  {!step.skip && step.plan?.url ? (
-                    <Text size="xs" c="dimmed">
-                      {step.plan.url}
-                    </Text>
-                  ) : null}
-                </Group>
-              </Accordion.Control>
-              {step.plan ? (
-                <Accordion.Panel>
-                  <DeployPlanView plan={step.plan} names={names} />
-                </Accordion.Panel>
-              ) : null}
-            </Accordion.Item>
-          ))}
-        </Accordion>
+        <BundlePlanView plan={plan} names={names} />
         {action.error ? <Alert color="red">{action.error}</Alert> : null}
         <Group justify="flex-end">
           <Button variant="default" onClick={() => setPlan(undefined)}>
