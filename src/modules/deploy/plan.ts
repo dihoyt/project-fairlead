@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { CatalogEntry, CatalogInput, DiscoveryReport } from "../../contracts/catalog.js";
 import type { DeployMode, DeployPlan, DeployRequest, DeployValue, PlannedObject } from "../../contracts/deploy.js";
+import { pickVersion } from "../../contracts/kubeversion.js";
 import { recipes, VALUES_DIR, type Defaults, type RecipeInput, type Step } from "./apps.js";
 import { manifestParts } from "./manifest.js";
 import { toYaml, type YamlValue } from "./yaml.js";
@@ -110,7 +111,7 @@ export function display(argv: string[]): string {
   return argv.map((arg) => (/^[A-Za-z0-9_./=:@,+-]+$/.test(arg) ? arg : `'${arg.replace(/'/g, `'\\''`)}'`)).join(" ");
 }
 
-function mainSteps(entry: CatalogEntry, release: string, namespace: string, mode: DeployMode): Step[] {
+function mainSteps(entry: CatalogEntry, version: string, release: string, namespace: string, mode: DeployMode): Step[] {
   const install = entry.install;
   if (install.kind === "helm") {
     const oci = install.repo.startsWith("oci://");
@@ -124,7 +125,7 @@ function mainSteps(entry: CatalogEntry, release: string, namespace: string, mode
           oci ? `${install.repo.replace(/\/+$/, "")}/${install.chart}` : install.chart,
           ...(oci ? [] : ["--repo", install.repo]),
           "--version",
-          install.version,
+          version,
           "--namespace",
           namespace,
           "--create-namespace",
@@ -193,6 +194,15 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
     warnings.push(`Could not look at the cluster (${input.discoveryError}); requirements and defaults are unchecked.`);
   }
 
+  const kubernetes = input.discovery?.kubernetesVersion;
+  const picked = entry.install.kind === "patch" ? undefined : pickVersion(entry.install, kubernetes);
+  const version = entry.install.kind === "patch" ? "" : picked?.ok ? picked.version : entry.install.version;
+  if (picked?.ok && picked.fellBack && entry.install.kind !== "patch") {
+    warnings.push(
+      `Installs ${entry.name} ${version}, the newest version that supports Kubernetes ${kubernetes}; ${entry.install.version} needs ${entry.install.kubeVersion}.`
+    );
+  }
+
   const detected = (appId: string) => input.discovery?.apps.find((app) => app.appId === appId);
   const before = new Set(input.installedBefore ?? []);
   const missingRequires = entry.requires.filter((id) => !before.has(id) && detected(id)?.state === "not-installed");
@@ -228,7 +238,7 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
           ? recipe!.patch!(shown)
           : manifest
             ? parts.steps
-            : mainSteps(entry, release, namespace, mode)),
+            : mainSteps(entry, version, release, namespace, mode)),
         ...(recipe?.after?.(shown) ?? []),
       ]
     : [];
@@ -247,13 +257,15 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
     ? "Deploys are turned off for this install."
     : !supported
       ? (parts.error ?? `There is no install template for ${entry.name} yet.`)
-      : firstError
-        ? `${firstError[0]}: ${firstError[1]}`
-        : missingRequires.length > 0
-          ? `Needs ${missingRequires.join(", ")} installed first.`
-          : alreadyThere
-            ? `${entry.name} is already installed (${self!.evidence}).`
-            : undefined;
+      : picked && !picked.ok
+        ? `${entry.name}: ${picked.reason}`
+        : firstError
+          ? `${firstError[0]}: ${firstError[1]}`
+          : missingRequires.length > 0
+            ? `Needs ${missingRequires.join(", ")} installed first.`
+            : alreadyThere
+              ? `${entry.name} is already installed (${self!.evidence}).`
+              : undefined;
 
   const valuesShown =
     entry.install.kind === "helm" && supported
@@ -280,7 +292,7 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
     appId: entry.id,
     release,
     namespace,
-    version: entry.install.kind === "patch" ? "" : entry.install.version,
+    version,
     allowed: blockedBy === undefined,
     ...(blockedBy ? { blockedBy } : {}),
     missingRequires,

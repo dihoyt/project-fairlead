@@ -166,11 +166,22 @@ export class Deployer {
 
   async discover(refresh = false): Promise<Found> {
     if (!this.ctx.services.has("catalog")) return { error: "the app catalog is not available" };
+    let discovery: DiscoveryReport;
     try {
-      return { discovery: await this.ctx.services.get("catalog").discover(refresh) };
+      discovery = await this.ctx.services.get("catalog").discover(refresh);
     } catch (err) {
       return { error: errorMessage(err) };
     }
+    // The plan checks each chart's kubeVersion against this; ask the API
+    // server when discovery couldn't say.
+    if (!discovery.kubernetesVersion && this.ctx.services.has("k8s")) {
+      try {
+        discovery = { ...discovery, kubernetesVersion: (await this.ctx.services.get("k8s").version()).gitVersion };
+      } catch {
+        // Unknown: the plan uses the pinned version unchecked.
+      }
+    }
+    return { discovery };
   }
 
   private effectiveDefaults(discovery: DiscoveryReport | undefined): Defaults {
