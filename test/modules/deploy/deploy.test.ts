@@ -637,7 +637,11 @@ test("a bundled manifest is applied from the values Secret with an Ingress for i
   const plan = await call<DeployPlan>(e, "POST", "/plan", { appId: "ntfy", inputs: {} });
   assert.equal(plan.allowed, true, plan.blockedBy);
   assert.equal(plan.url, "https://ntfy.example.test");
-  assert.deepEqual(plan.commands, ["kubectl apply -f /values/manifest.yaml", "kubectl apply -f /values/ingress.yaml"]);
+  assert.deepEqual(plan.commands, [
+    "kubectl apply -f /values/manifest.yaml",
+    "kubectl apply -f /values/ingress.yaml",
+    "kubectl rollout status deployment/ntfy --namespace ntfy --timeout=5m",
+  ]);
   assert.match(plan.values, /kind: Ingress/);
   assert.match(plan.values, /name: ntfy-web\n\s+port:\n\s+number: 8080/);
   assert.deepEqual(
@@ -660,6 +664,7 @@ test("a bundled manifest is applied from the values Secret with an Ingress for i
   const script = job.spec.template.spec.containers[0]!.command[2]!;
   assert.match(script, /'kubectl' 'apply' '-f' '\/values\/manifest.yaml' '--dry-run=client'/);
   assert.match(script, /'kubectl' 'apply' '-f' '\/values\/ingress.yaml' '--dry-run=client'/);
+  assert.doesNotMatch(script, /rollout/);
 });
 
 test("a bundled manifest with no Service for its host is blocked; a URL manifest applies the URL", async () => {
@@ -858,4 +863,65 @@ test("access: Ingresses and URLs follow the mode", async () => {
   p = await plan();
   assert.equal(p.url, "https://headlamp.example.test");
   assert.match(p.values, /cert-manager.io\/cluster-issuer: letsencrypt-prod/);
+});
+
+const withAuthentikPassword = (): CatalogEntry[] =>
+  mockCatalog.map((entry) =>
+    entry.id === "authentik"
+      ? {
+          ...entry,
+          inputs: [
+            ...entry.inputs,
+            { key: "adminPassword", label: "Admin password", kind: "secret" as const, required: false },
+          ],
+        }
+      : entry
+  );
+
+test("authentik: bootstrap credentials in its values, https restored behind a tunnel", async () => {
+  const e = await setup({ catalog: createMockCatalogService({ entries: withAuthentikPassword() }) });
+  const inputs = { host: "auth.example.test", adminEmail: "ops@example.test", adminPassword: "s3cret-Authentik" };
+
+  await call(e, "PUT", "/access", { mode: "cloudflare-tunnel", baseDomain: "example.test" });
+  let p = await call<DeployPlan>(e, "POST", "/plan", { appId: "authentik", inputs });
+  assert.equal(p.allowed, true, p.blockedBy);
+  assert.match(p.values, /bootstrap_email: ops@example.test/);
+  assert.match(p.values, /bootstrap_password: /);
+  assert.doesNotMatch(p.values, /s3cret-Authentik/);
+  assert.match(
+    p.values,
+    /traefik.ingress.kubernetes.io\/router.middlewares: authentik-authentik-forwarded-https@kubernetescrd/
+  );
+  assert.match(p.values, /kind: Middleware/);
+  assert.match(p.values, /X-Forwarded-Proto: https/);
+  assert.ok(p.warnings.some((w) => w.includes("as akadmin")));
+
+  await call(e, "PUT", "/access", { mode: "direct", baseDomain: "example.test" });
+  p = await call<DeployPlan>(e, "POST", "/plan", { appId: "authentik", inputs: { ...inputs, adminPassword: "" } });
+  assert.doesNotMatch(p.values, /Middleware|router.middlewares|bootstrap_password/);
+  assert.ok(p.warnings.some((w) => w.includes("/if/flow/initial-setup/")));
+
+  await call(e, "POST", "/jobs", { appId: "authentik", mode: "dry-run", inputs });
+  const secret = (await e.k8s.get(RESOURCES.secrets, "deploy-authentik-values", NS)) as KubeObject & {
+    stringData: Record<string, string>;
+  };
+  assert.match(secret.stringData["values.yaml"]!, /bootstrap_password: s3cret-Authentik/);
+});
+
+test("the bundle's apps ask for what they use idle and are capped in memory", async () => {
+  const e = await setup({ catalog: createMockCatalogService({ entries: withAuthentikPassword() }) });
+  const plans: Array<[string, Record<string, unknown>, RegExp[]]> = [
+    [
+      "authentik",
+      { host: "auth.example.test", adminEmail: "ops@example.test" },
+      [/worker:\n\s+resources:\n\s+requests:\n\s+cpu: "50m"\n\s+memory: "448Mi"\n\s+limits:\n\s+memory: "1Gi"/],
+    ],
+    ["cert-manager", {}, [/webhook:\n\s+resources:/, /cainjector:\n\s+resources:/]],
+    ["cloudflared", { tunnelToken: "tok" }, [/resources:\n\s+requests:\n\s+cpu: "10m"\n\s+memory: "32Mi"/]],
+  ];
+  for (const [appId, inputs, patterns] of plans) {
+    const p = await call<DeployPlan>(e, "POST", "/plan", { appId, inputs });
+    for (const pattern of patterns) assert.match(p.values, pattern, appId);
+    assert.doesNotMatch(p.values, /limits:\n\s+cpu/, `${appId}: no CPU limit`);
+  }
 });

@@ -95,6 +95,27 @@ function hasDefaultStorageClass(r: RecipeInput): boolean {
   return !basic || basic.status !== "crit";
 }
 
+// Behind a tunnel the edge terminates TLS and the tunnel reaches Traefik over
+// plain http. Traefik trusts no X-Forwarded-* header by default, so it
+// forwards X-Forwarded-Proto: http, and apps that build absolute URLs from
+// the request (Authentik's API base) hand an https page http URLs the
+// browser blocks as mixed content. A headers Middleware on the app's own
+// router restores https without changing what the cluster's Traefik trusts.
+const TRAEFIK_MIDDLEWARES = "traefik.ingress.kubernetes.io/router.middlewares";
+function forwardedHttps(r: RecipeInput): { name: string; middleware: YamlValue } | undefined {
+  if (!r.chartIngress || r.tls || r.scheme !== "https" || r.defaults.ingressClass !== "traefik") return undefined;
+  const name = `${r.release}-forwarded-https`;
+  return {
+    name,
+    middleware: {
+      apiVersion: "traefik.io/v1alpha1",
+      kind: "Middleware",
+      metadata: { name, namespace: r.namespace, labels: labels() },
+      spec: { headers: { customRequestHeaders: { "X-Forwarded-Proto": "https" } } },
+    },
+  };
+}
+
 function hasDefaultIngressClass(r: RecipeInput): boolean {
   const basic = r.discovery?.basics.find((b) => b.id === "ingress-controller");
   return !basic || basic.status === "ok";
@@ -104,9 +125,23 @@ function hasDefaultIngressClass(r: RecipeInput): boolean {
 // (plugin 1.14 for Velero 1.18; see Velero's compatibility matrix).
 export const VELERO_AWS_PLUGIN = "velero/velero-plugin-for-aws:v1.14.4";
 
+// Requests close to what each app uses idle, so the scheduler sees a small
+// box filling up; memory limits with headroom, so one app can't take the
+// node. No CPU limits: throttling hurts more than it protects.
+const resources = (cpu: string, memory: string, limit: string) => ({
+  requests: { cpu, memory },
+  limits: { memory: limit },
+});
+
 export const recipes: Record<string, Recipe> = {
   "cert-manager": {
-    values: () => ({ crds: { enabled: true }, global: { commonLabels: labels() } }),
+    values: () => ({
+      crds: { enabled: true },
+      global: { commonLabels: labels() },
+      resources: resources("10m", "48Mi", "256Mi"),
+      webhook: { resources: resources("5m", "24Mi", "128Mi") },
+      cainjector: { resources: resources("5m", "48Mi", "256Mi") },
+    }),
     files: (r) => {
       const email = str(r.inputs.acmeEmail);
       if (!email) return {};
@@ -253,6 +288,7 @@ export const recipes: Record<string, Recipe> = {
         },
       },
       persistence: { enabled: true, size: r.app.storage, storageClass: storageClass(r) },
+      resources: resources("25m", "160Mi", "512Mi"),
       "postgresql-ha": { enabled: false },
       postgresql: { enabled: false },
       "valkey-cluster": { enabled: false },
@@ -280,29 +316,48 @@ export const recipes: Record<string, Recipe> = {
   authentik: {
     values: (r) => {
       const dbPassword = r.generated("postgresPassword");
+      const password = str(r.inputs.adminPassword);
+      const https = forwardedHttps(r);
       return {
-        global: { env: [{ name: "AUTHENTIK_BOOTSTRAP_EMAIL", value: str(r.inputs.adminEmail) }] },
-        authentik: { secret_key: r.generated("secretKey"), postgresql: { password: dbPassword } },
+        authentik: {
+          secret_key: r.generated("secretKey"),
+          postgresql: { password: dbPassword },
+          // Read once, on first start: the bootstrap blueprint creates akadmin
+          // with it and marks setup done, so /if/flow/initial-setup/ never shows.
+          bootstrap_email: str(r.inputs.adminEmail),
+          ...(password ? { bootstrap_password: password } : {}),
+        },
         postgresql: {
           enabled: true,
           auth: { password: dbPassword },
-          primary: { persistence: { size: r.app.storage, storageClass: storageClass(r) } },
+          primary: {
+            persistence: { size: r.app.storage, storageClass: storageClass(r) },
+            resources: resources("25m", "96Mi", "512Mi"),
+          },
         },
+        // Idle, the server and worker each hold about half a GiB.
+        worker: { resources: resources("50m", "448Mi", "1Gi") },
         server: {
+          resources: resources("50m", "512Mi", "1Gi"),
           ingress: {
             enabled: r.chartIngress,
             ingressClassName: r.defaults.ingressClass,
-            annotations: issuerAnnotations(r),
+            annotations: {
+              ...issuerAnnotations(r),
+              ...(https ? { [TRAEFIK_MIDDLEWARES]: `${r.namespace}-${https.name}@kubernetescrd` } : {}),
+            },
             hosts: [r.host],
             tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
           },
         },
+        additionalObjects: https ? [https.middleware] : [],
       };
     },
     service: (r) => ({ name: `${r.release}-server`, port: 80 }),
-    warnings: (r) => [
-      `Finish setup at ${r.scheme}://${r.host ?? "<host>"}/if/flow/initial-setup/ to set the admin password.`,
-    ],
+    warnings: (r) =>
+      str(r.inputs.adminPassword)
+        ? [`Sign in at ${r.scheme}://${r.host ?? "<host>"} as akadmin with the admin password.`]
+        : [`Finish setup at ${r.scheme}://${r.host ?? "<host>"}/if/flow/initial-setup/ to set the admin password.`],
   },
 
   velero: {
@@ -449,7 +504,11 @@ export const recipes: Record<string, Recipe> = {
 
   cloudflared: {
     // The chart runs two by default; each shows as a separate connector.
-    values: (r) => ({ cloudflare: { tunnel_token: str(r.inputs.tunnelToken) }, replicaCount: upToNodes(r, 2) }),
+    values: (r) => ({
+      cloudflare: { tunnel_token: str(r.inputs.tunnelToken) },
+      replicaCount: upToNodes(r, 2),
+      resources: resources("10m", "32Mi", "128Mi"),
+    }),
   },
 
   "tailscale-operator": {

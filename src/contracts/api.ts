@@ -20,6 +20,8 @@ import type {
   NewUserRequest,
   OAuthConsentRequest,
   OAuthConsentView,
+  PublicSignInRequest,
+  PublicSignInResult,
   SessionView,
   SettingValue,
   TotpEnrollment,
@@ -176,6 +178,13 @@ export interface ApiRoutes {
   // Authentik unreachable, refused the token, or answered unexpectedly, with
   // its status in the error.
   "POST /api/admin/oidc/authentik": Route<None, None, AuthentikWireRequest, AuthentikWireResult>;
+  // Admin, audited (never with the secret). Points OIDC sign-in at Google
+  // or Microsoft's multi-tenant endpoint and saves the allow and admin email
+  // lists, turning on account creation at first sign-in (only allowed
+  // addresses get one). 400: empty or malformed allowedEmails, no secret
+  // given or reusable, no public URL, a setting locked by the environment;
+  // 409: SECRETS_KEY not set.
+  "POST /api/admin/oidc/public": Route<None, None, PublicSignInRequest, PublicSignInResult>;
   "GET /api/admin/users": Route<None, None, None, UserView[]>;
   "POST /api/admin/users": Route<None, None, NewUserRequest, { user: UserView; temporaryPassword: string | null }>;
   "PATCH /api/admin/users/:id": Route<{ id: string }, None, UserChangesRequest, UserView>;

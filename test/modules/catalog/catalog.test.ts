@@ -248,6 +248,8 @@ describe("catalog entries", () => {
     assert.equal(gitea.disk?.volumeBytes, 5 * GiB);
     assert.equal(catalog.find((e) => e.id === "ntfy")!.disk?.volumeBytes, GiB / 2);
     assert.match(ntfyManifest, /storage: 512Mi/);
+    // ntfy exits at start when attachment-cache-dir is set without base-url.
+    assert.doesNotMatch(ntfyManifest, /attachment-cache-dir/);
   });
 
   test("every installable app has a detection signature", () => {

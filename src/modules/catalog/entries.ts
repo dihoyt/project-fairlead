@@ -110,6 +110,7 @@ const entries: CatalogEntry[] = [
     requires: [],
     inputs: [host()],
     exposesUi: true,
+    noLogin: true,
     prerequisites: [
       "Every node needs open-iscsi installed and running.",
       "Every node needs an NFSv4 client for volumes shared between pods.",
@@ -197,7 +198,17 @@ const entries: CatalogEntry[] = [
     install: helm("https://charts.goauthentik.io", "authentik", "2026.8.3"),
     namespace: "authentik",
     requires: [],
-    inputs: [host(), { key: "adminEmail", label: "Admin email", kind: "text", required: true }],
+    inputs: [
+      host(),
+      { key: "adminEmail", label: "Admin email", kind: "text", required: true },
+      {
+        key: "adminPassword",
+        label: "Admin password",
+        help: "For the akadmin account. Leave empty to set it in Authentik's first-run page instead.",
+        kind: "secret",
+        required: false,
+      },
+    ],
     exposesUi: true,
     storage: "4Gi",
     prerequisites: [],

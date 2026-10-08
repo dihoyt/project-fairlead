@@ -71,6 +71,11 @@ export function CloudflareHosts({
             <Table.Tr key={h.host} data-host={h.host}>
               <Table.Td>
                 <Text size="sm">{h.host}</Text>
+                {h.noLogin ? (
+                  <Text size="xs" c="dimmed" data-no-login>
+                    No sign-in of its own
+                  </Text>
+                ) : null}
               </Table.Td>
               <Table.Td>
                 <SegmentedControl

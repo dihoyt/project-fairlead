@@ -137,6 +137,8 @@ export interface BundlePlanStep {
   reason?: string;
   // Absent when skipped.
   plan?: DeployPlan;
+  // The catalog's CatalogEntry.memoryBytes; absent when skipped or unknown.
+  memoryBytes?: number;
 }
 
 export interface BundlePlan {
@@ -149,6 +151,8 @@ export interface BundlePlan {
   // The steps that run, against the nodes' free disk: checkDisk() from
   // ./disk.ts over their catalog footprints and discovery's nodeDisks.
   disk?: DiskCheck;
+  // The steps that run, summed where known.
+  memoryBytes?: number;
 }
 
 export type BundleStepState = "pending" | "skipped" | "running" | "succeeded" | "failed" | "cancelled";
