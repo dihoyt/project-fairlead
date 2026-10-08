@@ -11,7 +11,7 @@ on:
       - Dockerfile
       - .github/workflows/install-test.yml
   push:
-    branches: [main]
+    branches: [main, next]
     paths:
       - install.sh
       - update.sh

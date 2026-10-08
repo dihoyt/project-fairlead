@@ -3,7 +3,7 @@ name: build
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, next]
 
 permissions:
   contents: read
@@ -57,7 +57,7 @@ jobs:
           chart/ci/smoke.sh "${{ steps.names.outputs.image }}" ci
 
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next')
     needs: chart
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -72,13 +72,33 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - id: channel
+        run: |
+          if [ "$GITHUB_REF" = refs/heads/next ]; then
+            {
+              echo "name=next"
+              echo "chart_path=charts-next"
+              echo "tags<<EOF"
+              echo "${{ needs.chart.outputs.image }}:${{ github.sha }}"
+              echo "${{ needs.chart.outputs.image }}:next"
+              echo "${{ needs.chart.outputs.image }}:next.${{ github.run_number }}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "name=edge"
+              echo "chart_path=charts"
+              echo "tags<<EOF"
+              echo "${{ needs.chart.outputs.image }}:${{ github.sha }}"
+              echo "${{ needs.chart.outputs.image }}:edge"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: |
-            ${{ needs.chart.outputs.image }}:${{ github.sha }}
-            ${{ needs.chart.outputs.image }}:edge
+          tags: ${{ steps.channel.outputs.tags }}
           build-args: GIT_SHA=${{ github.sha }}
           cache-from: type=gha
       - uses: azure/setup-helm@v4
@@ -89,5 +109,5 @@ jobs:
           owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
           base=$(sed -n 's/^version: //p' chart/Chart.yaml)
-          helm package chart --version "$base-edge.${{ github.run_number }}" --app-version "${{ github.sha }}" --destination "$RUNNER_TEMP"
-          helm push "$RUNNER_TEMP"/*.tgz "oci://ghcr.io/$owner/charts"
+          helm package chart --version "$base-${{ steps.channel.outputs.name }}.${{ github.run_number }}" --app-version "${{ github.sha }}" --destination "$RUNNER_TEMP"
+          helm push "$RUNNER_TEMP"/*.tgz "oci://ghcr.io/$owner/${{ steps.channel.outputs.chart_path }}"
