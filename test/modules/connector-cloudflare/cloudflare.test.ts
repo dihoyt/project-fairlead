@@ -78,6 +78,7 @@ async function setup(
     calls: {
       "POST /api/deploy/jobs": (input) =>
         ({ id: "dj_9", appId: input.body!.appId, state: "pending" }) as unknown as DeployJobView,
+      "GET /api/deploy/jobs": () => [],
     },
   });
   await cloudflare.register(m.ctx);
@@ -681,6 +682,37 @@ test("tunnel deploy starts cloudflared with the token server-side", async () => 
       inputs: { tunnelToken: s.cf.state.tunnels[0]!.token },
     });
     assert.ok(!JSON.stringify(s.m.audit).includes(s.cf.state.tunnels[0]!.token));
+  } finally {
+    await s.close();
+  }
+});
+
+test("Sync now brings up cloudflared when nothing serves the tunnel, once", async () => {
+  const s = await setup();
+  try {
+    await s.call("POST", "/tunnel", {});
+    const deploys = () => s.m.calls.filter((c) => c.key === "POST /api/deploy/jobs");
+    await s.call("POST", "/sync");
+    assert.equal(deploys().length, 1);
+    assert.deepEqual(deploys()[0]!.input.body, {
+      appId: "cloudflared",
+      mode: "install",
+      inputs: { tunnelToken: s.cf.state.tunnels[0]!.token },
+    });
+
+    s.setAccess(access({ appId: "cloudflared", appInstalled: true }));
+    await s.call("POST", "/sync");
+    assert.equal(deploys().length, 1, "cloudflared already installed");
+
+    s.setAccess(access({ appInstalled: false }));
+    s.cf.state.tunnels[0]!.status = "healthy";
+    await s.call("POST", "/sync");
+    assert.equal(deploys().length, 1, "a connected tunnel needs nothing");
+
+    s.cf.state.tunnels[0]!.status = "inactive";
+    s.setAccess(access({ mode: "direct" }));
+    await s.call("POST", "/sync");
+    assert.equal(deploys().length, 1, "direct needs no tunnel");
   } finally {
     await s.close();
   }

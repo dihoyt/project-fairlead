@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Request } from "express";
 import type {
   CloudflareAccessPolicy,
   CloudflareDiscovery,
@@ -389,6 +390,9 @@ function register(ctx: ModuleContext): void {
     const found = await required();
     await syncNow(found.id);
     ctx.audit.record({ actor: user.id, action: "connector-cloudflare.sync", target: found.id });
+    await ensureCloudflared(req, user.id, found).catch((err: unknown) =>
+      ctx.log.warn("cloudflared not deployed on sync", { error: message(err) })
+    );
     return currentView();
   });
 
@@ -513,12 +517,8 @@ function register(ctx: ModuleContext): void {
     return currentView();
   });
 
-  ctx.route("POST /api/connector-cloudflare/tunnel/deploy", async (req, res) => {
-    const user = ctx.require(req, res, "admin");
-    if (!user) return undefined;
-    const found = await required();
-    const tunnelId = tunnelIdOf(found);
-    if (!tunnelId) throw new HttpError(409, "Create or pick a tunnel first.");
+  // The token is fetched and passed server-side; it never reaches a browser.
+  const deployCloudflared = async (req: Request, actor: string, found: ConnectorInstance, tunnelId: string) => {
     const tunnelToken = await client(found.secrets.apiToken ?? "")
       .tunnelToken(found.config.accountId ?? "", tunnelId)
       .catch((err: unknown) => {
@@ -527,13 +527,32 @@ function register(ctx: ModuleContext): void {
     const job = await ctx.call(req, "POST /api/deploy/jobs", {
       body: { appId: "cloudflared", mode: "install", inputs: { tunnelToken } },
     });
-    ctx.audit.record({
-      actor: user.id,
-      action: "connector-cloudflare.tunnel-deploy",
-      target: tunnelId,
-      detail: job.id,
-    });
+    ctx.audit.record({ actor, action: "connector-cloudflare.tunnel-deploy", target: tunnelId, detail: job.id });
     return job;
+  };
+
+  // A sync also brings up cloudflared when nothing serves the tunnel: the
+  // bundle's API-token path doesn't deploy it, and a tunnel without one
+  // answers every host with error 1033.
+  const ensureCloudflared = async (req: Request, actor: string, found: ConnectorInstance) => {
+    const tunnelId = tunnelIdOf(found);
+    const view = await currentView();
+    if (!tunnelId || !view.tunnel || !["inactive", "down"].includes(view.tunnel.status)) return;
+    const access = await ctx.services.get("deploy").access();
+    if (access.mode && access.mode !== "cloudflare-tunnel") return;
+    if (access.appId === "cloudflared" && access.appInstalled) return;
+    const jobs = await ctx.call(req, "GET /api/deploy/jobs", { query: { appId: "cloudflared", limit: "5" } });
+    if (jobs.some((j) => j.state === "pending" || j.state === "running")) return;
+    await deployCloudflared(req, actor, found, tunnelId);
+  };
+
+  ctx.route("POST /api/connector-cloudflare/tunnel/deploy", async (req, res) => {
+    const user = ctx.require(req, res, "admin");
+    if (!user) return undefined;
+    const found = await required();
+    const tunnelId = tunnelIdOf(found);
+    if (!tunnelId) throw new HttpError(409, "Create or pick a tunnel first.");
+    return deployCloudflared(req, user.id, found, tunnelId);
   });
 }
 
