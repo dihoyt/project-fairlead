@@ -50,7 +50,7 @@ helm upgrade --install <release> ./chart -n <ns> -f values.yaml \
 
 Published artefacts (from `main`): the image at `ghcr.io/<owner>/<imageName>`
 tagged `:<sha>` and `:edge`, and the chart as an OCI artefact at
-`oci://ghcr.io/<owner>/charts/<chartName>` (`helm install <release> oci://... --version 0.1.0-edge.<n>`;
+`oci://ghcr.io/<owner>/charts/<chartName>` (`helm install <release> oci://... --version 0.1.1-edge.<n>`;
 its `appVersion` is the commit sha, which is the default image tag).
 `<imageName>` and `<chartName>` are in `product.json`. New ghcr packages are
 private until made public in the package settings.
