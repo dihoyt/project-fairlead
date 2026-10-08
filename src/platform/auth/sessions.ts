@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import type { Request, Response } from "express";
 import type { SignInMethod } from "../../contracts/platform.js";
 import { sessionCookieName } from "../../product.js";
-import { publicOrigin, type Core } from "../core.js";
+import { envPublicOrigin, type Core } from "../core.js";
 
 export interface SessionRow {
   idHash: string;
@@ -29,7 +29,7 @@ const TOUCH_EVERY = 60 * 1000;
 // install is actually served over https; a plain-http local run would
 // otherwise set a cookie the browser then refuses to send back.
 function secure(): boolean {
-  return publicOrigin().startsWith("https://");
+  return envPublicOrigin().startsWith("https://");
 }
 
 export function cookieName(): string {

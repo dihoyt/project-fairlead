@@ -32,6 +32,9 @@ export interface Definition {
   type: SettingType;
   env?: string;
   envOnly?: boolean;
+  // The environment's value, when set, beats a saved one: the deployment
+  // knows where it is served better than a form does.
+  envWins?: boolean;
   default: unknown;
   options?: readonly string[];
   // One parser for both directions in: a string from the environment and a
@@ -46,6 +49,7 @@ interface BuiltIn {
   help: string;
   type: SettingType;
   env?: string;
+  envWins?: boolean;
   default: SettingValue;
   options?: readonly string[];
   min?: number;
@@ -61,6 +65,16 @@ const BUILT_IN: readonly BuiltIn[] = [
     type: "string",
     env: "SITE_NAME",
     default: product.displayName,
+  },
+  {
+    key: "site.publicUrl",
+    group: "General",
+    label: "Public URL",
+    help: "The address people use to reach this install, e.g. https://console.example.com. The OIDC redirect URI and sign-in redirects are built from it. Secure cookies follow PUBLIC_ORIGIN only, so a wrong value here cannot lock anyone out.",
+    type: "url",
+    env: "PUBLIC_ORIGIN",
+    envWins: true,
+    default: "",
   },
   {
     key: "auth.password.enabled",
@@ -236,7 +250,6 @@ const BUILT_IN: readonly BuiltIn[] = [
 // Shown read-only in the admin UI so an operator can see what the
 // environment decided, without being able to change it from the page.
 const ENV_ONLY: readonly { name: string; secret?: boolean; help: string }[] = [
-  { name: "PUBLIC_ORIGIN", help: "Where browsers reach this install. Sets the OIDC redirect URI and secure cookies." },
   { name: "TRUSTED_PROXIES", help: "Peers whose client-IP header is believed." },
   { name: "CLIENT_IP_HEADER", help: "Which header carries the client IP from a trusted proxy." },
   { name: "SECRETS_KEY", secret: true, help: "Encrypts secrets stored in the database." },
@@ -410,6 +423,7 @@ interface Resolved {
 export interface PlatformSettings extends SettingsRegistry {
   definition(key: string): Definition;
   get(key: string): unknown;
+  source(key: string): SettingSource;
   string(key: string): string;
   bool(key: string): boolean;
   number(key: string): number;
@@ -454,6 +468,10 @@ export function createSettings(db: Database, orgId: string): PlatformSettings {
   };
 
   const resolve = (def: Definition): Resolved => {
+    if (def.envWins) {
+      const env = fromEnv(def);
+      if (env?.source === "env") return env;
+    }
     if (!def.envOnly) {
       const stored = override(def.key);
       if (stored !== undefined) {
@@ -470,9 +488,12 @@ export function createSettings(db: Database, orgId: string): PlatformSettings {
 
   const get = (key: string) => resolve(definition(key)).value;
 
+  const locked = (def: Definition): boolean => def.envWins === true && fromEnv(def)?.source === "env";
+
   const editable = (key: string): Definition => {
     const def = definition(key);
     if (def.envOnly) throw new SettingError(409, `${def.label} can only be set in the environment.`);
+    if (locked(def)) throw new SettingError(409, `${def.label} is set by the environment (${def.env}).`);
     return def;
   };
 
@@ -489,6 +510,7 @@ export function createSettings(db: Database, orgId: string): PlatformSettings {
     },
     definition,
     get,
+    source: (key) => resolve(definition(key)).source,
     string: (key) => String(get(key)),
     bool: (key) => get(key) === true,
     number: (key) => Number(get(key)),
@@ -533,6 +555,7 @@ export function createSettings(db: Database, orgId: string): PlatformSettings {
             source: resolved.source,
             ...(envValue !== undefined ? { envValue } : {}),
             ...(resolved.envError ? { envError: resolved.envError } : {}),
+            ...(locked(def) ? { locked: true } : {}),
           };
         });
     },

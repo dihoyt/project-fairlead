@@ -20,7 +20,7 @@ import {
   usernameProblem,
   type UserRow,
 } from "../auth/users.js";
-import { iso, isoOrNull, publicOrigin, type Core } from "../core.js";
+import { effectivePublicUrl, iso, isoOrNull, type Core } from "../core.js";
 import { clientIp, parseCidrList } from "../net.js";
 import { secretKeyConfigured } from "../secretBox.js";
 import { SettingError } from "../settings.js";
@@ -177,12 +177,13 @@ export function adminRouter(core: Core): Router {
   router.get(
     "/overview",
     route(async (req): Promise<AdminOverview> => {
-      const origin = publicOrigin();
+      const publicUrl = effectivePublicUrl(core, req);
       return {
         settings: s.describe(),
         environment: s.describeEnvironment(),
+        publicUrl,
         oidc: {
-          redirectUri: origin ? `${origin}${CALLBACK_PATH}` : "",
+          redirectUri: publicUrl.value ? `${publicUrl.value}${CALLBACK_PATH}` : "",
           hasSecret: await core.secrets.has(OIDC_SECRET.scope, OIDC_SECRET.id),
           unavailable: await oidcUnavailableReason(core),
         },

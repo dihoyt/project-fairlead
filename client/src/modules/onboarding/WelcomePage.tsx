@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Alert, Badge, Loader, Stepper, Text } from "@mantine/core";
+import { Alert, Badge, Loader, Stack, Stepper, Text } from "@mantine/core";
 import { useNavigate } from "react-router";
 import type { OnboardingState, OnboardingStep, OnboardingStepId } from "@contracts/onboarding";
 import { PageHeader } from "../../shell/PageHeader";
@@ -12,6 +12,7 @@ import { HostsStep } from "./steps/HostsStep";
 import { LinksStep } from "./steps/LinksStep";
 import { NotificationsStep } from "./steps/NotificationsStep";
 import { OidcStep } from "./steps/OidcStep";
+import { PublicUrlField } from "./steps/PublicUrlField";
 
 const TITLES: Record<OnboardingStepId, { label: string; description: string }> = {
   password: { label: "Password", description: "Admin password changed" },
@@ -69,7 +70,14 @@ export function WelcomePage() {
     const props: StepProps = { onFinish: finish(step.id) };
     switch (step.id) {
       case "password":
-        return <Text size="sm">Your password is changed. Carry on with the next step.</Text>;
+        return (
+          <Stack gap="md" maw={960}>
+            <Text size="sm">
+              Your password is changed. Check the public URL below, then carry on with the next step.
+            </Text>
+            <PublicUrlField />
+          </Stack>
+        );
       case "cluster":
         return <ClusterStep {...props} />;
       case "oidc":

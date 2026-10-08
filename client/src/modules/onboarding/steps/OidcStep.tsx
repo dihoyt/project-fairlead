@@ -65,7 +65,14 @@ export function OidcStep({ onFinish }: StepProps) {
           <Text size="sm">
             Register an app with your provider using this redirect URI: <Code>{oidc.redirectUri}</Code>
           </Text>
-          {oidc.unavailable ? <Alert color="yellow">{oidc.unavailable}</Alert> : null}
+          {overview.data?.publicUrl.source === "request" ? (
+            <Text size="xs" c="orange">
+              Guessed from this page&apos;s address. Save the public URL on the first setup step to make it stick.
+            </Text>
+          ) : null}
+          {oidc.unavailable && overview.data?.publicUrl.source !== "request" ? (
+            <Alert color="yellow">{oidc.unavailable}</Alert>
+          ) : null}
           {overview.data && !overview.data.secretKeyConfigured ? (
             <Alert color="yellow">SECRETS_KEY is not set, so a client secret cannot be stored.</Alert>
           ) : null}
