@@ -10,6 +10,8 @@ import { RESOURCES, type K8sApi, type KubeObject, type ResourceRef } from "../..
 import { mockCatalog } from "../../../src/contracts/mocks/catalog.js";
 import { createMockContext, mockViewer, type MockContext } from "../../../src/contracts/mocks/context.js";
 import { createFakeK8s, OWNER_LABEL, type FakeK8sOptions } from "../../../src/contracts/mocks/k8s.js";
+import { deployedLabel } from "../../../src/contracts/deployed.js";
+import { createMockDeployService } from "../../../src/contracts/mocks/deploy.js";
 import { product } from "../../../src/product.js";
 import mod from "../../../src/modules/catalog/index.js";
 import { baseDomain, discover } from "../../../src/modules/catalog/discover.js";
@@ -471,6 +473,38 @@ describe("app detection edge cases", () => {
     assert.equal(app(report, "headlamp").managedBy, null);
   });
 
+  test("the deployed-by label, or a deploy release in the same namespace, makes an app ownedByUs", async () => {
+    const helm = { "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/instance": "x" };
+    const objects = [
+      {
+        ref: RESOURCES.deployments,
+        items: [
+          workload("monitoring", "grafana", {
+            labels: { "app.kubernetes.io/name": "grafana", ...helm, ...deployedLabel() },
+          }),
+          workload("headlamp", "headlamp", { labels: { "app.kubernetes.io/name": "headlamp", ...helm } }),
+          workload("gitea", "gitea", { labels: { "app.kubernetes.io/name": "gitea", ...helm } }),
+        ],
+      },
+    ];
+    const releases = [
+      { appId: "headlamp", release: "headlamp", namespace: "headlamp", jobId: "dj_1", state: "succeeded" as const },
+      { appId: "gitea", release: "gitea", namespace: "elsewhere", jobId: "dj_2", state: "failed" as const },
+      { appId: "ntfy", release: "ntfy", namespace: "ntfy", jobId: "dj_3", state: "failed" as const },
+    ];
+    const report = await discover(createFakeK8s({ objects }), catalog, () => new Date(0), releases);
+    assert.deepEqual(
+      ["grafana", "headlamp", "gitea", "ntfy"].map((id) => [id, app(report, id).ownedByUs]),
+      [
+        ["grafana", true],
+        ["headlamp", true],
+        ["gitea", false],
+        ["ntfy", false],
+      ]
+    );
+    assert.equal(app(report, "grafana").managedBy, "helm");
+  });
+
   test("a label match beats an image-only match elsewhere", async () => {
     const report = await discover(
       createFakeK8s({
@@ -584,6 +618,20 @@ describe("deploy bundles", () => {
 // --- the service ------------------------------------------------------------
 
 describe("catalog service caching", () => {
+  test("a failing releases() reads as none; invalidate drops the cached look", async () => {
+    const { k8s, lists } = counting();
+    const service = createCatalogService({
+      k8s: () => k8s,
+      entries: catalog,
+      releases: () => Promise.reject(new Error("deploy module down")),
+    });
+    await service.discover();
+    const perLook = lists();
+    service.invalidate();
+    await service.discover();
+    assert.equal(lists(), 2 * perLook);
+  });
+
   test("reuses a recent look, refresh forces a new one, and expiry does too", async () => {
     let now = 1_000;
     const { k8s, lists } = counting();
@@ -624,10 +672,19 @@ describe("catalog service caching", () => {
 describe("catalog routes", () => {
   let mock: MockContext;
   let server: { url: string; close(): Promise<void> };
+  let lists = 0;
 
   before(async () => {
+    const k8s = createFakeK8s({ objects: healthyCluster() });
+    const counted: K8sApi = {
+      ...k8s,
+      list: async (ref, options) => {
+        lists++;
+        return k8s.list(ref, options);
+      },
+    };
     mock = createMockContext("catalog", {
-      services: { k8s: createFakeK8s({ objects: healthyCluster() }) },
+      services: { k8s: counted, deploy: createMockDeployService() },
       user: mockViewer,
     });
     await mod.register(mock.ctx);
@@ -649,6 +706,20 @@ describe("catalog routes", () => {
     const service: CatalogService = mock.ctx.services.get("catalog");
     assert.equal(service.entries().length, catalog.length);
     assert.equal((await service.discover()).apps.length, catalog.length);
+  });
+
+  test("apps the deploy module installed are ownedByUs, and a finished deploy forces a new look", async () => {
+    const service = mock.ctx.services.get("catalog");
+    const report = await service.discover();
+    assert.equal(app(report, "headlamp").ownedByUs, true);
+    assert.equal(app(report, "grafana").ownedByUs, false);
+    const seen = lists;
+    await service.discover();
+    assert.equal(lists, seen);
+    mock.ctx.bus.emit("deploy.finished", { jobId: "dj_9", appId: "ntfy", mode: "install", state: "succeeded" });
+    await new Promise((resolve) => setImmediate(resolve));
+    await service.discover();
+    assert.ok(lists > seen);
   });
 
   test("apps lists every entry with what was detected, to a signed-in non-admin", async () => {
