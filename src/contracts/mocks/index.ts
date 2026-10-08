@@ -6,6 +6,7 @@ export * from "./catalog.js";
 export * from "./connectors/index.js";
 export * from "./context.js";
 export * from "./deploy.js";
+export * from "./gate.js";
 export * from "./health.js";
 export * from "./k8s.js";
 export * from "./metrics.js";

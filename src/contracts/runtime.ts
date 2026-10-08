@@ -4,7 +4,7 @@ import type { ConnectorRegistry } from "./connectors.js";
 import type { DeployService } from "./deploy.js";
 import type { K8sApi } from "./k8s.js";
 import type { SeriesQuery, SeriesResult } from "./metrics.js";
-import type { SignInService } from "./platform.js";
+import type { GateService, SignInService } from "./platform.js";
 import type { ResetScope } from "./reset.js";
 import type { JobStatus } from "./system.js";
 import type { TemplatesService } from "./templates.js";
@@ -63,6 +63,7 @@ export interface Services {
   connectors: ConnectorRegistry;
   // Provided by the platform before any module registers.
   signin: SignInService;
+  gate: GateService;
 }
 
 // The store behind GET /api/metrics/query, for modules that summarise

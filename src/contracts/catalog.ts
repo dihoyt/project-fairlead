@@ -121,6 +121,17 @@ export interface CatalogEntry {
   // Its web UI has no sign-in of its own: anyone who reaches the URL can
   // use it (Longhorn).
   noLogin?: boolean;
+  // How the console's sign-in gate treats it (deploy.ts, "Sign-in gate").
+  // Absent: gated; only people signed in to the console reach it.
+  // "credentials": gated for browsers, but a request carrying its own
+  //   Authorization header goes straight to the app, which checks it (git
+  //   over HTTPS, API and phone clients). Only for apps with a login of
+  //   their own, never with noLogin.
+  // "public": never gated: people sign in through it (an identity
+  //   provider, where a gate would lock everyone out of the console too),
+  //   or its clients are never browsers (ntfy's phone apps, the console's
+  //   own alerts).
+  gate?: "credentials" | "public";
 }
 
 // Rough, in bytes, from the pinned version's defaults.
@@ -175,6 +186,10 @@ export interface IngressHost {
   ingressClass?: string;
   // The catalog app this host belongs to, when discovery matched one.
   appId?: string;
+  // Traefik middlewares from the Ingress's
+  // traefik.ingress.kubernetes.io/router.middlewares annotation, as written
+  // ("<namespace>-<name>@kubernetescrd"); absent when it has none.
+  middlewares?: string[];
 }
 
 export type ClusterBasicId = "default-storage-class" | "ingress-controller" | "cert-manager" | "metrics-server";

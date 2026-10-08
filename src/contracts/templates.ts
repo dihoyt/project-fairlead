@@ -79,6 +79,9 @@ export interface TemplateDeployRequest {
   storageClass?: string;
   // Required when templateId is CUSTOM_TEMPLATE, refused otherwise.
   custom?: CustomAppSpec;
+  // Passed on as DeployRequest.public: reachable without signing in to the
+  // console. Default false.
+  public?: boolean;
 }
 
 export interface TemplateJobRequest extends TemplateDeployRequest {

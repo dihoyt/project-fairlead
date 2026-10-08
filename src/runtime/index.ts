@@ -80,6 +80,7 @@ export async function createRuntime(options: RuntimeOptions): Promise<Runtime> {
     logFor,
   };
   shared.services.provide("signin", platform.signIn);
+  shared.services.provide("gate", platform.gate);
 
   const seen = new Set<string>();
   const statuses = new Map<string, ModuleStatus>();

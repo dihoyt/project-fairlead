@@ -45,6 +45,7 @@ const MODE_LABEL: Record<DeployJobView["mode"] | DeployActionKind, string> = {
   "migrate-to-longhorn": "convert",
   "backup-volumes": "backup",
   "remove-app": "remove",
+  "app-gate": "sign-in gate",
 };
 
 // An app offered in several slots is listed under its first one only.
