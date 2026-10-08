@@ -6,6 +6,7 @@ import { createMockContext } from "../../../src/contracts/mocks/context.js";
 import { createFakeK8s, type FakeK8s } from "../../../src/contracts/mocks/k8s.js";
 import { DAY, MOCK_NOW } from "../../../src/contracts/mocks/time.js";
 import mod from "../../../src/modules/cluster/index.js";
+import { judgePods } from "../../../src/modules/cluster/judge.js";
 import { createLinker } from "../../../src/modules/cluster/links.js";
 import { clusterHealthProvider } from "../../../src/modules/cluster/provider.js";
 import { DEFAULT_THRESHOLDS, type Thresholds } from "../../../src/modules/cluster/settings.js";
@@ -467,4 +468,50 @@ test("end to end through the fake API server and the real Kubernetes service", a
   } finally {
     await api.close();
   }
+});
+
+const crashingPod = (restarts: number, ageMs: number, job = false): KubeObject => ({
+  apiVersion: "v1",
+  kind: "Pod",
+  metadata: {
+    name: job ? "helm-install-traefik-949mz" : "web-1",
+    namespace: "kube-system",
+    creationTimestamp: new Date(MOCK_NOW - ageMs).toISOString(),
+    ...(job
+      ? { ownerReferences: [{ apiVersion: "batch/v1", kind: "Job", name: "helm-install-traefik", uid: "u" }] }
+      : {}),
+  },
+  status: {
+    phase: "Running",
+    containerStatuses: [
+      {
+        name: "helm",
+        restartCount: restarts,
+        state: { waiting: { reason: "CrashLoopBackOff" } },
+        lastState: { terminated: { exitCode: 1, reason: "Error" } },
+      },
+    ],
+  },
+});
+
+const crashResult = (pod: KubeObject) =>
+  judgePods(
+    [pod],
+    { now: MOCK_NOW, thresholds: DEFAULT_THRESHOLDS, link: () => undefined, restartsInWindow: () => undefined },
+    "now"
+  ).find((r) => r.id === "pods-crashloop")!;
+
+test("a Job's pod retrying is quiet, then a warning, then critical at the backoff limit", () => {
+  assert.equal(crashResult(crashingPod(1, 60_000, true)).status, "ok");
+  assert.equal(crashResult(crashingPod(2, 60 * 60_000, true)).status, "ok");
+  const retrying = crashResult(crashingPod(4, 60 * 60_000, true));
+  assert.equal(retrying.status, "warn");
+  assert.match(retrying.detail, /its Job is still retrying$/);
+  assert.equal(crashResult(crashingPod(6, 60 * 60_000, true)).status, "crit");
+});
+
+test("a brand-new pod's first crashes warn; older or repeated ones are critical", () => {
+  assert.equal(crashResult(crashingPod(1, 60_000)).status, "warn");
+  assert.equal(crashResult(crashingPod(3, 60_000)).status, "crit");
+  assert.equal(crashResult(crashingPod(1, 10 * 60_000)).status, "crit");
 });
