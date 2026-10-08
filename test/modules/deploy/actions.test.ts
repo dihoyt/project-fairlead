@@ -10,7 +10,8 @@ import { createFakeK8s, type FakeK8s } from "../../../src/contracts/mocks/k8s.js
 import { MOCK_NOW } from "../../../src/contracts/mocks/time.js";
 import { settingValue } from "../../../src/modules/deploy/actions/replicas.js";
 import mod, { registerDeploy } from "../../../src/modules/deploy/index.js";
-import { summarize, type Deployer } from "../../../src/modules/deploy/runner.js";
+import { jobManifest } from "../../../src/modules/deploy/job.js";
+import { observe, summarize, type Deployer } from "../../../src/modules/deploy/runner.js";
 import { listen } from "../../runtime/helpers.js";
 
 const NS = "console";
@@ -241,4 +242,28 @@ test("settingValue keeps the per-engine JSON form; summarize takes an action's l
     ),
     "Longhorn raised to 2 replicas."
   );
+});
+
+test("jobManifest runs an action's own script with its deadline; observe names that deadline", () => {
+  const job = jobManifest({
+    id: "dj_9",
+    name: "deploy-x-9",
+    namespace: NS,
+    release: "x",
+    image: IMAGE,
+    serviceAccount: "installer",
+    valuesSecret: "deploy-x-values",
+    steps: [],
+    script: "set -eu\ntrap 'echo rollback' ERR\necho done\n",
+    deadlineSeconds: 3600,
+  }) as KubeObject & {
+    spec: { activeDeadlineSeconds: number; template: { spec: { containers: Array<{ command: string[] }> } } };
+  };
+  assert.equal(job.spec.activeDeadlineSeconds, 3600);
+  assert.equal(job.spec.template.spec.containers[0]!.command[2], "set -eu\ntrap 'echo rollback' ERR\necho done\n");
+  const failed = {
+    ...job,
+    status: { conditions: [{ type: "Failed", status: "True", reason: "DeadlineExceeded" }] },
+  };
+  assert.equal(observe(failed).message, "Stopped after 60 minutes without finishing.");
 });

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ApiRoutes, RouteKey } from "../../../contracts/api.js";
-import type { CatalogService } from "../../../contracts/catalog.js";
+import type { CatalogService, DiscoveryReport } from "../../../contracts/catalog.js";
 import type {
   DeployActionKind,
   DeployActionPlan,
@@ -21,6 +21,8 @@ export interface ActionContext {
   call<K extends RouteKey>(key: K, input?: CallInput<K>): Promise<ApiRoutes[K]["response"]>;
   k8s?: K8sApi;
   catalog?: CatalogService;
+  // The catalog's discovery (cached); undefined when it failed.
+  discover(): Promise<DiscoveryReport | undefined>;
   // The latest install or upgrade job per release (Deployer.releases()).
   releases: readonly DeployedRelease[];
   // Release -> the version of its latest succeeded install or upgrade.
@@ -38,6 +40,11 @@ export interface ActionRendered {
   version: string;
   // Empty when the plan is not allowed.
   steps: Step[];
+  // Instead of steps: a fixed program from code, run with /bin/sh -c.
+  // Inputs reach it only as files under /values, never in the text.
+  script?: string;
+  // The Job's activeDeadlineSeconds; default 900.
+  deadlineSeconds?: number;
   files: Record<string, string>;
 }
 

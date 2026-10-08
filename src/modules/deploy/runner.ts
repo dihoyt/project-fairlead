@@ -62,6 +62,11 @@ interface Observed {
   message?: string;
 }
 
+const deadlineOf = (job: KubeObject): number => {
+  const set = (job.spec as { activeDeadlineSeconds?: unknown } | undefined)?.activeDeadlineSeconds;
+  return typeof set === "number" && set > 0 ? set : DEADLINE_SECONDS;
+};
+
 export function observe(job: KubeObject): Observed {
   const status = (job.status ?? {}) as JobStatus;
   const condition = (type: string) => status.conditions?.find((c) => c.type === type && c.status === "True");
@@ -73,7 +78,7 @@ export function observe(job: KubeObject): Observed {
       startedAt: status.startTime,
       message:
         failed.reason === "DeadlineExceeded"
-          ? `Stopped after ${DEADLINE_SECONDS / 60} minutes without finishing.`
+          ? `Stopped after ${Math.round(deadlineOf(job) / 60)} minutes without finishing.`
           : failed.message || failed.reason || "The Job failed.",
     };
   }
@@ -355,6 +360,7 @@ export class Deployer {
       call,
       k8s: this.k8s(),
       catalog: this.ctx.services.has("catalog") ? this.catalog() : undefined,
+      discover: async () => (await this.discover()).discovery,
       releases: this.store.releases(),
       versions: this.store.installedVersions(),
     });
@@ -383,7 +389,8 @@ export class Deployer {
       },
       Object.keys(rendered.files).length > 0 ? rendered.files : { "values.yaml": "{}\n" },
       rendered.steps,
-      []
+      [],
+      { script: rendered.script, deadlineSeconds: rendered.deadlineSeconds }
     );
   }
 
@@ -400,7 +407,8 @@ export class Deployer {
     },
     files: Record<string, string>,
     steps: Step[],
-    secrets: string[]
+    secrets: string[],
+    program: { script?: string; deadlineSeconds?: number } = {}
   ): Promise<DeployJobView> {
     const k8s = this.k8s()!;
     const jobNamespace = this.config.namespace();
@@ -442,6 +450,7 @@ export class Deployer {
           serviceAccount: this.config.serviceAccount(),
           valuesSecret: secretName,
           steps,
+          ...program,
         })
       );
       await k8s.create!(
