@@ -689,19 +689,30 @@ describe("deploy bundles", () => {
     }
   });
 
-  test("on an empty cluster everything is in, optional Longhorn starts unticked", async () => {
+  test("on an empty cluster everything is in, optional Longhorn included, its open-iscsi need a note", async () => {
     const empty = createFakeK8s({ absentGroups: ["cert-manager.io", "metrics.k8s.io"] });
-    const view = bundleView(bundles[0]!, await discover(empty, catalog));
+    const view = bundleView(bundles[0]!, await discover(empty, catalog), catalog);
+    for (const item of view.items) {
+      assert.deepEqual([item.appId, item.skip, item.selected, item.reason], [item.appId, false, true, undefined]);
+    }
+    assert.match(view.items.find((i) => i.appId === "longhorn")!.note!, /open-iscsi/);
+  });
+
+  test("an optional app whose chart doesn't support the cluster starts unticked, with the reason", async () => {
+    const empty = createFakeK8s({ absentGroups: ["cert-manager.io", "metrics.k8s.io"] });
+    const report = await discover(empty, catalog);
+    const view = bundleView(bundles[0]!, { ...report, kubernetesVersion: "v1.20.3" }, catalog);
     const longhorn = view.items.find((i) => i.appId === "longhorn")!;
     assert.deepEqual([longhorn.skip, longhorn.selected], [false, false]);
-    assert.match(longhorn.reason!, /open-iscsi/);
-    for (const item of view.items.filter((i) => i.appId !== "longhorn")) {
-      assert.deepEqual([item.appId, item.skip, item.selected], [item.appId, false, true]);
-    }
+    assert.match(longhorn.reason!, /^Needs Kubernetes .*this cluster runs v1\.20\.3\.$/);
   });
 
   test("on a healthy cluster, installed apps and met basics are skipped", async () => {
-    const view = bundleView(bundles[0]!, await discover(createFakeK8s({ objects: healthyCluster() }), catalog));
+    const view = bundleView(
+      bundles[0]!,
+      await discover(createFakeK8s({ objects: healthyCluster() }), catalog),
+      catalog
+    );
     const skipped = view.items.filter((i) => i.skip).map((i) => i.appId);
     assert.deepEqual(skipped, [
       "traefik",
@@ -715,7 +726,7 @@ describe("deploy bundles", () => {
     assert.match(view.items.find((i) => i.appId === "traefik")!.reason!, /^Already covered: IngressClass traefik/);
     assert.deepEqual(
       view.items.filter((i) => i.selected).map((i) => i.appId),
-      ["authentik", "gitea", "ntfy"]
+      ["longhorn", "authentik", "gitea", "ntfy"]
     );
     assert.deepEqual(view.suggested, { baseDomain: "home.example.com", storageClass: "longhorn" });
   });
