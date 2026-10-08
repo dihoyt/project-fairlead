@@ -129,4 +129,18 @@ describe("Settings page health editors", () => {
     expect(within(row).getByRole("switch")).toBeDisabled();
     expect(screen.getByText(/in the environment, which overrides this page/)).toBeInTheDocument();
   });
+
+  it("links to the page where a setting is edited instead of showing it twice", async () => {
+    serve([
+      setting("connector-cloudflare.accessApps", "never", {
+        group: "connector-cloudflare",
+        label: "Cloudflare Access apps",
+        type: "string",
+      }),
+    ]);
+    renderWithApp(<SettingsPage />);
+    const link = await screen.findByRole("link", { name: "Cloudflare" });
+    expect(link).toHaveAttribute("href", "#/admin/cloudflare");
+    expect(screen.queryByLabelText("Cloudflare Access apps")).not.toBeInTheDocument();
+  });
 });

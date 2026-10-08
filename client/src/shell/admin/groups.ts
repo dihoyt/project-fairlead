@@ -23,3 +23,8 @@ const GROUP_TITLES: Record<string, string> = {
 export function groupTitle(group: string): string {
   return GROUP_TITLES[group] ?? group.charAt(0).toUpperCase() + group.slice(1);
 }
+
+// Settings edited on the page they belong to; this page links there instead.
+export const EDITED_ELSEWHERE: Record<string, { page: string; href: string }> = {
+  "connector-cloudflare.accessApps": { page: "Cloudflare", href: "#/admin/cloudflare" },
+};
