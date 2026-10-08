@@ -489,6 +489,56 @@ install_helm() {
 
 random_hex() { head -c "$1" /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 
+# What this script and the chart create, plus the Pods those make. A webhook
+# whose rules name none of these can't fail the install, so it only warns.
+WEBHOOK_KINDS=" * */* namespaces secrets configmaps services serviceaccounts pods persistentvolumeclaims deployments replicasets jobs roles rolebindings clusterroles clusterrolebindings ingresses "
+
+# A Fail-policy admission webhook whose Service has no ready endpoint (left
+# behind when Rancher's agent, an operator or a policy engine is removed
+# without its webhook configuration) makes the API server refuse every
+# matching write. Found here, before anything is written, rather than as a
+# raw error half-way through. Nothing is deleted: the fix is printed.
+check_webhooks() {
+  # shellcheck disable=SC2016
+  tpl='{{range .items}}{{$c := .metadata.name}}{{range .webhooks}}{{if .clientConfig.service}}{{$c}} {{.name}} {{.clientConfig.service.namespace}} {{.clientConfig.service.name}} {{.failurePolicy}} {{range .rules}}{{range .resources}}{{.}},{{end}}{{end}}{{"\n"}}{{end}}{{end}}{{end}}'
+  blocking=""
+  stale=""
+  for kind in validatingwebhookconfigurations mutatingwebhookconfigurations; do
+    hooks=$(kube get "$kind" -o go-template="$tpl" 2>/dev/null) || continue
+    while read -r config hook svc_ns svc policy resources; do
+      if [ -z "$config" ] || [ "$policy" = Ignore ]; then continue; fi
+      ready=$(kube -n "$svc_ns" get endpointslices -l "kubernetes.io/service-name=$svc" \
+        -o go-template='{{range .items}}{{range .endpoints}}{{if .conditions.ready}}y{{end}}{{end}}{{end}}' 2>/dev/null || true)
+      [ -z "$ready" ] || continue
+      line="  ${kind%s}/$config: webhook $hook -> service $svc_ns/$svc"
+      matches=0
+      old_ifs="$IFS"
+      IFS=,
+      set -f
+      for r in $resources; do
+        case "$WEBHOOK_KINDS" in *" $r "*) matches=1 ;; esac
+      done
+      set +f
+      IFS="$old_ifs"
+      if [ "$matches" = 1 ]; then
+        blocking="$blocking$line
+"
+        case " $stale " in *" ${kind%s}/$config "*) ;; *) stale="$stale ${kind%s}/$config" ;; esac
+      else
+        warn "admission webhook $hook ($svc_ns/$svc) has no running pods; writes it covers will fail"
+      fi
+    done <<EOF
+$hooks
+EOF
+  done
+  [ -n "$blocking" ] || return 0
+  printf 'error: these admission webhooks point at a service with no running pods, so the cluster refuses the objects this script writes:\n%s' "$blocking" >&2
+  printf 'If what served them is gone (a Rancher agent or operator that was removed), delete them and run this again:\n' >&2
+  printf '  %s delete%s\n' "$(kubectl_hint)" "$stale" >&2
+  printf 'If it should still be running, get its pods running first, then run this again.\n' >&2
+  exit 1
+}
+
 ensure_namespace() {
   kube get namespace "$NAMESPACE" >/dev/null 2>&1 || run kube create namespace "$NAMESPACE" >/dev/null
 }
@@ -694,6 +744,7 @@ do_install() {
       NODE_PORT=$(kube -n "$NAMESPACE" get svc "$RELEASE" -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || true)
     fi
   fi
+  check_webhooks
   ensure_namespace
   ensure_secret
   ensure_join_secret
