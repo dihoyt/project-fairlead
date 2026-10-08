@@ -58,7 +58,7 @@ private until made public in the package settings.
 
 | Value                                                            | Purpose                                                                                       |
 | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `config.publicOrigin`                                            | Externally visible origin (cookies, OIDC callback).                                           |
+| `config.publicOrigin`                                            | Externally visible origin (OIDC callback, Secure cookies). Optional: the setup wizard asks.     |
 | `config.trustedProxies`, `config.clientIpHeader`                 | Take the client address from a header only when the peer is a listed proxy.                   |
 | `secrets.existingSecret`                                         | Secret with `SECRETS_KEY` and `BOOTSTRAP_ADMIN_PASSWORD`. `secrets.create` is for tests only. |
 | `persistence.*`                                                  | The data volume (`existingClaim`, `storageClass`, `size`). Kept on `helm uninstall`.          |

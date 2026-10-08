@@ -284,7 +284,7 @@ export function oidcRouter(core: Core): Router {
   // browser straight back to the provider, forever.
   const redirectWithError = (req: Request, res: Response, message: string) => {
     if (sessionDueRecheck(core, req) !== null) endSession(core, req, res);
-    res.redirect(303, `${publicOrigin()}/#signin-error=${encodeURIComponent(message)}`);
+    res.redirect(303, `${publicOrigin(core)}/#signin-error=${encodeURIComponent(message)}`);
   };
 
   router.get(
@@ -373,7 +373,7 @@ export function oidcRouter(core: Core): Router {
         finished = await finishSignIn(core, req.query as Record<string, unknown>);
       } catch (err) {
         if (err instanceof OidcInteractionRequired) {
-          res.redirect(303, `${publicOrigin()}/auth/oidc/start?rd=${encodeURIComponent(err.returnTo)}`);
+          res.redirect(303, `${publicOrigin(core)}/auth/oidc/start?rd=${encodeURIComponent(err.returnTo)}`);
           return;
         }
         const message = err instanceof OidcError ? err.message : "Sign-in failed.";
@@ -454,7 +454,7 @@ export function oidcRouter(core: Core): Router {
         detail: `oidc: ${profile.provider}`,
         result: "ok",
       });
-      res.redirect(303, `${publicOrigin()}${returnTo}`);
+      res.redirect(303, `${publicOrigin(core)}${returnTo}`);
     })
   );
 

@@ -1,5 +1,5 @@
-import type { NextFunction, Request, Response } from "express";
-import { publicOrigin } from "./core.js";
+import type { NextFunction, Request, RequestHandler, Response } from "express";
+import { publicOrigin, requestOrigin, type Core } from "./core.js";
 
 // Cross-site request forgery defence for every state-changing request.
 //
@@ -13,15 +13,21 @@ import { publicOrigin } from "./core.js";
 
 const SAFE = new Set(["GET", "HEAD", "OPTIONS"]);
 
-function expectedOrigin(req: Request): string {
-  const configured = publicOrigin();
-  if (configured) return new URL(configured).origin;
-  // Unconfigured (local development): compare against the host the browser
-  // addressed, which is all there is to go on.
-  return `${req.protocol}://${req.get("host") ?? ""}`;
+// The configured public URL, and also the address the request itself was
+// sent to: a page on another origin cannot make its Origin header equal the
+// Host it is posting to, and an install reached by a second address (a
+// NodePort beside the ingress) keeps working whatever the public URL says.
+function sameOrigin(core: Core, req: Request, origin: string): boolean {
+  const configured = publicOrigin(core);
+  if (configured && origin === new URL(configured).origin) return true;
+  return origin === requestOrigin(req);
 }
 
-export function originGuard(req: Request, res: Response, next: NextFunction): void {
+export function originGuard(core: Core): RequestHandler {
+  return (req, res, next) => check(core, req, res, next);
+}
+
+function check(core: Core, req: Request, res: Response, next: NextFunction): void {
   if (SAFE.has(req.method)) {
     next();
     return;
@@ -32,7 +38,7 @@ export function originGuard(req: Request, res: Response, next: NextFunction): vo
     next();
     return;
   }
-  if (site === "same-origin" || (origin !== undefined && origin === expectedOrigin(req))) {
+  if (site === "same-origin" || (origin !== undefined && sameOrigin(core, req, origin))) {
     next();
     return;
   }

@@ -49,7 +49,7 @@ export function SettingField({ setting, onSaved }: { setting: SettingView; onSav
   const params = { key: setting.key };
   const save = () => run(() => apiRequest("PUT /api/admin/settings/:key", { params, body: { value: draft } }));
   const reset = () => run(() => apiRequest("DELETE /api/admin/settings/:key", { params }));
-  const dirty = !same(draft, setting.value);
+  const dirty = !setting.locked && !same(draft, setting.value);
   const source = SOURCE[setting.source];
 
   let input;
@@ -104,6 +104,7 @@ export function SettingField({ setting, onSaved }: { setting: SettingView; onSav
           type={setting.type === "url" ? "url" : "text"}
           value={String(draft)}
           onChange={(e) => setDraft(e.currentTarget.value)}
+          readOnly={setting.locked}
         />
       );
   }
@@ -125,6 +126,11 @@ export function SettingField({ setting, onSaved }: { setting: SettingView; onSav
           </>
         ) : null}
       </Text>
+      {setting.locked ? (
+        <Text size="xs" c="dimmed">
+          Set by the environment, which overrides this page; change it where the app is deployed.
+        </Text>
+      ) : null}
       {setting.envError ? (
         <Text size="xs" c="orange">
           The environment's value was ignored: {setting.envError}
@@ -135,7 +141,7 @@ export function SettingField({ setting, onSaved }: { setting: SettingView; onSav
           {error}
         </Text>
       ) : null}
-      {dirty || setting.source === "ui" ? (
+      {!setting.locked && (dirty || setting.source === "ui") ? (
         <Group gap="xs">
           {dirty ? (
             <>

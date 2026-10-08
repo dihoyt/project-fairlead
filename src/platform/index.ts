@@ -77,7 +77,7 @@ export const createPlatform: CreatePlatform = (deps) => {
           next(err);
         }
       });
-      app.use(originGuard);
+      app.use(originGuard(core));
       app.use(oidcRouter(core));
       app.get("/api/me", meRoute());
       app.use("/api/auth/totp", totpRouter(core));

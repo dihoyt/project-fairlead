@@ -6,13 +6,14 @@ Three layers, read in this order:
    read-only under Admin → Settings and can't be changed from the UI.
 2. **Settings** are changed under Admin → Settings (or by the setup wizard).
    A value set there wins over the environment variable, which wins over the
-   default. Every setting is read fresh on each use, so a change needs no
+   default, except for the public URL, where `PUBLIC_ORIGIN` wins. Every setting is read fresh on each use, so a change needs no
    restart. Resetting a setting in the UI falls back to the variable.
 3. **Kubernetes permissions** decide what the console can see at all; see
    "Permissions by feature" below.
 
-In the chart, `config.publicOrigin`, `config.trustedProxies` and
-`config.clientIpHeader` set the first three variables below, every key of the
+In the chart, `config.publicOrigin` sets `PUBLIC_ORIGIN` (see the public URL
+below), `config.trustedProxies` and `config.clientIpHeader` set the first two
+variables below, every key of the
 Secret named in `secrets.existingSecret` becomes a variable, and anything else
 goes in `extraEnv`:
 
@@ -30,7 +31,6 @@ No variable carries a product prefix.
 
 | Variable | Purpose |
 |---|---|
-| `PUBLIC_ORIGIN` | Where browsers reach this install, e.g. `https://console.example.com`. Sets the OIDC redirect URI (`<PUBLIC_ORIGIN>/auth/oidc/callback`) and secure cookies. |
 | `TRUSTED_PROXIES` | Comma-separated addresses or CIDRs whose client-IP header is believed. |
 | `CLIENT_IP_HEADER` | The header carrying the client address from a trusted proxy, e.g. `X-Forwarded-For`. |
 | `SECRETS_KEY` | Encrypts every secret stored in the database (OIDC client secret, SSH credentials, notification URLs, check auth headers). Without it nothing can be stored. **Never change it on an existing install**: what it sealed can't be read back. `openssl rand -hex 32`. |
@@ -55,6 +55,7 @@ the UI hasn't.
 | Setting | Env | Default | Meaning |
 |---|---|---|---|
 | `site.name` | `SITE_NAME` | product name | Browser tab, sign-in page and header. |
+| `site.publicUrl` | `PUBLIC_ORIGIN` | empty | Where browsers reach this install, e.g. `https://console.example.com`. Sets the OIDC redirect URI (`<public URL>/auth/oidc/callback`). See below. |
 | `auth.password.enabled` | `AUTH_PASSWORD_ENABLED` | `true` | Allow local password sign-in. Can't be turned off before OIDC has worked for you. |
 | `auth.password.networks` | `AUTH_PASSWORD_NETWORKS` | none | CIDRs password sign-in is allowed from. Empty: anywhere. |
 | `auth.totp.enabled` | `AUTH_TOTP_ENABLED` | `false` | Allow authenticator apps for local accounts. Needs `SECRETS_KEY`. |
@@ -73,6 +74,20 @@ the UI hasn't.
 | `auth.oidc.recheckHours` | `OIDC_RECHECK_HOURS` | `0` | Send OIDC sessions back through the provider this often. |
 | `auth.session.idleDays` | `SESSION_IDLE_DAYS` | `14` | Sign out after this much inactivity. |
 | `auth.session.maxDays` | `SESSION_MAX_DAYS` | `30` | Absolute session lifetime. |
+
+#### Public URL
+
+Set it at the first setup step or under Admin, Settings, General. The setup
+step is prefilled with the address you opened the page on.
+
+- `PUBLIC_ORIGIN` in the environment (chart `config.publicOrigin`, or
+  `install.sh --origin`) overrides it, and the field is then read-only.
+- With neither set, the redirect URI is shown from the address of the current
+  request (a forwarded scheme and host count only from a peer in
+  `TRUSTED_PROXIES`), but OIDC sign-in stays off until a URL is saved.
+- Secure (`__Host-`) session cookies follow `PUBLIC_ORIGIN` only, so a wrong
+  value saved from the UI can't lock anyone out. Behind https, set
+  `PUBLIC_ORIGIN` as well to get them.
 
 ### Health board and notifications
 

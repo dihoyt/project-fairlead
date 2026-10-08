@@ -72,7 +72,7 @@ export async function oidcConfig(core: Core): Promise<OidcConfig | null> {
   const s = core.settings;
   const issuer = s.string("auth.oidc.issuer");
   const clientId = s.string("auth.oidc.clientId");
-  const origin = publicOrigin();
+  const origin = publicOrigin(core);
   if (!s.bool("auth.oidc.enabled") || !issuer || !clientId || !origin) return null;
   const secret = await clientSecret(core);
   if (!secret) return null;
@@ -92,7 +92,8 @@ export async function oidcConfig(core: Core): Promise<OidcConfig | null> {
 export async function oidcUnavailableReason(core: Core): Promise<string | null> {
   const s = core.settings;
   if (!s.bool("auth.oidc.enabled")) return "OIDC sign-in is turned off.";
-  if (!publicOrigin()) return "PUBLIC_ORIGIN is not set, so there is no redirect URI to give the provider.";
+  if (!publicOrigin(core))
+    return "No public URL is saved yet, so the redirect URI shown is a guess from this browser's address. Save the public URL under Settings, General.";
   if (!s.string("auth.oidc.issuer")) return "No issuer URL is set.";
   if (!s.string("auth.oidc.clientId")) return "No client ID is set.";
   if (!(await core.secrets.has(OIDC_SECRET.scope, OIDC_SECRET.id))) return "No client secret is set.";

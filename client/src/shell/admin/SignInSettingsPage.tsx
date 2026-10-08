@@ -108,9 +108,14 @@ export function SignInSettingsPage() {
                 </Group>
               ) : (
                 <Text size="xs" c="orange">
-                  Set PUBLIC_ORIGIN in the environment to get one.
+                  Set the public URL under Settings to get one.
                 </Text>
               )}
+              {data.publicUrl.source === "request" ? (
+                <Text size="xs" c="orange">
+                  Guessed from this page&apos;s address. Save the public URL under Settings to make it stick.
+                </Text>
+              ) : null}
               <Text size="xs" c="dimmed">
                 Register this with your identity provider as the web redirect URI.
               </Text>
