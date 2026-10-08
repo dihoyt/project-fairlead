@@ -1,6 +1,13 @@
 import type { CatalogEntry } from "../catalog.js";
-import type { AccessView, DeployedRelease, DeployJobRequest, DeployRequest, DeployService } from "../deploy.js";
-import { mockAccess, mockDeployJob, mockDeployPlan } from "./catalog.js";
+import type {
+  AccessView,
+  DeployedRelease,
+  DeployJobRequest,
+  DeployRequest,
+  DeployService,
+  GateStatus,
+} from "../deploy.js";
+import { mockAccess, mockDeployJob, mockDeployPlan, mockGateStatus } from "./catalog.js";
 
 // Headlamp installed by the runner, Longhorn's install failed.
 export const mockDeployedReleases: DeployedRelease[] = [
@@ -19,13 +26,15 @@ const named = (entry: CatalogEntry) => ({ appId: entry.id, release: entry.id, na
 
 export function createMockDeployService(
   releases: DeployedRelease[] = mockDeployedReleases,
-  access: AccessView = mockAccess
+  access: AccessView = mockAccess,
+  gate: GateStatus = mockGateStatus
 ): MockDeployService {
   const service: MockDeployService = {
     planned: [],
     started: [],
     releases: async () => structuredClone(releases),
     access: async () => structuredClone(access),
+    gate: async () => structuredClone(gate),
     planEntry: async (entry, request) => {
       service.planned.push({ entry, request });
       return {
