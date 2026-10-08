@@ -4,7 +4,7 @@ import type { CatalogBundleView } from "@contracts/catalog";
 import type { BundlePlan, BundleRunView, DeployValue } from "@contracts/deploy";
 import { apiRequest, useApi } from "../../ui";
 import { BundlePlanView, DeployInputsForm, DeployRolloutProgress, DeploysOff, WhatIsThis } from "../../ui/deploy";
-import { landedSteps, wireLanded } from "./bundle";
+import { landedSteps, runFailures, wireLanded } from "./bundle";
 import { useDiscovery } from "./discovery";
 import { useAction } from "./shared";
 import { PublicUrlField } from "./steps/PublicUrlField";
@@ -171,17 +171,47 @@ function BundleRun({ runId, names, onDone }: { runId: string; names: Record<stri
           Links and HTTP checks are set up for each app with a web page. Carry on with the remaining setup steps.
         </Alert>
       ) : null}
-      {data.state === "failed" ? (
-        <Alert color="red" title="Stopped">
-          The rollout stopped at the first failure; what installed before it stays. Fix the cause from the log and open
-          the bundle again from Setup; it skips whatever is already installed.
-        </Alert>
-      ) : null}
+      {data.state === "failed" ? <RunFailed run={data} names={names} /> : null}
       <Group justify="flex-end">
         <Button disabled={data.state === "running"} onClick={onDone}>
           Continue setup
         </Button>
       </Group>
     </Stack>
+  );
+}
+
+function RunFailed({ run, names }: { run: BundleRunView; names: Record<string, string> }) {
+  const { kind, stoppedAt, failed } = runFailures(run);
+  const name = (appId: string) => names[appId] ?? appId;
+  return (
+    <Alert
+      color={kind === "stopped" ? "red" : "yellow"}
+      title={
+        kind === "stopped" && stoppedAt
+          ? `Stopped at ${name(stoppedAt)}`
+          : kind === "stopped"
+            ? "Stopped"
+            : "Finished with failures"
+      }
+      data-run-outcome={kind}
+    >
+      <Stack gap={6}>
+        <Text size="sm">
+          {kind === "stopped"
+            ? "A required app failed, so the apps after it were not installed. What installed before it stays."
+            : "Every app ran; the ones below are optional and failed, and everything else is installed."}
+        </Text>
+        {failed.map((step) => (
+          <Text key={step.appId} size="sm" data-failed={step.appId}>
+            <b>{name(step.appId)}</b>
+            {step.message ? `: ${step.message}` : ""}
+          </Text>
+        ))}
+        <Text size="sm">
+          Fix the cause from the log and open the bundle again from Setup; it skips whatever is already installed.
+        </Text>
+      </Stack>
+    </Alert>
   );
 }

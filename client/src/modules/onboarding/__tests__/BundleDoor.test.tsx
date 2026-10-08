@@ -13,7 +13,7 @@ import { SessionContext, type Session } from "../../../ui/session";
 import { stubApi } from "../../../ui/deploy/__tests__/stubApi";
 import { renderWithApp } from "../../../test-utils";
 import { BundleDoor, initialBundleValues, initialInclude } from "../BundleDoor";
-import { landedSteps, linksForLanded } from "../bundle";
+import { landedSteps, linksForLanded, runFailures } from "../bundle";
 import { WelcomePage, startsAtDoors } from "../WelcomePage";
 
 const admin: Session = { me: { ...apiMocks["GET /api/me"], admin: true }, methods: null, refresh: () => {} };
@@ -50,6 +50,40 @@ describe("bundle helpers", () => {
       grafanaUrl: "https://grafana.mine.test",
     };
     expect(linksForLanded(form, landed, mockCatalogApps)).toEqual({ giteaUrl: "https://git.example.test" });
+  });
+});
+
+describe("runFailures", () => {
+  it("names the required app a rollout stopped at", () => {
+    expect(
+      runFailures({
+        steps: [
+          { appId: "longhorn", state: "failed", message: "open-iscsi missing" },
+          { appId: "authentik", state: "failed", message: "timed out" },
+          { appId: "gitea", state: "cancelled" },
+          { appId: "ntfy", state: "pending" },
+        ],
+      })
+    ).toEqual({
+      kind: "stopped",
+      stoppedAt: "authentik",
+      failed: [
+        { appId: "longhorn", message: "open-iscsi missing" },
+        { appId: "authentik", message: "timed out" },
+      ],
+    });
+  });
+
+  it("reports a run where only optional apps failed as finished", () => {
+    expect(
+      runFailures({
+        steps: [
+          { appId: "longhorn", state: "failed", message: "open-iscsi missing" },
+          { appId: "gitea", state: "succeeded" },
+          { appId: "grafana", state: "skipped" },
+        ],
+      })
+    ).toEqual({ kind: "finished", failed: [{ appId: "longhorn", message: "open-iscsi missing" }] });
   });
 });
 
@@ -163,5 +197,35 @@ describe("BundleDoor", () => {
     expect(JSON.stringify(links?.body)).toContain("https://git.example.test");
     expect(await screen.findByText("Rolled out")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue setup" })).toBeEnabled();
+  });
+
+  it("says the rollout finished with failures when only an optional app failed", async () => {
+    const run: BundleRunView = {
+      ...mockBundleRun,
+      state: "failed",
+      steps: [
+        { appId: "longhorn", state: "failed", jobId: "dj_l", message: "open-iscsi missing" },
+        { appId: "headlamp", state: "succeeded", jobId: "dj_h" },
+      ],
+    };
+    stubApi({ "GET /api/deploy/bundles": [{ ...run, state: "running" }], "GET /api/deploy/bundles/:id": run });
+    renderWithApp(<BundleDoor onDone={() => {}} />);
+    expect(await screen.findByText("Finished with failures")).toBeInTheDocument();
+    expect(screen.getByText(/: open-iscsi missing/)).toBeInTheDocument();
+  });
+
+  it("says where the rollout stopped when a required app failed", async () => {
+    const run: BundleRunView = {
+      ...mockBundleRun,
+      state: "failed",
+      steps: [
+        { appId: "authentik", state: "failed", jobId: "dj_a", message: "timed out" },
+        { appId: "gitea", state: "pending" },
+      ],
+    };
+    stubApi({ "GET /api/deploy/bundles": [{ ...run, state: "running" }], "GET /api/deploy/bundles/:id": run });
+    renderWithApp(<BundleDoor onDone={() => {}} />);
+    expect(await screen.findByText("Stopped at Authentik")).toBeInTheDocument();
+    expect(screen.getByText(/: timed out/)).toBeInTheDocument();
   });
 });

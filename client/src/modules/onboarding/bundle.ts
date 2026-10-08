@@ -62,3 +62,19 @@ export async function wireLanded(landed: Landed[], apps: CatalogAppView[]): Prom
     await apiRequest("POST /api/checks", { body: { label: proposal.label, kind: "http", target: proposal.url } });
   }
 }
+
+export interface RunFailures {
+  // "stopped": a required app failed and the steps after it never ran.
+  // "finished": every step ran, and some optional ones failed.
+  kind: "stopped" | "finished";
+  stoppedAt?: string;
+  failed: Array<{ appId: string; message?: string }>;
+}
+
+export function runFailures(run: Pick<BundleRunView, "steps">): RunFailures {
+  const failed = run.steps.filter((s) => s.state === "failed").map((s) => ({ appId: s.appId, message: s.message }));
+  const firstUnrun = run.steps.findIndex((s) => s.state === "pending" || s.state === "cancelled");
+  if (firstUnrun === -1) return { kind: "finished", failed };
+  const before = run.steps.slice(0, firstUnrun).filter((s) => s.state === "failed");
+  return { kind: "stopped", stoppedAt: before[before.length - 1]?.appId, failed };
+}
