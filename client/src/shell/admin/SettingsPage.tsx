@@ -1,9 +1,9 @@
-import { Alert, Code, Loader, Paper, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Code, Loader, Paper, Stack, Table, Text, Title } from "@mantine/core";
 import { useApi } from "../../ui/api";
 import { PageHeader } from "../PageHeader";
 import type { SettingView } from "@contracts/auth";
 import { CheckRulesEditor } from "./CheckRulesEditor";
-import { groupTitle, isSignInGroup } from "./groups";
+import { EDITED_ELSEWHERE, groupTitle, isSignInGroup } from "./groups";
 import { LinksSettingEditor } from "./LinksSettingEditor";
 import { ResetSection } from "./ResetSection";
 import { SettingField } from "./SettingField";
@@ -33,9 +33,17 @@ export function SettingsPage() {
               <Title order={4}>{groupTitle(group)}</Title>
               {data.settings
                 .filter((s) => s.group === group)
-                .map((s) => (
-                  <Editor key={s.key} setting={s} settings={data.settings} onSaved={overview.reload} />
-                ))}
+                .map((s) => {
+                  const elsewhere = EDITED_ELSEWHERE[s.key];
+                  if (!elsewhere) {
+                    return <Editor key={s.key} setting={s} settings={data.settings} onSaved={overview.reload} />;
+                  }
+                  return (
+                    <Text key={s.key} size="sm" data-edited-elsewhere={s.key}>
+                      {s.label}: set on the <Anchor href={elsewhere.href}>{elsewhere.page}</Anchor> page.
+                    </Text>
+                  );
+                })}
             </Stack>
           </Paper>
         ))}

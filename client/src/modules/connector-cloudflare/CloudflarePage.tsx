@@ -1,18 +1,12 @@
 import { useState } from "react";
 import { Alert, Anchor, Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
-import type { CloudflareView } from "@contracts/connectors";
 import { apiRequest, useApi } from "../../ui/api";
 import { relativeTime } from "../../ui/time";
 import { PageHeader } from "../../shell/PageHeader";
+import { CloudflareAccess } from "./Access";
 import { CloudflareConnect } from "./Connect";
 import { CloudflareHosts } from "./Hosts";
 import { CloudflareTunnel } from "./Tunnel";
-
-const POLICY: Record<CloudflareView["accessPolicy"], string> = {
-  never: "Cloudflare Access is off for every app.",
-  always: "Every app is behind Cloudflare Access.",
-  "per-app": "Cloudflare Access is chosen per app below.",
-};
 
 // Everything the Cloudflare connector keeps for this install. Shared with
 // the Access step, which shows the same panel once connected.
@@ -58,9 +52,7 @@ export function CloudflarePanel({ baseDomain, pollMs }: { baseDomain?: string; p
       ))}
       {error ? <Alert color="red">{error}</Alert> : null}
       <CloudflareTunnel view={data} onChanged={() => view.reload()} cloudflaredInstalled={cloudflaredInstalled} />
-      <Text size="xs" c="dimmed">
-        {POLICY[data.accessPolicy]} Change it in Admin &gt; Settings.
-      </Text>
+      <CloudflareAccess view={data} onSaved={() => view.reload()} />
       <CloudflareHosts view={data} onChanged={() => view.reload()} />
     </Stack>
   );
