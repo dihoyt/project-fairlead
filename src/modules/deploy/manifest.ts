@@ -1,4 +1,5 @@
 import type { CatalogEntry } from "../../contracts/catalog.js";
+import { deployedLabel } from "../../contracts/deployed.js";
 import { VALUES_DIR, type RecipeInput, type Step } from "./apps.js";
 import type { YamlValue } from "./yaml.js";
 
@@ -34,6 +35,7 @@ export function ingressFor(r: RecipeInput, service: ServiceRef): YamlValue {
     metadata: {
       name: r.release,
       namespace: service.namespace ?? r.namespace,
+      labels: deployedLabel(),
       annotations:
         r.tls && r.defaults.clusterIssuer ? { "cert-manager.io/cluster-issuer": r.defaults.clusterIssuer } : {},
     },

@@ -1,5 +1,6 @@
 import type { CatalogEntry, DiscoveryReport } from "../../contracts/catalog.js";
 import type { DeployValue } from "../../contracts/deploy.js";
+import { deployedLabel } from "../../contracts/deployed.js";
 import type { YamlValue } from "./yaml.js";
 
 export interface Defaults {
@@ -60,6 +61,11 @@ const issuerAnnotations = (r: RecipeInput): Record<string, string> =>
 
 const tlsSecret = (r: RecipeInput) => `${r.release}-tls`;
 
+// Charts with a labels key for every object get the deployed-by label, so
+// discovery reports them as ours; the rest are matched through the deploy
+// module's releases().
+const labels = () => deployedLabel();
+
 const storageClass = (r: RecipeInput) => r.defaults.storageClass || undefined;
 
 function hasDefaultStorageClass(r: RecipeInput): boolean {
@@ -78,7 +84,7 @@ export const VELERO_AWS_PLUGIN = "velero/velero-plugin-for-aws:v1.14.4";
 
 export const recipes: Record<string, Recipe> = {
   "cert-manager": {
-    values: () => ({ crds: { enabled: true } }),
+    values: () => ({ crds: { enabled: true }, global: { commonLabels: labels() } }),
     files: (r) => {
       const email = str(r.inputs.acmeEmail);
       if (!email) return {};
@@ -113,12 +119,15 @@ export const recipes: Record<string, Recipe> = {
   },
 
   traefik: {
-    values: (r) => ({ ingressClass: { enabled: true, isDefaultClass: !hasDefaultIngressClass(r) } }),
+    values: (r) => ({
+      ingressClass: { enabled: true, isDefaultClass: !hasDefaultIngressClass(r) },
+      commonLabels: labels(),
+    }),
   },
 
   "metrics-server": {
     // Most kubelets serve a self-signed certificate (k3s, kubeadm defaults).
-    values: () => ({ args: ["--kubelet-insecure-tls"] }),
+    values: () => ({ args: ["--kubelet-insecure-tls"], commonLabels: labels() }),
     warnings: () => ["metrics-server will not verify the kubelets' certificates (--kubelet-insecure-tls)."],
   },
 
@@ -148,6 +157,7 @@ export const recipes: Record<string, Recipe> = {
 
   longhorn: {
     values: (r) => ({
+      commonLabels: labels(),
       persistence: { defaultClass: !hasDefaultStorageClass(r) },
       ingress: {
         enabled: true,
@@ -219,6 +229,7 @@ export const recipes: Record<string, Recipe> = {
 
   grafana: {
     values: (r) => ({
+      extraLabels: labels(),
       adminPassword: str(r.inputs.adminPassword),
       ingress: {
         enabled: true,

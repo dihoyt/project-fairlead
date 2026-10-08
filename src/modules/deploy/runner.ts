@@ -8,6 +8,7 @@ import type {
   DeployPlan,
   DeployRequest,
   DeployStatus,
+  DeployedRelease,
 } from "../../contracts/deploy.js";
 import { RESOURCES, type K8sApi, type KubeObject, type Watch } from "../../contracts/k8s.js";
 import type { ModuleContext } from "../../contracts/module.js";
@@ -341,6 +342,10 @@ export class Deployer {
     const record = this.store.get(id);
     if (!record) throw new HttpError(404, `No deploy job "${id}".`);
     return record;
+  }
+
+  releases(): DeployedRelease[] {
+    return this.store.releases();
   }
 
   list(appId: string | undefined, limit: number): DeployJobView[] {

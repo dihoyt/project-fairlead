@@ -678,3 +678,23 @@ test("a bundled manifest with no Service for its host is blocked; a URL manifest
     "the cluster already has a default"
   );
 });
+
+// --- for discovery ---------------------------------------------------------
+
+test("releases() lists the latest install job per release; values and Ingresses carry the deployed-by label", async () => {
+  const e = await setup({ catalog: createMockCatalogService({ entries: withNtfy(NTFY_MANIFEST) }) });
+  await call(e, "POST", "/jobs", { appId: "headlamp", mode: "dry-run", inputs: {} });
+  assert.deepEqual(await e.mock.ctx.services.get("deploy").releases(), [], "dry runs are not releases");
+  await startGitea(e);
+  await call(e, "POST", "/jobs/dj_2/cancel");
+  await startGitea(e);
+  assert.deepEqual(await e.mock.ctx.services.get("deploy").releases(), [
+    { appId: "gitea", release: "gitea", namespace: "gitea", jobId: "dj_3", state: "pending" },
+  ]);
+
+  const key = `${product.ownerMarker.labelDomain}/deployed-by`;
+  const traefik = await call<DeployPlan>(e, "POST", "/plan", { appId: "traefik", inputs: {} });
+  assert.match(traefik.values, new RegExp(`commonLabels:\\n  ${key}: deploy`));
+  const ntfy = await call<DeployPlan>(e, "POST", "/plan", { appId: "ntfy", inputs: {} });
+  assert.match(ntfy.values, new RegExp(`labels:\\n    ${key}: deploy`));
+});
