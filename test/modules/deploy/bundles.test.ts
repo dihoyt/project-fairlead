@@ -33,9 +33,14 @@ const SERVICE = [
   "",
 ].join("\n");
 
-const entries: CatalogEntry[] = mockCatalog.map((entry) =>
-  entry.id === "ntfy" ? { ...entry, install: { kind: "manifest", bundled: SERVICE, version: "v0.0.0-mock" } } : entry
-);
+const MiB = 1024 ** 2;
+const memory: Record<string, number> = { gitea: 160 * MiB, authentik: 1056 * MiB };
+const entries: CatalogEntry[] = mockCatalog.map((entry) => {
+  const withMemory = memory[entry.id] ? { ...entry, memoryBytes: memory[entry.id] } : entry;
+  return entry.id === "ntfy"
+    ? { ...withMemory, install: { kind: "manifest", bundled: SERVICE, version: "v0.0.0-mock" } }
+    : withMemory;
+});
 
 interface Env {
   mock: MockContext;
@@ -262,6 +267,11 @@ test("bundle plan: checks the disk the rollout needs against the nodes' free spa
   assert.equal(plan.disk?.nodesRead, 2);
   assert.ok(plan.disk!.volumeBytes > 0 && plan.disk!.imageBytes > 0);
   assert.equal(plan.allowed, true);
+  const stepOf = (appId: string) => plan.steps.find((s) => s.appId === appId)!;
+  assert.equal(stepOf("gitea").memoryBytes, 160 * MiB);
+  assert.equal(stepOf("metrics-server").memoryBytes, undefined, "unknown is left out, not zero");
+  const running = plan.steps.filter((s) => !s.skip).reduce((sum, s) => sum + (s.memoryBytes ?? 0), 0);
+  assert.equal(plan.memoryBytes, running);
   roomy.deployer.stop();
   await roomy.server.close();
   await roomy.mock.close();
