@@ -14,6 +14,7 @@ import type {
 } from "../catalog.js";
 import type { BundlePlan, BundleRunView, DeployJobView, DeployPlan, DeployStatus } from "../deploy.js";
 import type { HostKeypair } from "../hosts.js";
+import { checkDisk } from "../disk.js";
 import { HOUR, MOCK_NOW, isoAgo } from "./time.js";
 
 const host = (
@@ -33,7 +34,7 @@ const helm = (repo: string, chart: string, version: string): CatalogEntry["insta
   version,
 });
 
-export const mockCatalog: readonly CatalogEntry[] = [
+const catalogEntries: CatalogEntry[] = [
   {
     id: "cert-manager",
     name: "cert-manager",
@@ -301,6 +302,18 @@ export const mockCatalog: readonly CatalogEntry[] = [
   },
 ];
 
+const GiB = 1024 ** 3;
+
+// Volumes from `storage` ("10Gi"), and half a GiB of images per app.
+export const mockCatalog: readonly CatalogEntry[] = catalogEntries.map((entry) =>
+  entry.install.kind === "patch"
+    ? entry
+    : {
+        ...entry,
+        disk: { volumeBytes: entry.storage ? Number.parseInt(entry.storage, 10) * GiB : 0, imageBytes: GiB / 2 },
+      }
+);
+
 const absent = (appId: string): DetectedApp => ({
   appId,
   state: "not-installed",
@@ -408,6 +421,10 @@ export const mockDiscovery: DiscoveryReport = {
   kubernetesVersion: "v1.31.4+k3s1",
   apps: mockDetected,
   ingressHosts: mockIngressHosts,
+  nodeDisks: [
+    { node: "node-1", availableBytes: 60 * GiB, capacityBytes: 100 * GiB },
+    { node: "node-2", availableBytes: 40 * GiB, capacityBytes: 100 * GiB },
+  ],
   basics: [
     {
       id: "default-storage-class",
@@ -678,6 +695,27 @@ export const mockBundlePlan: BundlePlan = {
             plan: { ...mockDeployPlan, appId: item.appId, release: item.appId, namespace: item.appId },
           }
   ),
+};
+mockBundlePlan.disk = checkDisk(
+  mockBundlePlan.steps
+    .filter((step) => !step.skip)
+    .map((step) => mockCatalog.find((e) => e.id === step.appId)?.disk ?? { volumeBytes: 0, imageBytes: 0 }),
+  mockDiscovery.nodeDisks
+);
+
+// The same rollout on one small node that can't hold it.
+const smallNode = [{ node: "node-1", availableBytes: 6 * GiB, capacityBytes: 30 * GiB }];
+const noRoom = checkDisk(
+  mockBundlePlan.steps
+    .filter((step) => !step.skip)
+    .map((step) => mockCatalog.find((e) => e.id === step.appId)?.disk ?? { volumeBytes: 0, imageBytes: 0 }),
+  smallNode
+);
+export const mockBundlePlanNoRoom: BundlePlan = {
+  ...mockBundlePlan,
+  allowed: false,
+  blockedBy: noRoom.detail,
+  disk: noRoom,
 };
 
 // Halfway: metrics-server and Authentik done, Gitea installing.
