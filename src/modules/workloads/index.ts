@@ -12,6 +12,15 @@ const mod: Module = {
     const k8s = () => ctx.services.get("k8s");
     const browser = new Browser(k8s);
     const links = declareLinks(ctx.settings);
+    ctx.reset.add({
+      scope: "links",
+      settingKeys: [
+        "workloads.headlampUrl",
+        "workloads.headlampCluster",
+        "workloads.rancherUrl",
+        "workloads.rancherClusterId",
+      ],
+    });
 
     ctx.scheduler.every("workloads.idle-watches", 60_000, () => browser.cache.sweep());
 

@@ -134,7 +134,8 @@ export const createPlatform: CreatePlatform = (deps) => {
     settings: core.settings,
     secrets: core.secrets,
     audit: core.audit,
-    clearSettings: ({ except = [], exceptPrefixes = [] }) => core.settings.clearOverrides(except, exceptPrefixes),
+    clearSettings: ({ only, except = [], exceptPrefixes = [] }) =>
+      core.settings.clearOverrides(only, except, exceptPrefixes),
     async resetAdminPassword() {
       const account = userByUsername(core.db, "admin");
       if (account === null) throw new Error('There is no built-in "admin" account.');

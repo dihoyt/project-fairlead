@@ -84,6 +84,13 @@ export function createKeypairStore(secrets: SecretStore, now: () => number = Dat
       return secrets.has(KEYPAIR_SCOPE, KEYPAIR_ID);
     },
 
+    async remove(): Promise<boolean> {
+      await pending;
+      if (!(await secrets.has(KEYPAIR_SCOPE, KEYPAIR_ID))) return false;
+      await secrets.delete(KEYPAIR_SCOPE, KEYPAIR_ID);
+      return true;
+    },
+
     // Resolves to null when a pair exists and rotate is false.
     generate(rotate: boolean): Promise<HostKeypair | null> {
       const run = pending.then(async () => {

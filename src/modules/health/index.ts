@@ -21,7 +21,7 @@ const mod: Module = {
   register(ctx) {
     const health = startHealth(ctx);
     const links = createLinkStore(ctx.db, ctx.orgId, health.settings.links);
-    ctx.reset.add({ scope: "links", clear: () => links.clear() });
+    ctx.reset.add({ scope: "links", settingKeys: ["health.links"], clear: () => links.clear() });
 
     ctx.route("GET /api/health/board", () => health.board());
 

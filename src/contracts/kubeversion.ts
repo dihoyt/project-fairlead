@@ -89,3 +89,22 @@ export function pickVersion(install: InstallSource, gitVersion: string | undefin
     reason: `Needs Kubernetes ${candidates.map((c) => `${c.kubeVersion} (${c.version})`).join(" or ")}; this cluster runs ${gitVersion}.`,
   };
 }
+
+const preRelease = (v: string) => /^v?\d+(?:\.\d+){0,2}-([^+]+)/.exec(v.trim())?.[1];
+
+// Orders two catalog versions ("v0.0.37", "1.12.1", "2025.10.0"): numeric
+// parts first, then a pre-release ("1.2.0-rc.1") before its release.
+// undefined when either has no leading number.
+export function compareVersions(a: string, b: string): number | undefined {
+  const pa = parse(a);
+  const pb = parse(b);
+  if (!pa || !pb) return undefined;
+  const c = compare(pa, pb);
+  if (c !== 0) return Math.sign(c);
+  const ra = preRelease(a);
+  const rb = preRelease(b);
+  if (ra === rb) return 0;
+  if (ra === undefined) return 1;
+  if (rb === undefined) return -1;
+  return ra < rb ? -1 : 1;
+}

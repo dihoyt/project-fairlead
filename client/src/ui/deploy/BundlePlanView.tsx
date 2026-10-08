@@ -19,8 +19,17 @@ export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?:
             ? blocked
                 .map((step) => `${names[step.appId] ?? step.appId}: ${step.plan?.blockedBy ?? "not allowed"}`)
                 .join(" ")
-            : "One of the apps can't be deployed as planned."}
+            : (plan.blockedBy ?? "One of the apps can't be deployed as planned.")}
         </Alert>
+      ) : null}
+      {plan.disk?.status === "warn" ? (
+        <Alert color="yellow" variant="light" title="Low on disk" data-disk="warn">
+          {plan.disk.detail}
+        </Alert>
+      ) : plan.disk && plan.disk.status !== "crit" ? (
+        <Text size="xs" c="dimmed" data-disk={plan.disk.status}>
+          {plan.disk.detail}
+        </Text>
       ) : null}
       <Accordion variant="separated" chevronPosition="left" multiple>
         {plan.steps.map((step, index) => (

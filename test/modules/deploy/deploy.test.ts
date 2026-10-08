@@ -15,7 +15,7 @@ import { summarize, type Deployer } from "../../../src/modules/deploy/runner.js"
 import { toYaml } from "../../../src/modules/deploy/yaml.js";
 import { firstService } from "../../../src/modules/deploy/manifest.js";
 import { mockCatalog } from "../../../src/contracts/mocks/catalog.js";
-import type { CatalogEntry } from "../../../src/contracts/catalog.js";
+import type { CatalogEntry, DiscoveryReport } from "../../../src/contracts/catalog.js";
 import { createRedactor } from "../../../src/modules/deploy/redact.js";
 import { product } from "../../../src/product.js";
 import { listen } from "../../runtime/helpers.js";
@@ -742,6 +742,30 @@ test("plan: a chart's kubeVersion picks the newest pin the cluster fits, or bloc
   });
   plan = await call<DeployPlan>(e, "POST", "/plan", request);
   assert.match(plan.blockedBy ?? "", /this cluster runs v1\.20\.3\.$/);
+});
+
+test("plan: Longhorn's replica count follows the schedulable node count", async () => {
+  const notInstalled = { ...mockDiscovery, apps: mockDiscovery.apps.filter((app) => app.appId !== "longhorn") };
+  const request = { appId: "longhorn", inputs: { host: "longhorn.example.test" } };
+  const single = "1 replica on a single node; raise it in Longhorn when you add nodes.";
+  const GiB = 1024 ** 3;
+  const cases: Array<[DiscoveryReport, number]> = [
+    [{ ...notInstalled, nodeDisks: [{ node: "n1", availableBytes: 20 * GiB, capacityBytes: 30 * GiB }] }, 1],
+    [notInstalled, 2],
+    [{ ...notInstalled, nodeDisks: ["a", "b", "c", "d"].map((node) => ({ node, error: "timed out" })) }, 2],
+    [{ ...notInstalled, nodeDisks: undefined }, 2],
+  ];
+  for (const [discovery, replicas] of cases) {
+    const e = await setup({ catalog: createMockCatalogService({ discovery }) });
+    const plan = await call<DeployPlan>(e, "POST", "/plan", request);
+    assert.match(plan.values, new RegExp(`defaultReplicaCount: ${replicas}\\n`));
+    assert.match(plan.values, new RegExp(`defaultClassReplicaCount: ${replicas}\\n`));
+    assert.equal(plan.warnings.includes(single), replicas === 1, JSON.stringify(plan.warnings));
+    await env!.server.close();
+    env!.deployer.stop();
+    await env!.mock.close();
+    env = undefined;
+  }
 });
 
 // --- access ------------------------------------------------------------------
