@@ -1,12 +1,14 @@
 import { Alert, Loader, SimpleGrid, Stack } from "@mantine/core";
 import type { SeriesResult } from "@contracts/metrics";
 import { PageHeader } from "../../shell/PageHeader";
-import { Tile, TimeSeriesChart, useApi } from "../../ui";
+import { Tile, TimeSeriesChart, useApi, useSession } from "../../ui";
+import { AddNode } from "./AddNode";
 import { ChartCard, RangeControl, nodeLine, nodeStatus, useRange } from "./shared";
 
 const byNode = (result: SeriesResult) => result.labels.node ?? result.series;
 
 export function NodesPage() {
+  const { me } = useSession();
   const [range, setRange] = useRange();
   const { data, error, loading } = useApi("GET /api/metrics-k8s/nodes", undefined, { pollMs: 30_000 });
 
@@ -36,6 +38,7 @@ export function NodesPage() {
           ))}
         </SimpleGrid>
       ) : null}
+      <AddNode canCreate={me.admin} />
       <SimpleGrid cols={{ base: 1, lg: 2 }}>
         <ChartCard title="CPU">
           <TimeSeriesChart queries={[{ series: "node.cpu.percent" }]} range={range} unit="percent" label={byNode} />

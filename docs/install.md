@@ -184,6 +184,38 @@ Mirror it and change this value for an air-gapped cluster. `deploy.chartRef`
 is only used to show the command above; it defaults to the chart's published
 OCI location beside the image.
 
+## Adding nodes
+
+On a k3s cluster set up by the installer, the console can hand out the command
+that adds a machine. Open **Nodes** (or the wizard's cluster step), choose
+**Make a join link**, and run the one-liner it shows on the new machine:
+
+```
+curl -fsSL 'https://console.example.test/join/<token>' | sudo bash
+```
+
+The script installs `open-iscsi` and the NFS client (what Longhorn and NFS
+volumes need), checks it can reach the API server, then installs k3s at the
+same version as the cluster and joins it as an agent. A cluster running
+embedded etcd can also take a control-plane node: pick **Control plane**
+before making the link. The node shows up under Nodes once it is Ready.
+
+Each link works once and for one hour, and is served by the console itself at
+`/join/<token>` with no sign-in, so the new machine needs to reach the console
+at the address you opened it on, and that path must not sit behind a sign-in
+proxy. Anyone holding an unused link can join a machine to the cluster: treat
+it like a password, and prefer an HTTPS address. Unused links can be revoked
+from the same panel.
+
+The join values come from the Secret `k3s-join` in the console's namespace,
+which the installer writes from the server's
+`/var/lib/rancher/k3s/server/node-token` (keys `server-url`, `token`, and
+`agent-token` when the cluster has a separate one). The chart lets the
+console get that one Secret by name and nothing else; the token never appears
+in the UI, the API or the logs. Without the Secret (a cluster not set up by
+the installer) the panel says so and you can add nodes by hand, or run the
+installer's `add-node.sh` on the new machine.
+
 ## Rollouts
 
 Two pods overlap during every rollout. On shutdown the old pod's readiness
