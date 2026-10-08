@@ -66,6 +66,12 @@ const tlsSecret = (r: RecipeInput) => `${r.release}-tls`;
 // module's releases().
 const labels = () => deployedLabel();
 
+// Longhorn's default of 3 replicas leaves every volume degraded on fewer
+// nodes. Unknown node count keeps the default.
+const longhornReplicas = (r: RecipeInput) => {
+  const nodes = r.discovery?.nodeDisks?.length;
+  return nodes ? Math.min(3, nodes) : 3;
+};
 const storageClass = (r: RecipeInput) => r.defaults.storageClass || undefined;
 
 function hasDefaultStorageClass(r: RecipeInput): boolean {
@@ -158,7 +164,8 @@ export const recipes: Record<string, Recipe> = {
   longhorn: {
     values: (r) => ({
       commonLabels: labels(),
-      persistence: { defaultClass: !hasDefaultStorageClass(r) },
+      defaultSettings: { defaultReplicaCount: longhornReplicas(r) },
+      persistence: { defaultClass: !hasDefaultStorageClass(r), defaultClassReplicaCount: longhornReplicas(r) },
       ingress: {
         enabled: true,
         ingressClassName: r.defaults.ingressClass,
@@ -168,7 +175,17 @@ export const recipes: Record<string, Recipe> = {
         annotations: issuerAnnotations(r),
       },
     }),
-    warnings: () => ["Longhorn's UI has no sign-in of its own: anyone who can reach the hostname can use it."],
+    warnings: (r) => {
+      const replicas = longhornReplicas(r);
+      return [
+        "Longhorn's UI has no sign-in of its own: anyone who can reach the hostname can use it.",
+        ...(replicas === 1
+          ? ["1 replica on a single node; raise it in Longhorn when you add nodes."]
+          : replicas < 3
+            ? [`${replicas} replicas on ${replicas} nodes; raise it in Longhorn when you add nodes.`]
+            : []),
+      ];
+    },
   },
 
   rancher: {
