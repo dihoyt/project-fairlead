@@ -1,6 +1,9 @@
 import express, { type Request, type Response, type Router } from "express";
 import type {
   AdminOverview,
+  OAuthAuthorizeParams,
+  OAuthConsentRequest,
+  OAuthConsentView,
   AuthentikWirePlan,
   AuthentikWireResult,
   Role,
@@ -15,6 +18,7 @@ import { effectiveRule, ruleAllows } from "../auth/networks.js";
 import { CALLBACK_PATH, OIDC_SECRET, OidcError, discover, oidcUnavailableReason } from "../auth/oidc.js";
 import { generateTempPassword, hashPassword, passwordProblem } from "../auth/passwords.js";
 import { revokeAllSessions, revokeSession, sessionHandle, sessionsOf } from "../auth/sessions.js";
+import { OAuthError, checkAuthorizeRequest, issueCode, redirectWith, scopeOf } from "../auth/oauth.js";
 import { createToken, listTokens, revokeToken, tokenView } from "../auth/tokens.js";
 import { clearTotp, totpEnabledFor } from "../auth/totp.js";
 import {
@@ -35,6 +39,7 @@ import { effectivePublicUrl, iso, isoOrNull, publicOrigin, type Core } from "../
 import { clientIp, parseCidrList } from "../net.js";
 import { secretKeyConfigured } from "../secretBox.js";
 import { SettingError } from "../settings.js";
+import { mcpResource, oauthBase } from "./oauth.js";
 
 // Everything an admin manages about the platform itself: its settings, who
 // may sign in and from where, and the record of what happened. Every change
@@ -584,6 +589,48 @@ export function adminRouter(core: Core): Router {
       if (row === null) throw new AdminError(404, "No such token.");
       record(req, admin, "token-revoke", row.id, row.name);
       return { ok: true };
+    })
+  );
+
+  // --- OAuth consent for MCP clients --------------------------------------
+
+  router.post(
+    "/oauth/consent",
+    route((req, _res, admin) => {
+      const body = (req.body ?? {}) as Partial<OAuthConsentRequest>;
+      const params = (body.params ?? {}) as Partial<OAuthAuthorizeParams>;
+      let checked: ReturnType<typeof checkAuthorizeRequest>;
+      try {
+        checked = checkAuthorizeRequest(core, params, mcpResource(oauthBase(core, req)));
+      } catch (err) {
+        if (err instanceof OAuthError) throw new AdminError(400, err.message);
+        throw err;
+      }
+      const { client, redirectUri } = checked;
+      const requestedScope = scopeOf(params.scope);
+      const view: OAuthConsentView = {
+        client: { id: client.clientId, name: client.name, redirectUri },
+        requestedScope,
+      };
+      if (body.decision === "deny") {
+        record(req, admin, "oauth-deny", client.clientId, client.name);
+        return { ...view, redirect: redirectWith(redirectUri, { error: "access_denied", state: params.state }) };
+      }
+      if (body.decision !== "approve") return view;
+      if (admin.userId === undefined) {
+        throw new AdminError(409, "Sign in with an account to approve: the grant acts as that account.");
+      }
+      const scope = body.scope ?? requestedScope;
+      if (scope !== "read" && scope !== "write") throw new AdminError(400, "Scope must be read or write.");
+      const code = issueCode(core, {
+        clientId: client.clientId,
+        userId: admin.userId,
+        scope,
+        redirectUri,
+        codeChallenge: params.code_challenge!,
+      });
+      record(req, admin, "oauth-approve", client.clientId, `${client.name} (${scope})`);
+      return { ...view, redirect: redirectWith(redirectUri, { code, state: params.state }) };
     })
   );
 

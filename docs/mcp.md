@@ -2,7 +2,7 @@
 
 The console serves an [MCP](https://modelcontextprotocol.io) server at `/mcp` on the same address as the UI. Claude and other MCP clients use it to read what the console knows (health, nodes, workloads, checks, backups, catalog, deploys, hosts) and, with a write token, to add checks and links and deploy catalog apps the way the setup wizard does. Everything they add shows up in the UI like anything you added yourself, and every change is in the audit log under your name.
 
-The same tokens work on the REST API (`/api/...`) as `Authorization: Bearer <token>`.
+Clients authenticate with an API token you make, or, if they support it (claude.ai's custom connectors do), by sending you through the console's sign-in to approve them. The same tokens work on the REST API (`/api/...`) as `Authorization: Bearer <token>`.
 
 ## Make a token
 
@@ -54,7 +54,16 @@ Clients that only launch local servers can reach it through `mcp-remote`:
 
 ### claude.ai custom connectors
 
-claude.ai connects from Anthropic's servers, so the console has to be reachable at a public HTTPS address, for example through a Cloudflare Tunnel set up in the wizard's Access step. claude.ai custom connectors sign in with OAuth and can't send a fixed bearer header, and the console doesn't offer OAuth sign-in for MCP yet, so for now use Claude Code or Claude Desktop.
+claude.ai connects from Anthropic's servers, so the console must be reachable at a **public HTTPS address** first. Set one up in the wizard's Access step (a Cloudflare Tunnel, for example) and make sure Admin > Settings > Public URL is that address, since it is what the console tells claude.ai to use. The console has to be served at the root of that address, not under a path.
+
+1. In claude.ai, open **Settings > Connectors > Add custom connector**.
+2. Name it, and enter `https://console.example.com/mcp` as the URL. Leave the OAuth client ID and secret empty: claude.ai registers itself.
+3. Click **Connect**. claude.ai sends you to the console. Sign in as an admin if you aren't already, then choose **Read only** or **Read and write** and approve.
+4. You're sent back to claude.ai with the connector working. Turn it on in a chat, or in a project, from the tools menu.
+
+The approval appears under Admin > API tokens as a "connected app" with the client's name. Revoking it there disconnects claude.ai at once. To change its scope, revoke it and connect again.
+
+Under the hood this is the OAuth flow the MCP spec describes. The console publishes `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`, accepts dynamic client registration at `/oauth/register`, and issues one-hour access tokens with rotating refresh tokens through `/oauth/token`, using authorization code with PKCE (S256) only. Any MCP client that supports OAuth can connect the same way, Claude Code included (`claude mcp add --transport http fairlead https://console.example.com/mcp`, without a header, and then `/mcp` to sign in).
 
 ### Anything else
 

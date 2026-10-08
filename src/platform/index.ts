@@ -19,6 +19,7 @@ import { bootstrapAdmin } from "./bootstrap.js";
 import type { Core } from "./core.js";
 import { platformMigrations } from "./migrations.js";
 import { originGuard } from "./originGuard.js";
+import { mcpChallenge, oauthRouter } from "./routes/oauth.js";
 import { adminRouter } from "./routes/admin.js";
 import { authApiRouter, meRoute, oidcRouter } from "./routes/auth.js";
 import { totpRouter } from "./routes/totp.js";
@@ -95,6 +96,16 @@ export const createPlatform: CreatePlatform = (deps) => {
         } catch (err) {
           next(err);
         }
+      });
+      app.use(oauthRouter(core));
+      // An MCP client that isn't signed in is told where to get a token.
+      app.use("/api/mcp", (req, res, next) => {
+        if (authOf(req)?.user?.source === "token") {
+          next();
+          return;
+        }
+        res.setHeader("WWW-Authenticate", mcpChallenge(core, req));
+        res.status(401).json({ error: "The MCP endpoint takes an API token or an OAuth access token as a bearer." });
       });
       app.use(originGuard(core));
       // Managing accounts, sign-in and tokens takes a person at a browser.

@@ -134,4 +134,39 @@ export const platformMigrations: readonly Migration[] = [
       );
     `,
   },
+  {
+    version: 3,
+    name: "oauth for mcp clients",
+    up: `
+      -- Clients that registered themselves (RFC 7591). Public clients only:
+      -- there is no client secret, PKCE is what binds a code to its client.
+      CREATE TABLE oauth_clients (
+        client_id TEXT PRIMARY KEY,
+        ${org},
+        name TEXT NOT NULL,
+        redirect_uris TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+
+      -- Authorization codes, single use and short-lived; only their hash.
+      CREATE TABLE oauth_codes (
+        code_hash TEXT PRIMARY KEY,
+        ${org},
+        client_id TEXT NOT NULL REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        scope TEXT NOT NULL,
+        redirect_uri TEXT NOT NULL,
+        code_challenge TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+      );
+
+      -- A grant is an api_tokens row whose secret is the current access
+      -- token, replaced (with the refresh token) on every refresh.
+      ALTER TABLE api_tokens ADD COLUMN kind TEXT NOT NULL DEFAULT 'token';
+      ALTER TABLE api_tokens ADD COLUMN client_id TEXT;
+      ALTER TABLE api_tokens ADD COLUMN refresh_hash TEXT;
+      ALTER TABLE api_tokens ADD COLUMN access_expires_at INTEGER;
+      CREATE UNIQUE INDEX api_tokens_refresh ON api_tokens(refresh_hash);
+    `,
+  },
 ];
