@@ -4,6 +4,7 @@ export * from "./backups.js";
 export * from "./catalog.js";
 export * from "./checks.js";
 export * from "./deploy.js";
+export * from "./deployed.js";
 export * from "./events.js";
 export * from "./health.js";
 export * from "./hosts.js";
