@@ -89,6 +89,7 @@ jobs:
           echo "::add-mask::$password"
           echo "PASSWORD=$password" >> "$GITHUB_ENV"
           scripts/install/assert-install.sh "$RUNNER_TEMP/first.log" "$password"
+          grep -q '^URL: http://.*:32450/$' "$RUNNER_TEMP/first.log" || { echo "not served on NodePort 32450"; exit 1; }
           # The k3s installed is the stable channel's newest release, not the fallback pin.
           stable=$(curl -fsS -o /dev/null -w '%{redirect_url}' https://update.k3s.io/v1-release/channels/stable | sed 's|.*/||; s/%2[Bb]/+/')
           grep -q "^Installing k3s $stable " "$RUNNER_TEMP/first.log" || { echo "expected k3s $stable"; exit 1; }
@@ -149,6 +150,7 @@ jobs:
           password=$(sed -n 's/^Password: //p' "$RUNNER_TEMP/kind.log")
           echo "::add-mask::$password"
           scripts/install/assert-install.sh "$RUNNER_TEMP/kind.log" "$password"
+          grep -q '^URL: http://.*:32450/$' "$RUNNER_TEMP/kind.log" || { echo "not served on NodePort 32450"; exit 1; }
       - name: Deploys stay off until --enable-deploy turns them on
         run: |
           sa="system:serviceaccount:$NS:$RELEASE"

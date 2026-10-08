@@ -44,6 +44,8 @@ UNINSTALL=0
 ENABLE_DEPLOY=0
 PURGE=0
 TIMEOUT="5m"
+NODE_PORT=""
+DEFAULT_NODE_PORT=32450
 
 usage() {
   cat <<EOF
@@ -60,6 +62,7 @@ Usage: install.sh [flags]
   --host HOST           Serve through an Ingress at this hostname instead of a NodePort
   --origin URL          Externally visible origin (default: http://HOST when --host is given)
   --ingress-class NAME  Ingress class (default: the cluster's default class)
+  --port PORT           NodePort to serve on without --host (default: $DEFAULT_NODE_PORT)
   --values FILE         Extra Helm values file; repeatable, applied last
   --enable-deploy       Let the console deploy apps from its catalog. Creates an installer
                         ServiceAccount bound to cluster-admin; off unless given
@@ -108,6 +111,7 @@ while [ "$#" -gt 0 ]; do
     --host) need_arg "$@"; HOST="$2"; shift 2 ;;
     --origin) need_arg "$@"; ORIGIN="$2"; shift 2 ;;
     --ingress-class) need_arg "$@"; INGRESS_CLASS="$2"; shift 2 ;;
+    --port) need_arg "$@"; NODE_PORT="$2"; shift 2 ;;
     --values)
       need_arg "$@"
       [ -r "$2" ] || die "cannot read values file $2"
@@ -145,6 +149,12 @@ case "$ORIGIN" in
 esac
 case "$IMAGE_TAG" in *[!A-Za-z0-9._-]*) die "--image-tag has unexpected characters: $IMAGE_TAG" ;; esac
 case "$INGRESS_CLASS" in *[!a-z0-9.-]*) die "--ingress-class has unexpected characters" ;; esac
+case "$NODE_PORT" in
+  "") ;;
+  *[!0-9]*) die "--port must be a number: $NODE_PORT" ;;
+  *) [ "$NODE_PORT" -ge 30000 ] && [ "$NODE_PORT" -le 32767 ] || die "--port must be in the NodePort range 30000-32767" ;;
+esac
+[ -z "$NODE_PORT" ] || [ -z "$HOST" ] || die "--port is for the NodePort install; --host serves through an Ingress"
 [ "$PURGE" = 0 ] || [ "$UNINSTALL" = 1 ] || die "--purge only goes with --uninstall"
 [ "$ENABLE_DEPLOY" = 0 ] || [ "$UNINSTALL" = 0 ] || die "--enable-deploy does not go with --uninstall"
 [ -n "$ORIGIN" ] || [ -z "$HOST" ] || ORIGIN="http://$HOST"
@@ -399,12 +409,28 @@ write_values() {
       say "    - host: \"$HOST\""
     else
       [ -z "$ORIGIN" ] || printf 'config:\n  publicOrigin: "%s"\n' "$ORIGIN"
-      if [ "$first" = 1 ]; then
+      if [ "$first" = 1 ] || [ -n "$NODE_PORT" ]; then
         say "service:"
         say "  type: NodePort"
+        [ -z "$NODE_PORT" ] || say "  nodePort: $NODE_PORT"
       fi
     fi
   } >"$f"
+}
+
+# A taken port fails the install here, with its owner named, rather than
+# in Helm's error or by falling back to a random port. On a re-run without
+# --port the port is the one the release asked for before, else the default.
+check_node_port() {
+  want="$NODE_PORT"
+  if [ -z "$want" ] && [ "$1" = 1 ]; then
+    [ "$(kube -n "$NAMESPACE" get svc "$RELEASE" -o jsonpath='{.spec.type}' 2>/dev/null || true)" = NodePort ] || return 0
+    want=$(hh get values "$RELEASE" -n "$NAMESPACE" -o yaml 2>/dev/null | sed -n 's/^  nodePort: *"*\([0-9]*\)"*$/\1/p' | head -n 1)
+  fi
+  want="${want:-$DEFAULT_NODE_PORT}"
+  owner=$(kube get svc -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name} {.spec.ports[*].nodePort}{"\n"}{end}' 2>/dev/null \
+    | awk -v port="$want" -v self="$NAMESPACE/$RELEASE" '$1 != self { for (i = 2; i <= NF; i++) if ($i == port) print $1 }' | head -n 1)
+  [ -z "$owner" ] || die "NodePort $want is already used by Service $owner; pick another with --port (30000-32767)"
 }
 
 node_ip() {
@@ -458,6 +484,7 @@ do_install() {
   ensure_secret
   registry_auth
   [ -z "$HOST" ] || default_ingress_class
+  [ -n "$HOST" ] || check_node_port "$existing"
   if [ "$existing" = 1 ]; then write_values 0; else write_values 1; fi
 
   set -- upgrade --install "$RELEASE" "$CHART_REF" --namespace "$NAMESPACE" \

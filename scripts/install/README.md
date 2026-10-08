@@ -38,7 +38,8 @@ curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install
    re-run never replaces it, since the database is sealed with that key.
 3. `helm upgrade --install` of the chart from ghcr (newest published version,
    edge builds included, unless `--version`). Without `--host` the Service is a
-   NodePort; with it, an Ingress on the cluster's default class (or the only
+   NodePort on 32450 (`--port` overrides; a port another Service holds stops
+   the install with its name); with it, an Ingress on the cluster's default class (or the only
    one, such as k3s's Traefik) and `config.publicOrigin` of `http://<host>`
    (`--origin` overrides). Storage is the cluster's default class.
 4. Waits for the rollout, prints the URL and, on the first install only, the

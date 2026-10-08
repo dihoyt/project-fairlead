@@ -49,6 +49,9 @@ persistence:
 service:
   type: ClusterIP
   port: 80
+  # Used when type is NodePort, so the address stays the same across installs.
+  # 0 lets Kubernetes pick one.
+  nodePort: 32450
 
 ingress:
   enabled: false

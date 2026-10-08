@@ -31,7 +31,11 @@ Kubernetes 1.34 or newer) is upgraded with k3s's own tooling, for example
 `curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL=stable sh -`. It generates `SECRETS_KEY` and
 `BOOTSTRAP_ADMIN_PASSWORD` into `<release>-secrets` on the first install only,
 installs the chart from ghcr, waits for the rollout and prints the URL and the
-password. Re-running upgrades in place and keeps earlier values; `--values`
+password. Without `--host` the console is served on NodePort 32450 of every
+node (`http://<node IP>:32450/`); `--port <n>` picks another in 30000-32767. If
+the port is already taken by another Service the install stops and names it,
+rather than falling back to a random port. A re-run moves an install that got a
+random port earlier onto 32450 (or `--port`). Re-running upgrades in place and keeps earlier values; `--values`
 files are applied last. `--uninstall` keeps the namespace, Secret and volume.
 `--enable-deploy` turns on app deploys (see "Deploying apps from the console");
 they stay off unless it is given, and a later re-run without it leaves them as
@@ -70,6 +74,7 @@ private until made public in the package settings.
 | `config.trustedProxies`, `config.clientIpHeader`                 | Take the client address from a header only when the peer is a listed proxy.                   |
 | `secrets.existingSecret`                                         | Secret with `SECRETS_KEY` and `BOOTSTRAP_ADMIN_PASSWORD`. `secrets.create` is for tests only. |
 | `persistence.*`                                                  | The data volume (`existingClaim`, `storageClass`, `size`). Kept on `helm uninstall`.          |
+| `service.type`, `service.nodePort`                               | `ClusterIP` by default; with `NodePort`, `nodePort` (default 32450, 0 for random) fixes the port. |
 | `ingress.*`, `networkPolicy.*`                                   | Off by default.                                                                               |
 | `rollout.sameNode`                                               | Keeps the overlapping pods of a rollout on one node so a ReadWriteOnce volume can attach.     |
 | `rbac.create`, `rbac.nodesProxy`, `rbac.secrets.*`               | See below.                                                                                    |
