@@ -115,6 +115,10 @@ export interface SignInService {
 // Each app's host gets its own cookie through that round trip, tied to the
 // console session: signing out of the console signs out of every app.
 export const GATE_FORWARD_PATH = "/auth/forward";
+// Headers a 200 carries for the app: the username and email of the person
+// let through (the middleware's authResponseHeaders).
+export const GATE_USER_HEADER = "Remote-User";
+export const GATE_EMAIL_HEADER = "Remote-Email";
 
 export interface GateReadiness {
   // A browser can be sent to sign in: a public URL is set.
