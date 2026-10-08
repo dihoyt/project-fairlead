@@ -4,6 +4,7 @@ import type {
   DeployJobRequest,
   DeployJobState,
   DeployJobView,
+  DeployJobMode,
   DeployMode,
   DeployPlan,
   DeployRequest,
@@ -73,7 +74,7 @@ export function observe(job: KubeObject): Observed {
 }
 
 // The line a user reads in the job list: Helm's STATUS, or the error.
-export function summarize(lines: readonly string[], state: DeployJobState, mode: DeployMode, release: string) {
+export function summarize(lines: readonly string[], state: DeployJobState, mode: DeployJobMode, release: string) {
   const text = lines.map((line) => line.trim()).filter(Boolean);
   if (state === "succeeded") {
     if (mode === "dry-run") return "Dry run passed: nothing was changed.";

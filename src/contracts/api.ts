@@ -33,6 +33,8 @@ import type {
   DeployPlan,
   DeployRequest,
   DeployStatus,
+  UpgradeReport,
+  UpgradeRequest,
 } from "./deploy.js";
 import type { Category, CategoryDetail, CheckHistory, CheckResult, HealthBoard } from "./health.js";
 import type { HostKeypair, HostRequest, HostTestResult, HostView } from "./hosts.js";
@@ -255,6 +257,14 @@ export interface ApiRoutes {
   "GET /api/deploy/bundles/:id": Route<{ id: string }, None, None, BundleRunView>;
   // Admin, audited. Cancels the running step and leaves the rest pending.
   "POST /api/deploy/bundles/:id/cancel": Route<{ id: string }, None, None, BundleRunView>;
+  // Every app the deploy runner installed, against the catalog's pins.
+  // refresh=1 forces a new discovery.
+  "GET /api/deploy/upgrades": Route<None, { refresh?: "1" }, None, UpgradeReport>;
+  // Admin, audited. An upgrade run (bundleId UPGRADE_RUN): one "upgrade"
+  // job at a time, stopping at the first failure. 400 for an app that is
+  // not ours or not upgradable, or when nothing is available; 409 while
+  // another bundle or upgrade run is running.
+  "POST /api/deploy/upgrades": Route<None, None, UpgradeRequest, BundleRunView>;
 
   // --- onboarding (A14) ---------------------------------------------------
   "GET /api/onboarding/state": Route<None, None, None, OnboardingState>;

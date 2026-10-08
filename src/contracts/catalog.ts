@@ -7,6 +7,7 @@
 // Server-free on purpose: the client imports this file.
 
 import type { Status } from "./health.js";
+import type { UpgradeNote } from "./deploy.js";
 import type { ManagedBy } from "./k8s.js";
 
 // Where in the wizard an app is offered. One app can be offered in several.
@@ -100,6 +101,9 @@ export interface CatalogEntry {
   // Things the user must know or do outside the cluster first, one sentence
   // each: "Every node needs open-iscsi installed."
   prerequisites: string[];
+  // What to know when an upgrade crosses a version, oldest first. Shown in
+  // the upgrade preview (UpgradeCandidate.notes).
+  upgradeNotes?: UpgradeNote[];
 }
 
 // Rough, in bytes, from the pinned version's defaults.
@@ -119,6 +123,9 @@ export interface DetectedApp {
   // Helm release name, when the objects carry Helm's labels.
   release?: string;
   version?: string;
+  // The chart version from Helm's helm.sh/chart label ("gitea-12.7.0" ->
+  // "12.7.0"), when its objects carry one.
+  chartVersion?: string;
   // URLs from its Ingresses, https first.
   urls: string[];
   // What the judgement was made on: "Deployment longhorn-system/longhorn-ui

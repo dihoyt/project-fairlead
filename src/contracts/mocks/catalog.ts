@@ -12,7 +12,15 @@ import type {
   DiscoveryReport,
   IngressHost,
 } from "../catalog.js";
-import type { BundlePlan, BundleRunView, DeployJobView, DeployPlan, DeployStatus } from "../deploy.js";
+import {
+  UPGRADE_RUN,
+  type BundlePlan,
+  type BundleRunView,
+  type DeployJobView,
+  type DeployPlan,
+  type DeployStatus,
+  type UpgradeReport,
+} from "../deploy.js";
 import type { HostKeypair } from "../hosts.js";
 import { checkDisk } from "../disk.js";
 import { HOUR, MOCK_NOW, isoAgo } from "./time.js";
@@ -175,6 +183,7 @@ const catalogEntries: CatalogEntry[] = [
     exposesUi: true,
     storage: "10Gi",
     prerequisites: [],
+    upgradeNotes: [{ version: "0.0.0-mock", note: "The bundled database moves to a new chart; back up first." }],
   },
   {
     id: "grafana",
@@ -733,4 +742,94 @@ export const mockBundleRun: BundleRunView = {
     if (step.appId === "gitea") return { appId: step.appId, state: "running" as const, jobId: "dj_gitea" };
     return { appId: step.appId, state: "pending" as const };
   }),
+};
+
+// Gitea can move up, Headlamp is current, Longhorn's pin needs a newer
+// Kubernetes so it stays on the fallback, ntfy's version is unknown, and
+// metrics-server has a job running.
+export const mockUpgradeReport: UpgradeReport = {
+  checkedAt: new Date(MOCK_NOW).toISOString(),
+  kubernetesVersion: "v1.31.4+k3s1",
+  enabled: true,
+  apps: [
+    {
+      appId: "metrics-server",
+      release: "metrics-server",
+      namespace: "kube-system",
+      currentVersion: "0.0.0-mock",
+      pinnedVersion: "0.0.0-mock",
+      targetVersion: "0.0.0-mock",
+      fellBack: false,
+      state: "blocked",
+      reason: "A deploy job for metrics-server is running.",
+      notes: [],
+      commands: [],
+    },
+    {
+      appId: "longhorn",
+      release: "longhorn",
+      namespace: "longhorn-system",
+      currentVersion: "1.98.0-mock",
+      pinnedVersion: "1.99.0-mock",
+      targetVersion: "1.98.0-mock",
+      fellBack: true,
+      state: "current",
+      reason: "1.99.0-mock needs Kubernetes >=1.34.0-0; this cluster runs v1.31.4+k3s1.",
+      notes: [],
+      commands: [],
+      url: "https://longhorn.example.test",
+    },
+    {
+      appId: "headlamp",
+      release: "headlamp",
+      namespace: "headlamp",
+      currentVersion: "0.0.0-mock",
+      pinnedVersion: "0.0.0-mock",
+      targetVersion: "0.0.0-mock",
+      fellBack: false,
+      state: "current",
+      reason: "Already at the catalog's version.",
+      notes: [],
+      commands: [],
+      url: "https://headlamp.example.test",
+    },
+    {
+      appId: "gitea",
+      release: "gitea",
+      namespace: "gitea",
+      currentVersion: "0.0.0-alpha",
+      pinnedVersion: "0.0.0-mock",
+      targetVersion: "0.0.0-mock",
+      fellBack: false,
+      state: "available",
+      notes: [{ version: "0.0.0-mock", note: "The bundled database moves to a new chart; back up first." }],
+      commands: [
+        "helm upgrade gitea oci://docker.gitea.com/charts/gitea --version 0.0.0-mock --namespace gitea " +
+          "--reuse-values --wait --timeout 10m",
+      ],
+      url: "https://gitea.example.test",
+    },
+    {
+      appId: "ntfy",
+      release: "ntfy",
+      namespace: "ntfy",
+      pinnedVersion: "v0.0.0-mock",
+      targetVersion: "v0.0.0-mock",
+      fellBack: false,
+      state: "unknown",
+      reason: "No record of the version installed here.",
+      notes: [],
+      commands: ["kubectl apply -f /values/manifest.yaml"],
+      url: "https://ntfy.example.test",
+    },
+  ],
+};
+
+export const mockUpgradeRun: BundleRunView = {
+  id: "br_2",
+  bundleId: UPGRADE_RUN,
+  state: "running",
+  startedBy: "admin",
+  createdAt: isoAgo(60_000),
+  steps: [{ appId: "gitea", state: "running", jobId: "dj_4" }],
 };

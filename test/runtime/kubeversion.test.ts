@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { InstallSource } from "../../src/contracts/catalog.js";
-import { pickVersion, satisfiesKubeVersion } from "../../src/contracts/kubeversion.js";
+import { compareVersions, pickVersion, satisfiesKubeVersion } from "../../src/contracts/kubeversion.js";
 
 const k3s = "v1.31.4+k3s1";
 
@@ -62,4 +62,15 @@ test("pickVersion keeps the pin when it fits, falls back when not, and blocks wi
     version: "v1",
     fellBack: false,
   });
+});
+
+test("compareVersions orders catalog versions, pre-releases before their release", () => {
+  assert.equal(compareVersions("1.12.1", "1.13.0"), -1);
+  assert.equal(compareVersions("v0.0.37", "0.0.31"), 1);
+  assert.equal(compareVersions("12.7.0", "v12.7.0"), 0);
+  assert.equal(compareVersions("1.2.0-rc.1", "1.2.0"), -1);
+  assert.equal(compareVersions("1.2.0", "1.2.0-rc.1"), 1);
+  assert.equal(compareVersions("1.2.0-rc.1", "1.2.0-rc.2"), -1);
+  assert.equal(compareVersions("2025.10.1", "2025.8.3"), 1);
+  assert.equal(compareVersions("latest", "1.0.0"), undefined);
 });
