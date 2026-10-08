@@ -768,6 +768,25 @@ test("plan: Longhorn's replica count follows the schedulable node count", async 
   }
 });
 
+test("plan: cloudflared runs one replica on a single node, two otherwise", async () => {
+  const GiB = 1024 ** 3;
+  const request = { appId: "cloudflared", inputs: { tunnelToken: "token" } };
+  const cases: Array<[DiscoveryReport, number]> = [
+    [{ ...mockDiscovery, nodeDisks: [{ node: "n1", availableBytes: 20 * GiB, capacityBytes: 30 * GiB }] }, 1],
+    [{ ...mockDiscovery, nodeDisks: ["a", "b", "c"].map((node) => ({ node, error: "timed out" })) }, 2],
+    [{ ...mockDiscovery, nodeDisks: undefined }, 2],
+  ];
+  for (const [discovery, replicas] of cases) {
+    const e = await setup({ catalog: createMockCatalogService({ discovery }) });
+    const plan = await call<DeployPlan>(e, "POST", "/plan", request);
+    assert.match(plan.values, new RegExp(`^replicaCount: ${replicas}$`, "m"));
+    await env!.server.close();
+    env!.deployer.stop();
+    await env!.mock.close();
+    env = undefined;
+  }
+});
+
 // --- access ------------------------------------------------------------------
 
 test("access: unset until saved; PUT validates, saves, audits and answers the view", async () => {
