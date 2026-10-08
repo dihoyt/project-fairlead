@@ -733,7 +733,12 @@ describe("deploy bundles", () => {
     );
     assert.deepEqual(
       view.items.filter((i) => i.selected && !i.when).map((i) => i.appId),
-      ["longhorn", "authentik", "gitea", "ntfy"]
+      ["longhorn", "authentik", "gitea"]
+    );
+    assert.equal(
+      view.items.find((i) => i.appId === "ntfy"),
+      undefined,
+      "ntfy is offered from Notifications"
     );
     assert.deepEqual(view.suggested, { baseDomain: "home.example.com", storageClass: "longhorn" });
   });

@@ -48,9 +48,8 @@ function Doors({ onPick }: { onPick: (door: Door) => void }) {
           <Title order={4}>Deploy bundle</Title>
           <Text size="sm" c="dimmed" style={{ flex: 1 }}>
             Answer a few questions and get a complete self-hosted setup: ingress, certificates, metrics, sign-in
-            (Authentik), Git (Gitea), dashboards (Grafana, Headlamp), storage and push alerts (ntfy), with links and
-            checks wired up. Anything already in the cluster is left alone, and you see the full plan before anything
-            runs.
+            (Authentik), Git (Gitea) and storage (Longhorn), with links and checks wired up. Anything already in the
+            cluster is left alone, and you see the full plan before anything runs.
           </Text>
           <Button onClick={() => onPick("bundle")}>Deploy bundle</Button>
         </Stack>
