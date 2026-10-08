@@ -97,3 +97,45 @@ export interface DeployJobView {
 export interface DeployJobRequest extends DeployRequest {
   mode: DeployMode;
 }
+
+// --- Deploy bundles ----------------------------------------------------------
+
+export interface BundleRequest {
+  bundleId: string;
+  // The bundle's shared inputs: baseDomain, adminEmail, adminPassword, storageClass.
+  inputs: Record<string, DeployValue>;
+  // Per-app overrides, app id -> input key -> value.
+  apps?: Record<string, Record<string, DeployValue>>;
+  // Optional items to roll out; omitted: the ones the bundle view marks selected.
+  include?: string[];
+}
+
+export interface BundlePlanStep {
+  appId: string;
+  // Already installed or left out: no job runs for it.
+  skip: boolean;
+  reason?: string;
+  // Absent when skipped.
+  plan?: DeployPlan;
+}
+
+export interface BundlePlan {
+  bundleId: string;
+  // False when any step's plan is not allowed.
+  allowed: boolean;
+  steps: BundlePlanStep[];
+}
+
+export type BundleStepState = "pending" | "skipped" | "running" | "succeeded" | "failed" | "cancelled";
+
+export type BundleRunState = "running" | "succeeded" | "failed" | "cancelled";
+
+export interface BundleRunView {
+  id: string;
+  bundleId: string;
+  state: BundleRunState;
+  startedBy: string;
+  createdAt: string;
+  finishedAt?: string;
+  steps: Array<{ appId: string; state: BundleStepState; jobId?: string; message?: string; url?: string }>;
+}

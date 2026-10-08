@@ -18,6 +18,9 @@ import {
   mockTargets,
 } from "./backups.js";
 import {
+  mockBundlePlan,
+  mockBundleRun,
+  mockBundleView,
   mockCatalogApps,
   mockDeployJob,
   mockDeployLog,
@@ -591,6 +594,7 @@ export const apiMocks: ApiMocks = {
   "GET /api/catalog/apps": mockCatalogApps,
   "GET /api/catalog/apps/:id": mockCatalogApps.find((app) => app.id === "headlamp")!,
   "GET /api/catalog/discovery": mockDiscovery,
+  "GET /api/catalog/bundles": [mockBundleView],
 
   "GET /api/deploy/status": mockDeployStatus,
   "POST /api/deploy/plan": mockDeployPlan,
@@ -600,6 +604,16 @@ export const apiMocks: ApiMocks = {
   "GET /api/deploy/jobs/:id/logs": { lines: mockDeployLog, redacted: 0, truncated: false },
   "GET /api/deploy/jobs/:id/logs/stream": mockDeployLog.map((line) => ({ line })),
   "POST /api/deploy/jobs/:id/cancel": { ...mockRunningJob, state: "cancelled", finishedAt: now },
+  "POST /api/deploy/bundles/plan": mockBundlePlan,
+  "POST /api/deploy/bundles": mockBundleRun,
+  "GET /api/deploy/bundles": [mockBundleRun],
+  "GET /api/deploy/bundles/:id": mockBundleRun,
+  "POST /api/deploy/bundles/:id/cancel": {
+    ...mockBundleRun,
+    state: "cancelled",
+    finishedAt: now,
+    steps: mockBundleRun.steps.map((step) => (step.state === "running" ? { ...step, state: "cancelled" } : step)),
+  },
 
   "GET /api/onboarding/state": mockOnboarding,
   "POST /api/onboarding/steps/:step": mockOnboarding,
