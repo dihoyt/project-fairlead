@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSystemSpace } from "../SpacesPage";
+import { hiddenUnlessSystem, isSystemSpace } from "../SpacesPage";
 
 describe("isSystemSpace", () => {
   it("hides Kubernetes, cattle and Rancher project namespaces", () => {
@@ -34,5 +34,12 @@ describe("isSystemSpace", () => {
     ]) {
       expect(isSystemSpace(name), name).toBe(false);
     }
+  });
+
+  it("hides default only while nothing runs in it", () => {
+    expect(hiddenUnlessSystem({ name: "default", workloads: 0, pods: 0 })).toBe(true);
+    expect(hiddenUnlessSystem({ name: "default", workloads: 1, pods: 1 })).toBe(false);
+    expect(hiddenUnlessSystem({ name: "kube-system", workloads: 5, pods: 5 })).toBe(true);
+    expect(hiddenUnlessSystem({ name: "gitea", workloads: 0, pods: 0 })).toBe(false);
   });
 });
