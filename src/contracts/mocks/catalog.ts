@@ -466,6 +466,7 @@ export const mockBundle: CatalogBundle = {
     { appId: "traefik", required: true, bind: {}, values: {} },
     { appId: "cert-manager", required: true, bind: { acmeEmail: "adminEmail" }, values: {} },
     { appId: "metrics-server", required: true, bind: {}, values: {} },
+    { appId: "local-path-provisioner", required: true, bind: {}, values: { makeDefault: true } },
     {
       appId: "longhorn",
       required: false,
@@ -489,13 +490,14 @@ export const mockBundle: CatalogBundle = {
 };
 
 // Against mockDiscovery: Traefik, cert-manager, Longhorn and Grafana are
-// there already; metrics-server is unknown, so it stays in.
+// there already, and storage classes are marked default; metrics-server is
+// unknown, so it stays in.
 export const mockBundleView: CatalogBundleView = {
   ...mockBundle,
   suggestedBaseDomain: mockDiscovery.suggested.baseDomain,
   items: mockBundle.items.map((item): BundleItemView => {
     const detected = mockDetected.find((d) => d.appId === item.appId)!;
-    const skip = detected.state === "installed";
+    const skip = detected.state === "installed" || item.appId === "local-path-provisioner";
     const selected = !skip && (item.required || item.appId !== "longhorn");
     return {
       ...item,
