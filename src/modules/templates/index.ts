@@ -350,7 +350,7 @@ export class Templates {
 
 export function registerTemplates(ctx: ModuleContext, now?: () => number): Templates {
   const templates = new Templates(ctx, now);
-  const service: TemplatesService = { entries: () => templates.entries() };
+  const service: TemplatesService = { entries: () => templates.entries(), forwardedPorts: () => [] };
   ctx.services.provide("templates", service);
   ctx.bus.on("deploy.finished", (event) => templates.finished(event));
 

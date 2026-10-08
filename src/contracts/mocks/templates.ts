@@ -2,9 +2,10 @@
 // pass, fail on fields and fail the guardrail. Pure data, so the client can
 // import it.
 import type { CatalogEntry } from "../catalog.js";
-import type { DeployActionPlan, DeployJobView, DeployPlan } from "../deploy.js";
+import type { DeployActionPlan, DeployJobView, DeployPlan, PortsView, WantedPort } from "../deploy.js";
 import {
   CUSTOM_TEMPLATE,
+  EXTERNAL_TEMPLATE,
   type AppTemplate,
   type TemplateInstance,
   type TemplatePlan,
@@ -52,6 +53,15 @@ export const mockTemplates: AppTemplate[] = [
     id: CUSTOM_TEMPLATE,
     name: "Custom app",
     summary: "Any container image with a web page or API: give the image, its port and a hostname.",
+    image: "",
+    version: "",
+    port: 0,
+  },
+  {
+    id: EXTERNAL_TEMPLATE,
+    name: "External service",
+    summary:
+      "Something running outside the cluster, like a VM or a game server, published through the cluster's proxy.",
     image: "",
     version: "",
     port: 0,
@@ -126,7 +136,52 @@ export const mockTemplateInstances: TemplateInstance[] = [
   },
 ];
 
-export const mockTemplatesView: TemplatesView = { templates: mockTemplates, instances: mockTemplateInstances };
+// External services: a game server over UDP whose public port differs from
+// its own, and a NAS web UI over https.
+export const mockExternalInstances: TemplateInstance[] = [
+  {
+    name: "valheim",
+    templateId: EXTERNAL_TEMPLATE,
+    namespace: "valheim",
+    version: "1",
+    host: "",
+    external: { address: "10.0.0.50", port: 2456, protocol: "udp", publicPort: 25565 },
+    createdBy: "admin",
+    createdAt: isoAgo(2 * HOUR),
+    updatedAt: isoAgo(2 * HOUR),
+  },
+  {
+    name: "nas",
+    templateId: EXTERNAL_TEMPLATE,
+    namespace: "nas",
+    version: "1",
+    host: "nas.example.test",
+    url: "https://nas.example.test",
+    external: { address: "10.0.0.20", port: 5001, protocol: "https", insecureSkipVerify: true },
+    createdBy: "admin",
+    createdAt: isoAgo(5 * HOUR),
+    updatedAt: isoAgo(5 * HOUR),
+  },
+];
+
+export const mockWantedPorts: WantedPort[] = [{ appId: "valheim", port: 25565, protocol: "udp" }];
+
+// k3s's own Traefik, with the range set and the game server's port not open yet.
+export const mockPortsView: PortsView = {
+  range: "25565-25575",
+  ranges: [{ from: 25565, to: 25575 }],
+  traefik: { kind: "k3s", namespace: "kube-system", service: "traefik", exists: false },
+  open: [],
+  wanted: mockWantedPorts,
+  outOfRange: [],
+  inSync: false,
+  address: "10.0.0.10",
+};
+
+export const mockTemplatesView: TemplatesView = {
+  templates: mockTemplates,
+  instances: [...mockTemplateInstances, ...mockExternalInstances],
+};
 
 const whoamiManifest = `apiVersion: v1
 kind: Namespace
@@ -269,8 +324,11 @@ export const mockTemplateEntry: CatalogEntry = {
   prerequisites: [],
 };
 
-export function createMockTemplatesService(entries: CatalogEntry[] = [mockTemplateEntry]): TemplatesService {
-  return { entries: () => structuredClone(entries) };
+export function createMockTemplatesService(
+  entries: CatalogEntry[] = [mockTemplateEntry],
+  ports: WantedPort[] = mockWantedPorts
+): TemplatesService {
+  return { entries: () => structuredClone(entries), forwardedPorts: () => structuredClone(ports) };
 }
 
 // Removing "status" (Uptime Kuma) with its volume kept, and the job for it.
@@ -313,4 +371,54 @@ export const mockTemplateRemoveJob: DeployJobView = {
   mode: "action",
   action: "remove-app",
   job: { namespace: "console", name: "deploy-status-14" },
+};
+
+// The External service form over UDP with mismatched ports.
+export const mockExternalPlan: TemplatePlan = {
+  templateId: EXTERNAL_TEMPLATE,
+  name: "valheim",
+  namespace: "valheim",
+  allowed: true,
+  fieldErrors: {},
+  violations: [],
+  manifests: `apiVersion: v1
+kind: Service
+metadata:
+  name: valheim
+  namespace: valheim
+spec:
+  ports:
+    - name: udp
+      port: 2456
+      protocol: UDP
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteUDP
+metadata:
+  name: valheim
+  namespace: valheim
+spec:
+  entryPoints:
+    - udp-25565
+  routes:
+    - services:
+        - name: valheim
+          port: 2456
+`,
+  deploy: {
+    ...mockTemplateDeployPlan,
+    appId: "valheim",
+    release: "valheim",
+    namespace: "valheim",
+    version: "1",
+    inputs: {},
+    commands: ["kubectl apply -f /values/manifest.yaml --dry-run=client"],
+    values: "",
+    url: undefined,
+    warnings: [
+      "People connect on port 25565 while the server listens on 2456. Games and protocols that tell clients " +
+        "their own port (server browsers, FTP, SIP) may only work when reached directly at 10.0.0.50:2456.",
+    ],
+  },
+  entrypoint: { name: "udp-25565", port: 25565, protocol: "udp", open: false },
 };

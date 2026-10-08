@@ -51,7 +51,7 @@ import {
   mockEntraSignIn,
 } from "./connectors/views.js";
 import { mockCheckResults } from "./health.js";
-import { mockTemplateJob, mockTemplatePlan, mockTemplatesView } from "./templates.js";
+import { mockPortsView, mockTemplateJob, mockTemplatePlan, mockTemplatesView } from "./templates.js";
 import { mockSeriesResults } from "./metrics.js";
 import { mockClusterUsage, mockSpaceUsage } from "./workloads.js";
 import { DAY, HOUR, MOCK_NOW, isoAgo } from "./time.js";
@@ -783,6 +783,7 @@ export const apiMocks: ApiMocks = {
   "GET /api/deploy/upgrades": mockUpgradeReport,
   "POST /api/deploy/upgrades": mockUpgradeRun,
   "GET /api/deploy/gate": mockGateStatus,
+  "GET /api/deploy/ports": mockPortsView,
   "POST /api/deploy/actions/plan": mockReplicasPlan,
   "POST /api/deploy/actions/run": mockReplicasJob,
   "GET /api/deploy/actions/backups/:id": mockVolumeBackup,

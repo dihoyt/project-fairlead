@@ -67,6 +67,7 @@ import type {
   DeployRequest,
   DeployStatus,
   GateStatus,
+  PortsView,
   UpgradeReport,
   UpgradeRequest,
   VolumeBackupView,
@@ -385,6 +386,8 @@ export interface ApiRoutes {
   // Whether the sign-in gate can work and how each deployed app stands
   // behind it. Public and Public off are changed with the "app-gate" action.
   "GET /api/deploy/gate": Route<None, None, None, GateStatus>;
+  // The forwarded port range and the Traefik entrypoints external services need.
+  "GET /api/deploy/ports": Route<None, None, None, PortsView>;
   // Admin. What the action would change, from reads only; runs nothing.
   "POST /api/deploy/actions/plan": Route<None, None, DeployActionRequest, DeployActionPlan>;
   // Admin, audited. Starts the action as a deploy job (mode "action"); 400

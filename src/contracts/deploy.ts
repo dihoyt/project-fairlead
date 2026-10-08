@@ -249,7 +249,7 @@ export interface UpgradeRequest {
 // ends with deploy.finished. Needs deploy.enabled, like installs.
 
 export type DeployActionKind =
-  "longhorn-replicas" | "migrate-to-longhorn" | "backup-volumes" | "remove-app" | "app-gate";
+  "longhorn-replicas" | "migrate-to-longhorn" | "backup-volumes" | "remove-app" | "app-gate" | "traefik-ports";
 
 // Raises Longhorn's default-replica-count Setting (what new volumes get),
 // the replica count pinned by a Longhorn StorageClass when it is lower, and,
@@ -310,8 +310,25 @@ export interface AppGateAction {
   public: boolean;
 }
 
+// Makes Traefik serve exactly the entrypoints external services ask for
+// (PortsView.wanted): adds the missing ones and removes the ones this
+// product added that nothing wants any more, leaving every other port and
+// value alone. Where Traefik's values live decides how (PortsView.traefik):
+// k3s's bundled Traefik through the HelmChartConfig kube-system/traefik
+// (created when absent, its valuesContent merged otherwise), a Traefik this
+// product installed through `helm upgrade --reuse-values`. Either way
+// Traefik restarts once. Refused when a wanted port is outside the range.
+export interface TraefikPortsAction {
+  kind: "traefik-ports";
+}
+
 export type DeployActionRequest =
-  LonghornReplicasAction | MigrateToLonghornAction | BackupVolumesAction | RemoveAppAction | AppGateAction;
+  | LonghornReplicasAction
+  | MigrateToLonghornAction
+  | BackupVolumesAction
+  | RemoveAppAction
+  | AppGateAction
+  | TraefikPortsAction;
 
 export interface DeployActionStep {
   // "Raise the default replica count to 2".
@@ -488,6 +505,69 @@ export interface GateStatus {
   middleware?: string;
   // Every app the deploy runner installed that has an Ingress, by name.
   apps: AppGateView[];
+}
+
+// --- Forwarded ports ----------------------------------------------------------
+// Ports the router forwards to the cluster, for external services over TCP
+// and UDP (EXTERNAL_TEMPLATE in ./templates.ts). The range is the
+// "deploy.forwardedPorts" setting: "25565-25575,27015", ports 1024-65535,
+// at most MAX_FORWARDED_PORTS in all, none of Traefik's own (RESERVED_PORTS).
+// Each public port in use becomes one Traefik entrypoint per protocol,
+// exposed on Traefik's Service at the same port, so its LoadBalancer
+// (k3s ServiceLB on the nodes, or MetalLB) answers there.
+
+export const MAX_FORWARDED_PORTS = 100;
+
+// Traefik's own entrypoints' container ports in its chart (web, websecure,
+// traefik, metrics), which an entrypoint can't reuse.
+export const RESERVED_PORTS: readonly number[] = [8000, 8080, 8443, 9000, 9100];
+
+export type ForwardedProtocol = "tcp" | "udp";
+
+export interface ForwardedPort {
+  port: number;
+  protocol: ForwardedProtocol;
+}
+
+// An external service's claim on a public port.
+export interface WantedPort extends ForwardedPort {
+  // The template instance's name.
+  appId: string;
+}
+
+// The entrypoint's name in Traefik's values and its Service port name,
+// "tcp-25565". At most 15 characters, as a Service port name must be.
+export function traefikEntrypoint(port: ForwardedPort): string {
+  return `${port.protocol}-${port.port}`;
+}
+
+export interface PortsView {
+  // The setting as written; "" when unset.
+  range: string;
+  // Parsed and merged, ascending; empty when unset.
+  ranges: Array<{ from: number; to: number }>;
+  // Why the setting can't be used, one sentence; ranges is then empty.
+  rangeError?: string;
+  // Where Traefik's values live, absent when no Traefik was found.
+  // k3s: the HelmChartConfig kube-system/traefik (exists: whether it does yet).
+  // release: the catalog's Traefik that this product's deploy runner installed.
+  traefik?:
+    | { kind: "k3s"; namespace: string; service: string; exists: boolean }
+    | { kind: "release"; namespace: string; service: string; release: string };
+  // One sentence when traefik is absent or can't be changed from here
+  // (another tool manages it).
+  traefikNote?: string;
+  // Entrypoints Traefik's Service exposes now that follow traefikEntrypoint().
+  open: ForwardedPort[];
+  // What external services ask for, by public port then protocol.
+  wanted: WantedPort[];
+  // Wanted ports outside the range; the action is refused while any is.
+  outOfRange: WantedPort[];
+  // open matches wanted (both as sets of entrypoint names).
+  inSync: boolean;
+  // Traefik Service's external address (LoadBalancer ingress), where the
+  // ports answer inside the network; absent when it has none.
+  address?: string;
 }
 
 // --- For other modules -------------------------------------------------------
