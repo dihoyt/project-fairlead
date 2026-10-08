@@ -41,6 +41,24 @@ files are applied last. `--uninstall` keeps the namespace, Secret and volume.
 they stay off unless it is given, and a later re-run without it leaves them as
 they are.
 
+When the cluster is this host's k3s, the installer also installs Longhorn's
+node prerequisites, `open-iscsi` (with `iscsid` enabled and started) and the
+NFS client (`nfs-common` / `nfs-utils` / `nfs-client`), through apt, dnf, yum,
+zypper or apk. They are small (a few MB) and are skipped when already there,
+when no known package manager is found, or with `--no-node-packages`. The
+installer cannot reach other nodes: on a multi-node cluster, run the same on
+each agent node before deploying Longhorn, for example on Debian or Ubuntu
+
+```
+sudo apt-get install -y open-iscsi nfs-common && sudo systemctl enable --now iscsid
+```
+
+or on Fedora, RHEL and their relatives
+
+```
+sudo dnf install -y iscsi-initiator-utils nfs-utils && sudo systemctl enable --now iscsid
+```
+
 While the repository and packages are private, fetch the script with a token
 and pass `REGISTRY_USER` / `REGISTRY_TOKEN`; the steps and every flag are in
 [scripts/install/README.md](../scripts/install/README.md).

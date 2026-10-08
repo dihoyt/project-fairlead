@@ -90,6 +90,9 @@ jobs:
           echo "PASSWORD=$password" >> "$GITHUB_ENV"
           scripts/install/assert-install.sh "$RUNNER_TEMP/first.log" "$password"
           grep -q '^URL: http://.*:32450/$' "$RUNNER_TEMP/first.log" || { echo "not served on NodePort 32450"; exit 1; }
+          # Longhorn's node prerequisites, installed on this host's k3s node.
+          command -v iscsiadm mount.nfs
+          systemctl is-active iscsid
           # The k3s installed is the stable channel's newest release, not the fallback pin.
           stable=$(curl -fsS -o /dev/null -w '%{redirect_url}' https://update.k3s.io/v1-release/channels/stable | sed 's|.*/||; s/%2[Bb]/+/')
           grep -q "^Installing k3s $stable " "$RUNNER_TEMP/first.log" || { echo "expected k3s $stable"; exit 1; }

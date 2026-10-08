@@ -41,6 +41,7 @@ NO_K3S=0
 YES=0
 DRY_RUN=0
 UNINSTALL=0
+NODE_PACKAGES=1
 ENABLE_DEPLOY=0
 PURGE=0
 TIMEOUT="5m"
@@ -68,6 +69,7 @@ Usage: install.sh [flags]
                         ServiceAccount bound to cluster-admin; off unless given
   --kubeconfig PATH     Use this kubeconfig instead of detecting a cluster
   --no-k3s              Never install k3s; fail if no cluster is found
+  --no-node-packages    Don't install open-iscsi and the NFS client on this host's k3s node
   --timeout DURATION    How long to wait for the rollout (default: $TIMEOUT)
   --yes                 Don't ask before installing k3s or changing a cluster
   --dry-run             Print the changes instead of making them
@@ -123,6 +125,7 @@ while [ "$#" -gt 0 ]; do
     --timeout) need_arg "$@"; TIMEOUT="$2"; shift 2 ;;
     --enable-deploy) ENABLE_DEPLOY=1; shift ;;
     --no-k3s) NO_K3S=1; shift ;;
+    --no-node-packages) NODE_PACKAGES=0; shift ;;
     --yes | -y) YES=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     --uninstall) UNINSTALL=1; shift ;;
@@ -257,6 +260,63 @@ install_k3s() {
     sleep 2
   done
   kube wait --for=condition=Ready node --all --timeout=180s >/dev/null
+}
+
+# Longhorn needs iscsid on every node, and an NFS client for its backups and
+# ReadWriteMany volumes. Only this host is reachable from here, and only when
+# it is the k3s node; other nodes are a documented manual step.
+node_packages() {
+  [ "$NODE_PACKAGES" = 1 ] || return 0
+  if has iscsiadm && { has mount.nfs || [ -x /sbin/mount.nfs ] || [ -x /usr/sbin/mount.nfs ]; }; then
+    start_iscsid
+    return 0
+  fi
+  if has apt-get; then
+    set -- open-iscsi nfs-common
+  elif has dnf; then
+    set -- iscsi-initiator-utils nfs-utils
+  elif has yum; then
+    set -- iscsi-initiator-utils nfs-utils
+  elif has zypper; then
+    set -- open-iscsi nfs-client
+  elif has apk; then
+    set -- open-iscsi nfs-utils
+  else
+    say "Longhorn needs open-iscsi and an NFS client on each node; no known package manager here, so install them yourself."
+    return 0
+  fi
+  if [ "$YES" = 0 ] && tty_ok; then
+    printf 'Install %s on this host (Longhorn needs them)? [Y/n] ' "$*" >/dev/tty
+    read -r answer </dev/tty || answer=""
+    case "$answer" in n | N | no | NO) say "Skipped $*; Longhorn will not start on this node without them."; return 0 ;; esac
+  fi
+  say "Installing $* ..."
+  # shellcheck disable=SC2086
+  if has apt-get; then
+    run $SUDO env DEBIAN_FRONTEND=noninteractive apt-get update -qq >/dev/null &&
+      run $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@" >/dev/null
+  elif has dnf; then
+    run $SUDO dnf install -y -q "$@" >/dev/null
+  elif has yum; then
+    run $SUDO yum install -y -q "$@" >/dev/null
+  elif has zypper; then
+    run $SUDO zypper --non-interactive --quiet install "$@" >/dev/null
+  else
+    run $SUDO apk add --quiet "$@" >/dev/null
+  fi || {
+    warn "could not install $*; Longhorn will not start on this node until they are installed"
+    return 0
+  }
+  start_iscsid
+}
+
+start_iscsid() {
+  # shellcheck disable=SC2086
+  if has systemctl; then
+    run $SUDO systemctl enable --now iscsid >/dev/null 2>&1
+  elif has rc-update; then
+    run $SUDO rc-update add iscsid >/dev/null 2>&1 && run $SUDO rc-service iscsid start >/dev/null 2>&1
+  fi || warn "could not start iscsid; Longhorn needs it running"
 }
 
 use_host_k3s() {
@@ -472,6 +532,7 @@ do_uninstall() {
 
 do_install() {
   find_cluster
+  [ "$KUBECONFIG_PATH" != "$K3S_KUBECONFIG" ] || node_packages
   install_helm
   if [ "$DRY_RUN" = 1 ] && ! helm_ok; then
     say "+ helm upgrade --install $RELEASE $CHART_REF --namespace $NAMESPACE ..."
