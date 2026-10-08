@@ -47,6 +47,7 @@ import type {
   DeployStatus,
   UpgradeReport,
   UpgradeRequest,
+  VolumeBackupView,
 } from "./deploy.js";
 import type {
   Category,
@@ -92,7 +93,7 @@ export interface EventStream<T> {
   readonly eventStream: T;
 }
 
-// A non-JSON body (CSV export).
+// A non-JSON body (CSV export, a file download).
 export interface TextBody<Type extends string> {
   readonly contentType: Type;
 }
@@ -358,6 +359,18 @@ export interface ApiRoutes {
   // with the plan's blockedBy when it is not allowed, 409 while another job
   // for the same release is running.
   "POST /api/deploy/actions/run": Route<None, None, DeployActionRequest, DeployJobView>;
+  // A backup-volumes job's downloads; 404 for any other job.
+  "GET /api/deploy/actions/backups/:id": Route<{ id: string }, None, None, VolumeBackupView>;
+  // Admin, audited. One volume as tar.gz, streamed from the backup pod as it
+  // is read (no Content-Length); 409 unless the backup is ready.
+  "GET /api/deploy/actions/backups/:id/files/:claim": Route<
+    { id: string; claim: string },
+    None,
+    None,
+    TextBody<"application/gzip">
+  >;
+  // Admin. Stops the backup pod; already stopped is not an error.
+  "POST /api/deploy/actions/backups/:id/done": Route<{ id: string }, None, None, VolumeBackupView>;
 
   // --- templates ------------------------------------------------------------
   // The library and every saved instance with its latest job.

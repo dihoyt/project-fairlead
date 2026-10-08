@@ -22,6 +22,7 @@ import {
   type DeployPlan,
   type DeployStatus,
   type UpgradeReport,
+  type VolumeBackupView,
 } from "../deploy.js";
 import type { HostKeypair } from "../hosts.js";
 import { checkDisk } from "../disk.js";
@@ -920,4 +921,77 @@ export const mockReplicasJob: DeployJobView = {
   mode: "action",
   action: "longhorn-replicas",
   job: { namespace: "console", name: "deploy-longhorn-7" },
+};
+
+export const mockMigratePlan: DeployActionPlan = {
+  kind: "migrate-to-longhorn",
+  title: "Convert Gitea to Longhorn",
+  allowed: true,
+  steps: [
+    { label: "Stop Gitea (Deployment gitea to 0)", commands: ["kubectl scale deployment/gitea --replicas=0 -n gitea"] },
+    {
+      label: "Copy gitea-shared-storage (5Gi) to Longhorn",
+      commands: [
+        "kubectl create -f /values/tmp-0.json",
+        "kubectl create -f /values/copy-0.json",
+        "kubectl delete pvc gitea-shared-storage -n gitea",
+        "kubectl create -f /values/new-0.json",
+      ],
+    },
+    { label: "Start Gitea and check it answers", commands: ["kubectl rollout status deployment/gitea -n gitea"] },
+    { label: "Delete the old local-path volume", commands: ["kubectl patch pv pvc-5d1e --patch-file ..."] },
+  ],
+  downtime: "Gitea is stopped for about 3 minutes while its data is copied.",
+  rollback:
+    "If any step before the old volume is deleted fails, the claim goes back to its old volume and Gitea starts again; nothing is deleted.",
+  changes: [
+    { kind: "Deployment", name: "gitea", namespace: "gitea" },
+    { kind: "PersistentVolumeClaim", name: "gitea-shared-storage", namespace: "gitea" },
+    { kind: "PersistentVolume", name: "pvc-5d1e" },
+  ],
+  creates: [
+    { kind: "Job", name: "deploy-gitea-9", namespace: "console" },
+    { kind: "Secret", name: "deploy-gitea-values", namespace: "console" },
+    { kind: "Job", name: "gitea-copy-9-0", namespace: "gitea" },
+    { kind: "PersistentVolumeClaim", name: "gitea-shared-storage-longhorn", namespace: "gitea" },
+  ],
+  warnings: [],
+  volumes: [
+    {
+      namespace: "gitea",
+      claim: "gitea-shared-storage",
+      storageClass: "local-path",
+      size: "5Gi",
+      usedBytes: 734_003_200,
+      node: "node-1",
+      targetStorageClass: "longhorn",
+    },
+  ],
+  offerReplicas: true,
+};
+
+export const mockMigrateJob: DeployJobView = {
+  ...mockRunningJob,
+  id: "dj_9",
+  appId: "gitea",
+  release: "gitea",
+  namespace: "gitea",
+  mode: "action",
+  action: "migrate-to-longhorn",
+  job: { namespace: "console", name: "deploy-gitea-9" },
+};
+
+export const mockVolumeBackup: VolumeBackupView = {
+  id: "dj_8",
+  appId: "gitea",
+  namespace: "gitea",
+  state: "ready",
+  expiresAt: new Date(MOCK_NOW + HOUR).toISOString(),
+  files: [
+    {
+      claim: "gitea-shared-storage",
+      path: "api/deploy/actions/backups/dj_8/files/gitea-shared-storage",
+      filename: "gitea-gitea-shared-storage-2026-10-07.tar.gz",
+    },
+  ],
 };
