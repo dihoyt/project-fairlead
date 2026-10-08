@@ -26,3 +26,19 @@ describe("BundlePlanView disk check", () => {
     expect(screen.getByText(/GiB short: free some space or add disk/)).toBeInTheDocument();
   });
 });
+
+describe("BundlePlanView memory", () => {
+  it("shows each app's memory and the total", () => {
+    const MiB = 1024 ** 2;
+    const [first, ...rest] = mockBundlePlan.steps.filter((step) => !step.skip);
+    const plan = {
+      ...mockBundlePlan,
+      steps: [{ ...first!, memoryBytes: 1056 * MiB }, ...rest],
+      memoryBytes: 1216 * MiB,
+    };
+    renderWithApp(<BundlePlanView plan={plan} />);
+    expect(screen.getByText(/ask for about 1.2 GiB of memory between them/)).toBeInTheDocument();
+    expect(screen.getByText("1 GiB")).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-step-memory]")).toHaveLength(1);
+  });
+});

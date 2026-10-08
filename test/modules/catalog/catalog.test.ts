@@ -978,3 +978,10 @@ describe("catalog routes", () => {
     assert.equal(report.suggested.baseDomain, "home.example.com");
   });
 });
+
+test("every app the default bundle can roll out says how much memory it asks for", () => {
+  for (const item of bundles[0]!.items) {
+    const entry = catalog.find((e) => e.id === item.appId)!;
+    assert.ok((entry.memoryBytes ?? 0) > 0, `${item.appId} has no memoryBytes`);
+  }
+});

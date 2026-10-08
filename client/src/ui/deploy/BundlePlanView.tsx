@@ -1,5 +1,6 @@
 import { Accordion, Alert, Anchor, Badge, Group, Stack, Text } from "@mantine/core";
 import type { BundlePlan } from "@contracts/deploy";
+import { formatBytes } from "@contracts/disk";
 import { DeployPlanView } from "./DeployPlanView";
 
 // The preview of a bundle rollout: every app in install order, what each
@@ -31,6 +32,11 @@ export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?:
           {plan.disk.detail}
         </Text>
       ) : null}
+      {plan.memoryBytes ? (
+        <Text size="xs" c="dimmed" data-memory>
+          Once running, these apps ask for about {formatBytes(plan.memoryBytes)} of memory between them.
+        </Text>
+      ) : null}
       <Accordion variant="separated" chevronPosition="left" multiple>
         {plan.steps.map((step, index) => (
           <Accordion.Item key={step.appId} value={step.appId} data-step={step.appId}>
@@ -59,19 +65,26 @@ export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?:
                     </Anchor>
                   ) : null}
                 </Group>
-                {step.skip ? (
-                  <Badge color="gray" variant="light" radius="xs">
-                    skipped
-                  </Badge>
-                ) : step.plan && !step.plan.allowed ? (
-                  <Badge color="red" variant="light" radius="xs">
-                    blocked
-                  </Badge>
-                ) : step.plan?.warnings.length ? (
-                  <Badge color="yellow" variant="light" radius="xs">
-                    {step.plan.warnings.length} {step.plan.warnings.length === 1 ? "warning" : "warnings"}
-                  </Badge>
-                ) : null}
+                <Group gap="xs" wrap="nowrap">
+                  {!step.skip && step.memoryBytes ? (
+                    <Text size="xs" c="dimmed" data-step-memory>
+                      {formatBytes(step.memoryBytes)}
+                    </Text>
+                  ) : null}
+                  {step.skip ? (
+                    <Badge color="gray" variant="light" radius="xs">
+                      skipped
+                    </Badge>
+                  ) : step.plan && !step.plan.allowed ? (
+                    <Badge color="red" variant="light" radius="xs">
+                      blocked
+                    </Badge>
+                  ) : step.plan?.warnings.length ? (
+                    <Badge color="yellow" variant="light" radius="xs">
+                      {step.plan.warnings.length} {step.plan.warnings.length === 1 ? "warning" : "warnings"}
+                    </Badge>
+                  ) : null}
+                </Group>
               </Group>
             </Accordion.Control>
             {step.plan ? (
