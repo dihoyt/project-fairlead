@@ -9,7 +9,7 @@
 // Server-free on purpose: the client imports this file.
 
 import type { CheckResult, Status } from "./health.js";
-import type { DeployJobView } from "./deploy.js";
+import type { AppGateState, DeployJobView } from "./deploy.js";
 import type { DriftReport, DriftState, OwnedObject } from "./ownership.js";
 
 export type ConnectorCapability =
@@ -212,6 +212,9 @@ export interface CloudflareHostView {
   route?: CloudflareObjectState;
   // When access is wanted, or one we created is still there.
   accessApp?: CloudflareObjectState;
+  // How the console's sign-in gate treats the app (AppGateView.state);
+  // absent when the gate doesn't know the host.
+  gate?: AppGateState;
   status: Status;
   // One sentence: "Routed over the tunnel" or what is wrong.
   detail: string;
@@ -234,8 +237,11 @@ export interface CloudflareView {
   tunnel?: CloudflareTunnelView;
   // The origin tunnel routes point at (AccessView.ingressService).
   ingressService?: string;
-  // The A record target for direct exposure.
+  // The A (or AAAA) record target for direct exposure.
   publicAddress?: string;
+  // "set": the connector's Public address field; "detected": the field is
+  // empty and the address was looked up from this cluster at the last sync.
+  publicAddressSource?: "set" | "detected";
   accessPolicy: CloudflareAccessPolicy;
   hosts: CloudflareHostView[];
   syncedAt?: string;
