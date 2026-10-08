@@ -95,6 +95,14 @@ export interface Platform {
   settings: SettingsRegistry;
   secrets: SecretStore;
   audit: AuditLog;
+  // Removes UI overrides from the settings table so each falls back to its
+  // environment value or default. Selects every override, then drops any
+  // key in `except` or starting with one of `exceptPrefixes`. Returns the
+  // rows removed. Same-connection statements, so it joins an open transaction.
+  clearSettings(options: { except?: readonly string[]; exceptPrefixes?: readonly string[] }): number;
+  // Gives the built-in "admin" account a new random password, marks it to be
+  // changed at the next sign-in. Returns the password once. Throws if no such account exists.
+  resetAdminPassword(): Promise<string>;
   // True once a drain has begun; /healthz answers 503 while it is.
   draining(): boolean;
   // Wires SIGTERM/SIGINT: drain, then stop() (scheduler, DB), then exit.

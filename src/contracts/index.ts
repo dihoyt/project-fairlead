@@ -18,6 +18,7 @@ export * from "./notify.js";
 export * from "./onboarding.js";
 export * from "./ownership.js";
 export * from "./platform.js";
+export * from "./reset.js";
 export * from "./routing.js";
 export * from "./runtime.js";
 export * from "./system.js";
