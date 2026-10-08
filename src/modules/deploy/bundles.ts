@@ -212,7 +212,14 @@ export function stepRequests(
     const entry = entries(item.appId);
     if (!entry) return { appId: item.appId, skip: true, reason: "Not in this catalog" };
     if (!holds(item.when, shared, bundle.inputs)) {
-      return { appId: item.appId, skip: true, reason: "Not needed for how you reach the apps" };
+      // Through the Cloudflare connector, cloudflared is deployed from its
+      // panel before the rollout, not as a step.
+      const viaConnector = shared.access === "cloudflare-tunnel" && shared.cloudflareSetup === "api";
+      const reason =
+        item.appId === "cloudflared" && viaConnector
+          ? "Run by the Cloudflare connector"
+          : "Not needed for how you reach the apps";
+      return { appId: item.appId, skip: true, reason };
     }
     if (!item.required && !included.has(item.appId)) {
       return { appId: item.appId, skip: true, reason: item.note ?? "Left out" };
