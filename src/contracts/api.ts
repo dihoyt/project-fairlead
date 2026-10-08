@@ -425,7 +425,7 @@ export interface ApiRoutes {
   "PUT /api/connector-cloudflare/hosts/:host": Route<{ host: string }, None, CloudflareHostRequest, CloudflareHostView>;
   "POST /api/connector-cloudflare/discover": Route<None, None, CloudflareDiscoverRequest, CloudflareDiscovery>;
   "POST /api/connector-cloudflare/tunnel": Route<None, None, CloudflareTunnelRequest, CloudflareView>;
-  // 409 without a connector or a tunnel; 503 when deploys are off.
+  // 409 without a connector or a tunnel; the deploy's own 400 when deploys are off.
   "POST /api/connector-cloudflare/tunnel/deploy": Route<None, None, None, CloudflareTunnelDeploy>;
 
   // --- onboarding (A14) ---------------------------------------------------
