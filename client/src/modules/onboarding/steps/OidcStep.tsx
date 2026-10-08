@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Code, Group, Loader, PasswordInput, Stack, Text, TextInput } from "@mantine/core";
+import { OidcProviderGuide } from "../../../shell/admin/OidcProviderGuide";
 import { apiRequest, useApi } from "../../../ui";
 import { putSetting, settingOf, stringSetting } from "../settings";
 import { StepFrame, useAction, type StepProps } from "../shared";
@@ -65,6 +66,7 @@ export function OidcStep({ onFinish }: StepProps) {
           <Text size="sm">
             Register an app with your provider using this redirect URI: <Code>{oidc.redirectUri}</Code>
           </Text>
+          <OidcProviderGuide redirectUri={oidc.redirectUri} />
           {overview.data?.publicUrl.source === "request" ? (
             <Text size="xs" c="orange">
               Guessed from this page&apos;s address. Save the public URL on the first setup step to make it stick.

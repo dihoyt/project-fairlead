@@ -16,6 +16,7 @@ import {
 import { apiRequest, useApi } from "../../ui/api";
 import { PageHeader } from "../PageHeader";
 import { SIGN_IN_GROUPS } from "./groups";
+import { OidcProviderGuide } from "./OidcProviderGuide";
 import { SettingField } from "./SettingField";
 
 export function SignInSettingsPage() {
@@ -120,6 +121,7 @@ export function SignInSettingsPage() {
                 Register this with your identity provider as the web redirect URI.
               </Text>
             </div>
+            <OidcProviderGuide redirectUri={data.oidc.redirectUri} />
             {group(SIGN_IN_GROUPS[1])}
             <Stack gap={4}>
               <PasswordInput
