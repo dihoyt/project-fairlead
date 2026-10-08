@@ -23,6 +23,7 @@ export interface Resolved {
   // Rendered with an Ingress from the deploy runner: a host was given or defaulted.
   exposed: boolean;
   disk?: { volumeBytes: number; imageBytes: number };
+  noLogin?: boolean;
 }
 
 export const templateLabel = () => `${product.ownerMarker.labelDomain}/${TEMPLATE_LABEL_SUFFIX}`;
@@ -44,6 +45,7 @@ export function fromDefinition(
     version: def.version,
     port: def.port,
     env: def.env ?? [],
+    ...(def.noLogin ? { noLogin: true } : {}),
     ...(def.volume
       ? {
           volume: {
@@ -155,5 +157,6 @@ export function entryFor(r: Resolved, objects: readonly KubeObject[]): CatalogEn
     ...(r.volume ? { storage: r.volume.size } : {}),
     ...(r.disk ? { disk: r.disk } : {}),
     prerequisites: [],
+    ...(r.noLogin ? { noLogin: true } : {}),
   };
 }

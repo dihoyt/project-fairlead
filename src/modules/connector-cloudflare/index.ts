@@ -21,6 +21,14 @@ import { directTls, removeAllTls } from "./direct.js";
 import { cleanup, parseAllow, sync, type Marker } from "./sync.js";
 
 const KIND = "cloudflare";
+
+const flagged = (get: () => { noLogin?: boolean } | undefined): boolean => {
+  try {
+    return get()?.noLogin === true;
+  } catch {
+    return false;
+  }
+};
 const SYNC_DEBOUNCE_MS = 5_000;
 const TUNNEL_SUFFIX = ".cfargotunnel.com";
 
@@ -149,6 +157,16 @@ function register(ctx: ModuleContext): void {
   });
 
   const client = (token: string, signal?: AbortSignal) => new CloudflareClient(token, apiBase.get(), signal);
+  // Catalog apps and template instances alike; a missing service means no
+  // flag rather than a failed sync.
+  const noLogin = (appId: string): boolean =>
+    flagged(() => ctx.services.get("catalog").get(appId)) ||
+    flagged(() =>
+      ctx.services
+        .get("templates")
+        .entries()
+        .find((e) => e.id === appId)
+    );
   const tunnelIdOf = (instance: ConnectorInstance) => instance.config.tunnelId || store.tunnel()?.id;
 
   async function verify(values: ConnectorValues, signal: AbortSignal, tunnelId?: string): Promise<CheckResult[]> {
@@ -277,7 +295,11 @@ function register(ctx: ModuleContext): void {
         allow: parseAllow(instance.config.accessEmails),
         accessPolicy: accessApps.get(),
         defaultExposure: access.mode === "direct" ? "direct" : "tunnel",
-        hosts: access.hosts.map((h) => ({ host: h.host, ...(h.appId ? { appId: h.appId } : {}) })),
+        hosts: access.hosts.map((h) => ({
+          host: h.host,
+          ...(h.appId ? { appId: h.appId } : {}),
+          ...(h.appId && noLogin(h.appId) ? { noLogin: true } : {}),
+        })),
         prefs: store.prefs(),
         owned,
         marker,
