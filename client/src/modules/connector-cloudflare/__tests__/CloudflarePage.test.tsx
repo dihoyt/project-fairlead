@@ -9,11 +9,12 @@ import { CloudflarePage } from "../CloudflarePage";
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-function serve(view: CloudflareView, connectors: unknown[] = []) {
+function serve(view: CloudflareView, connectors: unknown[] = [], access: unknown = {}) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     const method = init?.method ?? "GET";
     if (url.includes("connector-cloudflare/view")) return json(view);
+    if (url.includes("deploy/access")) return json(access);
     if (url.includes("connector-cloudflare/discover")) return json(apiMocks["POST /api/connector-cloudflare/discover"]);
     if (url.includes("connector-cloudflare/hosts/")) return json(apiMocks["PUT /api/connector-cloudflare/hosts/:host"]);
     if (url.includes("tunnel/deploy")) return json(apiMocks["POST /api/connector-cloudflare/tunnel/deploy"]);
@@ -90,6 +91,17 @@ describe("CloudflarePage", () => {
       ).toBe(true)
     );
     expect(await screen.findByText(/cloudflared is being deployed/)).toBeInTheDocument();
+  });
+
+  it("says when an installed cloudflared isn't serving this tunnel", async () => {
+    const inactive = {
+      ...apiMocks["GET /api/connector-cloudflare/view"],
+      tunnel: { ...apiMocks["GET /api/connector-cloudflare/view"].tunnel!, status: "inactive" },
+    };
+    serve(inactive, [], { ...apiMocks["GET /api/deploy/access"], appId: "cloudflared", appInstalled: true });
+    renderWithApp(<CloudflarePage />);
+    expect(await screen.findByText(/installed but not connected to this tunnel/)).toBeInTheDocument();
+    expect(screen.queryByText("Deploy cloudflared")).toBeNull();
   });
 
   it("connects with a token: check it, pick the zone matching the domain, save", async () => {

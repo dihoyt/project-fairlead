@@ -99,6 +99,12 @@ export function CloudflareTunnel({
           </Button>
         </Group>
       ) : null}
+      {waiting && cloudflaredInstalled && !deployed ? (
+        <Text size="sm" c="yellow" data-cloudflared-elsewhere>
+          cloudflared is installed but not connected to this tunnel, so it may be running another tunnel&apos;s token.
+          Remove it on the Apps page, then deploy it again here.
+        </Text>
+      ) : null}
       {deployed ? (
         <Text size="sm" c="teal">
           cloudflared is being deployed; follow it on the Apps page.

@@ -18,6 +18,8 @@ const POLICY: Record<CloudflareView["accessPolicy"], string> = {
 // the Access step, which shows the same panel once connected.
 export function CloudflarePanel({ baseDomain, pollMs }: { baseDomain?: string; pollMs?: number }) {
   const view = useApi("GET /api/connector-cloudflare/view", undefined, pollMs ? { pollMs } : {});
+  const access = useApi("GET /api/deploy/access", undefined, pollMs ? { pollMs } : {});
+  const cloudflaredInstalled = access.data?.appId === "cloudflared" && access.data.appInstalled === true;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const data = view.data;
@@ -55,7 +57,7 @@ export function CloudflarePanel({ baseDomain, pollMs }: { baseDomain?: string; p
         </Alert>
       ))}
       {error ? <Alert color="red">{error}</Alert> : null}
-      <CloudflareTunnel view={data} onChanged={() => view.reload()} />
+      <CloudflareTunnel view={data} onChanged={() => view.reload()} cloudflaredInstalled={cloudflaredInstalled} />
       <Text size="xs" c="dimmed">
         {POLICY[data.accessPolicy]} Change it in Admin &gt; Settings.
       </Text>
