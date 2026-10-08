@@ -63,6 +63,33 @@ While the repository and packages are private, fetch the script with a token
 and pass `REGISTRY_USER` / `REGISTRY_TOKEN`; the steps and every flag are in
 [scripts/install/README.md](../scripts/install/README.md).
 
+## Updating
+
+`update.sh` upgrades an existing install in place to the newest published
+chart (or `--version`), and stops with a pointer to `install.sh` when there is
+no release to update. It keeps the release's settings, including the NodePort,
+host, origin and app deploys, unless a flag such as `--port`, `--host`,
+`--origin` or `--enable-deploy` changes them. It prints the chart and image
+before and after, and waits for the rollout.
+
+```
+curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/update.sh | sh -
+curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/update.sh | sh -s -- --k3s --prereqs
+```
+
+Two extras, both off unless asked for, and both only for this host's k3s:
+
+- `--k3s` upgrades k3s to the stable channel's newest release (`install.sh`
+  never upgrades k3s). It swaps the checksum-verified binary and restarts the
+  `k3s` or `k3s-agent` service, so the flags k3s was installed with are kept.
+  Other nodes are not touched: run it on each, servers first.
+- `--prereqs` installs open-iscsi and the NFS client on this host (see
+  "Installer").
+
+`update.sh` is `install.sh` with one line changed, and takes the same flags
+(`update.sh --help`). `scripts/install/gen-update.sh` regenerates it, and CI
+fails if it falls out of step.
+
 ## Install with Helm
 
 ```
