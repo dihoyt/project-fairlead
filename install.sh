@@ -486,6 +486,39 @@ ensure_namespace() {
   kube get namespace "$NAMESPACE" >/dev/null 2>&1 || run kube create namespace "$NAMESPACE" >/dev/null
 }
 
+K3S_TOKEN_DIR="/var/lib/rancher/k3s/server"
+JOIN_SECRET_NAME="k3s-join"
+
+# What a new node needs to join, for the console's join links. Written on
+# every run from this host's k3s server, so a rotated token or a new address
+# follows. The token goes from root's file to a 0600 temp file to kubectl,
+# never through an argument or the output.
+ensure_join_secret() {
+  # shellcheck disable=SC2086
+  if [ "$KUBECONFIG_PATH" != "$K3S_KUBECONFIG" ] || ! $SUDO test -r "$K3S_TOKEN_DIR/node-token" 2>/dev/null; then
+    say "Not on a k3s server node, so adding nodes from the console stays off (run this on the server to turn it on)."
+    return 0
+  fi
+  ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{ for (i = 1; i < NF; i++) if ($i == "src") { print $(i + 1); exit } }')
+  [ -n "$ip" ] || ip=$(node_ip)
+  [ -n "$ip" ] || { warn "could not find this host's IP; adding nodes from the console stays off"; return 0; }
+  (
+    umask 077
+    printf 'https://%s:6443' "$ip" >"$TMP/server-url"
+    $SUDO cat "$K3S_TOKEN_DIR/node-token" | tr -d '\n' >"$TMP/token"
+    if $SUDO test -s "$K3S_TOKEN_DIR/agent-token" 2>/dev/null; then
+      $SUDO cat "$K3S_TOKEN_DIR/agent-token" | tr -d '\n' >"$TMP/agent-token"
+    fi
+  )
+  set -- --from-file=server-url="$TMP/server-url" --from-file=token="$TMP/token"
+  [ ! -s "$TMP/agent-token" ] || set -- "$@" --from-file=agent-token="$TMP/agent-token"
+  kube -n "$NAMESPACE" create secret generic "$JOIN_SECRET_NAME" "$@" --dry-run=client -o yaml >"$TMP/join-secret.yaml"
+  rm -f "$TMP/server-url" "$TMP/token" "$TMP/agent-token"
+  run kube -n "$NAMESPACE" apply -f "$TMP/join-secret.yaml" >/dev/null
+  run kube -n "$NAMESPACE" label --overwrite secret "$JOIN_SECRET_NAME" "app.kubernetes.io/managed-by=$OWNER_LABEL" >/dev/null
+  rm -f "$TMP/join-secret.yaml"
+}
+
 # Created once. A re-run never replaces it: the data volume is sealed with
 # SECRETS_KEY, and the bootstrap password only matters before first sign-in.
 PASSWORD=""
@@ -656,6 +689,7 @@ do_install() {
   fi
   ensure_namespace
   ensure_secret
+  ensure_join_secret
   registry_auth
   [ -z "$HOST" ] || default_ingress_class
   [ -n "$HOST" ] || check_node_port "$existing"
