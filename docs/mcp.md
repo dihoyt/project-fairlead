@@ -90,8 +90,13 @@ Read (any token):
 | `get_deploy_job_logs` | A deploy's log, secrets redacted |
 | `list_bundle_runs` | Bundle rollouts |
 | `list_hosts` | SSH-monitored hosts |
+| `list_templates` | The template library and every app deployed from it |
+| `get_entra_signin` | Whether sign-in through Microsoft Entra ID is set up |
+| `list_entra_groups` | Entra security groups by name prefix, with their object ids |
 
-Write (a read-and-write token): `create_check`, `update_check` (only the fields you give change), `delete_check`, `run_check`, `accept_check_status` (the Checks page's "Accept this status"), `create_link`, `update_link`, `delete_link`, `plan_app_deploy`, `deploy_app`, `plan_bundle`, `start_bundle`.
+Write (a read-and-write token): `create_check`, `update_check` (only the fields you give change), `delete_check`, `run_check`, `accept_check_status` (the Checks page's "Accept this status"), `create_link`, `update_link`, `delete_link`, `plan_app_deploy`, `deploy_app`, `plan_bundle`, `start_bundle`, `plan_template_deploy`, `deploy_template`, `plan_template_removal`, `remove_template_app` (keeps the app's namespace and volumes unless `deleteVolumes` is true), `setup_entra_signin` (`adminGroups` takes group object ids, not names).
+
+Template deploys go through the same guardrail as the Templates page: a template or custom app that asks for host paths, host networking, a privileged container, extra capabilities or an admin role binding is refused, over MCP as in the UI.
 
 Results are the same shapes the REST API returns (lists come back as `{ "items": [...] }`). No tool returns a stored secret: check secrets, host credentials, the SSH private key, the cluster join token and secret settings are write-only or not reachable at all. Deploys still need deploys turned on (`install.sh --enable-deploy`); without it `plan_app_deploy` says so.
 

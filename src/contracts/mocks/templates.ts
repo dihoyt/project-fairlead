@@ -2,7 +2,7 @@
 // pass, fail on fields and fail the guardrail. Pure data, so the client can
 // import it.
 import type { CatalogEntry } from "../catalog.js";
-import type { DeployJobView, DeployPlan } from "../deploy.js";
+import type { DeployActionPlan, DeployJobView, DeployPlan } from "../deploy.js";
 import {
   CUSTOM_TEMPLATE,
   type AppTemplate,
@@ -11,7 +11,7 @@ import {
   type TemplatesService,
   type TemplatesView,
 } from "../templates.js";
-import { mockDeployJob, mockFailedJob } from "./catalog.js";
+import { mockDeployJob, mockFailedJob, mockRunningJob } from "./catalog.js";
 import { HOUR, isoAgo } from "./time.js";
 
 const MiB = 1024 ** 2;
@@ -272,3 +272,45 @@ export const mockTemplateEntry: CatalogEntry = {
 export function createMockTemplatesService(entries: CatalogEntry[] = [mockTemplateEntry]): TemplatesService {
   return { entries: () => structuredClone(entries) };
 }
+
+// Removing "status" (Uptime Kuma) with its volume kept, and the job for it.
+export const mockTemplateRemovePlan: DeployActionPlan = {
+  kind: "remove-app",
+  title: "Remove status",
+  allowed: true,
+  steps: [
+    {
+      label: "Delete status's workloads, Services and Ingresses",
+      commands: [
+        "kubectl delete deployment,statefulset,service,ingress,configmap,secret,serviceaccount,role,rolebinding --all -n status",
+      ],
+    },
+  ],
+  downtime: "status stops for good.",
+  rollback: "Deploy status again from Templates; its volume is still there.",
+  changes: [],
+  creates: [
+    { kind: "Job", name: "deploy-status-14", namespace: "console" },
+    { kind: "Secret", name: "deploy-status-values", namespace: "console" },
+  ],
+  deletes: [
+    { kind: "Deployment", name: "status", namespace: "status" },
+    { kind: "Service", name: "status", namespace: "status" },
+    { kind: "Ingress", name: "status", namespace: "status" },
+    { kind: "Check", name: "https://status.example.test" },
+  ],
+  warnings: ["The namespace status and its volume stay: deploying status from Templates again picks its data back up."],
+  volumes: [{ namespace: "status", claim: "status-data", storageClass: "longhorn", size: "1Gi" }],
+};
+
+export const mockTemplateRemoveJob: DeployJobView = {
+  ...mockRunningJob,
+  id: "dj_14",
+  appId: "status",
+  release: "status",
+  namespace: "status",
+  version: "1.23.15",
+  mode: "action",
+  action: "remove-app",
+  job: { namespace: "console", name: "deploy-status-14" },
+};

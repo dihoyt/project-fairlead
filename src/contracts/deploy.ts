@@ -235,7 +235,7 @@ export interface UpgradeRequest {
 // cancel go through /api/deploy/jobs, one job per release at a time, and it
 // ends with deploy.finished. Needs deploy.enabled, like installs.
 
-export type DeployActionKind = "longhorn-replicas" | "migrate-to-longhorn" | "backup-volumes";
+export type DeployActionKind = "longhorn-replicas" | "migrate-to-longhorn" | "backup-volumes" | "remove-app";
 
 // Raises Longhorn's default-replica-count Setting (what new volumes get),
 // the replica count pinned by a Longhorn StorageClass when it is lower, and,
@@ -270,7 +270,22 @@ export interface BackupVolumesAction {
   appId: string;
 }
 
-export type DeployActionRequest = LonghornReplicasAction | MigrateToLonghornAction | BackupVolumesAction;
+// Removes an app deployed from the Templates page (a namespace labelled
+// <labelDomain>/app-template; any other app is refused). Without
+// deleteVolumes (the default) everything in its namespace goes except the
+// namespace itself and its PersistentVolumeClaims, so deploying the same
+// name again picks the data back up; with it the namespace is deleted and
+// the volumes with it. The HTTP check watching its address is deleted when
+// the job starts. The deploy.finished that follows carries action
+// "remove-app", on which the templates module forgets the instance.
+export interface RemoveAppAction {
+  kind: "remove-app";
+  appId: string;
+  deleteVolumes?: boolean;
+}
+
+export type DeployActionRequest =
+  LonghornReplicasAction | MigrateToLonghornAction | BackupVolumesAction | RemoveAppAction;
 
 export interface DeployActionStep {
   // "Raise the default replica count to 2".
@@ -298,7 +313,10 @@ export interface DeployActionPlan {
   // Objects it creates, the Job and its Secret included.
   creates: PlannedObject[];
   warnings: string[];
-  // migrate-to-longhorn and backup-volumes: the volumes it moves or saves.
+  // Objects it deletes (remove-app); a namespace stands for everything in it.
+  deletes?: PlannedObject[];
+  // migrate-to-longhorn and backup-volumes: the volumes it moves or saves;
+  // remove-app: the volumes it keeps, or deletes with deleteVolumes.
   volumes?: ActionVolume[];
   // migrate-to-longhorn: Longhorn can place replicas on more than one node,
   // so raising replicas (longhorn-replicas) is offered once it is done.
@@ -410,7 +428,8 @@ export interface DeployedRelease {
 
 // Provided by module "deploy" as ctx.services.get("deploy").
 export interface DeployService {
-  // The latest install or upgrade job per release, newest first; dry runs excluded.
+  // The latest install or upgrade job per release, newest first; dry runs
+  // excluded, and so is a release a later remove-app action removed.
   releases(): Promise<DeployedRelease[]>;
   // What GET /api/deploy/access answers, for work that runs without a request.
   access(): Promise<AccessView>;
