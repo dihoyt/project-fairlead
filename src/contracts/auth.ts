@@ -306,3 +306,39 @@ export interface AuthentikWireResult {
   // through Authentik and links that identity to the current account.
   testSignIn: string;
 }
+
+// Sign-in through a provider anyone can hold an account with: a personal
+// or work Google account, or any Microsoft account (personal or from any
+// Entra tenant, through the "common" endpoint). Nobody is invited to a
+// tenant; who gets in is decided here, by verified email.
+export type PublicSignInProvider = "google" | "microsoft";
+
+export interface PublicSignInRequest {
+  provider: PublicSignInProvider;
+  // The OAuth client made in Google Cloud Console, or the Entra app
+  // registration set to "any organizational directory and personal
+  // Microsoft accounts".
+  clientId: string;
+  // Omitted or "": the stored secret is kept, allowed only when the stored
+  // client is already this provider with this client id.
+  clientSecret?: string;
+  // Saved as auth.oidc.allowedEmails. Each entry is an address
+  // ("ann@example.com") or a domain ("@example.com" or "example.com").
+  // Required and non-empty: with a public provider an empty list would let
+  // every account in the world create one here.
+  allowedEmails: string[];
+  // Saved as auth.oidc.adminEmails: a verified sign-in with one of these
+  // addresses makes the account an admin.
+  adminEmails?: string[];
+}
+
+export interface PublicSignInResult {
+  provider: PublicSignInProvider;
+  issuer: string;
+  clientId: string;
+  redirectUri: string;
+  // Setting keys this request saved; the client secret is stored separately.
+  settings: string[];
+  // The issuer's discovery document as read back after saving.
+  discovery: { ok: boolean; error?: string };
+}
