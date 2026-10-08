@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import {
   IconComponents,
+  IconApi,
   IconHistory,
   IconKey,
   IconServerCog,
@@ -16,6 +17,7 @@ import { AuditPage } from "./admin/AuditPage";
 import { SettingsPage } from "./admin/SettingsPage";
 import { SignInSettingsPage } from "./admin/SignInSettingsPage";
 import { SystemPage } from "./admin/SystemPage";
+import { TokensPage } from "./admin/TokensPage";
 import { UsersPage } from "./admin/UsersPage";
 
 export interface ShellNavItem extends NavItem {
@@ -33,6 +35,7 @@ export const shellNavItems: ShellNavItem[] = [
   { label: "Users", to: "/admin/users", icon: IconUsers, order: 200, section: "admin", adminOnly: true },
   { label: "Sign-in", to: "/admin/sign-in", icon: IconKey, order: 210, section: "admin", adminOnly: true },
   { label: "Settings", to: "/admin/settings", icon: IconSettings, order: 220, section: "admin", adminOnly: true },
+  { label: "API tokens", to: "/admin/tokens", icon: IconApi, order: 225, section: "admin", adminOnly: true },
   { label: "Audit log", to: "/admin/audit", icon: IconHistory, order: 230, section: "admin", adminOnly: true },
   { label: "System", to: "/admin/system", icon: IconServerCog, order: 240, section: "admin", adminOnly: true },
   ...(import.meta.env.DEV
@@ -53,6 +56,7 @@ export const shellRoutes: ModuleRoute[] = [
   { path: "/admin/users", element: admin(<UsersPage />) },
   { path: "/admin/sign-in", element: admin(<SignInSettingsPage />) },
   { path: "/admin/settings", element: admin(<SettingsPage />) },
+  { path: "/admin/tokens", element: admin(<TokensPage />) },
   { path: "/admin/audit", element: admin(<AuditPage />) },
   { path: "/admin/system", element: admin(<SystemPage />) },
   // Always routable so a module author can open it in any build; only
