@@ -94,4 +94,8 @@ export class Store {
         at
       );
   }
+
+  delete(name: string): void {
+    this.db.prepare("DELETE FROM templates_instances WHERE org_id = ? AND name = ?").run(this.orgId, name);
+  }
 }

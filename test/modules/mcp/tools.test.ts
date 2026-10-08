@@ -60,3 +60,45 @@ test("update_check changes only the given fields", async () => {
 test("every tool's input schema is an object schema", () => {
   for (const [name, def] of Object.entries(TOOLS)) assert.equal(def.input.type, "object", name);
 });
+
+test("template and Entra tools call their routes; removal keeps volumes unless asked", async () => {
+  const { call, calls } = fakeCaller([]);
+  await TOOLS.list_templates.run(call, {});
+  await TOOLS.plan_template_deploy.run(call, { templateId: "whoami" });
+  await TOOLS.deploy_template.run(call, {
+    templateId: "custom",
+    name: "api",
+    custom: { image: "ghcr.io/x/api:1", port: 8080, env: [] },
+    mode: "install",
+  });
+  await TOOLS.plan_template_removal.run(call, { name: "api" });
+  await TOOLS.remove_template_app.run(call, { name: "api", deleteVolumes: true });
+  await TOOLS.get_entra_signin.run(call, {});
+  await TOOLS.list_entra_groups.run(call, { search: "Ops" });
+  await TOOLS.setup_entra_signin.run(call, { adminGroups: ["0b1c"] });
+  assert.deepEqual(
+    calls.map((c) => c.key),
+    [
+      "GET /api/templates",
+      "POST /api/templates/plan",
+      "POST /api/templates/jobs",
+      "POST /api/deploy/actions/plan",
+      "POST /api/deploy/actions/run",
+      "GET /api/connector-entra/view",
+      "GET /api/connector-entra/groups",
+      "POST /api/connector-entra/signin",
+    ]
+  );
+  assert.deepEqual(calls[3]!.input!.body, { kind: "remove-app", appId: "api", deleteVolumes: false });
+  assert.deepEqual(calls[4]!.input!.body, { kind: "remove-app", appId: "api", deleteVolumes: true });
+  assert.deepEqual(calls[6]!.input!.query, { search: "Ops" });
+  assert.deepEqual(calls[7]!.input!.body, { adminGroups: ["0b1c"] });
+
+  const parsed = TOOLS.deploy_template.input.parse({
+    templateId: "custom",
+    name: "api",
+    custom: { image: "a:1", port: 80, hostNetwork: true, privileged: true },
+    mode: "install",
+  }) as { custom: Record<string, unknown> };
+  assert.deepEqual(Object.keys(parsed.custom).toSorted(), ["env", "image", "port"], "no way to ask for host access");
+});

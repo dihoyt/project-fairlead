@@ -20,6 +20,7 @@ import { relativeTime, useApi } from "../../ui";
 import { SessionContext } from "../../ui/session";
 import { DeploysOff, JOB_STATE_COLOR, WhatIsThis } from "../../ui/deploy";
 import { emptyForm, formFromInstance, type TemplateForm } from "./request";
+import { RemoveAppButton } from "./RemoveApp";
 import { TemplateDialog } from "./TemplateDialog";
 
 const POLL_MS = 5_000;
@@ -71,11 +72,13 @@ function InstanceRow({
   template,
   admin,
   onRedeploy,
+  onRemoved,
 }: {
   instance: TemplateInstance;
   template?: AppTemplate;
   admin: boolean;
   onRedeploy: () => void;
+  onRemoved: () => void;
 }) {
   const job = instance.lastJob;
   return (
@@ -131,11 +134,14 @@ function InstanceRow({
         </Text>
       </Table.Td>
       <Table.Td>
-        {template ? (
-          <Button size="xs" variant="subtle" disabled={!admin} onClick={onRedeploy}>
-            Deploy again
-          </Button>
-        ) : null}
+        <Group gap={4} wrap="nowrap" justify="flex-end">
+          {template ? (
+            <Button size="xs" variant="subtle" disabled={!admin} onClick={onRedeploy}>
+              Deploy again
+            </Button>
+          ) : null}
+          <RemoveAppButton instance={instance} disabled={!admin} onRemoved={onRemoved} />
+        </Group>
       </Table.Td>
     </Table.Tr>
   );
@@ -209,6 +215,7 @@ export function TemplatesPage() {
                         onRedeploy={() =>
                           template && setOpened({ template, initial: formFromInstance(template, instance) })
                         }
+                        onRemoved={view.reload}
                       />
                     );
                   })}
