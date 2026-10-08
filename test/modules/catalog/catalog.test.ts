@@ -21,7 +21,7 @@ import { catalog } from "../../../src/modules/catalog/entries.js";
 import { nodeDisks } from "../../../src/modules/catalog/disks.js";
 import { ntfyManifest } from "../../../src/modules/catalog/manifests/ntfy.js";
 import { createCatalogService } from "../../../src/modules/catalog/service.js";
-import { chartName, parseImage, signatures } from "../../../src/modules/catalog/signatures.js";
+import { chartName, chartVersion, parseImage, signatures } from "../../../src/modules/catalog/signatures.js";
 import { loadFixtureSet } from "../../support/index.js";
 import { listen } from "../../runtime/helpers.js";
 
@@ -268,6 +268,9 @@ describe("catalog entries", () => {
     assert.equal(chartName("cert-manager-v1.21.1"), "cert-manager");
     assert.equal(chartName("traefik-40.1.3_up40.1.0"), "traefik");
     assert.equal(chartName("valkey-cluster-3.0.24"), "valkey-cluster");
+    assert.equal(chartVersion("cert-manager-v1.21.1"), "v1.21.1");
+    assert.equal(chartVersion("valkey-cluster-3.0.24"), "3.0.24");
+    assert.equal(chartVersion("gitea"), undefined);
   });
 });
 

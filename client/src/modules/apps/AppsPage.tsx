@@ -30,6 +30,7 @@ import {
   isFinished,
 } from "../../ui/deploy";
 import { SLOT_LABEL, SLOT_ORDER } from "./labels";
+import { UpgradesSection } from "./Upgrades";
 
 const JOBS_POLL_MS = 5_000;
 
@@ -146,7 +147,9 @@ function JobsTable({
               <Table.Td>{names[job.appId] ?? job.appId}</Table.Td>
               <Table.Td>
                 <Badge color={JOB_STATE_COLOR[job.state]} variant={isFinished(job.state) ? "light" : "dot"} radius="xs">
-                  {job.mode === "dry-run" ? `dry run ${job.state}` : job.state}
+                  {job.mode === "install"
+                    ? job.state
+                    : `${job.mode === "dry-run" ? "dry run" : "upgrade"} ${job.state}`}
                 </Badge>
               </Table.Td>
               <Table.Td>
@@ -225,6 +228,7 @@ export function AppsPage() {
             {apps.error}
           </Alert>
         ) : null}
+        <UpgradesSection names={names} onFinished={deployed} />
         {groupBySlot(apps.data ?? []).map(({ slot, apps: inSlot }) => (
           <section key={slot} aria-label={SLOT_LABEL[slot].title}>
             <Title order={4}>{SLOT_LABEL[slot].title}</Title>
