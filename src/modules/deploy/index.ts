@@ -10,6 +10,7 @@ import type { RouteKey } from "../../contracts/api.js";
 import type { CallInput, Module, ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
 import { ACCESS_MODES } from "./access.js";
+import { registerBackupRoutes } from "./actions/backup.js";
 import { actionSchema } from "./actions/index.js";
 import { Bundles } from "./bundles.js";
 import { declareConfig } from "./config.js";
@@ -170,6 +171,12 @@ export function registerDeploy(
     const user = ctx.require(req, res, "write");
     if (!user) return undefined;
     return deployer.startAction(user.id, parse(actionSchema, req.body), caller(req));
+  });
+
+  registerBackupRoutes(ctx, {
+    jobs: { get: (id) => deployer.get(id) },
+    now: options.now,
+    fetch: options.fetch,
   });
   return { deployer, bundles };
 }
