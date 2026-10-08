@@ -433,6 +433,8 @@ export interface PlatformSettings extends SettingsRegistry {
   fallback(key: string): unknown;
   set(key: string, raw: unknown, by: string): unknown;
   reset(key: string): void;
+  // Drops every UI override except the listed keys and prefixes; returns the count.
+  clearOverrides(except: readonly string[], exceptPrefixes: readonly string[]): number;
   describe(): SettingView[];
   describeEnvironment(): Array<{ name: string; help: string; value: string; set: boolean }>;
 }
@@ -535,6 +537,15 @@ export function createSettings(db: Database, orgId: string): PlatformSettings {
     reset(key) {
       editable(key);
       db.prepare("DELETE FROM settings WHERE key = ?").run(key);
+    },
+    clearOverrides(except, exceptPrefixes) {
+      const rows = db.prepare("SELECT key FROM settings WHERE org_id = ?").all(orgId) as Array<{ key: string }>;
+      const doomed = rows
+        .map((row) => row.key)
+        .filter((key) => !except.includes(key) && !exceptPrefixes.some((prefix) => key.startsWith(prefix)));
+      const remove = db.prepare("DELETE FROM settings WHERE key = ?");
+      for (const key of doomed) remove.run(key);
+      return doomed.length;
     },
     describe() {
       return [...definitions.values()]

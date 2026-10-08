@@ -141,3 +141,58 @@ export interface AuditRow {
   detail: string;
   result: "ok" | "denied" | "error";
 }
+
+// Wiring sign-in through an Authentik instance: an OAuth2/OpenID provider
+// and an application made in Authentik through its API, and this install's
+// OIDC settings and client secret filled in from them. Re-running finds the
+// application by its slug and reuses it.
+
+// What wiring would create, before any token is given.
+export interface AuthentikWirePlan {
+  // The Authentik base URL the plan was made for, as given (trailing slash
+  // removed).
+  authentikUrl: string;
+  applicationName: string;
+  slug: string;
+  // Registered on the provider; "" while there is no public URL.
+  redirectUri: string;
+  issuer: string;
+  // An Authentik API token kept from an earlier run, so none need be pasted.
+  hasStoredToken: boolean;
+  // Why wiring can't run yet ("Set the public URL first.", "SECRETS_KEY is
+  // not set ..."), or null.
+  blocked: string | null;
+}
+
+export interface AuthentikWireRequest {
+  authentikUrl: string;
+  // An Authentik API token with rights to create providers and applications
+  // (the bootstrap token or an admin's). Omitted: the stored one is used.
+  // Never logged, never returned.
+  token?: string;
+  // Store the token sealed for later runs. False or omitted: it is used for
+  // this request only, and a token stored earlier is deleted.
+  keepToken?: boolean;
+  // Saved as auth.oidc.adminGroups when given.
+  adminGroups?: string[];
+}
+
+export interface AuthentikWireResult {
+  authentikUrl: string;
+  slug: string;
+  issuer: string;
+  clientId: string;
+  redirectUri: string;
+  application: "created" | "found";
+  // "updated": an existing provider was missing the redirect URI and has
+  // had it added.
+  provider: "created" | "updated" | "unchanged";
+  // Setting keys this run saved; the client secret is stored separately.
+  settings: string[];
+  tokenKept: boolean;
+  // The issuer's discovery document as read back after wiring.
+  discovery: { ok: boolean; error?: string };
+  // Relative to the app's base URL: a browser navigation that signs in
+  // through Authentik and links that identity to the current account.
+  testSignIn: string;
+}

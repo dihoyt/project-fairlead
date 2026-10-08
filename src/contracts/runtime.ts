@@ -3,6 +3,7 @@ import type { CatalogService } from "./catalog.js";
 import type { DeployService } from "./deploy.js";
 import type { K8sApi } from "./k8s.js";
 import type { SeriesQuery, SeriesResult } from "./metrics.js";
+import type { ResetScope } from "./reset.js";
 import type { JobStatus } from "./system.js";
 
 export type { JobStatus };
@@ -67,6 +68,30 @@ export interface ServiceRegistry {
   // needed (inside collect()), not at register time.
   get<K extends keyof Services>(name: K): Services[K];
   has(name: keyof Services): boolean;
+}
+
+// What one module clears for a reset scope (src/contracts/reset.ts). Several
+// modules may register the same scope; the reset runs all of them and sums
+// their counts.
+export interface ResetHandler {
+  scope: ResetScope;
+  // Full setting keys whose UI overrides belong to this scope. The
+  // "settings" scope leaves them alone, so ticking it does not clear
+  // "links" by the back door.
+  settingKeys?: readonly string[];
+  // Synchronous database work. Runs inside the reset's transaction with
+  // every other handler's, so a throw rolls all of them back. Returns the
+  // rows removed.
+  clear?(): number;
+  // Work that cannot join the transaction (secrets). Runs after it commits;
+  // a failure is reported and the committed work stays. Returns the entries
+  // removed.
+  clearAfter?(): Promise<number>;
+}
+
+export interface ResetRegistry {
+  add(handler: ResetHandler): void;
+  list(): readonly ResetHandler[];
 }
 
 export interface Logger {
