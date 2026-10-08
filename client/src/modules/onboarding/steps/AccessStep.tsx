@@ -10,6 +10,7 @@ import {
   Group,
   Loader,
   Radio,
+  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
@@ -20,6 +21,7 @@ import {
 import { IconCheck, IconCopy } from "@tabler/icons-react";
 import type { AccessMode, AccessView } from "@contracts/deploy";
 import { apiRequest, useApi } from "../../../ui";
+import { CloudflarePanel } from "../../connector-cloudflare/CloudflarePage";
 import { AppOffer, useDiscovery } from "../discovery";
 import { StepFrame, useAction, type StepProps } from "../shared";
 
@@ -172,6 +174,35 @@ const DOMAIN_HELP: Record<AccessMode, string> = {
   direct: "Apps get names under it, like git.example.com.",
 };
 
+// Cloudflare Tunnel either through the connector (an API token: the tunnel,
+// routes and DNS records are made for you) or by hand (a tunnel token and
+// one wildcard route).
+function CloudflareSetup({ view, manual }: { view: AccessView; manual: ReactNode }) {
+  const [how, setHow] = useState<"api" | "manual">("api");
+  return (
+    <Stack gap="sm" data-cloudflare-setup={how}>
+      <SegmentedControl
+        value={how}
+        onChange={(value) => setHow(value as "api" | "manual")}
+        data={[
+          { value: "api", label: "Connect with an API token (recommended)" },
+          { value: "manual", label: "Paste a tunnel token" },
+        ]}
+      />
+      {how === "api" ? (
+        <>
+          <Text size="sm" c="dimmed">
+            The app creates the tunnel, runs cloudflared and adds a DNS record and route for every app it deploys.
+          </Text>
+          <CloudflarePanel baseDomain={view.baseDomain} />
+        </>
+      ) : (
+        manual
+      )}
+    </Stack>
+  );
+}
+
 export function AccessStep({ onFinish }: StepProps) {
   const access = useApi("GET /api/deploy/access");
   const discovery = useDiscovery();
@@ -206,6 +237,20 @@ export function AccessStep({ onFinish }: StepProps) {
 
   const current = saved?.mode === mode && saved?.baseDomain === domain.trim().toLowerCase() ? saved : undefined;
   const app = current?.appId ? discovery.app(current.appId) : undefined;
+  const manual = (
+    <>
+      {current && app ? (
+        <AppOffer
+          app={app}
+          onDeployed={() => {
+            discovery.refresh();
+            access.reload();
+          }}
+        />
+      ) : null}
+      {current ? <AccessInstructions view={current} /> : null}
+    </>
+  );
 
   return (
     <StepFrame
@@ -250,16 +295,7 @@ export function AccessStep({ onFinish }: StepProps) {
         </Group>
       ) : null}
       {action.error ? <Alert color="red">{action.error}</Alert> : null}
-      {current && app ? (
-        <AppOffer
-          app={app}
-          onDeployed={() => {
-            discovery.refresh();
-            access.reload();
-          }}
-        />
-      ) : null}
-      {current ? <AccessInstructions view={current} /> : null}
+      {current?.mode === "cloudflare-tunnel" ? <CloudflareSetup view={current} manual={manual} /> : manual}
     </StepFrame>
   );
 }

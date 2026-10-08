@@ -63,6 +63,7 @@ export interface Recipe {
 }
 
 export const VALUES_DIR = "/values";
+const DNS_NAME = /^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$/;
 // Backup targets Longhorn accepts.
 export const BACKUP_TARGET = /^(nfs|s3|cifs|azblob):\/\/\S+$/;
 const str = (value: DeployValue | undefined) => (typeof value === "string" ? value : "");
@@ -382,6 +383,65 @@ export const recipes: Record<string, Recipe> = {
       str(r.inputs.target).startsWith("s3://")
         ? ["An S3 target also needs its credentials Secret; set it on the backup target in Longhorn's UI."]
         : [],
+  },
+
+  // A TLS-only Ingress beside an app's own, for a host published straight to
+  // the public address (Cloudflare connector, Direct exposure): cert-manager
+  // issues its certificate and the controller serves it for the host. Kept
+  // apart from the app's Ingress so a chart upgrade never undoes it.
+  "direct-tls": {
+    files: (r) => ({
+      "ingress.yaml": {
+        apiVersion: "networking.k8s.io/v1",
+        kind: "Ingress",
+        metadata: {
+          name: str(r.inputs.name),
+          namespace: r.namespace,
+          labels: labels(),
+          annotations: { "cert-manager.io/cluster-issuer": str(r.inputs.issuer) },
+        },
+        spec: {
+          ...(str(r.inputs.ingressClass) ? { ingressClassName: str(r.inputs.ingressClass) } : {}),
+          tls: [{ hosts: [str(r.inputs.domain)], secretName: `${str(r.inputs.name)}-tls` }],
+          rules: [
+            {
+              host: str(r.inputs.domain),
+              http: {
+                paths: [
+                  {
+                    path: "/",
+                    pathType: "Prefix",
+                    backend: {
+                      service: {
+                        name: str(r.inputs.service),
+                        port: /^\d+$/.test(str(r.inputs.port))
+                          ? { number: Number(str(r.inputs.port)) }
+                          : { name: str(r.inputs.port) },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    }),
+    patch: (r) =>
+      r.inputs.remove === true
+        ? [{ argv: ["kubectl", "delete", "--ignore-not-found", "-f", `${VALUES_DIR}/ingress.yaml`] }]
+        : [{ argv: ["kubectl", "apply", "-f", `${VALUES_DIR}/ingress.yaml`], dryRun: "--dry-run=server" }],
+    validate: (inputs): Record<string, string> => {
+      const errors: Record<string, string> = {};
+      for (const key of ["name", "service", "issuer"]) {
+        if (!DNS_NAME.test(str(inputs[key]))) errors[key] = "must be a lowercase DNS name";
+      }
+      if (str(inputs.ingressClass) && !DNS_NAME.test(str(inputs.ingressClass))) {
+        errors.ingressClass = "must be a lowercase DNS name";
+      }
+      if (!/^(\d{1,5}|[a-z0-9-]{1,15})$/.test(str(inputs.port))) errors.port = "must be a port number or name";
+      return errors;
+    },
   },
 
   cloudflared: {
