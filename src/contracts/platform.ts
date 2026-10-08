@@ -106,10 +106,15 @@ export interface Platform {
   secrets: SecretStore;
   audit: AuditLog;
   // Removes UI overrides from the settings table so each falls back to its
-  // environment value or default. Selects every override, then drops any
-  // key in `except` or starting with one of `exceptPrefixes`. Returns the
-  // rows removed. Same-connection statements, so it joins an open transaction.
-  clearSettings(options: { except?: readonly string[]; exceptPrefixes?: readonly string[] }): number;
+  // environment value or default. Considers the keys in `only` (every
+  // override when absent), then drops any key in `except` or starting with
+  // one of `exceptPrefixes`. Returns the rows removed. Same-connection
+  // statements, so it joins an open transaction.
+  clearSettings(options: {
+    only?: readonly string[];
+    except?: readonly string[];
+    exceptPrefixes?: readonly string[];
+  }): number;
   // Gives the built-in "admin" account a new random password, marks it to be
   // changed at the next sign-in. Returns the password once. Throws if no such account exists.
   resetAdminPassword(): Promise<string>;
