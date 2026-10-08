@@ -33,6 +33,12 @@ export function isSystemSpace(name: string): boolean {
   return name.startsWith("kube-") || name.endsWith("-system") || name.startsWith("cattle-") || RANCHER_SPACE.test(name);
 }
 
+// Kubernetes creates "default" in every cluster; empty, it is noise.
+export function hiddenUnlessSystem(space: Pick<NamespaceView, "name" | "workloads" | "pods">): boolean {
+  if (space.name === "default") return space.workloads === 0 && space.pods === 0;
+  return isSystemSpace(space.name);
+}
+
 function health(space: NamespaceView) {
   if (space.status !== "Active") return <StatusBadge status="unknown" label={space.status} />;
   if (space.unhealthyPods > 0) {
@@ -78,7 +84,7 @@ export function SpacesPage() {
 
   const shown = data
     ? sortSpaces(
-        data.filter((s) => (system || !isSystemSpace(s.name)) && s.name.includes(filter.trim().toLowerCase())),
+        data.filter((s) => (system || !hiddenUnlessSystem(s)) && s.name.includes(filter.trim().toLowerCase())),
         byName,
         sort
       )
