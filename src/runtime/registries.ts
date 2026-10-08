@@ -1,7 +1,7 @@
 import type { BackupSource, BackupsRegistry, CapacitySource } from "../contracts/backups.js";
 import type { HealthProvider, HealthRegistry } from "../contracts/health.js";
 import type { MetricsCollector, MetricsRegistry, Sample } from "../contracts/metrics.js";
-import type { Logger } from "../contracts/runtime.js";
+import type { Logger, ResetHandler, ResetRegistry } from "../contracts/runtime.js";
 import { errorMessage } from "./log.js";
 
 // Samples written before the metrics module installs its sink are kept up
@@ -94,5 +94,13 @@ export function createBackupsRegistry(log: Logger): BackupsRegistry {
         offCapacity();
       };
     },
+  };
+}
+
+export function createResetRegistry(): ResetRegistry {
+  const handlers: ResetHandler[] = [];
+  return {
+    add: (handler) => void handlers.push(handler),
+    list: () => [...handlers],
   };
 }
