@@ -5,6 +5,8 @@ import type {
   CloudflareView,
   ConnectorKindView,
   ConnectorView,
+  EntraGroup,
+  EntraSignInView,
 } from "../../connectors.js";
 import { HOUR, isoAgo } from "../time.js";
 
@@ -162,3 +164,50 @@ export const mockCloudflareDiscovery: CloudflareDiscovery = {
   zones: [{ id: "zone_1", name: "example.test", accountId: "0123456789abcdef0123456789abcdef" }],
   tunnels: [{ id: tunnelId, name: "console", status: "healthy", accountId: "0123456789abcdef0123456789abcdef" }],
 };
+
+// --- Entra ------------------------------------------------------------------
+
+export const mockEntraKind: ConnectorKindView = {
+  kind: "entra",
+  label: "Microsoft Entra ID",
+  description:
+    "Creates and rotates the app registration this install signs in through. " +
+    "Needs an app registration with Microsoft Graph's Application.ReadWrite.OwnedBy application permission " +
+    "(and Group.Read.All to pick admin groups), admin consented.",
+  capabilities: ["identity"],
+  fields: [
+    { key: "tenantId", label: "Tenant ID", type: "text", required: true },
+    { key: "clientId", label: "Client ID", type: "text", required: true },
+    { key: "clientSecret", label: "Client secret", type: "secret", required: true },
+  ],
+  single: true,
+  docsUrl: "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade",
+};
+
+const entraTenant = "00000000-0000-4000-8000-00000000e117";
+
+export const mockEntraSignIn: EntraSignInView = {
+  connectorId: "cn_2",
+  tenantId: entraTenant,
+  redirectUri: "https://console.example.test/auth/oidc/callback",
+  app: {
+    appId: "11111111-0000-4000-8000-00000000a991",
+    objectId: "22222222-0000-4000-8000-00000000a991",
+    displayName: "Console sign-in",
+    redirectUris: ["https://console.example.test/auth/oidc/callback"],
+    secretExpiresAt: isoAgo(-150 * 24 * HOUR),
+    state: "in-sync",
+  },
+  wired: true,
+  consentUrl: `https://login.microsoftonline.com/${entraTenant}/adminconsent?client_id=33333333-0000-4000-8000-0000000000c1`,
+};
+
+export const mockEntraSignInNone: EntraSignInView = {
+  redirectUri: "https://console.example.test/auth/oidc/callback",
+  wired: false,
+};
+
+export const mockEntraGroups: EntraGroup[] = [
+  { id: "44444444-0000-4000-8000-0000000000a1", displayName: "Cluster admins" },
+  { id: "44444444-0000-4000-8000-0000000000a2", displayName: "Cluster operators" },
+];

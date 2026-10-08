@@ -39,6 +39,7 @@ import { effectivePublicUrl, iso, isoOrNull, publicOrigin, type Core } from "../
 import { clientIp, parseCidrList } from "../net.js";
 import { secretKeyConfigured } from "../secretBox.js";
 import { SettingError } from "../settings.js";
+import { SignInError, createSignIn } from "../signin.js";
 import { mcpResource, oauthBase } from "./oauth.js";
 
 // Everything an admin manages about the platform itself: its settings, who
@@ -86,7 +87,7 @@ const authentikBase = (raw: unknown, use: "public" | "api" = "public"): string =
 
 type Handler = (req: Request, res: Response, admin: PlatformUser) => Promise<unknown> | unknown;
 
-export function adminRouter(core: Core): Router {
+export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
   const router = express.Router();
   const s = core.settings;
 
@@ -285,14 +286,8 @@ export function adminRouter(core: Core): Router {
 
   // --- Authentik ----------------------------------------------------------
 
-  const wireBlocked = (adminGroups: boolean): string | null => {
-    if (!publicOrigin(core)) return "Set the public URL first, so Authentik knows where to send people back.";
-    if (!secretKeyConfigured()) return "SECRETS_KEY is not set, so the client secret cannot be stored.";
-    const keys = adminGroups ? [...WIRED_KEYS, "auth.oidc.adminGroups"] : WIRED_KEYS;
-    const locked = s.describe().find((view) => keys.includes(view.key) && view.locked);
-    if (locked) return `${locked.label} is set by the environment (${locked.env}); unset it to wire Authentik here.`;
-    return null;
-  };
+  const wireBlocked = (adminGroups: boolean): string | null =>
+    signIn.blocked(adminGroups ? [...WIRED_KEYS, "auth.oidc.adminGroups"] : WIRED_KEYS)?.message ?? null;
 
   router.get(
     "/oidc/authentik",
@@ -324,8 +319,8 @@ export function adminRouter(core: Core): Router {
         if (!Array.isArray(body.adminGroups)) throw new AdminError(400, "Admin groups must be a list.");
         adminGroups = body.adminGroups.map((g) => String(g).trim()).filter(Boolean);
       }
-      const blocked = wireBlocked(adminGroups !== undefined);
-      if (blocked !== null) throw new AdminError(blocked.startsWith("SECRETS_KEY") ? 409 : 400, blocked);
+      const blocked = signIn.blocked(adminGroups !== undefined ? [...WIRED_KEYS, "auth.oidc.adminGroups"] : WIRED_KEYS);
+      if (blocked !== null) throw new AdminError(blocked.status, blocked.message);
 
       const pasted = typeof body.token === "string" ? body.token.trim() : "";
       const token = pasted || ((await core.secrets.get(AUTHENTIK_TOKEN.scope, AUTHENTIK_TOKEN.id)) ?? "");
@@ -349,15 +344,23 @@ export function adminRouter(core: Core): Router {
         throw err;
       }
 
-      await core.secrets.putAs(OIDC_SECRET.scope, OIDC_SECRET.id, outcome.clientSecret, admin.id);
-      const values: Array<[string, unknown]> = [
-        ["auth.oidc.issuer", outcome.issuer],
-        ["auth.oidc.clientId", outcome.clientId],
-        ["auth.oidc.label", "Sign in with Authentik"],
-        ["auth.oidc.enabled", true],
-      ];
-      if (adminGroups !== undefined) values.push(["auth.oidc.adminGroups", adminGroups]);
-      for (const [key, value] of values) s.set(key, value, admin.id);
+      try {
+        await signIn.setOidcClient(
+          {
+            issuer: outcome.issuer,
+            clientId: outcome.clientId,
+            clientSecret: outcome.clientSecret,
+            label: "Sign in with Authentik",
+            enabled: true,
+            ...(adminGroups !== undefined ? { adminGroups } : {}),
+          },
+          admin.id
+        );
+      } catch (err) {
+        if (err instanceof SignInError) throw new AdminError(err.status, err.message);
+        throw err;
+      }
+      const settings = adminGroups !== undefined ? [...WIRED_KEYS, "auth.oidc.adminGroups"] : WIRED_KEYS;
 
       const tokenKept = body.keepToken === true;
       if (tokenKept) await core.secrets.putAs(AUTHENTIK_TOKEN.scope, AUTHENTIK_TOKEN.id, token, admin.id);
@@ -386,7 +389,7 @@ export function adminRouter(core: Core): Router {
         redirectUri,
         application: outcome.application,
         provider: outcome.provider,
-        settings: values.map(([key]) => key),
+        settings,
         tokenKept,
         discovery,
         testSignIn: "auth/oidc/start?link=1",

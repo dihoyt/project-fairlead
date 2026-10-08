@@ -25,6 +25,7 @@ import { authApiRouter, meRoute, oidcRouter } from "./routes/auth.js";
 import { totpRouter } from "./routes/totp.js";
 import { createSecrets } from "./secrets.js";
 import { createSettings } from "./settings.js";
+import { createSignIn } from "./signin.js";
 import { createDrain, drainDeadlineMs } from "./shutdown.js";
 
 // Modules see the contract's User and nothing of the account behind it.
@@ -58,6 +59,7 @@ export const createPlatform: CreatePlatform = (deps) => {
     log,
     limits: createLoginLimits(),
   };
+  const signIn = createSignIn(core);
   const resolveSession = createResolver(core);
   const tickets = new Map<string, { auth: AuthResult; expires: number }>();
   const redeem = (ticket: string): AuthResult => {
@@ -120,7 +122,7 @@ export const createPlatform: CreatePlatform = (deps) => {
       app.get("/api/me", meRoute());
       app.use("/api/auth/totp", totpRouter(core));
       app.use("/api/auth", authApiRouter(core));
-      app.use("/api/admin", adminRouter(core));
+      app.use("/api/admin", adminRouter(core, signIn));
       // Everything after this (the system routes and every module router)
       // has an identity that is ready to act.
       app.use("/api", (req, res, next) => {
@@ -145,6 +147,7 @@ export const createPlatform: CreatePlatform = (deps) => {
     settings: core.settings,
     secrets: core.secrets,
     audit: core.audit,
+    signIn,
     clearSettings: ({ only, except = [], exceptPrefixes = [] }) =>
       core.settings.clearOverrides(only, except, exceptPrefixes),
     async resetAdminPassword() {
