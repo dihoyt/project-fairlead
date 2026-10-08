@@ -150,6 +150,23 @@ settings: add them on their pages or in the wizard.
 Metrics are kept raw for a day, at 5-minute resolution for 30 days and hourly
 for a year (fixed). Check history follows `health.historyDays`.
 
+## Reset to defaults
+
+Admin > Settings ends with a **Reset to defaults** section: it clears the app's own configuration without a reinstall. Tick what to clear, type `RESET`, and confirm. The database changes commit together; stored secrets (host credentials, channel tokens, check headers) are removed right after.
+
+| Box | Clears |
+|---|---|
+| Settings | Every setting changed in the UI, back to its environment value or default. Sign-in and public URL settings are kept, so a reset cannot lock you out. |
+| Native UI links | The links shown on the category pages (Rancher, Longhorn, Headlamp, ...). |
+| HTTP checks | Every check, with its stored header secret. |
+| Hosts | The host inventory and its stored credentials. |
+| First-run wizard | The done and skipped marks. The wizard opens again on the next page load. |
+| Notifications | Channels with their secrets, and the queued and sent history. |
+| Generated SSH key | The install's key pair. Off by default; hosts that trust it stop being reachable until the new key is installed. |
+| Built-in admin password | Gives the `admin` account a new temporary password, shown once, to be changed at its next sign-in. Off by default. |
+
+Not touched: apps deployed into the cluster (including by the bundle), the deploy history, the cluster itself, user accounts other than the password above, and values set by environment variables. `POST /api/system/reset` does the same for scripts: body `{"scopes": ["settings", ...], "confirm": "RESET"}`, admin only; each reset is recorded in the audit log as `system.reset`.
+
 ## Permissions by feature
 
 The chart's ClusterRole grants all of this read-only (`get`, `list`, `watch`;
