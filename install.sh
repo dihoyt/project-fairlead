@@ -38,6 +38,7 @@ NO_K3S=0
 YES=0
 DRY_RUN=0
 UNINSTALL=0
+ENABLE_DEPLOY=0
 PURGE=0
 TIMEOUT="5m"
 
@@ -57,6 +58,8 @@ Usage: install.sh [flags]
   --origin URL          Externally visible origin (default: http://HOST when --host is given)
   --ingress-class NAME  Ingress class (default: the cluster's default class)
   --values FILE         Extra Helm values file; repeatable, applied last
+  --enable-deploy       Let the console deploy apps from its catalog. Creates an installer
+                        ServiceAccount bound to cluster-admin; off unless given
   --kubeconfig PATH     Use this kubeconfig instead of detecting a cluster
   --no-k3s              Never install k3s; fail if no cluster is found
   --timeout DURATION    How long to wait for the rollout (default: $TIMEOUT)
@@ -111,6 +114,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     --kubeconfig) need_arg "$@"; KUBECONFIG_PATH="$2"; shift 2 ;;
     --timeout) need_arg "$@"; TIMEOUT="$2"; shift 2 ;;
+    --enable-deploy) ENABLE_DEPLOY=1; shift ;;
     --no-k3s) NO_K3S=1; shift ;;
     --yes | -y) YES=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
@@ -139,6 +143,7 @@ esac
 case "$IMAGE_TAG" in *[!A-Za-z0-9._-]*) die "--image-tag has unexpected characters: $IMAGE_TAG" ;; esac
 case "$INGRESS_CLASS" in *[!a-z0-9.-]*) die "--ingress-class has unexpected characters" ;; esac
 [ "$PURGE" = 0 ] || [ "$UNINSTALL" = 1 ] || die "--purge only goes with --uninstall"
+[ "$ENABLE_DEPLOY" = 0 ] || [ "$UNINSTALL" = 0 ] || die "--enable-deploy does not go with --uninstall"
 [ -n "$ORIGIN" ] || [ -z "$HOST" ] || ORIGIN="http://$HOST"
 [ -n "$CHART_REF" ] || CHART_REF="oci://$IMAGE_REGISTRY/charts/$CHART_NAME"
 
@@ -363,6 +368,8 @@ write_values() {
     say "  existingSecret: \"$SECRET_NAME\""
     [ -z "$IMAGE_TAG" ] || printf 'image:\n  tag: "%s"\n' "$IMAGE_TAG"
     [ "$PULL_SECRET" = 0 ] || printf 'imagePullSecrets:\n  - "%s"\n' "$PULL_SECRET_NAME"
+    # Only ever turned on here; a re-run without the flag keeps what the release has.
+    [ "$ENABLE_DEPLOY" = 0 ] || printf 'deploy:\n  enabled: true\n'
     if [ -n "$HOST" ]; then
       printf 'config:\n  publicOrigin: "%s"\n' "$ORIGIN"
       say "service:"
@@ -496,6 +503,9 @@ do_install() {
 
   say ""
   say "$DISPLAY_NAME is ready in namespace $NAMESPACE."
+  if [ "$ENABLE_DEPLOY" = 1 ]; then
+    say "App deploys are on: Jobs in $NAMESPACE run as $RELEASE-installer, which is cluster-admin."
+  fi
   if [ -n "$url" ]; then
     say "URL: $url"
   else

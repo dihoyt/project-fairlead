@@ -1,0 +1,28 @@
+{{- /* Definitions only; renders nothing. */ -}}
+
+{{- define "app.installerServiceAccountName" -}}
+{{- printf "%s-installer" (include "app.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- /* The published chart sits beside the image: <registry>/charts/<chart>. */ -}}
+{{- define "app.chartRef" -}}
+{{- .Values.deploy.chartRef | default (printf "oci://%s/charts/%s" (dir .Values.image.repository) .Chart.Name) -}}
+{{- end -}}
+
+{{- /*
+Container env for the deploy module. The release and chart are always set so
+the console can show the command that turns deploys on; the installer and
+image only when they exist.
+*/ -}}
+{{- define "app.deployEnv" -}}
+- name: DEPLOY_RELEASE
+  value: {{ .Release.Name | quote }}
+- name: DEPLOY_CHART
+  value: {{ include "app.chartRef" . | quote }}
+{{- if .Values.deploy.enabled }}
+- name: DEPLOY_INSTALLER_SERVICE_ACCOUNT
+  value: {{ include "app.installerServiceAccountName" . | quote }}
+- name: DEPLOY_IMAGE
+  value: {{ required "deploy.image is required when deploy.enabled" .Values.deploy.image | quote }}
+{{- end }}
+{{- end -}}

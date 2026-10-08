@@ -28,6 +28,9 @@ asking first unless `--yes`. It generates `SECRETS_KEY` and
 installs the chart from ghcr, waits for the rollout and prints the URL and the
 password. Re-running upgrades in place and keeps earlier values; `--values`
 files are applied last. `--uninstall` keeps the namespace, Secret and volume.
+`--enable-deploy` turns on app deploys (see "Deploying apps from the console");
+they stay off unless it is given, and a later re-run without it leaves them as
+they are.
 
 While the repository and packages are private, fetch the script with a token
 and pass `REGISTRY_USER` / `REGISTRY_TOKEN`; the steps and every flag are in
@@ -65,6 +68,7 @@ private until made public in the package settings.
 | `ingress.*`, `networkPolicy.*`                                   | Off by default.                                                                               |
 | `rollout.sameNode`                                               | Keeps the overlapping pods of a rollout on one node so a ReadWriteOnce volume can attach.     |
 | `rbac.create`, `rbac.nodesProxy`, `rbac.secrets.*`               | See below.                                                                                    |
+| `deploy.enabled`, `deploy.image`, `deploy.chartRef`              | App deploys from the console. Off by default; see "Deploying apps from the console".          |
 | `terminationGracePeriodSeconds`, `config.drainMs`                | Shutdown drain; keep `drainMs` below the grace period.                                        |
 
 ## Access to the cluster
@@ -85,6 +89,45 @@ Two grants need a decision:
   RBAC cannot grant metadata only, so this lets the console read Secret
   contents. Limit it with `rbac.secrets.namespaces` (a Role per namespace)
   rather than cluster-wide.
+
+## Deploying apps from the console
+
+The Apps page and the setup wizard can install tools from a fixed catalog
+(Headlamp, Longhorn, cert-manager, Authentik and others). This is off by
+default (`deploy.enabled: false`): the console detects what is installed and
+shows the one command that turns deploys on, but changes nothing. Turn it on
+with `install.sh --enable-deploy`, or:
+
+```
+helm upgrade <release> <chart> -n <ns> --reuse-values --set deploy.enabled=true
+```
+
+With it on, the chart adds:
+
+- **An installer ServiceAccount**, `<release>-installer`, bound to
+  `cluster-admin`. Each deploy is a Kubernetes Job in the console's namespace
+  that runs `helm` or `kubectl` as this account. Charts such as cert-manager,
+  Longhorn and Rancher create CRDs, cluster roles and webhooks, so anything
+  narrower breaks real installs. Its token is never mounted in the console's
+  own pod.
+- **A Role in the console's namespace only**, for the console's own
+  ServiceAccount: create, get, list, watch and delete Jobs, and create and
+  delete Secrets (each deploy's values). No read of Secrets: the console never
+  reads a values Secret back, and the namespace also holds its own
+  `SECRETS_KEY`.
+
+The read-only ClusterRole does not change.
+
+**Trust note.** Anyone who can create Jobs (or Pods) in the console's namespace
+can run them as the installer and so act as cluster-admin. Once deploys are on,
+treat that namespace as the trust boundary: don't grant other people or tools
+write access to it, and turn deploys off again (`--set deploy.enabled=false`)
+when you no longer need them. Apps already installed stay installed.
+
+`deploy.image` is the helm and kubectl image the Jobs run, pinned by digest.
+Mirror it and change this value for an air-gapped cluster. `deploy.chartRef`
+is only used to show the command above; it defaults to the chart's published
+OCI location beside the image.
 
 ## Rollouts
 
@@ -167,4 +210,6 @@ kubectl auth can-i --list --as=system:serviceaccount:<ns>:<release>
 ```
 
 The second command should show reads only (plus the self-review defaults every
-account has). CI runs the same checks against kind: `chart/ci/smoke.sh`.
+account has), and with deploys on, Jobs and Secrets in `<ns>` as well. CI runs
+the same checks against kind: `chart/ci/smoke.sh`, with `chart/ci/deploy-optin.sh`
+checking the rendered chart both ways.
