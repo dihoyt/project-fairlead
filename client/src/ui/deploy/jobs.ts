@@ -31,12 +31,22 @@ export const DETECT_COLOR: Record<DetectState, string> = {
 export const MASKED = "********";
 
 export const STEP_STATE_COLOR: Record<BundleStepState, string> = {
-  pending: "gray",
+  pending: "indigo",
   skipped: "gray",
   running: "cyan",
   succeeded: "teal",
   failed: "red",
   cancelled: "gray",
+};
+
+// Waiting is outlined and skipped barely drawn, so the two never read alike.
+export const STEP_STATE_VARIANT: Record<BundleStepState, "light" | "outline" | "dot" | "transparent"> = {
+  pending: "outline",
+  skipped: "transparent",
+  running: "dot",
+  succeeded: "light",
+  failed: "light",
+  cancelled: "light",
 };
 
 export const RUN_STATE_COLOR: Record<BundleRunState, string> = {
