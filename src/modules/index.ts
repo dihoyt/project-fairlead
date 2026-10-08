@@ -15,6 +15,7 @@ import workloads from "./workloads/index.js";
 import onboarding from "./onboarding/index.js";
 import catalog from "./catalog/index.js";
 import deploy from "./deploy/index.js";
+import mcp from "./mcp/index.js";
 import connectors from "./connectors/index.js";
 import connectorCloudflare from "./connector-cloudflare/index.js";
 import connectorEntra from "./connector-entra/index.js";
@@ -42,6 +43,7 @@ export const modules: readonly Module[] = [
   onboarding,
   catalog,
   deploy,
+  mcp,
   connectors,
   connectorCloudflare,
   connectorEntra,
