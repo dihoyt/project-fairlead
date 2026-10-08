@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Badge,
   Button,
+  Code,
   Group,
   NumberInput,
   Select,
@@ -117,25 +118,12 @@ export function SettingField({ setting, onSaved }: { setting: SettingView; onSav
           {source.label}
         </Badge>
       </Group>
-      <Text size="xs" c="dimmed">
-        {setting.help}
-        {setting.env ? (
-          <>
-            {" "}
-            Environment variable: <code>{setting.env}</code>.
-          </>
-        ) : null}
-      </Text>
-      {setting.locked ? (
+      {setting.help ? (
         <Text size="xs" c="dimmed">
-          Set by the environment, which overrides this page; change it where the app is deployed.
+          {setting.help}
         </Text>
       ) : null}
-      {setting.envError ? (
-        <Text size="xs" c="orange">
-          The environment's value was ignored: {setting.envError}
-        </Text>
-      ) : null}
+      <SettingNotes setting={setting} />
       {error ? (
         <Text size="xs" c="red">
           {error}
@@ -160,6 +148,33 @@ export function SettingField({ setting, onSaved }: { setting: SettingView; onSav
         </Group>
       ) : null}
     </Stack>
+  );
+}
+
+// One line on where the value can also come from, in the same words for every setting.
+export function SettingNotes({ setting }: { setting: SettingView }) {
+  return (
+    <>
+      {setting.env ? (
+        <Text size="xs" c="dimmed">
+          {setting.locked ? (
+            <>
+              Set by <Code fz="xs">{setting.env}</Code> in the environment, which overrides this page; change it where
+              the app is deployed.
+            </>
+          ) : (
+            <>
+              Environment variable <Code fz="xs">{setting.env}</Code>; a value saved here takes precedence.
+            </>
+          )}
+        </Text>
+      ) : null}
+      {setting.envError ? (
+        <Text size="xs" c="orange">
+          The value of <Code fz="xs">{setting.env}</Code> was ignored: {setting.envError}
+        </Text>
+      ) : null}
+    </>
   );
 }
 

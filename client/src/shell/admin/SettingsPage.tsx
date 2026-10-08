@@ -1,7 +1,10 @@
 import { Alert, Code, Loader, Paper, Stack, Table, Text, Title } from "@mantine/core";
 import { useApi } from "../../ui/api";
 import { PageHeader } from "../PageHeader";
-import { isSignInGroup } from "./groups";
+import type { SettingView } from "@contracts/auth";
+import { CheckRulesEditor } from "./CheckRulesEditor";
+import { groupTitle, isSignInGroup } from "./groups";
+import { LinksSettingEditor } from "./LinksSettingEditor";
 import { SettingField } from "./SettingField";
 
 export function SettingsPage() {
@@ -26,11 +29,11 @@ export function SettingsPage() {
         {groups.map((group) => (
           <Paper withBorder p="lg" key={group}>
             <Stack gap="md">
-              <Title order={4}>{group}</Title>
+              <Title order={4}>{groupTitle(group)}</Title>
               {data.settings
                 .filter((s) => s.group === group)
                 .map((s) => (
-                  <SettingField key={s.key} setting={s} onSaved={overview.reload} />
+                  <Editor key={s.key} setting={s} settings={data.settings} onSaved={overview.reload} />
                 ))}
             </Stack>
           </Paper>
@@ -73,4 +76,21 @@ export function SettingsPage() {
       </Stack>
     </>
   );
+}
+
+// Settings whose stored value is JSON get a form of their own instead of a text box.
+function Editor({
+  setting,
+  settings,
+  onSaved,
+}: {
+  setting: SettingView;
+  settings: SettingView[];
+  onSaved: () => void;
+}) {
+  if (setting.key === "health.rules") return <CheckRulesEditor setting={setting} onSaved={onSaved} />;
+  if (setting.key === "health.links") {
+    return <LinksSettingEditor setting={setting} settings={settings} onSaved={onSaved} />;
+  }
+  return <SettingField setting={setting} onSaved={onSaved} />;
 }
