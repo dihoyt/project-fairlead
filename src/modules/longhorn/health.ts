@@ -50,6 +50,9 @@ export interface HealthOptions {
 // A pod in one of these states needs its volume attached.
 const POD_WANTS_VOLUME = new Set(["Running", "Pending", "ContainerCreating"]);
 
+// The console's Backups page, which offers to set the target.
+export const BACKUPS_PAGE = "#/backups";
+
 function link(uiUrl: string, path: string): { deepLink?: string } {
   return uiUrl ? { deepLink: `${uiUrl.replace(/\/+$/, "")}/#/${path}` } : {};
 }
@@ -347,10 +350,10 @@ export function backupResults(snapshot: Snapshot, now: number, graceMs: number, 
       id: "target",
       label: "Backup target",
       status: snapshot.jobs.some(isBackupJob) ? "crit" : "warn",
-      detail: "No backup target configured",
+      detail: "No backup target configured: set one on the Backups page",
       observedAt,
       raw: { backupTargets: snapshot.targets.length, settings: snapshot.settings.map((s) => s.metadata.name) },
-      ...link(uiUrl, "setting"),
+      deepLink: BACKUPS_PAGE,
     });
   }
   for (const t of targets) {

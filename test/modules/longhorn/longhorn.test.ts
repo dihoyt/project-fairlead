@@ -8,6 +8,7 @@ import { createFakeK8s, mockLonghornObjects, type FakeK8s } from "../../../src/c
 import { DAY, HOUR, MOCK_NOW } from "../../../src/contracts/mocks/time.js";
 import { longestGapMs, parseCron, previousFires } from "../../../src/modules/longhorn/cron.js";
 import {
+  BACKUPS_PAGE,
   BACKUPS_PROVIDER_ID,
   STORAGE_PROVIDER_ID,
   createBackupsProvider,
@@ -230,6 +231,16 @@ test("backups: falls back to the backup-target setting on Longhorn without Backu
   const target = results.get("target:default")!;
   assert.equal(target.status, "unknown");
   assert.match(target.detail, /reachability not reported/);
+});
+
+test("backups: no target at all points at the console's Backups page", async () => {
+  const k8s = cluster();
+  k8s.set(RESOURCES.longhornBackupTargets, []);
+  k8s.set(RESOURCES.longhornSettings, []);
+  const target = byId(await setup(k8s).backups.collect()).get("target")!;
+  assert.equal(target.status, "crit");
+  assert.match(target.detail, /^No backup target configured: set one on the Backups page$/);
+  assert.equal(target.deepLink, BACKUPS_PAGE);
 });
 
 // --- absent and failing -----------------------------------------------------

@@ -107,8 +107,12 @@ function matchWorkload(workload: Workload, kind: string, signature: Signature): 
   const labels = workload.metadata.labels ?? {};
   const imageHit = images(workload).find((image) => signature.images.includes(parseImage(image).repo));
   const tag = imageHit ? parseImage(imageHit).tag : undefined;
+  // Charts that run a floating tag carry it in the version label too
+  // (cloudflared's says "latest"), which names no version.
+  const label = labels["app.kubernetes.io/version"];
   const version =
-    labels["app.kubernetes.io/version"] ?? (tag && tag !== "latest" && !tag.startsWith("sha") ? tag : undefined);
+    (label && label !== "latest" ? label : undefined) ??
+    (tag && tag !== "latest" && !tag.startsWith("sha") ? tag : undefined);
 
   const chart = labels["helm.sh/chart"];
   if (chart && signature.charts.includes(chartName(chart))) {
