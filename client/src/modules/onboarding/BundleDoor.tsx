@@ -30,6 +30,19 @@ export function initialBundleValues(bundle: CatalogBundleView): Record<string, D
   return values;
 }
 
+const STORAGE_CLASS = "storageClass";
+// The class Longhorn's chart creates.
+const LONGHORN_CLASS = "longhorn";
+
+// What the storage class field holds until the user types in it: Longhorn's
+// while Longhorn is in the rollout, else discovery's suggestion.
+export function defaultStorageClass(bundle: CatalogBundleView, include: string[]): string {
+  if (include.includes("longhorn")) return LONGHORN_CLASS;
+  const input = bundle.inputs.find((i) => i.key === STORAGE_CLASS);
+  const fallback = bundle.suggested.storageClass ?? input?.default;
+  return typeof fallback === "string" ? fallback : "";
+}
+
 // Optional items to roll out: the ones the bundle view starts ticked.
 export function initialInclude(bundle: CatalogBundleView): string[] {
   return bundle.items.filter((item) => !item.required && !item.skip && item.selected).map((item) => item.appId);
@@ -47,6 +60,7 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
   const [plan, setPlan] = useState<BundlePlan>();
   const [runId, setRunId] = useState<string>();
   const [tunnelReady, setTunnelReady] = useState(false);
+  const [storageTyped, setStorageTyped] = useState(false);
   const action = useAction();
 
   useEffect(() => {
@@ -55,6 +69,14 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
     setInclude(initialInclude(bundle));
     setReady(true);
   }, [bundle, ready]);
+
+  // Ticking or unticking Longhorn moves the storage class with it, unless
+  // the user typed their own.
+  useEffect(() => {
+    if (!bundle || !ready || storageTyped || !bundle.inputs.some((i) => i.key === STORAGE_CLASS)) return;
+    const next = defaultStorageClass(bundle, include);
+    setValues((prev) => (prev[STORAGE_CLASS] === next ? prev : { ...prev, [STORAGE_CLASS]: next }));
+  }, [bundle, ready, include, storageTyped]);
 
   // Reopening the page while a rollout runs goes straight back to it.
   const active = runs.data?.find((run) => run.state === "running");
@@ -87,11 +109,21 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
   }
 
   const off = status.data ? !status.data.enabled : false;
-  const inputs = bundle.inputs.filter((input) => holds(input.when, values, bundle.inputs));
+  const onLonghorn = include.includes("longhorn") && values[STORAGE_CLASS] === LONGHORN_CLASS;
+  const inputs = bundle.inputs
+    .filter((input) => holds(input.when, values, bundle.inputs))
+    .map((input) =>
+      input.key === STORAGE_CLASS && onLonghorn
+        ? { ...input, help: "Longhorn, which this rollout installs. Clear it for the cluster's default." }
+        : input
+    );
   const items = bundle.items.filter((item) => holds(item.when, values, bundle.inputs));
   const setupAt = inputs.findIndex((input) => input.key === CLOUDFLARE_SETUP);
   const viaApi = setupAt !== -1 && values[CLOUDFLARE_SETUP] === "api";
-  const set = (key: string, value: DeployValue) => setValues((prev) => ({ ...prev, [key]: value }));
+  const set = (key: string, value: DeployValue) => {
+    if (key === STORAGE_CLASS) setStorageTyped(true);
+    setValues((prev) => ({ ...prev, [key]: value }));
+  };
   const form = (list: typeof inputs) =>
     list.length ? <DeployInputsForm inputs={list} values={values} onChange={set} /> : null;
   const missingRequired = inputs.some(
