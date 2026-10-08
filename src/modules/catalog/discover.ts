@@ -1,4 +1,6 @@
 import type { CatalogEntry, ClusterBasic, DetectedApp, DiscoveryReport, IngressHost } from "../../contracts/catalog.js";
+import type { DeployedRelease } from "../../contracts/deploy.js";
+import { isDeployedByUs } from "../../contracts/deployed.js";
 import { RESOURCES, type K8sApi, type KubeObject, type ResourceRef } from "../../contracts/k8s.js";
 import { chartName, parseImage, signatures, type Signature } from "./signatures.js";
 
@@ -178,9 +180,13 @@ function detectFromWorkloads(k8s: K8sApi, entry: CatalogEntry, matches: AppMatch
     urls: [],
     evidence: `${primary.kind} ${qualified(workload)} (${primary.reason})`,
     managedBy,
-    ownedByUs: matches.workloads.some((w) => k8s.isOwned(w)),
+    ownedByUs: matches.workloads.some((w) => ours(k8s, w)),
   };
 }
+
+// Our deploy runner's label, or the owner marker on objects the product
+// created directly.
+const ours = (k8s: K8sApi, obj: KubeObject) => isDeployedByUs(obj) || k8s.isOwned(obj);
 
 // Longhorn's backup target is a setting, not a workload: it is "installed"
 // once the default BackupTarget has a URL.
@@ -204,7 +210,7 @@ async function detectBackupTarget(k8s: K8sApi, entry: CatalogEntry): Promise<Det
     ...(target.metadata.namespace ? { namespace: target.metadata.namespace } : {}),
     evidence: `BackupTarget ${qualified(target)} (${redactUrl(target.spec!.backupTargetURL!)})`,
     managedBy: k8s.managedBy(target),
-    ownedByUs: k8s.isOwned(target),
+    ownedByUs: ours(k8s, target),
   };
 }
 
@@ -514,7 +520,9 @@ function metricsBasic(listed: Listed<KubeObject>, version: string | undefined): 
 export async function discover(
   k8s: K8sApi,
   entries: readonly CatalogEntry[],
-  now: () => Date = () => new Date()
+  now: () => Date = () => new Date(),
+  // From the deploy module: catches charts that drop the deployed-by label.
+  releases: readonly DeployedRelease[] = []
 ): Promise<DiscoveryReport> {
   const [workloads, ingresses, services, storageClasses, ingressClasses, issuers, nodeMetrics] = await Promise.all([
     listWorkloads(k8s),
@@ -555,6 +563,11 @@ export async function discover(
       return detected;
     })
   );
+
+  for (const app of apps) {
+    if (app.state !== "installed" || app.ownedByUs) continue;
+    app.ownedByUs = releases.some((r) => r.appId === app.appId && (!app.namespace || r.namespace === app.namespace));
+  }
 
   const versionOf = (id: string) => apps.find((a) => a.appId === id && a.state === "installed")?.version;
   const storage = storageBasic(storageClasses);
