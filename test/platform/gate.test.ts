@@ -56,7 +56,7 @@ async function signInToApp(withCookie = cookie): Promise<string> {
   assert.equal(callback.pathname, CALLBACK_PATH);
   const swapped = await forward(`${callback.pathname}${callback.search}`);
   assert.equal(swapped.status, 302);
-  assert.equal(swapped.headers.get("location"), "/");
+  assert.equal(swapped.headers.get("location"), `https://${APP}/`);
   const set = swapped.headers.get("set-cookie") ?? "";
   assert.match(set, new RegExp(`^${GATE_COOKIE}=`));
   assert.match(set, /HttpOnly/);
