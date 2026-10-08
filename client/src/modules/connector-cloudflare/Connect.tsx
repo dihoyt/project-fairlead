@@ -24,6 +24,7 @@ export function CloudflareConnect({
   async function discover() {
     setBusy("discover");
     setError(null);
+    setSaved(null);
     try {
       const next = await apiRequest("POST /api/connector-cloudflare/discover", { body: { token: token.trim() } });
       setFound(next);
@@ -43,9 +44,21 @@ export function CloudflareConnect({
     setBusy("connect");
     setError(null);
     try {
-      const view = await apiRequest("POST /api/connectors", {
-        body: { kind: "cloudflare", name: "Cloudflare", values: { apiToken: token.trim(), accountId, zone } },
-      });
+      const values = { apiToken: token.trim(), accountId, zone };
+      // Only one Cloudflare connector may exist: a second Connect, here or
+      // after an earlier attempt saved a failing one, updates it.
+      const existing = (await apiRequest("GET /api/connectors")).find((c) => c.kind === "cloudflare");
+      let view: ConnectorView;
+      if (existing) {
+        view = await apiRequest("PUT /api/connectors/:id", { params: { id: existing.id }, body: { values } });
+        if (view.status !== "crit") {
+          view = await apiRequest("POST /api/connectors/:id/reconcile", { params: { id: existing.id } }).catch(
+            () => view
+          );
+        }
+      } else {
+        view = await apiRequest("POST /api/connectors", { body: { kind: "cloudflare", name: "Cloudflare", values } });
+      }
       setSaved(view);
       if (view.status !== "crit") onConnected(view);
     } catch (err) {
