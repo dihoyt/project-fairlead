@@ -990,3 +990,17 @@ test("every app the default bundle can roll out says how much memory it asks for
     assert.ok((entry.memoryBytes ?? 0) > 0, `${item.appId} has no memoryBytes`);
   }
 });
+
+const cloudflared = (image: string) =>
+  workload("cloudflared", "cloudflared", {
+    labels: { "app.kubernetes.io/name": "cloudflared", "app.kubernetes.io/version": "latest" },
+    image,
+  });
+
+test("a floating version label gives way to the image tag", async () => {
+  const pinned = await run([{ ref: RESOURCES.deployments, items: [cloudflared("cloudflare/cloudflared:2026.10.0")] }]);
+  assert.equal(app(pinned, "cloudflared").version, "2026.10.0");
+  const floating = await run([{ ref: RESOURCES.deployments, items: [cloudflared("cloudflare/cloudflared:latest")] }]);
+  assert.equal(app(floating, "cloudflared").state, "installed");
+  assert.equal(app(floating, "cloudflared").version, undefined);
+});

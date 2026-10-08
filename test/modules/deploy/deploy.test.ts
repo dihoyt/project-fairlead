@@ -926,7 +926,11 @@ test("the bundle's apps ask for what they use idle and are capped in memory", as
       [/worker:\n\s+resources:\n\s+requests:\n\s+cpu: "50m"\n\s+memory: "448Mi"\n\s+limits:\n\s+memory: "1Gi"/],
     ],
     ["cert-manager", {}, [/webhook:\n\s+resources:/, /cainjector:\n\s+resources:/]],
-    ["cloudflared", { tunnelToken: "tok" }, [/resources:\n\s+requests:\n\s+cpu: "10m"\n\s+memory: "32Mi"/]],
+    [
+      "cloudflared",
+      { tunnelToken: "tok" },
+      [/resources:\n\s+requests:\n\s+cpu: "10m"\n\s+memory: "32Mi"/, /image:\n\s+tag: "?2026\.10\.0"?\n/],
+    ],
   ];
   for (const [appId, inputs, patterns] of plans) {
     const p = await call<DeployPlan>(e, "POST", "/plan", { appId, inputs });

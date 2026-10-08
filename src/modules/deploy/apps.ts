@@ -84,6 +84,9 @@ const tlsSecret = (r: RecipeInput) => `${r.release}-tls`;
 // module's releases().
 const labels = () => deployedLabel();
 
+// The chart runs cloudflare/cloudflared:latest unless given a tag.
+export const CLOUDFLARED_TAG = "2026.10.0";
+
 // Two replicas, or one on a single node, where a second copy on the same
 // host buys nothing. Unknown node count keeps two.
 const upToNodes = (r: RecipeInput, wanted: number) => {
@@ -559,6 +562,7 @@ export const recipes: Record<string, Recipe> = {
     // The chart runs two by default; each shows as a separate connector.
     values: (r) => ({
       cloudflare: { tunnel_token: str(r.inputs.tunnelToken) },
+      image: { tag: CLOUDFLARED_TAG },
       replicaCount: upToNodes(r, 2),
       resources: resources("10m", "32Mi", "128Mi"),
     }),

@@ -22,6 +22,7 @@ import { IconDownload, IconRefresh, IconSearch, IconShieldCheck } from "@tabler/
 import type { BackupPosture, PostureRow } from "@contracts/backups";
 import type { Status } from "@contracts/health";
 import { PageHeader } from "../../shell/PageHeader";
+import { LonghornBackupTarget } from "./BackupTarget";
 import {
   StatusBadge,
   absoluteTime,
@@ -291,6 +292,7 @@ export function PosturePage() {
         </Alert>
       ) : null}
       {loading && !data ? <Loader size="sm" /> : null}
+      <LonghornBackupTarget onSet={reload} />
 
       {data ? (
         <>
