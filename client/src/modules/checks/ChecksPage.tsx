@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActionIcon, Alert, Badge, Button, Code, Group, Modal, Stack, Table, Text, Tooltip } from "@mantine/core";
-import { IconPencil, IconPlayerPlay, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconCheck, IconPencil, IconPlayerPlay, IconPlus, IconTrash } from "@tabler/icons-react";
 import type { CheckRequest, CheckView } from "@contracts/checks";
 import { PageHeader } from "../../shell/PageHeader";
 import { Sparkline, StatusBadge, relativeTime, useSession } from "../../ui";
+import { acceptStatusRequest, unexpectedStatus } from "./accept";
 import { checksApi } from "./api";
 import { CheckForm } from "./CheckForm";
 
@@ -56,6 +57,19 @@ export function ChecksPage() {
   async function run(check: CheckView) {
     setRunning(check.id);
     try {
+      await checksApi.run(check.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRunning(null);
+      await load();
+    }
+  }
+
+  async function accept(check: CheckView, code: number) {
+    setRunning(check.id);
+    try {
+      await checksApi.update(check.id, acceptStatusRequest(check, code));
       await checksApi.run(check.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -150,7 +164,26 @@ export function ChecksPage() {
                     </Group>
                   </Table.Td>
                   <Table.Td>
-                    <CheckState check={check} />
+                    <Stack gap={4} align="flex-start">
+                      <CheckState check={check} />
+                      {canWrite && unexpectedStatus(check) !== undefined && (
+                        <Tooltip
+                          label={`Record HTTP ${unexpectedStatus(check)} as an expected status for this check`}
+                          multiline
+                          maw={280}
+                        >
+                          <Button
+                            size="compact-xs"
+                            variant="light"
+                            leftSection={<IconCheck size={12} />}
+                            loading={running === check.id}
+                            onClick={() => void accept(check, unexpectedStatus(check)!)}
+                          >
+                            Accept this status
+                          </Button>
+                        </Tooltip>
+                      )}
+                    </Stack>
                   </Table.Td>
                   <Table.Td miw={140}>
                     <Sparkline query={{ series: LATENCY_SERIES, labels: { check: check.id } }} range="1h" />

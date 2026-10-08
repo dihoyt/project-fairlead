@@ -131,7 +131,7 @@ export function CheckForm({
             <Stack>
               <TagsInput
                 label="Expected status codes"
-                description="Empty: any 2xx or 3xx."
+                description="Empty: any 2xx or 3xx is healthy, and 401 or 403 reads as up but login required. List codes to accept exactly those."
                 placeholder="200, 401"
                 value={expectStatus}
                 onChange={(values) => setExpectStatus(values.filter((v) => /^\d{3}$/.test(v)))}

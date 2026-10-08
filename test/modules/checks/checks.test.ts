@@ -188,6 +188,17 @@ test("http: an unexpected status is crit and carries the raw response without co
   assert.equal(raw.headers["set-cookie"], undefined);
 });
 
+test("http: a 401 or 403 from a reachable target is warn, up but login required", async () => {
+  for (const code of [401, 403]) {
+    const r = await check({ target: `${httpUrl}/status/${code}` });
+    assert.equal(r.status, "warn");
+    assert.match(r.detail, new RegExp(`^HTTP ${code} in \\d+ ms; up, login required`));
+    assert.equal((r.raw as { httpStatus: number }).httpStatus, code);
+  }
+  // Once statuses are listed, an unlisted 401 is a plain mismatch again.
+  assert.equal((await check({ target: `${httpUrl}/status/401`, expectStatus: [200] })).status, "crit");
+});
+
 test("http: expectStatus replaces the default set", async () => {
   assert.equal((await check({ target: `${httpUrl}/status/401`, expectStatus: [401] })).status, "ok");
   const r = await check({ target: `${httpUrl}/`, expectStatus: [204, 401] });
