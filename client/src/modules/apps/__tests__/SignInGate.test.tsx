@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { DeployActionPlan } from "@contracts/deploy";
 import { renderWithApp } from "../../../test-utils";
 import { stubApi } from "../../../ui/deploy/__tests__/stubApi";
-import { SignInGateSection } from "../SignInGate";
+import { InstalledPage } from "../InstalledPage";
 
 const row = (appId: string) =>
   waitFor(() => {
@@ -27,12 +27,12 @@ const publicPlan: DeployActionPlan = {
   warnings: [],
 };
 
-describe("SignInGateSection", () => {
+describe("Public switches on Installed", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("shows each deployed app's state, and why an open one is open", async () => {
     stubApi();
-    renderWithApp(<SignInGateSection />);
+    renderWithApp(<InstalledPage />);
     const longhorn = await row("longhorn");
     expect(longhorn.dataset.gateState).toBe("open");
     expect(within(longhorn).getByText("Open to anyone")).toBeInTheDocument();
@@ -44,7 +44,7 @@ describe("SignInGateSection", () => {
 
   it("previews the app-gate action before making an app public, then runs it", async () => {
     const { calls } = stubApi({ "POST /api/deploy/actions/plan": publicPlan });
-    renderWithApp(<SignInGateSection />);
+    renderWithApp(<InstalledPage />);
     fireEvent.click(within(await row("gitea")).getByRole("switch"));
     const run = await screen.findByRole("button", { name: "Make Gitea public" });
     expect(calls.find((c) => c.key === "POST /api/deploy/actions/plan")?.body).toEqual({
@@ -71,7 +71,7 @@ describe("SignInGateSection", () => {
         apps: [],
       },
     });
-    renderWithApp(<SignInGateSection />);
+    renderWithApp(<InstalledPage />);
     expect(await screen.findByText(/no public URL to send people to sign in/)).toBeInTheDocument();
   });
 });

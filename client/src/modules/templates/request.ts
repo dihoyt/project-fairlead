@@ -1,6 +1,8 @@
 import {
   CUSTOM_TEMPLATE,
+  EXTERNAL_TEMPLATE,
   type AppTemplate,
+  type ExternalProtocol,
   type TemplateDeployRequest,
   type TemplateInstance,
 } from "@contracts/templates";
@@ -21,11 +23,19 @@ export interface TemplateForm {
   env: Array<{ name: string; value: string }>;
   volume: boolean;
   mountPath: string;
+  // The external service's target and how it is published.
+  address: string;
+  protocol: ExternalProtocol;
+  // "": the same as port.
+  publicPort: string;
+  insecureSkipVerify: boolean;
 }
+
+export const isForwardedProtocol = (protocol: ExternalProtocol) => protocol === "tcp" || protocol === "udp";
 
 export function emptyForm(template: AppTemplate): TemplateForm {
   return {
-    name: template.id === CUSTOM_TEMPLATE ? "" : template.id,
+    name: template.id === CUSTOM_TEMPLATE || template.id === EXTERNAL_TEMPLATE ? "" : template.id,
     exposed: true,
     host: "",
     volumeSize: "",
@@ -35,12 +45,17 @@ export function emptyForm(template: AppTemplate): TemplateForm {
     env: [],
     volume: false,
     mountPath: "/data",
+    address: "",
+    protocol: "http",
+    publicPort: "",
+    insecureSkipVerify: false,
   };
 }
 
 // A redeploy starts from what the instance was deployed with.
 export function formFromInstance(template: AppTemplate, instance: TemplateInstance): TemplateForm {
   const custom = instance.custom;
+  const external = instance.external;
   return {
     ...emptyForm(template),
     name: instance.name,
@@ -58,10 +73,35 @@ export function formFromInstance(template: AppTemplate, instance: TemplateInstan
           volumeSize: custom.volume?.size ?? instance.volumeSize ?? "",
         }
       : {}),
+    ...(external
+      ? {
+          address: external.address,
+          port: String(external.port),
+          protocol: external.protocol,
+          publicPort: external.publicPort ? String(external.publicPort) : "",
+          insecureSkipVerify: external.insecureSkipVerify ?? false,
+          exposed: isForwardedProtocol(external.protocol) || instance.host !== "",
+        }
+      : {}),
   };
 }
 
 export function toRequest(template: AppTemplate, form: TemplateForm): TemplateDeployRequest {
+  if (template.id === EXTERNAL_TEMPLATE) {
+    const forwarded = isForwardedProtocol(form.protocol);
+    return {
+      templateId: template.id,
+      ...(form.name.trim() ? { name: form.name.trim() } : {}),
+      ...(forwarded || !form.exposed ? { host: "" } : form.host.trim() ? { host: form.host.trim() } : {}),
+      external: {
+        address: form.address.trim(),
+        port: Number(form.port),
+        protocol: form.protocol,
+        ...(forwarded && form.publicPort.trim() ? { publicPort: Number(form.publicPort) } : {}),
+        ...(form.protocol === "https" && form.insecureSkipVerify ? { insecureSkipVerify: true } : {}),
+      },
+    };
+  }
   const custom = template.id === CUSTOM_TEMPLATE;
   const keepsData = custom ? form.volume : Boolean(template.volume);
   return {
