@@ -630,15 +630,8 @@ describe("deploy bundles", () => {
   test("on a healthy cluster, installed apps and met basics are skipped", async () => {
     const view = bundleView(bundles[0]!, await discover(createFakeK8s({ objects: healthyCluster() }), catalog));
     const skipped = view.items.filter((i) => i.skip).map((i) => i.appId);
-    assert.deepEqual(skipped, [
-      "traefik",
-      "cert-manager",
-      "metrics-server",
-      "local-path-provisioner",
-      "grafana",
-      "headlamp",
-    ]);
-    assert.equal(view.items.find((i) => i.appId === "grafana")!.reason, "Already installed");
+    assert.deepEqual(skipped, ["traefik", "cert-manager", "metrics-server", "local-path-provisioner"]);
+    assert.match(view.items.find((i) => i.appId === "metrics-server")!.reason!, /^Already /);
     assert.match(view.items.find((i) => i.appId === "traefik")!.reason!, /^Already covered: IngressClass traefik/);
     assert.deepEqual(
       view.items.filter((i) => i.selected).map((i) => i.appId),
@@ -786,7 +779,12 @@ describe("catalog routes", () => {
       ["self-hosted"]
     );
     assert.equal(mock.ctx.services.get("catalog").bundles()[0]!.id, "self-hosted");
-    assert.ok(views[0]!.items.find((i) => i.appId === "grafana")!.skip);
+    assert.ok(views[0]!.items.find((i) => i.appId === "traefik")!.skip);
+    // The console covers dashboards and the cluster browser itself.
+    assert.equal(
+      views[0]!.items.find((i) => i.appId === "grafana" || i.appId === "headlamp"),
+      undefined
+    );
   });
 
   test("discovery, with refresh", async () => {

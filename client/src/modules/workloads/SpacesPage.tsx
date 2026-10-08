@@ -2,10 +2,22 @@ import { useState } from "react";
 import { Anchor, Group, Stack, Switch, Table, Text, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import { Link } from "react-router";
-import type { NamespaceView } from "@contracts/workloads";
+import type { NamespaceUsage, NamespaceView } from "@contracts/workloads";
 import { PageHeader } from "../../shell/PageHeader";
 import { StatusBadge, useApi } from "../../ui";
 import { Age, Loaded, ManagedBadge, spacePath } from "./shared";
+import {
+  MiniSpark,
+  NotCollected,
+  RangePicker,
+  SortHeader,
+  USAGE_POLL_MS,
+  UsageBar,
+  compareMaybe,
+  shownValue,
+  useUsageRange,
+  type Sort,
+} from "./usage";
 
 const POLL_MS = 15_000;
 
@@ -29,25 +41,60 @@ function health(space: NamespaceView) {
   return <StatusBadge status="ok" label="Healthy" />;
 }
 
+type Column = "name" | "pods" | "cpu" | "memory";
+
+// Unsorted: problems first, then by name.
+const byDefault = (a: NamespaceView, b: NamespaceView) =>
+  Number(b.unhealthyPods > 0) - Number(a.unhealthyPods > 0) || a.name.localeCompare(b.name);
+
+export function sortSpaces(
+  spaces: NamespaceView[],
+  usage: Map<string, NamespaceUsage>,
+  sort: Sort<Column> | null
+): NamespaceView[] {
+  if (!sort) return spaces.toSorted(byDefault);
+  return spaces.toSorted((a, b) => {
+    switch (sort.key) {
+      case "name":
+        return sort.dir === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+      case "pods":
+        return compareMaybe(a.pods, b.pods, sort.dir) || a.name.localeCompare(b.name);
+      default: {
+        const value = (s: NamespaceView) => shownValue(usage.get(s.name)?.[sort.key as "cpu" | "memory"]);
+        return compareMaybe(value(a), value(b), sort.dir) || a.name.localeCompare(b.name);
+      }
+    }
+  });
+}
+
 export function SpacesPage() {
   const { data, error, loading } = useApi("GET /api/workloads/namespaces", undefined, { pollMs: POLL_MS });
+  const [range, setRange] = useUsageRange();
+  const usage = useApi("GET /api/workloads/usage", { query: { range } }, { pollMs: USAGE_POLL_MS });
   const [filter, setFilter] = useState("");
   const [system, setSystem] = useState(false);
+  const [sort, setSort] = useState<Sort<Column> | null>(null);
+  const byName = new Map((usage.data?.namespaces ?? []).map((u) => [u.namespace, u]));
 
-  // Problems first, then by name.
   const shown = data
-    ? data
-        .filter((s) => (system || !isSystemSpace(s.name)) && s.name.includes(filter.trim().toLowerCase()))
-        .toSorted((a, b) => Number(b.unhealthyPods > 0) - Number(a.unhealthyPods > 0) || a.name.localeCompare(b.name))
+    ? sortSpaces(
+        data.filter((s) => (system || !isSystemSpace(s.name)) && s.name.includes(filter.trim().toLowerCase())),
+        byName,
+        sort
+      )
     : null;
+  const header = (label: string, column: Column, numeric = true) => (
+    <SortHeader label={label} column={column} sort={sort} onSort={setSort} numeric={numeric} />
+  );
 
   return (
     <Stack gap="md">
       <PageHeader
         title="Workloads"
-        description="Every space in the cluster and what runs in it. Read-only."
+        description="Every space in the cluster, what runs in it and what it uses. Read-only."
         actions={
           <Group gap="md">
+            <RangePicker value={range} onChange={setRange} />
             <TextInput
               size="xs"
               placeholder="Filter spaces"
@@ -64,16 +111,20 @@ export function SpacesPage() {
           </Group>
         }
       />
+      <NotCollected collected={usage.data?.collected} />
       <Loaded data={shown} error={error} loading={loading} empty="No spaces match.">
         {(items) => (
-          <Table.ScrollContainer minWidth={640}>
+          <Table.ScrollContainer minWidth={980}>
             <Table verticalSpacing="xs" highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Space</Table.Th>
+                  {header("Space", "name", false)}
                   <Table.Th>Health</Table.Th>
                   <Table.Th>Workloads</Table.Th>
-                  <Table.Th>Pods</Table.Th>
+                  {header("Pods", "pods")}
+                  {header("CPU", "cpu")}
+                  {header("Memory", "memory")}
+                  <Table.Th>CPU ({range})</Table.Th>
                   <Table.Th>Age</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -94,6 +145,15 @@ export function SpacesPage() {
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm">{space.pods}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <UsageBar resource="cpu" usage={byName.get(space.name)?.cpu} />
+                    </Table.Td>
+                    <Table.Td>
+                      <UsageBar resource="memory" usage={byName.get(space.name)?.memory} />
+                    </Table.Td>
+                    <Table.Td>
+                      <MiniSpark points={byName.get(space.name)?.cpuPoints} />
                     </Table.Td>
                     <Table.Td>
                       <Age at={space.createdAt} />

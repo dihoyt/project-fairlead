@@ -1,12 +1,14 @@
-import { Anchor, Badge, Group, Table, Text, Tooltip } from "@mantine/core";
+import { Anchor, Badge, Group, Table, Text, Tooltip, UnstyledButton } from "@mantine/core";
 import { Link } from "react-router";
-import type { EventView, PodView, WorkloadView } from "@contracts/workloads";
+import type { EventView, PodUsage, PodView, WorkloadUsage, WorkloadView } from "@contracts/workloads";
 import { StatusBadge } from "../../ui";
 import { Age, ManagedBadge, OwnerLink, podPath, podStatus, splitRef, workloadPath, workloadStatus } from "./shared";
+import { MiniSpark, UsageBar } from "./usage";
 
-export function WorkloadsTable({ items }: { items: WorkloadView[] }) {
+// usage: keyed "Kind/name"; the usage columns show only when it is given.
+export function WorkloadsTable({ items, usage }: { items: WorkloadView[]; usage?: Map<string, WorkloadUsage> }) {
   return (
-    <Table.ScrollContainer minWidth={760}>
+    <Table.ScrollContainer minWidth={usage ? 1180 : 760}>
       <Table verticalSpacing="xs" highlightOnHover>
         <Table.Thead>
           <Table.Tr>
@@ -14,6 +16,13 @@ export function WorkloadsTable({ items }: { items: WorkloadView[] }) {
             <Table.Th>Kind</Table.Th>
             <Table.Th>State</Table.Th>
             <Table.Th>Ready</Table.Th>
+            {usage ? (
+              <>
+                <Table.Th>CPU</Table.Th>
+                <Table.Th>Memory</Table.Th>
+                <Table.Th>Memory trend</Table.Th>
+              </>
+            ) : null}
             <Table.Th>Images</Table.Th>
             <Table.Th>Age</Table.Th>
           </Table.Tr>
@@ -21,6 +30,7 @@ export function WorkloadsTable({ items }: { items: WorkloadView[] }) {
         <Table.Tbody>
           {items.map((w) => {
             const state = workloadStatus(w);
+            const u = usage?.get(`${w.kind}/${w.name}`);
             return (
               <Table.Tr key={`${w.kind}/${w.name}`}>
                 <Table.Td>
@@ -42,6 +52,19 @@ export function WorkloadsTable({ items }: { items: WorkloadView[] }) {
                     {w.ready}
                   </Text>
                 </Table.Td>
+                {usage ? (
+                  <>
+                    <Table.Td>
+                      <UsageBar resource="cpu" usage={u?.cpu} />
+                    </Table.Td>
+                    <Table.Td>
+                      <UsageBar resource="memory" usage={u?.memory} />
+                    </Table.Td>
+                    <Table.Td>
+                      <MiniSpark points={u?.memoryPoints} />
+                    </Table.Td>
+                  </>
+                ) : null}
                 <Table.Td>
                   <Text size="xs" ff="monospace" c="dimmed" lineClamp={2}>
                     {w.images.join(", ")}
@@ -59,9 +82,20 @@ export function WorkloadsTable({ items }: { items: WorkloadView[] }) {
   );
 }
 
-export function PodsTable({ items, showOwner = true }: { items: PodView[]; showOwner?: boolean }) {
+// onOpen: the pod's name opens it in place (a drawer) instead of its page.
+export function PodsTable({
+  items,
+  showOwner = true,
+  usage,
+  onOpen,
+}: {
+  items: PodView[];
+  showOwner?: boolean;
+  usage?: Map<string, PodUsage>;
+  onOpen?: (pod: PodView) => void;
+}) {
   return (
-    <Table.ScrollContainer minWidth={760}>
+    <Table.ScrollContainer minWidth={usage ? 1100 : 760}>
       <Table verticalSpacing="xs" highlightOnHover>
         <Table.Thead>
           <Table.Tr>
@@ -69,6 +103,12 @@ export function PodsTable({ items, showOwner = true }: { items: PodView[]; showO
             <Table.Th>State</Table.Th>
             <Table.Th>Ready</Table.Th>
             <Table.Th>Restarts</Table.Th>
+            {usage ? (
+              <>
+                <Table.Th>CPU</Table.Th>
+                <Table.Th>Memory</Table.Th>
+              </>
+            ) : null}
             <Table.Th>Node</Table.Th>
             {showOwner ? <Table.Th>Owner</Table.Th> : null}
             <Table.Th>Age</Table.Th>
@@ -80,9 +120,17 @@ export function PodsTable({ items, showOwner = true }: { items: PodView[]; showO
             return (
               <Table.Tr key={pod.name}>
                 <Table.Td>
-                  <Anchor component={Link} to={podPath(pod.namespace, pod.name)} size="sm" fw={500}>
-                    {pod.name}
-                  </Anchor>
+                  {onOpen ? (
+                    <UnstyledButton onClick={() => onOpen(pod)}>
+                      <Text size="sm" fw={500} c="cyan">
+                        {pod.name}
+                      </Text>
+                    </UnstyledButton>
+                  ) : (
+                    <Anchor component={Link} to={podPath(pod.namespace, pod.name)} size="sm" fw={500}>
+                      {pod.name}
+                    </Anchor>
+                  )}
                 </Table.Td>
                 <Table.Td>
                   <StatusBadge status={state.status} label={state.label} />
@@ -97,6 +145,16 @@ export function PodsTable({ items, showOwner = true }: { items: PodView[]; showO
                     {pod.restarts}
                   </Text>
                 </Table.Td>
+                {usage ? (
+                  <>
+                    <Table.Td>
+                      <UsageBar resource="cpu" usage={usage.get(pod.name)?.cpu} />
+                    </Table.Td>
+                    <Table.Td>
+                      <UsageBar resource="memory" usage={usage.get(pod.name)?.memory} />
+                    </Table.Td>
+                  </>
+                ) : null}
                 <Table.Td>
                   <Text size="sm">{pod.node ?? "—"}</Text>
                 </Table.Td>
