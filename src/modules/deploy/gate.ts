@@ -7,11 +7,12 @@ import {
   GATE_USER_HEADER,
   type GateReadiness,
 } from "../../contracts/platform.js";
+import { deployedLabel } from "../../contracts/deployed.js";
 import { product } from "../../product.js";
 import type { KubeObject } from "../../contracts/k8s.js";
 import type { Defaults, Step } from "./apps.js";
 import { TAILSCALE_CLASS } from "./manifest.js";
-import type { YamlValue } from "./yaml.js";
+import { toYaml, type YamlValue } from "./yaml.js";
 
 // The sign-in gate as the deploy runner applies it: one Traefik Middleware
 // per kind in this product's namespace, pointing forwardAuth at its
@@ -30,9 +31,20 @@ export interface ConsoleRef {
   service: string;
 }
 
+// The console's own public host, which every gated app sends people to.
+export interface ConsoleHost {
+  host: string;
+  // The gate writes the console's Ingress for it (see consoleIngress).
+  publish: boolean;
+  // A lookup from the pod; undefined where that says nothing (hosts-file
+  // names in local mode).
+  resolves?: boolean;
+}
+
 export interface GateInput {
   console: ConsoleRef;
   readiness: GateReadiness;
+  consoleHost?: ConsoleHost;
 }
 
 export const middlewareName = (credentials: boolean) => (credentials ? CREDENTIALS : BASE);
@@ -70,6 +82,87 @@ export function middlewareManifest(input: GateInput, defaults: Defaults, credent
 }
 
 export const MIDDLEWARE_FILE = "gate-middleware.yaml";
+export const CONSOLE_INGRESS = `${product.ownerMarker.externalPrefix}console`;
+
+const PUBLISHED_MODES = new Set(["cloudflare-tunnel", "direct", "local"]);
+const IP = /^[\d.]+$|:/;
+
+export function hostOf(url: string): string | undefined {
+  try {
+    return url ? new URL(url).hostname : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Whether the gate writes an Ingress for the console's own host: a name under
+// the Access base domain, in a mode that routes that domain through the
+// ingress controller, that no Ingress other than the gate's already serves.
+// The console otherwise listens only on its Service, and a gated app would
+// send people to a name nothing answers.
+export function publishesConsole(
+  host: string,
+  defaults: Defaults,
+  ref: ConsoleRef,
+  hosts: readonly IngressHost[],
+  objects?: readonly KubeObject[]
+): boolean {
+  const domain = defaults.baseDomain;
+  if (!domain || IP.test(host) || !host.endsWith(`.${domain}`)) return false;
+  if (!PUBLISHED_MODES.has(defaults.access ?? "direct") || !isTraefik(defaults.ingressClass)) return false;
+  const ours = (namespace: string | undefined, name: string | undefined) =>
+    namespace === ref.namespace && name === CONSOLE_INGRESS;
+  if (objects) {
+    return !(objects as readonly IngressObject[]).some(
+      (obj) => !ours(obj.metadata.namespace, obj.metadata.name) && (obj.spec?.rules ?? []).some((r) => r.host === host)
+    );
+  }
+  return !hosts.some((h) => h.host === host && !ours(h.namespace, h.ingress));
+}
+
+export function consoleIngress(input: GateInput, defaults: Defaults, host: string): YamlValue {
+  const tls = (defaults.access ?? "direct") === "direct" && Boolean(defaults.clusterIssuer);
+  const { namespace, service } = input.console;
+  return {
+    apiVersion: "networking.k8s.io/v1",
+    kind: "Ingress",
+    metadata: {
+      name: CONSOLE_INGRESS,
+      namespace,
+      labels: deployedLabel(),
+      annotations: tls ? { "cert-manager.io/cluster-issuer": defaults.clusterIssuer! } : {},
+    },
+    spec: {
+      ingressClassName: defaults.ingressClass,
+      rules: [
+        {
+          host,
+          http: {
+            paths: [{ path: "/", pathType: "Prefix", backend: { service: { name: service, port: { number: 80 } } } }],
+          },
+        },
+      ],
+      tls: tls ? [{ hosts: [host], secretName: `${CONSOLE_INGRESS}-tls` }] : [],
+    },
+  };
+}
+
+// What MIDDLEWARE_FILE holds: the Middleware, then the console's Ingress
+// when the gate publishes it.
+export function gateManifests(input: GateInput, defaults: Defaults, credentials: boolean): string {
+  const docs = [toYaml(middlewareManifest(input, defaults, credentials))];
+  const c = input.consoleHost;
+  if (c?.publish) docs.push(toYaml(consoleIngress(input, defaults, c.host)));
+  return docs.join("---\n");
+}
+
+// Said wherever the gate is about to be applied while the console's host
+// doesn't resolve yet but the gate is publishing it.
+export function consoleWarning(input: GateInput): string | undefined {
+  const c = input.consoleHost;
+  if (!c?.publish || c.resolves !== false) return undefined;
+  return `${c.host} doesn't resolve yet. This publishes the console there; until a DNS record points it at the cluster (the Cloudflare connector adds one on its next sync), signing in to a gated app lands on a page that doesn't answer.`;
+}
 
 export interface GateDecision {
   state: AppGateState;
@@ -87,6 +180,10 @@ export function unavailable(defaults: Defaults, input: GateInput): string | unde
       : "No ingress class found, so the console's sign-in can't be put in front of apps.";
   }
   if (!input.readiness.ready) return input.readiness.reason;
+  const c = input.consoleHost;
+  if (c && !c.publish && c.resolves === false) {
+    return `The console's address ${c.host} doesn't resolve, so signing in to a gated app would land on a page that doesn't answer. Give ${c.host} a DNS record (or set the console's public URL to a name under the Access step's base domain, which the gate publishes), then try again.`;
+  }
   return undefined;
 }
 

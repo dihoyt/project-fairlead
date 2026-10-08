@@ -118,7 +118,10 @@ export function gateForwardRouter(core: Core, gate: PlatformGate): Router {
         .run(sha(grant), core.orgId, row.session_hash, host, now, expiresAt);
       core.db.prepare("DELETE FROM gate_grants WHERE expires_at <= ?").run(now);
       res.set("Set-Cookie", cookie(grant, expiresAt - now, secure));
-      res.redirect(302, row.return_path);
+      // Absolute: Traefik resolves a relative Location against the
+      // forwardAuth address, which would send the browser to the console's
+      // in-cluster Service name.
+      res.redirect(302, new URL(row.return_path, `${proto}://${host}`).toString());
       return;
     }
 

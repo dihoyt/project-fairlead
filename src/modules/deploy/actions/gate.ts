@@ -6,7 +6,9 @@ import {
   annotateSteps,
   appIngresses,
   applyMiddlewareStep,
-  middlewareManifest,
+  CONSOLE_INGRESS,
+  consoleWarning,
+  gateManifests,
   middlewareName,
   middlewareRef,
   MIDDLEWARE_FILE,
@@ -14,7 +16,6 @@ import {
   type GateInput,
 } from "../gate.js";
 import { display } from "../plan.js";
-import { toYaml } from "../yaml.js";
 import type { ActionContext, ActionRecipe, ActionRendered } from "./index.js";
 
 // What the app-gate action needs beyond an ordinary action's context.
@@ -74,12 +75,15 @@ export const gateAction: ActionRecipe<AppGateAction> = {
     }
     const steps = [...(ref ? [applyMiddlewareStep()] : []), ...annotate];
     const files: Record<string, string> = ref
-      ? { [MIDDLEWARE_FILE]: toYaml(middlewareManifest(g.input, g.defaults, credentials)) }
+      ? { [MIDDLEWARE_FILE]: gateManifests(g.input, g.defaults, credentials) }
       : { "values.yaml": "{}\n" };
     const warnings =
       request.public && entry.noLogin
         ? [`${name} has no sign-in of its own: anyone with its address will be able to use it.`]
         : [];
+    const consoleNote = ref ? consoleWarning(g.input) : undefined;
+    if (consoleNote) warnings.push(consoleNote);
+    const publishes = Boolean(ref && g.input.consoleHost?.publish);
     return {
       ...base,
       plan: {
@@ -88,7 +92,14 @@ export const gateAction: ActionRecipe<AppGateAction> = {
         allowed: true,
         steps: [
           ...(ref
-            ? [{ label: "Point the sign-in gate at the console", commands: [display(applyMiddlewareStep().argv)] }]
+            ? [
+                {
+                  label: publishes
+                    ? `Point the sign-in gate at the console and publish the console at ${g.input.consoleHost!.host}`
+                    : "Point the sign-in gate at the console",
+                  commands: [display(applyMiddlewareStep().argv)],
+                },
+              ]
             : []),
           {
             label: request.public ? "Take the gate off its Ingresses" : "Put the gate on its Ingresses",
@@ -96,9 +107,12 @@ export const gateAction: ActionRecipe<AppGateAction> = {
           },
         ],
         changes: ingresses.map((ing) => ({ kind: "Ingress", name: ing.name, namespace: ing.namespace })),
-        creates: ref
-          ? [{ kind: "Middleware", name: middlewareName(credentials), namespace: g.input.console.namespace }]
-          : [],
+        creates: [
+          ...(ref
+            ? [{ kind: "Middleware", name: middlewareName(credentials), namespace: g.input.console.namespace }]
+            : []),
+          ...(publishes ? [{ kind: "Ingress", name: CONSOLE_INGRESS, namespace: g.input.console.namespace }] : []),
+        ],
         warnings,
       },
       steps,

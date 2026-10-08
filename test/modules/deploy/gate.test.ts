@@ -9,7 +9,7 @@ import { createMockGate, type MockGate } from "../../../src/contracts/mocks/gate
 import { createFakeK8s, type FakeK8s } from "../../../src/contracts/mocks/k8s.js";
 import { MOCK_NOW } from "../../../src/contracts/mocks/time.js";
 import { GATE_FORWARD_PATH } from "../../../src/contracts/platform.js";
-import { annotateSteps, isGateRef, withGate } from "../../../src/modules/deploy/gate.js";
+import { annotateSteps, CONSOLE_INGRESS, isGateRef, withGate } from "../../../src/modules/deploy/gate.js";
 import mod, { registerDeploy } from "../../../src/modules/deploy/index.js";
 import type { Deployer } from "../../../src/modules/deploy/runner.js";
 import { product } from "../../../src/product.js";
@@ -54,6 +54,7 @@ async function setup(
     access?: { mode: string; baseDomain: string };
     ingresses?: KubeObject[];
     settings?: Record<string, unknown>;
+    resolve?: (host: string) => Promise<boolean>;
   } = {}
 ): Promise<Env> {
   const k8s = createFakeK8s({
@@ -75,7 +76,10 @@ async function setup(
     settings: { "deploy.image": IMAGE, "deploy.namespace": NS, "deploy.release": "console", ...options.settings },
     services: { k8s, catalog: createMockCatalogService({ entries }), gate },
   });
-  const { deployer } = registerDeploy(mock.ctx, { now: () => MOCK_NOW });
+  const { deployer } = registerDeploy(mock.ctx, {
+    now: () => MOCK_NOW,
+    resolve: options.resolve ?? (async () => true),
+  });
   if (options.access) {
     deployer.access.set(options.access as never, "admin", new Date(MOCK_NOW).toISOString());
   }
@@ -249,6 +253,81 @@ test("app-gate puts the gate on every Ingress of the app, and Public takes only 
     public: false,
   });
   assert.equal(already.allowed, false);
+});
+
+// --- the console's own address ---------------------------------------------------
+
+const TUNNEL = { mode: "cloudflare-tunnel", baseDomain: "example.test" };
+
+test("the gate publishes the console at its public URL when that is under the Access domain", async () => {
+  const e = await setup({ access: TUNNEL, resolve: async () => false });
+  installed(e, "longhorn", "longhorn-system", 1);
+  const plan = await call<DeployActionPlan>(e, "POST", "/actions/plan", {
+    kind: "app-gate",
+    appId: "longhorn",
+    public: false,
+  });
+  assert.equal(plan.allowed, true, plan.blockedBy);
+  assert.deepEqual(
+    plan.creates.find((c) => c.kind === "Ingress"),
+    {
+      kind: "Ingress",
+      name: CONSOLE_INGRESS,
+      namespace: NS,
+    }
+  );
+  assert.ok(plan.warnings.some((w) => w.startsWith("console.example.test doesn't resolve yet")));
+
+  await call<DeployJobView>(e, "POST", "/actions/run", { kind: "app-gate", appId: "longhorn", public: false });
+  const file = Object.entries(await valuesOf(e, "longhorn")).find(([name]) => name === "gate-middleware.yaml")?.[1];
+  assert.ok(file);
+  const [middleware, console] = file.split("---\n");
+  assert.match(middleware!, /kind: Middleware/);
+  assert.match(console!, new RegExp(`name: ${CONSOLE_INGRESS}\n`));
+  assert.match(console!, /host: console\.example\.test/);
+  assert.match(console!, /name: console\n\s+port:\n\s+number: 80/);
+  assert.match(console!, /ingressClassName: traefik/);
+
+  const deploy = await call<DeployPlan>(e, "POST", "/plan", { appId: "headlamp", inputs: {} });
+  assert.match(deploy.values, new RegExp(`name: ${CONSOLE_INGRESS}`));
+});
+
+test("an Ingress someone else wrote for the console's host is left alone", async () => {
+  const e = await setup({
+    access: TUNNEL,
+    ingresses: [
+      ingress("longhorn-system", "longhorn-ingress", "longhorn.example.test"),
+      ingress(NS, "console", "console.example.test"),
+    ],
+  });
+  installed(e, "longhorn", "longhorn-system", 1);
+  const plan = await call<DeployActionPlan>(e, "POST", "/actions/plan", {
+    kind: "app-gate",
+    appId: "longhorn",
+    public: false,
+  });
+  assert.equal(plan.allowed, true, plan.blockedBy);
+  assert.equal(
+    plan.creates.some((c) => c.kind === "Ingress"),
+    false
+  );
+});
+
+test("a console address that doesn't resolve and isn't published keeps the gate off", async () => {
+  const gate = createMockGate({ ready: true, signInUrl: "https://console.elsewhere.test" });
+  const e = await setup({ gate, access: TUNNEL, resolve: async () => false });
+  installed(e, "longhorn", "longhorn-system", 1);
+  const plan = await call<DeployActionPlan>(e, "POST", "/actions/plan", {
+    kind: "app-gate",
+    appId: "longhorn",
+    public: false,
+  });
+  assert.equal(plan.allowed, false);
+  assert.match(plan.blockedBy ?? "", /console\.elsewhere\.test doesn't resolve/);
+  const deploy = await call<DeployPlan>(e, "POST", "/plan", { appId: "headlamp", inputs: {} });
+  assert.equal(deploy.gate?.state, "open");
+  const status = await call<GateStatus>(e, "GET", "/gate");
+  assert.equal(status.ready, false);
 });
 
 test("health: an ungated app with no login of its own is critical", async () => {
