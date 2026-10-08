@@ -20,7 +20,7 @@ import { apiRequest, useApi } from "../api";
 import { SessionContext } from "../session";
 import { relativeTime } from "../time";
 import { DeployJobProgress } from "./DeployJobProgress";
-import { RUN_STATE_COLOR, STEP_STATE_COLOR } from "./jobs";
+import { RUN_STATE_COLOR, STEP_STATE_COLOR, STEP_STATE_VARIANT } from "./jobs";
 
 const POLL_MS = 2_000;
 
@@ -187,12 +187,8 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
                     </Text>
                   )}
                 </Table.Td>
-                <Table.Td>
-                  <Badge
-                    color={STEP_STATE_COLOR[step.state]}
-                    variant={step.state === "running" ? "dot" : "light"}
-                    radius="xs"
-                  >
+                <Table.Td style={{ minWidth: 112 }}>
+                  <Badge color={STEP_STATE_COLOR[step.state]} variant={STEP_STATE_VARIANT[step.state]} radius="xs">
                     {step.state === "pending" ? "waiting" : step.state}
                   </Badge>
                 </Table.Td>
@@ -204,6 +200,12 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
                         <IconExternalLink size={14} />
                       </Group>
                     </Anchor>
+                  ) : step.message && step.state === "skipped" ? (
+                    <Tooltip label={step.message} multiline maw={420}>
+                      <Text size="xs" c="dimmed" lineClamp={1}>
+                        {step.message}
+                      </Text>
+                    </Tooltip>
                   ) : step.message ? (
                     <Text size="sm" c={step.state === "failed" ? "red" : "dimmed"} lineClamp={2}>
                       {step.message}

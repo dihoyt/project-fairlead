@@ -95,7 +95,7 @@ describe("BundleDoor", () => {
     const { calls } = stubApi(noRuns);
     renderWithApp(<BundleDoor onDone={() => {}} />);
     expect(await screen.findByLabelText(/Base domain/)).toHaveValue("example.test");
-    expect(screen.getByLabelText(/Public URL/)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/Public URL/)).toBeInTheDocument();
     const traefik = document.querySelector('[data-item="traefik"]') as HTMLElement;
     expect(within(traefik).getByRole("checkbox")).toBeDisabled();
     expect(within(traefik).getByText("Already installed")).toBeInTheDocument();
