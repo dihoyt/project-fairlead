@@ -1,9 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Alert, Badge, Loader, Stack, Stepper, Text } from "@mantine/core";
+import { Alert, Badge, Button, Card, Loader, SimpleGrid, Stack, Stepper, Text, Title } from "@mantine/core";
+import { IconAdjustments, IconPackages } from "@tabler/icons-react";
 import { useNavigate } from "react-router";
 import type { OnboardingState, OnboardingStep, OnboardingStepId } from "@contracts/onboarding";
 import { PageHeader } from "../../shell/PageHeader";
 import { apiRequest, useApi, useSession } from "../../ui";
+import { BundleDoor } from "./BundleDoor";
 import type { StepProps } from "./shared";
 import { ChecksStep } from "./steps/ChecksStep";
 import { ClusterStep } from "./steps/ClusterStep";
@@ -29,6 +31,46 @@ const TITLES: Record<OnboardingStepId, { label: string; description: string }> =
 
 const settled = (step: OnboardingStep) => step.done || step.skipped;
 
+type Door = "bundle" | "custom";
+
+// A fresh install (nothing settled past the password) starts at the two doors.
+export function startsAtDoors(steps: OnboardingStep[]): boolean {
+  return !steps.some((step) => step.id !== "password" && settled(step));
+}
+
+function Doors({ onPick }: { onPick: (door: Door) => void }) {
+  return (
+    <SimpleGrid cols={{ base: 1, sm: 2 }} maw={960} data-doors>
+      <Card withBorder padding="lg">
+        <Stack gap="sm" h="100%">
+          <IconPackages size={28} stroke={1.5} />
+          <Title order={4}>Deploy bundle</Title>
+          <Text size="sm" c="dimmed" style={{ flex: 1 }}>
+            Answer a few questions and get a complete self-hosted setup: ingress, certificates, metrics, sign-in
+            (Authentik), Git (Gitea), dashboards (Grafana, Headlamp), storage and push alerts (ntfy), with links and
+            checks wired up. Anything already in the cluster is left alone, and you see the full plan before anything
+            runs.
+          </Text>
+          <Button onClick={() => onPick("bundle")}>Deploy bundle</Button>
+        </Stack>
+      </Card>
+      <Card withBorder padding="lg">
+        <Stack gap="sm" h="100%">
+          <IconAdjustments size={28} stroke={1.5} />
+          <Title order={4}>Custom setup</Title>
+          <Text size="sm" c="dimmed" style={{ flex: 1 }}>
+            Go step by step: see what is already running, connect the tools you have, and deploy only the pieces you
+            pick.
+          </Text>
+          <Button variant="default" onClick={() => onPick("custom")}>
+            Custom setup
+          </Button>
+        </Stack>
+      </Card>
+    </SimpleGrid>
+  );
+}
+
 // The first step still to do, else the last one.
 export function firstOpenStep(steps: OnboardingStep[]): number {
   const index = steps.findIndex((step) => !settled(step));
@@ -41,11 +83,13 @@ export function WelcomePage() {
   const state = useApi("GET /api/onboarding/state", undefined, { enabled: me.admin });
   const [current, setCurrent] = useState<OnboardingState | null>(null);
   const [active, setActive] = useState<number | null>(null);
+  const [door, setDoor] = useState<Door | null>(null);
 
   useEffect(() => {
     if (!state.data) return;
     setCurrent(state.data);
     setActive((prev) => prev ?? firstOpenStep(state.data!.steps));
+    setDoor((prev) => prev ?? (startsAtDoors(state.data!.steps) ? null : "custom"));
   }, [state.data]);
 
   if (!me.admin) return <Alert color="yellow">First-run setup is for admins.</Alert>;
@@ -114,23 +158,40 @@ export function WelcomePage() {
       <PageHeader
         title="Setup"
         description="Every step but the last can be skipped and done later; this page stays under Setup in the sidebar."
-        actions={current.complete ? <Badge color="green">Complete</Badge> : undefined}
+        actions={
+          <>
+            {door === "custom" ? (
+              <Button size="xs" variant="subtle" onClick={() => setDoor("bundle")}>
+                Deploy bundle
+              </Button>
+            ) : door === "bundle" ? (
+              <Button size="xs" variant="subtle" onClick={() => setDoor("custom")}>
+                Custom setup
+              </Button>
+            ) : null}
+            {current.complete ? <Badge color="green">Complete</Badge> : null}
+          </>
+        }
       />
-      <Stepper active={active} onStepClick={setActive} size="sm" allowNextStepsSelect>
-        {steps.map((step, index) => (
-          <Stepper.Step
-            key={step.id}
-            label={TITLES[step.id].label}
-            description={step.skipped ? "Skipped" : TITLES[step.id].description}
-            // Mantine draws every step before `active` as complete; a step still
-            // to do keeps its number there instead of a check.
-            completedIcon={step.skipped ? "–" : step.done ? undefined : index + 1}
-            color={settled(step) && !step.skipped ? undefined : "gray"}
-          >
-            {panel(step)}
-          </Stepper.Step>
-        ))}
-      </Stepper>
+      {door === null ? <Doors onPick={setDoor} /> : null}
+      {door === "bundle" ? <BundleDoor onDone={() => setDoor("custom")} /> : null}
+      {door === "custom" ? (
+        <Stepper active={active} onStepClick={setActive} size="sm" allowNextStepsSelect>
+          {steps.map((step, index) => (
+            <Stepper.Step
+              key={step.id}
+              label={TITLES[step.id].label}
+              description={step.skipped ? "Skipped" : TITLES[step.id].description}
+              // Mantine draws every step before `active` as complete; a step still
+              // to do keeps its number there instead of a check.
+              completedIcon={step.skipped ? "–" : step.done ? undefined : index + 1}
+              color={settled(step) && !step.skipped ? undefined : "gray"}
+            >
+              {panel(step)}
+            </Stepper.Step>
+          ))}
+        </Stepper>
+      ) : null}
     </>
   );
 }

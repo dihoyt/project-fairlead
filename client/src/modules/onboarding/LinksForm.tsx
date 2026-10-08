@@ -35,6 +35,21 @@ export function parseLinks(value: unknown): unknown {
   }
 }
 
+export function formOf(settings: SettingView[]): LinkForm {
+  return formFromSettings((key) => stringSetting(settings, key), parseLinks(settingOf(settings, "health.links")));
+}
+
+// Writes the settings the form derives, skipping any that already hold the value.
+export async function saveLinks(settings: SettingView[], form: LinkForm): Promise<void> {
+  const next = linkSettings(form, parseLinks(settingOf(settings, "health.links")));
+  for (const [key, value] of Object.entries(next)) {
+    const current = settingOf(settings, key);
+    if (current === undefined) continue;
+    const wanted = key === "health.links" ? parseLinks(value) : value;
+    if (JSON.stringify(wanted) !== JSON.stringify(current)) await putSetting(key, value);
+  }
+}
+
 // The links form's state over the stored settings, shared by the setup step
 // and the settings page. `reload` refetches the settings after a save.
 export function useLinksForm(settings: SettingView[] | undefined, reload: () => void) {
@@ -46,7 +61,7 @@ export function useLinksForm(settings: SettingView[] | undefined, reload: () => 
 
   useEffect(() => {
     if (!settings || loaded) return;
-    setForm(formFromSettings((key) => stringSetting(settings, key), parseLinks(settingOf(settings, "health.links"))));
+    setForm(formOf(settings));
     setLoaded(true);
   }, [settings, loaded]);
 
@@ -74,14 +89,8 @@ export function useLinksForm(settings: SettingView[] | undefined, reload: () => 
 
   async function submit(): Promise<boolean> {
     if (!settings) return false;
-    const next = linkSettings(form, parseLinks(settingOf(settings, "health.links")));
     const done = await save.run(async () => {
-      for (const [key, value] of Object.entries(next)) {
-        const current = settingOf(settings, key);
-        if (current === undefined) continue;
-        const wanted = key === "health.links" ? parseLinks(value) : value;
-        if (JSON.stringify(wanted) !== JSON.stringify(current)) await putSetting(key, value);
-      }
+      await saveLinks(settings, form);
       return true;
     });
     if (!done) return false;
