@@ -32,6 +32,8 @@ import {
   mockFailedJob,
   mockHostKeypair,
   mockRunningJob,
+  mockUpgradeReport,
+  mockUpgradeRun,
 } from "./catalog.js";
 import { mockCheckResults } from "./health.js";
 import { mockSeriesResults } from "./metrics.js";
@@ -726,6 +728,8 @@ export const apiMocks: ApiMocks = {
     finishedAt: now,
     steps: mockBundleRun.steps.map((step) => (step.state === "running" ? { ...step, state: "cancelled" } : step)),
   },
+  "GET /api/deploy/upgrades": mockUpgradeReport,
+  "POST /api/deploy/upgrades": mockUpgradeRun,
 
   "POST /api/mcp": {
     jsonrpc: "2.0",

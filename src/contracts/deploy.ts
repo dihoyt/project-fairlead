@@ -75,6 +75,11 @@ export interface DeployPlan {
 
 export type DeployMode = "install" | "dry-run";
 
+// What a job did. "upgrade" jobs come only from POST /api/deploy/upgrades:
+// `helm upgrade` with --reuse-values (no --install), or the pinned manifest
+// applied again.
+export type DeployJobMode = DeployMode | "upgrade";
+
 export type DeployJobState = "pending" | "running" | "succeeded" | "failed" | "cancelled";
 
 export interface DeployJobView {
@@ -83,7 +88,7 @@ export interface DeployJobView {
   release: string;
   namespace: string;
   version: string;
-  mode: DeployMode;
+  mode: DeployJobMode;
   state: DeployJobState;
   startedBy: string;
   createdAt: string;
@@ -140,12 +145,83 @@ export type BundleRunState = "running" | "succeeded" | "failed" | "cancelled";
 
 export interface BundleRunView {
   id: string;
+  // UPGRADE_RUN for an upgrade run.
   bundleId: string;
   state: BundleRunState;
   startedBy: string;
   createdAt: string;
   finishedAt?: string;
   steps: Array<{ appId: string; state: BundleStepState; jobId?: string; message?: string; url?: string }>;
+}
+
+// --- Upgrades ----------------------------------------------------------------
+// Install once, then upgrade on purpose: nothing upgrades by itself. Upgrades
+// cover the apps this product's deploy runner installed (DetectedApp.ownedByUs),
+// moving each to the catalog's pin, or to the newest fallback the cluster's
+// Kubernetes can run (pickVersion() in ./kubeversion.ts), never to a version
+// the cluster can't run and never backwards.
+
+// The bundleId of an upgrade run. Upgrade runs are bundle runs: they share
+// GET /api/deploy/bundles(/:id), cancel, the one-run-at-a-time rule and the
+// deploy.bundle-finished event.
+export const UPGRADE_RUN = "upgrade";
+
+// available: targetVersion is newer than currentVersion.
+// current: nothing newer the cluster can run (reason says when the catalog
+//   pin is newer but needs a newer Kubernetes, or the app is ahead of it).
+// blocked: can't be upgraded from here; reason says why (a job for its
+//   release is running, its catalog entry is a patch, deploys are off).
+// unknown: installed by us but its version can't be told; it can be named
+//   in UpgradeRequest.appIds, it is never part of "all".
+export type UpgradeState = "available" | "current" | "blocked" | "unknown";
+
+export interface UpgradeNote {
+  // Applies when an upgrade crosses this version: from below it to it or above.
+  version: string;
+  // One or two plain sentences: what changes, what to do before or after.
+  note: string;
+}
+
+export interface UpgradeCandidate {
+  appId: string;
+  release: string;
+  namespace: string;
+  // The version of its latest successful install or upgrade job, else
+  // DetectedApp.chartVersion (a manifest app has none).
+  currentVersion?: string;
+  // The catalog's pin, before the Kubernetes check.
+  pinnedVersion: string;
+  // What an upgrade installs: absent when no pin or fallback fits the cluster.
+  targetVersion?: string;
+  // targetVersion is a fallback, not the pin.
+  fellBack: boolean;
+  state: UpgradeState;
+  // One sentence, for every state but "available".
+  reason?: string;
+  // The catalog's upgrade notes between currentVersion (exclusive) and
+  // targetVersion (inclusive), oldest first; every note up to targetVersion
+  // when currentVersion is unknown.
+  notes: UpgradeNote[];
+  // The command lines the job would run, display only, as DeployPlan.commands.
+  commands: string[];
+  url?: string;
+}
+
+export interface UpgradeReport {
+  checkedAt: string;
+  // DiscoveryReport.kubernetesVersion.
+  kubernetesVersion?: string;
+  // False when deploys are off; every candidate is then "blocked".
+  enabled: boolean;
+  // In catalog install order (an app's requires before it).
+  apps: UpgradeCandidate[];
+}
+
+export interface UpgradeRequest {
+  // Omitted: every candidate whose state is "available". Named apps must be
+  // "available" or "unknown"; anything else is a 400 naming the app and its
+  // reason. Run in catalog install order whatever order they are given in.
+  appIds?: string[];
 }
 
 // --- Access: how people reach the deployed apps ----------------------------
@@ -203,7 +279,7 @@ export interface AccessView {
 
 // --- For other modules -------------------------------------------------------
 
-// A release the deploy runner installed (its latest install job), so
+// A release the deploy runner installed (its latest install or upgrade job), so
 // discovery can tell "installed by us" where a chart ignores the label.
 export interface DeployedRelease {
   appId: string;
@@ -215,6 +291,6 @@ export interface DeployedRelease {
 
 // Provided by module "deploy" as ctx.services.get("deploy").
 export interface DeployService {
-  // The latest install-mode job per release, newest first; dry runs excluded.
+  // The latest install or upgrade job per release, newest first; dry runs excluded.
   releases(): Promise<DeployedRelease[]>;
 }
