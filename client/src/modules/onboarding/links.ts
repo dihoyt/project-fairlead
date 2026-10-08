@@ -1,3 +1,4 @@
+import type { CatalogAppView, LinkKey } from "@contracts/catalog";
 import type { Category } from "@contracts/health";
 import type { SettingValue } from "@contracts/auth";
 
@@ -74,4 +75,24 @@ export function formFromSettings(get: (key: string) => string, healthLinks: unkn
     giteaUrl: find("gitops", "Gitea"),
     grafanaUrl: find("cluster", "Grafana"),
   };
+}
+
+export const LINK_FIELD: Record<LinkKey, keyof LinkForm> = {
+  rancher: "rancherUrl",
+  headlamp: "headlampUrl",
+  longhorn: "longhornUrl",
+  gitea: "giteaUrl",
+  grafana: "grafanaUrl",
+};
+
+// Link fields discovery can fill: the first URL (https first) of each
+// installed app that has a link key.
+export function linksFromDiscovery(apps: CatalogAppView[]): Partial<LinkForm> {
+  const found: Partial<LinkForm> = {};
+  for (const app of apps) {
+    const url = app.detected.urls[0];
+    if (!app.linkKey || app.detected.state !== "installed" || !url) continue;
+    found[LINK_FIELD[app.linkKey]] ??= trim(url);
+  }
+  return found;
 }

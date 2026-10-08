@@ -3,7 +3,40 @@ import { Alert, Button, Code, Group, Loader, PasswordInput, Stack, Text, TextInp
 import { OidcProviderGuide } from "../../../shell/admin/OidcProviderGuide";
 import { apiRequest, useApi } from "../../../ui";
 import { putSetting, settingOf, stringSetting } from "../settings";
+import { AppOffer, useDiscovery } from "../discovery";
 import { StepFrame, useAction, type StepProps } from "../shared";
+
+// Offered when there is no identity provider yet. Deploying it installs
+// Authentik only; the OAuth2 provider and application inside it are made in
+// Authentik's own UI.
+function SignInOffers({ onDeployed }: { onDeployed: () => void }) {
+  const discovery = useDiscovery();
+  const offers = discovery.inSlot("sign-in");
+  return (
+    <Stack gap="xs" data-sign-in-offers>
+      <Text size="sm" fw={500}>
+        Local admin is fine for a homelab; skip this step and come back if you add people later.
+      </Text>
+      {offers.map((app) => (
+        <Stack key={app.id} gap={4}>
+          <AppOffer
+            app={app}
+            onDeployed={() => {
+              discovery.refresh();
+              onDeployed();
+            }}
+          />
+          {app.id === "authentik" && app.detected.state === "installed" ? (
+            <Text size="xs" c="dimmed">
+              In Authentik, create an OAuth2/OpenID provider and an application for it with the redirect URI below. Its
+              issuer looks like {app.detected.urls[0] ?? "https://auth.example.com"}/application/o/&lt;slug&gt;/.
+            </Text>
+          ) : null}
+        </Stack>
+      ))}
+    </Stack>
+  );
+}
 
 export function OidcStep({ onFinish }: StepProps) {
   const overview = useApi("GET /api/admin/overview");
@@ -55,12 +88,14 @@ export function OidcStep({ onFinish }: StepProps) {
   return (
     <StepFrame
       onFinish={onFinish}
+      what="An identity provider is one place that holds everyone's login, so people sign in here with the same account they use elsewhere."
       intro="Sign in through your identity provider (Entra ID, Authentik, Keycloak, Google, …) instead of local passwords. The local admin keeps working as a fallback. Skip this to stay on local accounts."
       fullPage={{ to: "/admin/sign-in", label: "All sign-in settings" }}
       canFinish={result?.ok === true}
     >
       {overview.loading && !overview.data ? <Loader size="sm" /> : null}
       {overview.error ? <Alert color="red">{overview.error}</Alert> : null}
+      <SignInOffers onDeployed={overview.reload} />
       {oidc ? (
         <Stack gap="sm">
           <Text size="sm">
