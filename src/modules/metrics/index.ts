@@ -49,6 +49,8 @@ export function registerMetrics(ctx: ModuleContext, store: MetricsStore): void {
     );
   });
 
+  ctx.services.provide("metrics", { query: (q) => store.query(q) });
+
   ctx.scheduler.every("retention", RETENTION_INTERVAL_MS, () => store.applyRetention());
 
   ctx.route("GET /api/metrics/query", (req) => parseQueryParam(req.query.q).flatMap((q) => store.query(q)));

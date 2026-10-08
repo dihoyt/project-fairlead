@@ -3,6 +3,7 @@ import { Browser } from "./browser.js";
 import { declareLinks } from "./links.js";
 import { followLogs, readLogs } from "./logs.js";
 import { migrations } from "./migrations.js";
+import { clusterUsage, parseRange, spaceUsage } from "./usage.js";
 
 const mod: Module = {
   id: "workloads",
@@ -36,6 +37,19 @@ const mod: Module = {
     ctx.route("GET /api/workloads/namespaces/:namespace/events", (req) =>
       browser.events(req.params.namespace, req.query.object || undefined)
     );
+    // Without the metrics module there is nothing to summarise, but requests
+    // and limits still are.
+    const usageInputs = async (range: unknown) => ({
+      ...(await browser.usageInputs()),
+      metrics: ctx.services.has("metrics") ? ctx.services.get("metrics") : undefined,
+      range: parseRange(range),
+      now: Date.now(),
+    });
+    ctx.route("GET /api/workloads/usage", async (req) => clusterUsage(await usageInputs(req.query.range)));
+    ctx.route("GET /api/workloads/namespaces/:namespace/usage", async (req) => {
+      await browser.namespace(req.params.namespace);
+      return spaceUsage(req.params.namespace, await usageInputs(req.query.range));
+    });
     ctx.route("GET /api/workloads/namespaces/:namespace/pods/:pod/logs", (req) =>
       readLogs(k8s(), browser, req.params.namespace, req.params.pod, req.query)
     );

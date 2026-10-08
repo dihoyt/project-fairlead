@@ -1,10 +1,11 @@
-import { Alert, Card, Group, Loader, Stack, Table, Text, Title, Tooltip } from "@mantine/core";
-import { useParams } from "react-router";
-import type { PodView } from "@contracts/workloads";
+import { Alert, Anchor, Card, Group, Loader, Stack, Table, Text, Title, Tooltip } from "@mantine/core";
+import { Link, useParams } from "react-router";
+import type { PodUsage, PodView } from "@contracts/workloads";
 import { Sparkline, StatusBadge, useApi } from "../../ui";
 import { LogViewer } from "./LogViewer";
-import { Age, Loaded, NativeLinks, OwnerLink, Trail, podStatus, spacePath, spacesPath } from "./shared";
+import { Age, Loaded, NativeLinks, OwnerLink, Trail, podPath, podStatus, spacePath, spacesPath } from "./shared";
 import { EventsTable } from "./tables";
+import { USAGE_POLL_MS, UsageBar } from "./usage";
 
 const POLL_MS = 10_000;
 
@@ -12,15 +13,21 @@ const STATE_STATUS = { running: "ok", waiting: "warn", terminated: "unknown", un
 
 // CPU and memory come from the node and container metrics collector; on an
 // install without it the sparklines read "no data" and nothing else changes.
-function Containers({ pod }: { pod: PodView }) {
+function Containers({ pod, usage }: { pod: PodView; usage?: PodUsage }) {
   return (
-    <Table.ScrollContainer minWidth={820}>
+    <Table.ScrollContainer minWidth={usage ? 1180 : 820}>
       <Table verticalSpacing="xs">
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Container</Table.Th>
             <Table.Th>State</Table.Th>
             <Table.Th>Restarts</Table.Th>
+            {usage ? (
+              <>
+                <Table.Th>CPU</Table.Th>
+                <Table.Th>Memory</Table.Th>
+              </>
+            ) : null}
             <Table.Th>CPU (1h)</Table.Th>
             <Table.Th>Memory (1h)</Table.Th>
           </Table.Tr>
@@ -28,6 +35,7 @@ function Containers({ pod }: { pod: PodView }) {
         <Table.Tbody>
           {pod.containers.map((c) => {
             const labels = { namespace: pod.namespace, pod: pod.name, container: c.name };
+            const u = usage?.containers.find((x) => x.name === c.name);
             const status =
               c.state === "waiting" && c.reason === "CrashLoopBackOff"
                 ? "crit"
@@ -57,6 +65,16 @@ function Containers({ pod }: { pod: PodView }) {
                     {c.restarts}
                   </Text>
                 </Table.Td>
+                {usage ? (
+                  <>
+                    <Table.Td>
+                      <UsageBar resource="cpu" usage={u?.cpu} />
+                    </Table.Td>
+                    <Table.Td>
+                      <UsageBar resource="memory" usage={u?.memory} />
+                    </Table.Td>
+                  </>
+                ) : null}
                 <Table.Td>
                   <Sparkline query={{ series: "container.cpu.percent", labels }} range="1h" unit="percent" />
                 </Table.Td>
@@ -72,8 +90,19 @@ function Containers({ pod }: { pod: PodView }) {
   );
 }
 
-export function PodPage() {
-  const { namespace = "", pod: name = "" } = useParams();
+// The pod's details, logs and events; on its own page and in the drawer a
+// space opens pods in. usage: the pod's entry in its space's usage report.
+export function PodDetail({
+  namespace,
+  name,
+  usage,
+  inDrawer = false,
+}: {
+  namespace: string;
+  name: string;
+  usage?: PodUsage;
+  inDrawer?: boolean;
+}) {
   const params = { namespace, pod: name };
   const pod = useApi("GET /api/workloads/namespaces/:namespace/pods/:pod", { params }, { pollMs: POLL_MS });
   const events = useApi(
@@ -86,20 +115,20 @@ export function PodPage() {
 
   return (
     <Stack gap="md">
-      <Trail
-        items={[
-          { label: "Workloads", to: spacesPath },
-          { label: namespace, to: spacePath(namespace, "pods") },
-          { label: name },
-        ]}
-      />
       <Group gap="sm">
-        <Title order={2} style={{ wordBreak: "break-all" }}>
+        <Title order={inDrawer ? 3 : 2} style={{ wordBreak: "break-all" }}>
           {name}
         </Title>
         {state ? <StatusBadge status={state.status} label={state.label} /> : null}
       </Group>
-      <NativeLinks kind="Pod" namespace={namespace} name={name} />
+      <Group gap="md">
+        {inDrawer ? (
+          <Anchor component={Link} to={podPath(namespace, name)} size="sm">
+            Open pod page
+          </Anchor>
+        ) : null}
+        <NativeLinks kind="Pod" namespace={namespace} name={name} />
+      </Group>
       {pod.error ? <Alert color={data ? "yellow" : "red"}>{pod.error}</Alert> : null}
       {pod.loading && !data ? <Loader size="sm" /> : null}
       {data ? (
@@ -144,7 +173,7 @@ export function PodPage() {
               </Stack>
             </Group>
           </Card>
-          <Containers pod={data} />
+          <Containers pod={data} usage={usage} />
           <Title order={4}>Logs</Title>
           <LogViewer key={`${data.namespace}/${data.name}`} pod={data} />
         </>
@@ -153,6 +182,27 @@ export function PodPage() {
       <Loaded {...events} empty="No recent events for this pod.">
         {(items) => <EventsTable namespace={namespace} items={items} />}
       </Loaded>
+    </Stack>
+  );
+}
+
+export function PodPage() {
+  const { namespace = "", pod: name = "" } = useParams();
+  const usage = useApi(
+    "GET /api/workloads/namespaces/:namespace/usage",
+    { params: { namespace } },
+    { pollMs: USAGE_POLL_MS }
+  );
+  return (
+    <Stack gap="md">
+      <Trail
+        items={[
+          { label: "Workloads", to: spacesPath },
+          { label: namespace, to: spacePath(namespace, "pods") },
+          { label: name },
+        ]}
+      />
+      <PodDetail namespace={namespace} name={name} usage={usage.data?.pods.find((p) => p.name === name)} />
     </Stack>
   );
 }

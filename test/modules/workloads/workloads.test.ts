@@ -2,10 +2,12 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { RESOURCES, type K8sApi, type KubeObject } from "../../../src/contracts/k8s.js";
 import type {
+  ClusterUsageReport,
   EventView,
   LogLines,
   NamespaceView,
   PodView,
+  SpaceUsageReport,
   WorkloadLinks,
   WorkloadView,
 } from "../../../src/contracts/workloads.js";
@@ -366,4 +368,15 @@ test("closing a followed log stops the stream on the API server", async () => {
     await srv.close();
     await local.close();
   }
+});
+
+test("usage routes answer without the metrics module, and refuse unknown spaces and ranges", async () => {
+  const cluster = await get<ClusterUsageReport>("/usage?range=24h");
+  assert.equal(cluster.collected, false);
+  assert.equal(cluster.range, "24h");
+  assert.ok(cluster.namespaces.length > 0);
+  const space = await get<SpaceUsageReport>(`/namespaces/${cluster.namespaces[0]!.namespace}/usage`);
+  assert.equal(space.range, "1h");
+  await get("/namespaces/nope/usage", 404);
+  await get("/usage?range=2h", 400);
 });

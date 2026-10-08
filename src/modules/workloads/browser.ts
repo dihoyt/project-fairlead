@@ -2,6 +2,7 @@ import { RESOURCES, type K8sApi, type KubeObject } from "../../contracts/k8s.js"
 import type { EventView, NamespaceView, PodView, WorkloadKind, WorkloadView } from "../../contracts/workloads.js";
 import { HttpError } from "../../runtime/http.js";
 import { ObjectCache } from "./cache.js";
+import type { WorkloadRef } from "./usage.js";
 import {
   WORKLOAD_KINDS,
   eventView,
@@ -105,6 +106,15 @@ export class Browser {
     return (await this.allPods(through))
       .filter((p) => p.namespace === namespace && (!workload || p.owner === workload))
       .toSorted(byName);
+  }
+
+  async usageInputs(): Promise<{ pods: Pod[]; workloads: WorkloadRef[]; through: Intermediates }> {
+    const [pods, workloads, through] = await Promise.all([
+      this.cache.list<Pod>(RESOURCES.pods),
+      this.allWorkloads(),
+      this.through(),
+    ]);
+    return { pods, workloads: workloads.map(({ namespace, kind, name }) => ({ namespace, kind, name })), through };
   }
 
   async rawPod(namespace: string, name: string): Promise<Pod> {
