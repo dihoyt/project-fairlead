@@ -9,11 +9,13 @@ import { applyMigrations, DEFAULT_ORG_ID, runtimeMigrations } from "../../runtim
 import { createBackupsRegistry, createHealthRegistry, createMetricsRegistry } from "../../runtime/registries.js";
 import { createScheduler } from "../../runtime/scheduler.js";
 import { createServiceRegistry } from "../../runtime/services.js";
+import type { ApiRoutes, RouteKey } from "../api.js";
 import type { Events } from "../events.js";
-import type { ModuleContext, ModuleId } from "../module.js";
+import type { CallInput, ModuleContext, ModuleId } from "../module.js";
 import type { AuditEntry, Platform, User } from "../platform.js";
 import type { Migration, Services } from "../runtime.js";
 import type { Sample } from "../metrics.js";
+import { apiMocks } from "./api.js";
 
 export const mockAdmin: User = {
   id: "admin",
@@ -40,6 +42,19 @@ export interface MockContextOptions {
   // Install a sink that collects written samples into MockContext.samples.
   // Default: true, except for module "metrics", which installs its own.
   metricsSink?: boolean;
+  // Answers for ctx.call by route; a route not listed answers its apiMocks
+  // response. Throw an HttpError (src/runtime/http.ts) for an error status.
+  calls?: MockCalls;
+}
+
+export type MockCalls = {
+  [K in RouteKey]?: (input: CallInput<K>, user: User) => ApiRoutes[K]["response"] | Promise<ApiRoutes[K]["response"]>;
+};
+
+export interface RecordedCall {
+  key: RouteKey;
+  input: CallInput<RouteKey>;
+  user: User;
 }
 
 export interface MockContext {
@@ -51,6 +66,8 @@ export interface MockContext {
   // Every sample written through ctx.metrics.write, when the mock's sink is installed.
   samples: Sample[];
   secrets: Map<string, string>;
+  // Every ctx.call, in order, with the identity it was made as.
+  calls: RecordedCall[];
   setUser(user: User | null): void;
   close(): Promise<void>;
 }
@@ -74,7 +91,8 @@ export function createMockContext(moduleId: ModuleId, options: MockContextOption
     early() {},
     install() {},
     identify: (_req: Request) => user,
-    can: (who, action) => who.admin || action === "read",
+    can: (who, action) => action === "read" || (who.admin && who.token?.scope !== "read"),
+    vouch: () => "mock-ticket",
     settings: {
       declare(spec) {
         const value = () => (spec.key in settingValues ? spec.schema.parse(settingValues[spec.key]) : spec.default);
@@ -117,6 +135,16 @@ export function createMockContext(moduleId: ModuleId, options: MockContextOption
     logFor: () => silentLogger,
   });
 
+  const calls: RecordedCall[] = [];
+  const answers = options.calls ?? {};
+  ctx.call = async (req, key, input = {}) => {
+    const caller = ctx.identify(req);
+    calls.push({ key, input: input as CallInput<RouteKey>, user: caller });
+    const answer = answers[key] as ((input: unknown, user: User) => unknown) | undefined;
+    if (answer) return (await answer(input, caller)) as never;
+    return structuredClone(apiMocks[key]) as never;
+  };
+
   const app = express();
   app.use(express.json());
   app.use(`/api/${moduleId}`, ctx.router);
@@ -129,6 +157,7 @@ export function createMockContext(moduleId: ModuleId, options: MockContextOption
     audit,
     samples,
     secrets,
+    calls,
     setUser(next) {
       user = next;
     },

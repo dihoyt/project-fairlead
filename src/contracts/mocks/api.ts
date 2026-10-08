@@ -1,11 +1,11 @@
 // A mock response for every route in ApiRoutes; the ApiMocks type makes a
 // missing one a compile error. Pure data, so the client can import it.
 import type { ApiMocks, ApiRoutes } from "../api.js";
-import type { Me, UserView } from "../auth.js";
+import type { ApiTokenView, Me, UserView } from "../auth.js";
 import type { BackupPosture, PostureRow } from "../backups.js";
 import type { CheckView } from "../checks.js";
 import type { JoinLink, JoinStatus } from "../cluster.js";
-import type { CategoryDetail, CheckResult, HealthBoard, HealthTile } from "../health.js";
+import type { CategoryDetail, CheckResult, HealthBoard, HealthLinkView, HealthTile } from "../health.js";
 import type { HostView } from "../hosts.js";
 import type { ChannelView } from "../notify.js";
 import type { OnboardingState } from "../onboarding.js";
@@ -338,6 +338,36 @@ set -euo pipefail
 echo "mock join script"
 `;
 
+export const mockApiToken: ApiTokenView = {
+  id: "tok_1",
+  name: "Claude Code",
+  scope: "write",
+  prefix: "api_Xk3d",
+  createdBy: "admin",
+  createdAt: isoAgo(2 * DAY),
+  expiresAt: null,
+  lastUsedAt: isoAgo(HOUR),
+};
+
+export const mockHealthLinks: HealthLinkView[] = [
+  {
+    id: "settings:cluster:0",
+    category: "cluster",
+    label: "Rancher",
+    url: "https://rancher.example.com/dashboard/c/local/explorer",
+    source: "settings",
+  },
+  {
+    id: "lnk_1",
+    category: "apps",
+    label: "Paperless",
+    url: "https://paperless.example.com",
+    source: "custom",
+    createdBy: "admin",
+    createdAt: isoAgo(DAY),
+  },
+];
+
 export const apiMocks: ApiMocks = {
   "GET /healthz": { status: "ok", version: "dev" },
   "GET /livez": { status: "ok" },
@@ -500,8 +530,16 @@ export const apiMocks: ApiMocks = {
     ],
   },
 
+  "GET /api/admin/tokens": [mockApiToken],
+  "POST /api/admin/tokens": { token: mockApiToken, secret: "api_Xk3dMockSecretNotReal0000000000000000000" },
+  "DELETE /api/admin/tokens/:id": { ok: true },
+
   "GET /api/health/board": mockHealthBoard,
   "GET /api/health/categories/:category": mockCategoryDetail,
+  "GET /api/health/links": mockHealthLinks,
+  "POST /api/health/links": mockHealthLinks[1]!,
+  "PUT /api/health/links/:id": mockHealthLinks[1]!,
+  "DELETE /api/health/links/:id": { ok: true },
   "GET /api/health/history/:providerId/:checkId": {
     providerId: "cluster",
     checkId: "pods.crashloop",
@@ -650,6 +688,14 @@ export const apiMocks: ApiMocks = {
     finishedAt: now,
     steps: mockBundleRun.steps.map((step) => (step.state === "running" ? { ...step, state: "cancelled" } : step)),
   },
+
+  "POST /api/mcp": {
+    jsonrpc: "2.0",
+    id: 1,
+    result: { content: [{ type: "text", text: "{}" }], structuredContent: mockHealthBoard },
+  },
+  "GET /api/mcp": { error: "Method not allowed." },
+  "DELETE /api/mcp": { error: "Method not allowed." },
 
   "GET /api/onboarding/state": mockOnboarding,
   "POST /api/onboarding/steps/:step": mockOnboarding,

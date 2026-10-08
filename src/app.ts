@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import { MCP_PATH } from "./contracts/mcp.js";
 import type { ModuleStatus } from "./contracts/system.js";
 import { apiErrorHandler } from "./runtime/http.js";
 import type { Runtime } from "./runtime/index.js";
@@ -15,6 +16,13 @@ export function createApp(runtime: Runtime, options: AppOptions = {}): Express {
   app.disable("x-powered-by");
 
   platform.early(app);
+
+  // MCP clients are given the short path; it is served by the mcp module's
+  // /api/mcp so it passes through the same authentication as the rest of /api.
+  app.use((req, _res, next) => {
+    if (req.path === MCP_PATH) req.url = `/api/mcp${req.url.slice(MCP_PATH.length)}`;
+    next();
+  });
 
   // Unauthenticated: k8s probes hit these and they disclose nothing.
   // /healthz is readiness and fails during a drain so the Service stops

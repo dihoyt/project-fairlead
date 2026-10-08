@@ -94,7 +94,8 @@ export interface CategoryDetail {
   category: Category;
   status: Status;
   providers: ProviderState[];
-  // Native UIs configured in settings for this category.
+  // Native UIs configured in settings for this category, then the custom
+  // links added through the API (GET /api/health/links).
   links: Array<{ label: string; url: string }>;
 }
 
@@ -108,4 +109,27 @@ export interface CheckHistory {
   providerId: string;
   checkId: string;
   points: CheckHistoryPoint[];
+}
+
+// A link shown on a category page. "settings" links come from the
+// health.links setting (the wizard's Links step writes it) and are read-only
+// here; "custom" ones are added through the API (and MCP) and can be changed
+// or deleted there.
+export interface HealthLinkView {
+  // "settings:<category>:<index>" for a settings link.
+  id: string;
+  category: Category;
+  label: string;
+  // http(s) only.
+  url: string;
+  source: "settings" | "custom";
+  createdBy?: string;
+  createdAt?: string;
+}
+
+export interface HealthLinkRequest {
+  category: Category;
+  // 1 to 80 characters.
+  label: string;
+  url: string;
 }

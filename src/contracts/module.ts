@@ -6,7 +6,7 @@ import type { BackupsRegistry } from "./backups.js";
 import type { EventBus, Events } from "./events.js";
 import type { Action, AuditLog, SecretStore, SettingsRegistry, User } from "./platform.js";
 import type { Logger, Migration, Scheduler, ServiceRegistry } from "./runtime.js";
-import type { ApiRoutes, PublicRouteKey } from "./api.js";
+import type { ApiRoutes, PublicRouteKey, RouteKey } from "./api.js";
 import type { RouteHandler } from "./routing.js";
 
 // Every planned module, Milestone A then B. Order here is not load order;
@@ -28,6 +28,7 @@ export const MODULE_IDS = [
   "onboarding",
   "catalog",
   "deploy",
+  "mcp",
   "connectors",
   "connector-cloudflare",
   "connector-entra",
@@ -36,6 +37,12 @@ export const MODULE_IDS = [
 ] as const;
 
 export type ModuleId = (typeof MODULE_IDS)[number];
+
+export interface CallInput<K extends RouteKey> {
+  params?: ApiRoutes[K]["params"];
+  query?: ApiRoutes[K]["query"];
+  body?: ApiRoutes[K]["body"];
+}
 
 export interface ModuleContext {
   moduleId: ModuleId;
@@ -67,6 +74,13 @@ export interface ModuleContext {
   can(user: User, action: Action): boolean;
   // Responds 403 and returns null when the caller may not do `action`.
   require(req: Request, res: Response, action: Action): User | null;
+  // Calls a JSON route from ./api.ts in-process, as the caller of `req`
+  // (Platform.vouch), through the same authentication, permission checks,
+  // validation and audit as any other request: what another module offers
+  // over HTTP without importing it. Resolves to the parsed 2xx body; rejects
+  // with an HttpError carrying the status and the route's error message.
+  // Not for streams or text bodies.
+  call<K extends RouteKey>(req: Request, key: K, input?: CallInput<K>): Promise<ApiRoutes[K]["response"]>;
   health: HealthRegistry;
   metrics: MetricsRegistry;
   backups: BackupsRegistry;

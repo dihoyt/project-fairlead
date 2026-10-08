@@ -1,0 +1,361 @@
+// The MCP server (module "mcp"): a streamable-HTTP endpoint at /mcp on the
+// same server, for Claude and other MCP clients. Every tool is a thin layer
+// over REST routes in ./api.ts, called as the caller (ModuleContext.call), so
+// a tool can do exactly what its routes allow and returns the shapes they
+// return. Callers authenticate with an API token (./auth.ts); a "read" token
+// sees only the read tools.
+//
+// Server-free on purpose: the client and the docs list the tools from here.
+
+import type { ApiTokenScope } from "./auth.js";
+import type { BackupPosture } from "./backups.js";
+import type { CatalogAppView, CatalogSlot, DiscoveryReport } from "./catalog.js";
+import type { CheckRequest, CheckView } from "./checks.js";
+import type {
+  BundlePlan,
+  BundleRequest,
+  BundleRunView,
+  DeployJobRequest,
+  DeployJobView,
+  DeployPlan,
+  DeployRequest,
+} from "./deploy.js";
+import type {
+  Category,
+  CategoryDetail,
+  CheckResult,
+  HealthBoard,
+  HealthLinkRequest,
+  HealthLinkView,
+} from "./health.js";
+import type { HostView } from "./hosts.js";
+import type { NodeSummary } from "./metrics.js";
+import type { LogLines, NamespaceView, PodView, WorkloadView } from "./workloads.js";
+
+// Where MCP clients connect, relative to the install's public URL. An alias
+// of POST /api/mcp, so it sits behind the same authentication.
+export const MCP_PATH = "/mcp";
+
+// The JSON-RPC 2.0 message bodies POST /mcp takes and answers with.
+export interface JsonRpcMessage {
+  jsonrpc: "2.0";
+  id?: string | number | null;
+  method?: string;
+  params?: unknown;
+  result?: unknown;
+  error?: { code: number; message: string; data?: unknown };
+}
+
+type None = Record<string, never>;
+
+// Structured results are objects (MCP's structuredContent), so a list comes
+// back as { items }.
+interface Items<T> {
+  items: T[];
+}
+
+// Partial update: what is omitted keeps its current value. secret follows
+// CheckRequest: omitted keeps the stored one, "" removes it.
+export type UpdateCheckInput = { id: string } & Partial<CheckRequest>;
+
+export interface McpTools {
+  // --- read ------------------------------------------------------------------
+  // GET /api/health/board
+  get_health_board: { input: None; result: HealthBoard };
+  // GET /api/health/categories/:category
+  get_health_category: { input: { category: Category }; result: CategoryDetail };
+  // GET /api/metrics-k8s/nodes
+  list_nodes: { input: None; result: Items<NodeSummary> };
+  // GET /api/workloads/namespaces
+  list_namespaces: { input: None; result: Items<NamespaceView> };
+  // GET /api/workloads/namespaces/:namespace/workloads
+  list_workloads: { input: { namespace: string }; result: Items<WorkloadView> };
+  // GET /api/workloads/namespaces/:namespace/pods
+  list_pods: { input: { namespace: string; workload?: string }; result: Items<PodView> };
+  // GET /api/checks
+  list_checks: { input: None; result: Items<CheckView> };
+  // GET /api/health/links
+  list_links: { input: { category?: Category }; result: Items<HealthLinkView> };
+  // GET /api/backups/posture
+  get_backup_posture: { input: None; result: BackupPosture };
+  // GET /api/catalog/apps
+  list_catalog_apps: { input: { slot?: CatalogSlot }; result: Items<CatalogAppView> };
+  // GET /api/catalog/discovery
+  get_discovery: { input: None; result: DiscoveryReport };
+  // GET /api/deploy/jobs, newest first. limit: 1 to 100, default 20.
+  list_deploy_jobs: { input: { appId?: string; limit?: number }; result: Items<DeployJobView> };
+  // GET /api/deploy/jobs/:id/logs (redacted). tail: 1 to 2000 lines.
+  get_deploy_job_logs: { input: { id: string; tail?: number }; result: LogLines };
+  // GET /api/deploy/bundles, newest first.
+  list_bundle_runs: { input: None; result: Items<BundleRunView> };
+  // GET /api/hosts. Never carries a credential.
+  list_hosts: { input: None; result: Items<HostView> };
+
+  // --- write (a "write" token) ----------------------------------------------
+  // POST /api/checks
+  create_check: { input: CheckRequest; result: CheckView };
+  // GET /api/checks, then PUT /api/checks/:id with the merged request.
+  update_check: { input: UpdateCheckInput; result: CheckView };
+  // DELETE /api/checks/:id
+  delete_check: { input: { id: string }; result: { ok: true } };
+  // POST /api/checks/:id/run
+  run_check: { input: { id: string }; result: CheckResult };
+  // The checks page's "Accept this status": records the HTTP status the last
+  // run failed or warned on as expected, then re-runs the check. Refused when
+  // the last run did not fail on an HTTP status below 500.
+  accept_check_status: { input: { id: string }; result: CheckView };
+  // POST /api/health/links
+  create_link: { input: HealthLinkRequest; result: HealthLinkView };
+  // PUT /api/health/links/:id; custom links only.
+  update_link: { input: { id: string } & Partial<HealthLinkRequest>; result: HealthLinkView };
+  // DELETE /api/health/links/:id; custom links only.
+  delete_link: { input: { id: string }; result: { ok: true } };
+  // POST /api/deploy/plan; runs nothing.
+  plan_app_deploy: { input: DeployRequest; result: DeployPlan };
+  // POST /api/deploy/jobs
+  deploy_app: { input: DeployJobRequest; result: DeployJobView };
+  // POST /api/deploy/bundles/plan; runs nothing.
+  plan_bundle: { input: BundleRequest; result: BundlePlan };
+  // POST /api/deploy/bundles
+  start_bundle: { input: BundleRequest; result: BundleRunView };
+}
+
+export type McpToolName = keyof McpTools;
+
+export interface McpToolSpec {
+  name: McpToolName;
+  title: string;
+  // One or two sentences an agent reads to pick the tool.
+  description: string;
+  // The token scope that lists and allows it.
+  scope: ApiTokenScope;
+  // Changes nothing outside this app's reads.
+  readOnly: boolean;
+  // Removes or replaces something.
+  destructive: boolean;
+}
+
+// Every tool, in the order clients list them.
+export const MCP_TOOLS: readonly McpToolSpec[] = [
+  {
+    name: "get_health_board",
+    title: "Health board",
+    description:
+      "Overall status and one tile per category (cluster, storage, backups, gitops, hosts, checks) with its worst issue.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "get_health_category",
+    title: "Health category",
+    description: "Every provider and check result in one category, with the native UI links for it.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_nodes",
+    title: "Nodes",
+    description: "Kubernetes nodes with readiness, roles, CPU and memory use.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_namespaces",
+    title: "Namespaces",
+    description: "Namespaces with workload and pod counts and unhealthy pods.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_workloads",
+    title: "Workloads",
+    description: "Deployments, StatefulSets, DaemonSets, Jobs and CronJobs in a namespace with readiness and images.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_pods",
+    title: "Pods",
+    description: "Pods in a namespace, optionally only one workload's, with phase, restarts and containers.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_checks",
+    title: "HTTP and TCP checks",
+    description: "Every HTTP/TCP check with its settings and last result.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_links",
+    title: "Links",
+    description: "Links shown on the category pages: settings links (read-only) and custom ones.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "get_backup_posture",
+    title: "Backup posture",
+    description: "Every PVC with whether and how it is backed up, last backup age and restore-test marks.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_catalog_apps",
+    title: "App catalog",
+    description: "Apps that can be deployed, their inputs, and whether discovery found each installed.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "get_discovery",
+    title: "Discovery",
+    description: "What the cluster already has: installed catalog apps, Ingress hosts, missing cluster basics.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_deploy_jobs",
+    title: "Recent deploys",
+    description: "Deploy jobs, newest first, optionally for one app.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "get_deploy_job_logs",
+    title: "Deploy logs",
+    description: "A deploy job's log, with secret values redacted.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_bundle_runs",
+    title: "Bundle runs",
+    description: "Bundle rollouts, newest first, with each step's state.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_hosts",
+    title: "Hosts",
+    description: "SSH-monitored hosts (servers, NAS) with status and facts.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "create_check",
+    title: "Add a check",
+    description: "Adds an HTTP or TCP check that shows up on the Checks page and the health board.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "update_check",
+    title: "Change a check",
+    description: "Changes the given fields of a check; the rest keep their values.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "delete_check",
+    title: "Delete a check",
+    description: "Deletes a check and its stored secret.",
+    scope: "write",
+    readOnly: false,
+    destructive: true,
+  },
+  {
+    name: "run_check",
+    title: "Run a check now",
+    description: "Runs a check immediately and returns the result.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "accept_check_status",
+    title: "Accept a check's status",
+    description:
+      "Records the HTTP status a check last failed or warned on as expected (a login page's 401, say) and re-runs it.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "create_link",
+    title: "Add a link",
+    description: "Adds a link to a tool's UI on a category page (cluster, storage, apps...).",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "update_link",
+    title: "Change a link",
+    description: "Changes a custom link's category, label or URL.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "delete_link",
+    title: "Delete a link",
+    description: "Deletes a custom link.",
+    scope: "write",
+    readOnly: false,
+    destructive: true,
+  },
+  {
+    name: "plan_app_deploy",
+    title: "Preview an app deploy",
+    description:
+      "Resolves defaults and validates inputs for deploying a catalog app; shows commands and values; runs nothing.",
+    scope: "write",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "deploy_app",
+    title: "Deploy an app",
+    description:
+      "Starts a deploy job for a catalog app (mode install, or dry-run to render only). Preview with plan_app_deploy first.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "plan_bundle",
+    title: "Preview a bundle",
+    description: "Every step of a bundle rollout with what would be skipped; runs nothing.",
+    scope: "write",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "start_bundle",
+    title: "Roll out a bundle",
+    description:
+      "Starts a bundle rollout, one deploy job per app, stopping at the first failure. Preview with plan_bundle first.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+];
