@@ -1,4 +1,4 @@
-import type { CatalogEntry, CatalogInput, InstallSource } from "../../contracts/catalog.js";
+import type { CatalogEntry, CatalogInput, DiskFootprint, InstallSource } from "../../contracts/catalog.js";
 import { NTFY_VERSION, ntfyManifest } from "./manifests/ntfy.js";
 
 // Versions are pinned to stable releases; moving one is a catalog change,
@@ -21,7 +21,7 @@ const helm = (
   more: { kubeVersion?: string; fallbacks?: Array<{ version: string; kubeVersion?: string }> } = {}
 ): InstallSource => ({ kind: "helm", repo, chart, version, ...more });
 
-export const catalog: readonly CatalogEntry[] = [
+const entries: CatalogEntry[] = [
   {
     id: "cert-manager",
     name: "cert-manager",
@@ -170,7 +170,7 @@ export const catalog: readonly CatalogEntry[] = [
       { key: "adminPassword", label: "Admin password", kind: "secret", required: true },
     ],
     exposesUi: true,
-    storage: "10Gi",
+    storage: "5Gi",
     prerequisites: [],
   },
   {
@@ -185,7 +185,7 @@ export const catalog: readonly CatalogEntry[] = [
     requires: [],
     inputs: [host(), { key: "adminPassword", label: "Admin password", kind: "secret", required: true }],
     exposesUi: true,
-    storage: "5Gi",
+    storage: "2Gi",
     prerequisites: [],
   },
   {
@@ -199,7 +199,7 @@ export const catalog: readonly CatalogEntry[] = [
     requires: [],
     inputs: [host(), { key: "adminEmail", label: "Admin email", kind: "text", required: true }],
     exposesUi: true,
-    storage: "8Gi",
+    storage: "4Gi",
     prerequisites: [],
   },
   {
@@ -253,7 +253,7 @@ export const catalog: readonly CatalogEntry[] = [
     requires: [],
     inputs: [host()],
     exposesUi: true,
-    storage: "1Gi",
+    storage: "512Mi",
     prerequisites: [],
   },
   {
@@ -294,3 +294,43 @@ export const catalog: readonly CatalogEntry[] = [
     prerequisites: ["A Tailscale account and an OAuth client with the Devices Core and Auth Keys scopes."],
   },
 ];
+
+// Unpacked image sizes of each pinned version, rounded up, in MiB: every
+// image a default install pulls, sidecars included. Images a DaemonSet
+// runs (Longhorn, Velero's node agent) land on every node; counted once.
+const imageMiB: Record<string, number> = {
+  "cert-manager": 300,
+  traefik: 200,
+  "metrics-server": 80,
+  "local-path-provisioner": 80,
+  longhorn: 2600,
+  rancher: 3000,
+  headlamp: 250,
+  gitea: 250,
+  grafana: 500,
+  // The server image and Postgres.
+  authentik: 1300,
+  // Velero, its AWS plugin and the node agent (same image).
+  velero: 350,
+  ntfy: 60,
+  cloudflared: 80,
+  "tailscale-operator": 250,
+};
+
+const MiB = 1024 ** 2;
+const UNITS: Record<string, number> = { Mi: MiB, Gi: 1024 * MiB, Ti: 1024 * 1024 * MiB };
+
+const quantity = (size: string | undefined): number => {
+  const m = /^(\d+)(Mi|Gi|Ti)$/.exec(size ?? "");
+  return m ? Number(m[1]) * UNITS[m[2]!]! : 0;
+};
+
+// Volumes are the app's `storage`: no default install here creates a second PVC.
+const footprint = (entry: CatalogEntry): DiskFootprint => ({
+  volumeBytes: quantity(entry.storage),
+  imageBytes: (imageMiB[entry.id] ?? 0) * MiB,
+});
+
+export const catalog: readonly CatalogEntry[] = entries.map((entry) =>
+  entry.install.kind === "patch" ? entry : { ...entry, disk: footprint(entry) }
+);

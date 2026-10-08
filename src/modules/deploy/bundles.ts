@@ -11,6 +11,7 @@ import type {
   DeployValue,
 } from "../../contracts/deploy.js";
 import type { ModuleContext } from "../../contracts/module.js";
+import { checkDisk } from "../../contracts/disk.js";
 import { HttpError } from "../../runtime/http.js";
 import { errorMessage } from "../../runtime/log.js";
 import type { Defaults } from "./apps.js";
@@ -293,10 +294,17 @@ export class Bundles {
       out.push({ appId: step.appId, skip: false, plan });
     }
     const errors = this.sharedErrors(bundle, request);
+    const disk = checkDisk(
+      out.flatMap((step) => (step.skip ? [] : (this.entry(step.appId)?.disk ?? []))),
+      found.discovery?.nodeDisks
+    );
+    const noRoom = disk.status === "crit";
     return {
       bundleId: bundle.id,
-      allowed: errors.length === 0 && out.every((step) => step.skip || step.plan?.allowed),
+      allowed: errors.length === 0 && !noRoom && out.every((step) => step.skip || step.plan?.allowed),
+      ...(noRoom ? { blockedBy: disk.detail } : {}),
       steps: out,
+      disk,
     };
   }
 
@@ -316,7 +324,13 @@ export class Bundles {
     if (!plan.allowed) {
       const shared = this.sharedErrors(bundle, request)[0];
       const blocked = plan.steps.find((step) => !step.skip && !step.plan?.allowed);
-      throw new HttpError(400, shared ?? `${blocked?.appId}: ${blocked?.plan?.blockedBy ?? "not allowed"}`);
+      throw new HttpError(
+        400,
+        shared ??
+          (blocked
+            ? `${blocked.appId}: ${blocked.plan?.blockedBy ?? "not allowed"}`
+            : (plan.blockedBy ?? "not allowed"))
+      );
     }
     const inserted = this.runs.insert(
       {

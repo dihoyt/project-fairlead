@@ -1,10 +1,15 @@
 import { afterEach, test } from "node:test";
 import assert from "node:assert/strict";
-import type { CatalogBundle, CatalogEntry } from "../../../src/contracts/catalog.js";
+import type { CatalogBundle, CatalogEntry, DiscoveryReport } from "../../../src/contracts/catalog.js";
 import type { BundlePlan, BundleRunView, DeployJobView } from "../../../src/contracts/deploy.js";
 import type { Events } from "../../../src/contracts/events.js";
 import { RESOURCES, type KubeObject } from "../../../src/contracts/k8s.js";
-import { createMockCatalogService, mockBundle, mockCatalog } from "../../../src/contracts/mocks/catalog.js";
+import {
+  createMockCatalogService,
+  mockBundle,
+  mockCatalog,
+  mockDiscovery,
+} from "../../../src/contracts/mocks/catalog.js";
 import { createMockContext, type MockContext } from "../../../src/contracts/mocks/context.js";
 import { createFakeK8s, type FakeK8s } from "../../../src/contracts/mocks/k8s.js";
 import { MOCK_NOW } from "../../../src/contracts/mocks/time.js";
@@ -41,12 +46,19 @@ interface Env {
 }
 let env: Env | undefined;
 
-async function setup(bundles?: CatalogBundle[]): Promise<Env> {
+async function setup(bundles?: CatalogBundle[], discovery?: DiscoveryReport): Promise<Env> {
   const k8s = createFakeK8s();
   const mock = createMockContext("deploy", {
     migrations: mod.migrations,
     settings: { "deploy.image": IMAGE, "deploy.namespace": NS },
-    services: { k8s, catalog: createMockCatalogService({ entries, ...(bundles ? { bundles } : {}) }) },
+    services: {
+      k8s,
+      catalog: createMockCatalogService({
+        entries,
+        ...(bundles ? { bundles } : {}),
+        ...(discovery ? { discovery } : {}),
+      }),
+    },
   });
   const { deployer } = registerDeploy(mock.ctx, { now: () => MOCK_NOW });
   const finished: Env["finished"] = [];
@@ -241,4 +253,36 @@ test("bundle cancel stops the running job and leaves the rest pending", async ()
   await settle();
   assert.deepEqual(e.finished, [{ runId: "br_1", bundleId: "self-hosted", state: "cancelled" }]);
   await call(e, "POST", "/bundles/br_1/cancel", undefined, 409);
+});
+
+test("bundle plan: checks the disk the rollout needs against the nodes' free space", async () => {
+  const roomy = await setup();
+  const plan = await call<BundlePlan>(roomy, "POST", "/bundles/plan", { bundleId: "self-hosted", inputs: answers });
+  assert.equal(plan.disk?.status, "ok");
+  assert.equal(plan.disk?.nodesRead, 2);
+  assert.ok(plan.disk!.volumeBytes > 0 && plan.disk!.imageBytes > 0);
+  assert.equal(plan.allowed, true);
+  roomy.deployer.stop();
+  await roomy.server.close();
+  await roomy.mock.close();
+  env = undefined;
+
+  const GiB = 1024 ** 3;
+  const small = await setup(undefined, {
+    ...mockDiscovery,
+    nodeDisks: [{ node: "node-1", availableBytes: 3 * GiB, capacityBytes: 30 * GiB }],
+  });
+  const blocked = await call<BundlePlan>(small, "POST", "/bundles/plan", { bundleId: "self-hosted", inputs: answers });
+  assert.equal(blocked.disk?.status, "crit");
+  assert.equal(blocked.allowed, false);
+  assert.match(blocked.blockedBy ?? "", /the node has 3 GiB free of 30 GiB\. That is .* short/);
+  assert.ok(blocked.steps.every((step) => step.skip || step.plan?.allowed));
+  const refused = await call<{ error: string }>(
+    small,
+    "POST",
+    "/bundles",
+    { bundleId: "self-hosted", inputs: answers },
+    400
+  );
+  assert.match(JSON.stringify(refused), /short: free some space/);
 });
