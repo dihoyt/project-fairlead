@@ -2,7 +2,9 @@ import { z } from "zod";
 import type { ApiRoutes, RouteKey } from "../../contracts/api.js";
 import type { CheckRequest, CheckView } from "../../contracts/checks.js";
 import { CATEGORIES } from "../../contracts/health.js";
-import type { McpToolName, McpTools } from "../../contracts/mcp.js";
+import type { CatalogAppView, DiscoveryReport } from "../../contracts/catalog.js";
+import type { AccessView } from "../../contracts/deploy.js";
+import type { CatalogAppSummary, McpToolName, McpTools } from "../../contracts/mcp.js";
 import type { CallInput } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
 
@@ -88,6 +90,37 @@ const removeRequest = {
 
 const items = <T>(list: T[]) => ({ items: list });
 
+const httpsFirst = (a: string, b: string) => Number(b.startsWith("https:")) - Number(a.startsWith("https:"));
+
+// The scheme people reach each host with: behind the Cloudflare tunnel
+// the edge serves https whatever the Ingress has.
+function published(report: DiscoveryReport, access: AccessView): DiscoveryReport {
+  const edge = new Set(access.hosts.filter((h) => h.url.startsWith("https://")).map((h) => h.host.toLowerCase()));
+  const upgraded = new Map<string, string>();
+  const ingressHosts = report.ingressHosts.map((h) => {
+    if (h.tls || !edge.has(h.host.toLowerCase())) return h;
+    const url = `https://${h.host}`;
+    upgraded.set(h.url, url);
+    return { ...h, url, edgeTls: true };
+  });
+  const apps = report.apps.map((app) => ({
+    ...app,
+    urls: app.urls.map((u) => upgraded.get(u) ?? u).toSorted(httpsFirst),
+  }));
+  return { ...report, ingressHosts, apps };
+}
+
+const summaryOf = (app: CatalogAppView): CatalogAppSummary => ({
+  id: app.id,
+  name: app.name,
+  summary: app.summary,
+  slots: app.slots,
+  requires: app.requires,
+  installed: app.detected.state,
+  urls: app.detected.urls,
+  inputs: app.inputs,
+});
+
 // An empty expectStatus means any 2xx or 3xx; accepting one more code has to
 // spell those out, or the check would fail once the target answers 200 again.
 const USUAL_OK = [200, 204, 301, 302, 303, 307, 308];
@@ -135,9 +168,19 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
   list_nodes: { input: z.object({}), run: async (call) => items(await call("GET /api/metrics-k8s/nodes")) },
   list_namespaces: { input: z.object({}), run: async (call) => items(await call("GET /api/workloads/namespaces")) },
   list_workloads: {
-    input: z.object({ namespace: namespaceArg }),
-    run: async (call, { namespace }) =>
-      items(await call("GET /api/workloads/namespaces/:namespace/workloads", { params: { namespace } })),
+    input: z.object({
+      namespace: namespaceArg.optional().describe("Kubernetes namespace. Default: every namespace."),
+      includeFinished: z.boolean().optional().describe("Also list Jobs that finished successfully."),
+    }),
+    run: async (call, { namespace, includeFinished }) => {
+      const namespaces = namespace ? [namespace] : (await call("GET /api/workloads/namespaces")).map((n) => n.name);
+      const lists = await Promise.all(
+        namespaces.map((ns) =>
+          call("GET /api/workloads/namespaces/:namespace/workloads", { params: { namespace: ns } })
+        )
+      );
+      return items(lists.flat().filter((w) => includeFinished || w.finished !== "complete"));
+    },
   },
   list_pods: {
     input: z.object({
@@ -160,10 +203,25 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
   },
   get_backup_posture: { input: z.object({}), run: (call) => call("GET /api/backups/posture") },
   list_catalog_apps: {
-    input: z.object({ slot: z.string().optional().describe('Wizard slot, e.g. "links", "sign-in", "backups".') }),
-    run: async (call, { slot }) => items(await call("GET /api/catalog/apps", { query: slot ? { slot } : {} })),
+    input: z.object({
+      slot: z.string().optional().describe('Wizard slot, e.g. "links", "sign-in", "backups".'),
+      detail: z.boolean().optional().describe("Whole entries, install source and manifests included."),
+    }),
+    run: async (call, { slot, detail }) => {
+      const apps = await call("GET /api/catalog/apps", { query: slot ? { slot } : {} });
+      return detail ? items(apps) : items(apps.map(summaryOf));
+    },
   },
-  get_discovery: { input: z.object({}), run: (call) => call("GET /api/catalog/discovery") },
+  get_discovery: {
+    input: z.object({}),
+    run: async (call) => {
+      const [report, access] = await Promise.all([
+        call("GET /api/catalog/discovery"),
+        call("GET /api/deploy/access").catch(() => undefined),
+      ]);
+      return access ? published(report, access) : report;
+    },
+  },
   list_deploy_jobs: {
     input: z.object({ appId: z.string().optional(), limit: z.number().int().min(1).max(100).optional() }),
     run: async (call, { appId, limit }) =>

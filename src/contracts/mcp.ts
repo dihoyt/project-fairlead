@@ -9,7 +9,7 @@
 
 import type { ApiTokenScope } from "./auth.js";
 import type { BackupPosture } from "./backups.js";
-import type { CatalogAppView, CatalogSlot, DiscoveryReport } from "./catalog.js";
+import type { CatalogAppView, CatalogInput, CatalogSlot, DetectState, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
 import type { EntraGroup, EntraSignInRequest, EntraSignInView } from "./connectors.js";
 import type {
@@ -62,6 +62,20 @@ interface Items<T> {
 export type UpdateCheckInput = { id: string } & Partial<CheckRequest>;
 
 // A template instance to remove, by its name (TemplateInstance.name).
+// list_catalog_apps without detail: enough to pick an app and fill its
+// inputs, without each entry's install source.
+export interface CatalogAppSummary {
+  id: string;
+  name: string;
+  summary: string;
+  slots: CatalogSlot[];
+  requires: string[];
+  // DetectedApp.state, and its URLs when installed.
+  installed: DetectState;
+  urls: string[];
+  inputs: CatalogInput[];
+}
+
 export interface RemoveTemplateAppInput {
   name: string;
   // Also delete its namespace and volumes. Default false: they stay.
@@ -78,8 +92,11 @@ export interface McpTools {
   list_nodes: { input: None; result: Items<NodeSummary> };
   // GET /api/workloads/namespaces
   list_namespaces: { input: None; result: Items<NamespaceView> };
-  // GET /api/workloads/namespaces/:namespace/workloads
-  list_workloads: { input: { namespace: string }; result: Items<WorkloadView> };
+  // GET /api/workloads/namespaces/:namespace/workloads; without namespace,
+  // every namespace from GET /api/workloads/namespaces. Jobs that finished
+  // successfully (WorkloadView.finished "complete") are left out unless
+  // includeFinished.
+  list_workloads: { input: { namespace?: string; includeFinished?: boolean }; result: Items<WorkloadView> };
   // GET /api/workloads/namespaces/:namespace/pods
   list_pods: { input: { namespace: string; workload?: string }; result: Items<PodView> };
   // GET /api/checks
@@ -88,9 +105,15 @@ export interface McpTools {
   list_links: { input: { category?: Category }; result: Items<HealthLinkView> };
   // GET /api/backups/posture
   get_backup_posture: { input: None; result: BackupPosture };
-  // GET /api/catalog/apps
-  list_catalog_apps: { input: { slot?: CatalogSlot }; result: Items<CatalogAppView> };
-  // GET /api/catalog/discovery
+  // GET /api/catalog/apps: CatalogAppSummary per app, the whole
+  // CatalogAppView (install source, manifest included) with detail.
+  list_catalog_apps: {
+    input: { slot?: CatalogSlot; detail?: boolean };
+    result: Items<CatalogAppSummary> | Items<CatalogAppView>;
+  };
+  // GET /api/catalog/discovery, with the published scheme from
+  // GET /api/deploy/access: hosts the access mode serves over https
+  // (AccessHost.url) get that url and edgeTls, and app URLs follow.
   get_discovery: { input: None; result: DiscoveryReport };
   // GET /api/deploy/jobs, newest first. limit: 1 to 100, default 20.
   list_deploy_jobs: { input: { appId?: string; limit?: number }; result: Items<DeployJobView> };
@@ -201,7 +224,8 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
   {
     name: "list_workloads",
     title: "Workloads",
-    description: "Deployments, StatefulSets, DaemonSets, Jobs and CronJobs in a namespace with readiness and images.",
+    description:
+      "Deployments, StatefulSets, DaemonSets, Jobs and CronJobs with readiness and images, in one namespace or all; finished Jobs only with includeFinished.",
     scope: "read",
     readOnly: true,
     destructive: false,
@@ -241,7 +265,8 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
   {
     name: "list_catalog_apps",
     title: "App catalog",
-    description: "Apps that can be deployed, their inputs, and whether discovery found each installed.",
+    description:
+      "Apps that can be deployed, their inputs, and whether discovery found each installed; detail for the install source.",
     scope: "read",
     readOnly: true,
     destructive: false,

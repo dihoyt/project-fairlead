@@ -154,7 +154,8 @@ export interface DetectedApp {
   // The chart version from Helm's helm.sh/chart label ("gitea-12.7.0" ->
   // "12.7.0"), when its objects carry one.
   chartVersion?: string;
-  // URLs from its Ingresses, https first.
+  // URLs from its Ingresses, https first (the MCP get_discovery tool:
+  // with the scheme IngressHost.url gives there).
   urls: string[];
   // What the judgement was made on: "Deployment longhorn-system/longhorn-ui
   // (app.kubernetes.io/name=longhorn-ui)", or why it is unknown.
@@ -170,9 +171,15 @@ export interface CatalogAppView extends CatalogEntry {
 
 export interface IngressHost {
   host: string;
-  // https:// when the Ingress has a TLS entry for the host, else http://.
+  // https:// when the Ingress has a TLS entry for the host, else http://
+  // (the MCP get_discovery tool: https:// with edgeTls too).
   url: string;
+  // The Ingress has a TLS entry for the host.
   tls: boolean;
+  // TLS ends in front of the cluster, at Cloudflare's edge for a host the
+  // access mode routes through the tunnel, though the Ingress serves http.
+  // Set only by the MCP get_discovery tool, from GET /api/deploy/access.
+  edgeTls?: boolean;
   namespace: string;
   ingress: string;
   // The backend Service of the first rule for this host.
