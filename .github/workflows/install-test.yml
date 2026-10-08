@@ -74,7 +74,10 @@ jobs:
           sudo mkdir -p /var/lib/rancher/k3s/agent/images
           sudo cp "$RUNNER_TEMP/image.tar" /var/lib/rancher/k3s/agent/images/
           sudo rm -f "$(command -v helm)"
+          # Without a kubectl of its own the k3s installer links kubectl to k3s,
+          # as on a fresh host.
           ! kubectl get --raw /readyz --request-timeout=5s
+          sudo rm -f "$(command -v kubectl)"
       - name: First install, piped as curl | sh would
         run: |
           # The log keeps the password out of the job output, which is public with the repo.
@@ -87,9 +90,13 @@ jobs:
           echo "PASSWORD=$password" >> "$GITHUB_ENV"
           scripts/install/assert-install.sh "$RUNNER_TEMP/first.log" "$password"
           sudo k3s kubectl -n "$NS" get secret "$RELEASE-secrets" -o jsonpath='{.metadata.uid}{.data}' > "$RUNNER_TEMP/secret.before"
-      - name: Re-run upgrades in place and keeps the password
+      - name: Re-run as root upgrades in place and keeps the password
         run: |
-          sh install.sh --yes --chart ./chart | tee "$RUNNER_TEMP/second.log"
+          # As root, k3s's kubectl reaches the cluster with no kubeconfig while
+          # helm does not: the installer must hand both k3s.yaml.
+          [ "$(readlink -f "$(command -v kubectl)")" = "$(readlink -f "$(command -v k3s)")" ]
+          sudo sh install.sh --yes --chart ./chart | tee "$RUNNER_TEMP/second.log"
+          grep -q "^Using this host's k3s" "$RUNNER_TEMP/second.log"
           ! grep -q '^Password:' "$RUNNER_TEMP/second.log" || { echo "re-run printed the password"; exit 1; }
           sudo k3s kubectl -n "$NS" get secret "$RELEASE-secrets" -o jsonpath='{.metadata.uid}{.data}' > "$RUNNER_TEMP/secret.after"
           cmp -s "$RUNNER_TEMP/secret.before" "$RUNNER_TEMP/secret.after" || { echo "re-run changed the Secret"; exit 1; }
