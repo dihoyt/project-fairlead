@@ -293,4 +293,6 @@ export interface DeployedRelease {
 export interface DeployService {
   // The latest install or upgrade job per release, newest first; dry runs excluded.
   releases(): Promise<DeployedRelease[]>;
+  // What GET /api/deploy/access answers, for work that runs without a request.
+  access(): Promise<AccessView>;
 }

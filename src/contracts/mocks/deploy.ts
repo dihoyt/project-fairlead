@@ -1,4 +1,5 @@
-import type { DeployedRelease, DeployService } from "../deploy.js";
+import type { AccessView, DeployedRelease, DeployService } from "../deploy.js";
+import { mockAccess } from "./catalog.js";
 
 // Headlamp installed by the runner, Longhorn's install failed.
 export const mockDeployedReleases: DeployedRelease[] = [
@@ -6,6 +7,9 @@ export const mockDeployedReleases: DeployedRelease[] = [
   { appId: "longhorn", release: "longhorn", namespace: "longhorn-system", jobId: "dj_3", state: "failed" },
 ];
 
-export function createMockDeployService(releases: DeployedRelease[] = mockDeployedReleases): DeployService {
-  return { releases: async () => structuredClone(releases) };
+export function createMockDeployService(
+  releases: DeployedRelease[] = mockDeployedReleases,
+  access: AccessView = mockAccess
+): DeployService {
+  return { releases: async () => structuredClone(releases), access: async () => structuredClone(access) };
 }
