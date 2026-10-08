@@ -11,10 +11,11 @@
 //   GET   /api/v3/providers/oauth2/{pk}/               client_id, client_secret, redirect_uris
 //   POST  /api/v3/providers/oauth2/                    authorization_flow and invalidation_flow
 //                                                      (flow pks) and redirect_uris
-//                                                      [{ matching_mode, url }] are required
-//   PATCH /api/v3/providers/oauth2/{pk}/               { redirect_uris }
+//                                                      [{ matching_mode, url }] are required;
+//                                                      grant_types defaults to none
+//   PATCH /api/v3/providers/oauth2/{pk}/               { redirect_uris, grant_types }
 //   GET   /api/v3/flows/instances/?slug= | ?designation=
-//   GET   /api/v3/propertymappings/provider/scope/?managed=
+//   GET   /api/v3/propertymappings/provider/scope/?page_size=100   managed, pk
 //   GET   /api/v3/crypto/certificatekeypairs/?has_key=true
 // The default flows and scope mappings are the ones Authentik's own
 // blueprints create; the profile scope carries the "groups" claim.
@@ -24,6 +25,9 @@ const TIMEOUT_MS = 15_000;
 const AUTHORIZATION_FLOW = "default-provider-authorization-implicit-consent";
 const INVALIDATION_FLOW = "default-provider-invalidation-flow";
 const SCOPE_MAPPINGS = ["openid", "email", "profile"].map((scope) => `goauthentik.io/providers/oauth2/scope-${scope}`);
+// A provider made through the API starts with no grant types, and the
+// authorize endpoint then refuses the code flow.
+const GRANT_TYPES = ["authorization_code", "refresh_token"];
 const SELF_SIGNED = "authentik Self-signed Certificate";
 
 export class AuthentikError extends Error {}
@@ -60,6 +64,7 @@ interface Provider {
   client_id: string;
   client_secret: string;
   redirect_uris: RedirectUri[];
+  grant_types?: string[];
 }
 
 interface Application {
@@ -140,12 +145,20 @@ async function flowPk(api: Client, slug: string, designation: string): Promise<s
 }
 
 async function newProvider(api: Client, target: AuthentikTarget): Promise<Provider> {
-  const mappings: string[] = [];
-  for (const managed of SCOPE_MAPPINGS) {
-    const mapping = await api.first<{ pk: string }>(
-      `/propertymappings/provider/scope/?managed=${encodeURIComponent(managed)}`
+  // Listed and matched here rather than filtered with ?managed=, which
+  // Authentik answers 400 for until its blueprints have created the mapping.
+  const scopes =
+    (
+      await api.call<{ results?: Array<{ pk: string; managed: string | null }> }>(
+        "GET",
+        "/propertymappings/provider/scope/?page_size=100"
+      )
+    )?.results ?? [];
+  const mappings = SCOPE_MAPPINGS.map((managed) => scopes.find((m) => m.managed === managed)?.pk);
+  if (mappings.some((pk) => pk === undefined)) {
+    throw new AuthentikError(
+      "Authentik is still setting itself up (its default scope mappings are missing). Try again in a minute."
     );
-    if (mapping !== null) mappings.push(mapping.pk);
   }
   const keys =
     (
@@ -161,6 +174,7 @@ async function newProvider(api: Client, target: AuthentikTarget): Promise<Provid
     invalidation_flow: await flowPk(api, INVALIDATION_FLOW, "invalidation"),
     client_type: "confidential",
     redirect_uris: [{ matching_mode: "strict", url: target.redirectUri }],
+    grant_types: GRANT_TYPES,
     property_mappings: mappings,
     sub_mode: "hashed_user_id",
     issuer_mode: "per_provider",
@@ -194,10 +208,17 @@ export async function wireAuthentik(target: AuthentikTarget): Promise<AuthentikO
   if (provider === null) {
     provider = await newProvider(api, target);
     providerState = "created";
-  } else if (!hasRedirect(provider, target.redirectUri)) {
-    const redirect_uris = [...(provider.redirect_uris ?? []), { matching_mode: "strict", url: target.redirectUri }];
-    provider = (await api.call<Provider>("PATCH", `/providers/oauth2/${provider.pk}/`, { redirect_uris })) ?? provider;
-    providerState = "updated";
+  } else {
+    const patch: Record<string, unknown> = {};
+    if (!hasRedirect(provider, target.redirectUri)) {
+      patch.redirect_uris = [...(provider.redirect_uris ?? []), { matching_mode: "strict", url: target.redirectUri }];
+    }
+    const grants = provider.grant_types ?? [];
+    if (!GRANT_TYPES.every((g) => grants.includes(g))) patch.grant_types = [...new Set([...grants, ...GRANT_TYPES])];
+    if (Object.keys(patch).length > 0) {
+      provider = (await api.call<Provider>("PATCH", `/providers/oauth2/${provider.pk}/`, patch)) ?? provider;
+      providerState = "updated";
+    }
   }
 
   if (existing === null) {

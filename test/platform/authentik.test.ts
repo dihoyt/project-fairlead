@@ -26,6 +26,8 @@ function sendJson(res: http.ServerResponse, status: number, value: unknown): voi
   res.end(JSON.stringify(value));
 }
 
+let scopeMappings = true;
+
 async function fakeAuthentik(token = "ak-admin-token"): Promise<FakeAuthentik> {
   let base = "";
   let nextPk = 1;
@@ -72,8 +74,17 @@ async function fakeAuthentik(token = "ak-admin-token"): Promise<FakeAuthentik> {
         );
       }
       if (path === "/propertymappings/provider/scope/") {
-        const managed = q.get("managed") ?? "";
-        return sendJson(res, 200, page([{ pk: `map-${managed.split("scope-")[1]}`, managed }]));
+        if (!scopeMappings) return sendJson(res, 200, page([]));
+        return sendJson(
+          res,
+          200,
+          page(
+            ["openid", "email", "profile", "offline_access"].map((scope) => ({
+              pk: `map-${scope}`,
+              managed: `goauthentik.io/providers/oauth2/scope-${scope}`,
+            }))
+          )
+        );
       }
       if (path === "/crypto/certificatekeypairs/")
         return sendJson(res, 200, page([{ pk: "key-1", name: "authentik Self-signed Certificate" }]));
@@ -124,6 +135,7 @@ let authentik: FakeAuthentik;
 let cookie = "";
 
 beforeEach(async () => {
+  scopeMappings = true;
   app = await boot();
   authentik = await fakeAuthentik();
   await app.makeUser("root", "root password!!", { role: "admin" });
@@ -173,6 +185,7 @@ test("wiring creates the provider and application, saves the settings and secret
   assert.equal(provider.invalidation_flow, "flow-inval");
   assert.equal(provider.client_type, "confidential");
   assert.equal(provider.signing_key, "key-1");
+  assert.deepEqual(provider.grant_types, ["authorization_code", "refresh_token"]);
   assert.deepEqual(provider.property_mappings, ["map-openid", "map-email", "map-profile"]);
   assert.deepEqual(provider.redirect_uris, [{ matching_mode: "strict", url: `${app.url}/auth/oidc/callback` }]);
   assert.deepEqual(authentik.applications.get(product.slug), {
@@ -223,6 +236,7 @@ test("a provider missing the redirect URI gets it added, and a half-finished run
     client_id: "client-7",
     client_secret: "secret-7",
     redirect_uris: [{ matching_mode: "strict", url: "https://old.example.test/auth/oidc/callback" }],
+    grant_types: ["refresh_token"],
   });
   const result = (await (
     await wire({ authentikUrl: authentik.url, token: authentik.token })
@@ -231,6 +245,7 @@ test("a provider missing the redirect URI gets it added, and a half-finished run
   assert.equal(result.application, "created");
   assert.equal(result.clientId, "client-7");
   assert.equal((authentik.providers.get(7)!.redirect_uris as unknown[]).length, 2);
+  assert.deepEqual(authentik.providers.get(7)!.grant_types, ["refresh_token", "authorization_code"]);
   assert.equal(authentik.applications.get(product.slug)!.provider, 7);
 });
 
@@ -282,4 +297,13 @@ test("with an apiUrl the token goes there and the issuer is built on the public 
   assert.equal(result.discovery.ok, false, "http issuers are refused by sign-in, and the result says why");
   assert.equal(authentik.applications.get(product.slug)!.provider, 1);
   assert.ok(authentik.requests.every((r) => r.auth === `Bearer ${authentik.token}`));
+});
+
+test("an Authentik still applying its blueprints is asked to wait, and nothing is created", async () => {
+  scopeMappings = false;
+  const res = await wire({ authentikUrl: authentik.url, token: authentik.token });
+  assert.equal(res.status, 502);
+  assert.match(((await res.json()) as { error: string }).error, /still setting itself up/);
+  assert.equal(authentik.providers.size, 0);
+  assert.equal(app.settings.string("auth.oidc.clientId"), "");
 });
