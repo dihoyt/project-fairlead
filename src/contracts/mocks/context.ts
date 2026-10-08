@@ -44,7 +44,8 @@ export interface MockContextOptions {
 
 export interface MockContext {
   ctx: ModuleContext;
-  // An express app with ctx.router mounted at /api/<moduleId>, for HTTP tests.
+  // An express app with ctx.router mounted at /api/<moduleId> and
+  // ctx.publicRouter at the root, for HTTP tests.
   app: express.Express;
   audit: AuditEntry[];
   // Every sample written through ctx.metrics.write, when the mock's sink is installed.
@@ -119,6 +120,7 @@ export function createMockContext(moduleId: ModuleId, options: MockContextOption
   const app = express();
   app.use(express.json());
   app.use(`/api/${moduleId}`, ctx.router);
+  app.use(ctx.publicRouter);
   app.use(apiErrorHandler(silentLogger));
 
   return {

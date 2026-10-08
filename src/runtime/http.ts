@@ -1,5 +1,5 @@
 import type { ErrorRequestHandler, NextFunction, Request, Response, Router } from "express";
-import type { RouteKey } from "../contracts/api.js";
+import { PUBLIC_ROUTES, type PublicRouteKey, type RouteKey } from "../contracts/api.js";
 import type { RouteHandler } from "../contracts/routing.js";
 import type { Logger } from "../contracts/runtime.js";
 
@@ -45,6 +45,50 @@ export function bindRoute<K extends RouteKey>(
       next(err);
     }
   });
+}
+
+// Binds a PUBLIC_ROUTES entry on a module's public router (mounted at the
+// app root), refusing one listed for another module or not listed at all.
+export function bindPublicRoute<K extends PublicRouteKey>(
+  router: Router,
+  moduleId: string,
+  key: K,
+  handler: RouteHandler<K>,
+  onError: ErrorRequestHandler
+): void {
+  const owner = (PUBLIC_ROUTES as Record<string, string>)[key];
+  if (owner !== moduleId) {
+    throw new Error(`Module "${moduleId}" cannot bind public route "${key}": PUBLIC_ROUTES doesn't list it for it.`);
+  }
+  const { method, path } = parseRouteKey(key);
+  router[method](path, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const body = await handler(req as never, res);
+      if (body !== undefined && !res.headersSent) res.json(body);
+    } catch (err) {
+      onError(err, req, res, next);
+    }
+  });
+}
+
+// Public routes answer in plain text: their callers are scripts, not the UI.
+export function publicErrorHandler(log: Logger): ErrorRequestHandler {
+  return (err: unknown, req, res, next) => {
+    if (res.headersSent) {
+      next(err);
+      return;
+    }
+    res.type("text/plain");
+    if (err instanceof HttpError) {
+      res.status(err.status).send(`${err.message}\n`);
+      return;
+    }
+    log.error("Unhandled public route error", {
+      path: req.route?.path,
+      error: err instanceof Error ? err.stack : String(err),
+    });
+    res.status(500).send("Internal error.\n");
+  };
 }
 
 export function apiErrorHandler(log: Logger): ErrorRequestHandler {

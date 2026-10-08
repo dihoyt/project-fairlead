@@ -155,3 +155,50 @@ test("HttpError from a handler becomes its status; anything else a 500", async (
     await app.close();
   }
 });
+
+test("a public route answers without an identity, outside /api, in plain text on error", async () => {
+  const { HttpError } = await import("../../src/runtime/http.js");
+  const mod: Module = {
+    id: "cluster",
+    milestone: "A",
+    register(ctx) {
+      ctx.publicRoute("GET /join/:token", (req, res) => {
+        if (req.params.token === "gone") throw new HttpError(404, "No such link.");
+        if (req.params.token === "boom") throw new Error("secret detail");
+        res.type("text/x-shellscript").send("echo hi\n");
+        return undefined;
+      });
+    },
+  };
+  const app = await boot({ modules: [mod], user: null });
+  try {
+    const ok = await fetch(`${app.url}/join/abc`);
+    assert.equal(ok.status, 200);
+    assert.equal(await ok.text(), "echo hi\n");
+    const gone = await fetch(`${app.url}/join/gone`);
+    assert.equal(gone.status, 404);
+    assert.equal(await gone.text(), "No such link.\n");
+    const broken = await fetch(`${app.url}/join/boom`);
+    assert.equal(broken.status, 500);
+    assert.equal(await broken.text(), "Internal error.\n");
+  } finally {
+    await app.close();
+  }
+});
+
+test("a module can bind only the public routes listed for it", async () => {
+  const greedy: Module = {
+    id: "hosts",
+    milestone: "A",
+    register(ctx) {
+      ctx.publicRoute("GET /join/:token", () => undefined);
+    },
+  };
+  const app = await boot({ modules: [greedy] });
+  try {
+    const status = (await (await fetch(`${app.url}/api/system/modules`)).json()) as Array<{ error?: string }>;
+    assert.match(status[0]!.error ?? "", /cannot bind public route/);
+  } finally {
+    await app.close();
+  }
+});

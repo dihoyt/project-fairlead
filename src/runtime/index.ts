@@ -75,7 +75,7 @@ export async function createRuntime(options: RuntimeOptions): Promise<Runtime> {
 
   const seen = new Set<string>();
   const statuses = new Map<string, ModuleStatus>();
-  const routers: Array<{ id: string; router: Router }> = [];
+  const routers: Array<{ id: string; router: Router; publicRouter: Router }> = [];
 
   for (const mod of options.modules) {
     if (seen.has(mod.id)) throw new Error(`Module "${mod.id}" is listed twice.`);
@@ -92,7 +92,7 @@ export async function createRuntime(options: RuntimeOptions): Promise<Runtime> {
     try {
       await mod.register(ctx);
       status.registered = true;
-      routers.push({ id: mod.id, router: ctx.router });
+      routers.push({ id: mod.id, router: ctx.router, publicRouter: ctx.publicRouter });
     } catch (err) {
       status.error = errorMessage(err);
       log.error("Module failed to register", { module: mod.id, error: status.error });
@@ -118,6 +118,7 @@ export async function createRuntime(options: RuntimeOptions): Promise<Runtime> {
     moduleStatus: () => [...statuses.values()].map((s) => ({ ...s })),
     mountModules(app) {
       for (const { id, router } of routers) app.use(`/api/${id}`, router);
+      for (const { publicRouter } of routers) app.use(publicRouter);
     },
     async stop() {
       await shared.scheduler.stopAll();

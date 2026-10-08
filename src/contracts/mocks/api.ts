@@ -4,6 +4,7 @@ import type { ApiMocks, ApiRoutes } from "../api.js";
 import type { Me, UserView } from "../auth.js";
 import type { BackupPosture, PostureRow } from "../backups.js";
 import type { CheckView } from "../checks.js";
+import type { JoinLink, JoinStatus } from "../cluster.js";
 import type { CategoryDetail, CheckResult, HealthBoard, HealthTile } from "../health.js";
 import type { HostView } from "../hosts.js";
 import type { ChannelView } from "../notify.js";
@@ -306,6 +307,37 @@ export const mockTotpVerifyRequests: ApiRoutes["POST /api/auth/totp/verify"]["bo
   { pending: "pnd_7f3a", recoveryCode: "aaaa-bbbb" },
 ];
 
+const mockJoinLink: JoinLink = {
+  id: "jl-1",
+  role: "agent",
+  createdBy: "admin",
+  createdAt: now,
+  expiresAt: new Date(MOCK_NOW + HOUR).toISOString(),
+  url: "https://cluster.example.test/join/q7Vx2mN4pR8sT1wY5zA3bC6dE9fG0hJk",
+  command: "curl -fsSL 'https://cluster.example.test/join/q7Vx2mN4pR8sT1wY5zA3bC6dE9fG0hJk' | sudo bash",
+};
+
+const mockJoinStatus: JoinStatus = {
+  state: "on",
+  k3sVersion: "v1.31.4+k3s1",
+  roles: ["agent"],
+  links: [
+    {
+      id: mockJoinLink.id,
+      role: mockJoinLink.role,
+      createdBy: mockJoinLink.createdBy,
+      createdAt: mockJoinLink.createdAt,
+      expiresAt: mockJoinLink.expiresAt,
+    },
+  ],
+};
+
+const mockJoinScript = `#!/usr/bin/env bash
+# Joins this machine to the cluster as a k3s agent (v1.31.4+k3s1).
+set -euo pipefail
+echo "mock join script"
+`;
+
 export const apiMocks: ApiMocks = {
   "GET /healthz": { status: "ok", version: "dev" },
   "GET /livez": { status: "ok" },
@@ -480,6 +512,10 @@ export const apiMocks: ApiMocks = {
   },
   "POST /api/health/providers/:providerId/run": [mockCheckResults.ok, mockCheckResults.crit],
 
+  "GET /api/cluster/join": mockJoinStatus,
+  "POST /api/cluster/join-links": mockJoinLink,
+  "DELETE /api/cluster/join-links/:id": { ok: true },
+  "GET /join/:token": mockJoinScript,
   "GET /api/metrics/query": mockSeriesResults,
   "GET /api/metrics/series": [
     { series: "node.cpu.percent", labelKeys: ["node"], firstTs: MOCK_NOW - 30 * DAY, lastTs: MOCK_NOW },
