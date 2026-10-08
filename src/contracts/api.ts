@@ -7,6 +7,7 @@
 import type {
   AccountView,
   AdminOverview,
+  ApiTokenView,
   AuditRow,
   AuthentikWirePlan,
   AuthentikWireRequest,
@@ -14,6 +15,8 @@ import type {
   AuthMethods,
   LoginResponse,
   Me,
+  NewApiToken,
+  NewApiTokenRequest,
   NewUserRequest,
   SessionView,
   SettingValue,
@@ -38,10 +41,21 @@ import type {
   DeployPlan,
   DeployRequest,
   DeployStatus,
+  UpgradeReport,
+  UpgradeRequest,
 } from "./deploy.js";
-import type { Category, CategoryDetail, CheckHistory, CheckResult, HealthBoard } from "./health.js";
+import type {
+  Category,
+  CategoryDetail,
+  CheckHistory,
+  CheckResult,
+  HealthBoard,
+  HealthLinkRequest,
+  HealthLinkView,
+} from "./health.js";
 import type { HostKeypair, HostRequest, HostTestResult, HostView } from "./hosts.js";
 import type { CapabilityReport } from "./k8s.js";
+import type { JsonRpcMessage } from "./mcp.js";
 import type { NodeSummary, SeriesInfo, SeriesResult } from "./metrics.js";
 import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
 import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
@@ -147,6 +161,14 @@ export interface ApiRoutes {
   "DELETE /api/admin/users/:id/sessions/:handle": Route<{ id: string; handle: string }, None, None, Ok>;
   "DELETE /api/admin/users/:id/identities": Route<{ id: string }, None, { provider: string }, UserView>;
   "GET /api/admin/audit": Route<None, { limit?: string; before?: string }, None, AuditRow[]>;
+  // API tokens (see ApiTokenView). Admin with a signed-in session, audited;
+  // a request carrying a token is refused here like everywhere under
+  // /api/admin. Newest first; revoked tokens are gone.
+  "GET /api/admin/tokens": Route<None, None, None, ApiTokenView[]>;
+  // 400 for an empty name (over 80 characters) or an expiry outside 1-3650 days.
+  "POST /api/admin/tokens": Route<None, None, NewApiTokenRequest, NewApiToken>;
+  // Revokes at once: the next request with it is a 401. Unknown id: 404.
+  "DELETE /api/admin/tokens/:id": Route<{ id: string }, None, None, Ok>;
 
   // --- k8s (A1) -----------------------------------------------------------
   "GET /api/k8s/capabilities": Route<None, { refresh?: "1" }, None, CapabilityReport>;
@@ -163,6 +185,15 @@ export interface ApiRoutes {
   >;
   // Runs the provider now (write): results as collect() returned them.
   "POST /api/health/providers/:providerId/run": Route<{ providerId: string }, None, None, CheckResult[]>;
+  // Settings links first (by category order), then custom ones oldest first.
+  "GET /api/health/links": Route<None, { category?: Category }, None, HealthLinkView[]>;
+  // Write, audited. 400 for an unknown category, a label outside 1-80
+  // characters or a URL that isn't http(s).
+  "POST /api/health/links": Route<None, None, HealthLinkRequest, HealthLinkView>;
+  // Write, audited. Omitted fields keep their value. 404 for an unknown id;
+  // 409 for a settings link (change those in the Links step or settings).
+  "PUT /api/health/links/:id": Route<{ id: string }, None, Partial<HealthLinkRequest>, HealthLinkView>;
+  "DELETE /api/health/links/:id": Route<{ id: string }, None, None, Ok>;
 
   // --- cluster (A5): adding nodes -----------------------------------------
   "GET /api/cluster/join": Route<None, None, None, JoinStatus>;
@@ -298,6 +329,25 @@ export interface ApiRoutes {
   "GET /api/deploy/bundles/:id": Route<{ id: string }, None, None, BundleRunView>;
   // Admin, audited. Cancels the running step and leaves the rest pending.
   "POST /api/deploy/bundles/:id/cancel": Route<{ id: string }, None, None, BundleRunView>;
+  // Every app the deploy runner installed, against the catalog's pins.
+  // refresh=1 forces a new discovery.
+  "GET /api/deploy/upgrades": Route<None, { refresh?: "1" }, None, UpgradeReport>;
+  // Admin, audited. An upgrade run (bundleId UPGRADE_RUN): one "upgrade"
+  // job at a time, stopping at the first failure. 400 for an app that is
+  // not ours or not upgradable, or when nothing is available; 409 while
+  // another bundle or upgrade run is running.
+  "POST /api/deploy/upgrades": Route<None, None, UpgradeRequest, BundleRunView>;
+
+  // --- mcp ------------------------------------------------------------------
+  // The MCP streamable-HTTP endpoint, also served at MCP_PATH (/mcp).
+  // Stateless: every POST is one JSON-RPC request (or batch) answered with
+  // JSON; no session id, no server-sent stream. Takes an API token as a
+  // bearer (401 with WWW-Authenticate without one; a session cookie is not
+  // accepted here) and is rate-limited per token (429).
+  "POST /api/mcp": Route<None, None, JsonRpcMessage | JsonRpcMessage[], JsonRpcMessage | JsonRpcMessage[]>;
+  // 405: there is no stream to open and no session to end.
+  "GET /api/mcp": Route<None, None, None, ApiError>;
+  "DELETE /api/mcp": Route<None, None, None, ApiError>;
 
   // --- onboarding (A14) ---------------------------------------------------
   "GET /api/onboarding/state": Route<None, None, None, OnboardingState>;

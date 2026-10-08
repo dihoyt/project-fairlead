@@ -1,5 +1,15 @@
 import express, { type Request, type Response, type Router } from "express";
-import type { AdminOverview, Role, SessionView, SettingValue, UserView } from "../../contracts/auth.js";
+import type {
+  AdminOverview,
+  AuthentikWirePlan,
+  AuthentikWireResult,
+  Role,
+  SessionView,
+  SettingValue,
+  UserView,
+} from "../../contracts/auth.js";
+import { product } from "../../product.js";
+import { AuthentikError, authentikUrlProblem, issuerFor, wireAuthentik } from "../auth/authentik.js";
 import { authOf, refuseUnready, type PlatformUser } from "../auth/identity.js";
 import { effectiveRule, ruleAllows } from "../auth/networks.js";
 import { CALLBACK_PATH, OIDC_SECRET, OidcError, discover, oidcUnavailableReason } from "../auth/oidc.js";
@@ -20,7 +30,7 @@ import {
   usernameProblem,
   type UserRow,
 } from "../auth/users.js";
-import { effectivePublicUrl, iso, isoOrNull, type Core } from "../core.js";
+import { effectivePublicUrl, iso, isoOrNull, publicOrigin, type Core } from "../core.js";
 import { clientIp, parseCidrList } from "../net.js";
 import { secretKeyConfigured } from "../secretBox.js";
 import { SettingError } from "../settings.js";
@@ -53,6 +63,16 @@ function networksOf(raw: unknown): string[] {
   }
   return entries;
 }
+
+const AUTHENTIK_TOKEN = { scope: "auth", id: "authentik-api" } as const;
+const WIRED_KEYS = ["auth.oidc.issuer", "auth.oidc.clientId", "auth.oidc.label", "auth.oidc.enabled"];
+
+const authentikBase = (raw: unknown, use: "public" | "api" = "public"): string => {
+  const value = typeof raw === "string" ? raw.trim().replace(/\/+$/, "") : "";
+  const problem = authentikUrlProblem(value, use);
+  if (problem !== null) throw new AdminError(400, problem);
+  return value;
+};
 
 type Handler = (req: Request, res: Response, admin: PlatformUser) => Promise<unknown> | unknown;
 
@@ -122,7 +142,7 @@ export function adminRouter(core: Core): Router {
   // Would this admin still get in from where they are now, after a change to
   // their own network list?
   const assertStillReachable = (req: Request, admin: PlatformUser, account: Pick<UserRow, "allowedNetworks">) => {
-    if (admin.source === "dev-bypass") return;
+    if (admin.source === "dev-bypass" || admin.source === "token") return;
     const ip = clientIp(req);
     if (!ruleAllows(effectiveRule(s, account, admin.source), ip)) {
       throw new AdminError(
@@ -250,6 +270,117 @@ export function adminRouter(core: Core): Router {
       } catch (err) {
         return { ok: false, error: err instanceof OidcError ? err.message : "Discovery failed." };
       }
+    })
+  );
+
+  // --- Authentik ----------------------------------------------------------
+
+  const wireBlocked = (adminGroups: boolean): string | null => {
+    if (!publicOrigin(core)) return "Set the public URL first, so Authentik knows where to send people back.";
+    if (!secretKeyConfigured()) return "SECRETS_KEY is not set, so the client secret cannot be stored.";
+    const keys = adminGroups ? [...WIRED_KEYS, "auth.oidc.adminGroups"] : WIRED_KEYS;
+    const locked = s.describe().find((view) => keys.includes(view.key) && view.locked);
+    if (locked) return `${locked.label} is set by the environment (${locked.env}); unset it to wire Authentik here.`;
+    return null;
+  };
+
+  router.get(
+    "/oidc/authentik",
+    route(async (req): Promise<AuthentikWirePlan> => {
+      const base = authentikBase(req.query.url);
+      const apiUrl = authentikBase(req.query.apiUrl || base, "api");
+      const origin = publicOrigin(core);
+      return {
+        authentikUrl: base,
+        ...(apiUrl !== base ? { apiUrl } : {}),
+        applicationName: product.displayName,
+        slug: product.slug,
+        redirectUri: origin ? `${origin}${CALLBACK_PATH}` : "",
+        issuer: issuerFor(base, product.slug),
+        hasStoredToken: await core.secrets.has(AUTHENTIK_TOKEN.scope, AUTHENTIK_TOKEN.id),
+        blocked: wireBlocked(false),
+      };
+    })
+  );
+
+  router.post(
+    "/oidc/authentik",
+    route(async (req, _res, admin): Promise<AuthentikWireResult> => {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const base = authentikBase(body.authentikUrl);
+      const apiUrl = authentikBase(body.apiUrl || base, "api");
+      let adminGroups: string[] | undefined;
+      if (body.adminGroups !== undefined) {
+        if (!Array.isArray(body.adminGroups)) throw new AdminError(400, "Admin groups must be a list.");
+        adminGroups = body.adminGroups.map((g) => String(g).trim()).filter(Boolean);
+      }
+      const blocked = wireBlocked(adminGroups !== undefined);
+      if (blocked !== null) throw new AdminError(blocked.startsWith("SECRETS_KEY") ? 409 : 400, blocked);
+
+      const pasted = typeof body.token === "string" ? body.token.trim() : "";
+      const token = pasted || ((await core.secrets.get(AUTHENTIK_TOKEN.scope, AUTHENTIK_TOKEN.id)) ?? "");
+      if (!token) throw new AdminError(400, "Paste an Authentik API token.");
+
+      const origin = publicOrigin(core);
+      const redirectUri = `${origin}${CALLBACK_PATH}`;
+      let outcome;
+      try {
+        outcome = await wireAuthentik({
+          apiUrl,
+          publicUrl: base,
+          token,
+          slug: product.slug,
+          name: product.displayName,
+          redirectUri,
+          launchUrl: origin,
+        });
+      } catch (err) {
+        if (err instanceof AuthentikError) throw new AdminError(502, err.message);
+        throw err;
+      }
+
+      await core.secrets.putAs(OIDC_SECRET.scope, OIDC_SECRET.id, outcome.clientSecret, admin.id);
+      const values: Array<[string, unknown]> = [
+        ["auth.oidc.issuer", outcome.issuer],
+        ["auth.oidc.clientId", outcome.clientId],
+        ["auth.oidc.label", "Sign in with Authentik"],
+        ["auth.oidc.enabled", true],
+      ];
+      if (adminGroups !== undefined) values.push(["auth.oidc.adminGroups", adminGroups]);
+      for (const [key, value] of values) s.set(key, value, admin.id);
+
+      const tokenKept = body.keepToken === true;
+      if (tokenKept) await core.secrets.putAs(AUTHENTIK_TOKEN.scope, AUTHENTIK_TOKEN.id, token, admin.id);
+      else await core.secrets.delete(AUTHENTIK_TOKEN.scope, AUTHENTIK_TOKEN.id);
+
+      let discovery: AuthentikWireResult["discovery"];
+      try {
+        await discover(outcome.issuer.replace(/\/+$/, ""));
+        discovery = { ok: true };
+      } catch (err) {
+        discovery = { ok: false, error: err instanceof OidcError ? err.message : "Discovery failed." };
+      }
+
+      record(
+        req,
+        admin,
+        "oidc-authentik-wire",
+        base,
+        `slug=${product.slug} application=${outcome.application} provider=${outcome.provider} token=${tokenKept ? "kept" : "discarded"}`
+      );
+      return {
+        authentikUrl: base,
+        slug: product.slug,
+        issuer: outcome.issuer,
+        clientId: outcome.clientId,
+        redirectUri,
+        application: outcome.application,
+        provider: outcome.provider,
+        settings: values.map(([key]) => key),
+        tokenKept,
+        discovery,
+        testSignIn: "auth/oidc/start?link=1",
+      };
     })
   );
 

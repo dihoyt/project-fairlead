@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@kubernetes/client-node": "^2.0.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "better-sqlite3": "^12.11.1",
     "drizzle-orm": "^0.45.3",
     "express": "^4.22.3",

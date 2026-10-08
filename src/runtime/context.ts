@@ -8,7 +8,7 @@ import type { ModuleContext, ModuleId } from "../contracts/module.js";
 import type { Platform, SecretStore, SettingsRegistry } from "../contracts/platform.js";
 import type { Logger, ResetRegistry, ServiceRegistry } from "../contracts/runtime.js";
 import type { SchedulerCore } from "./scheduler.js";
-import { bindPublicRoute, bindRoute, publicErrorHandler } from "./http.js";
+import { bindPublicRoute, bindRoute, callRoute, publicErrorHandler } from "./http.js";
 
 export interface SharedRuntime {
   db: Database;
@@ -79,6 +79,7 @@ export function buildContext(moduleId: ModuleId, shared: SharedRuntime): ModuleC
       res.status(403).json({ error: "You don't have permission to do that." });
       return null;
     },
+    call: (req, key, input) => callRoute(platform, req, key, input),
     health: shared.health,
     metrics: shared.metrics,
     backups: shared.backups,

@@ -33,6 +33,19 @@ async function firstPending(steps: FirstRunStep[]): Promise<string | null> {
   return null;
 }
 
+// After the wizard's state is reset, so the next load checks again and
+// opens it.
+export function forgetFirstRunCheck(): void {
+  current = null;
+  try {
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith("first-run-checked:")) sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Storage unavailable: the check runs once per page load anyway.
+  }
+}
+
 export function useFirstRun(steps: FirstRunStep[]): void {
   const { me } = useSession();
   const navigate = useNavigate();

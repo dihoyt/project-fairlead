@@ -2,9 +2,11 @@ import type {
   BundleItemView,
   CatalogBundle,
   CatalogBundleView,
+  CatalogEntry,
   ClusterBasicId,
   DiscoveryReport,
 } from "../../contracts/catalog.js";
+import { pickVersion } from "../../contracts/kubeversion.js";
 
 // The default bundle: what a first-timer's self-hosted cluster needs, in an
 // order where every app's requires are already in place.
@@ -51,7 +53,7 @@ export const bundles: readonly CatalogBundle[] = [
       {
         appId: "longhorn",
         required: false,
-        note: "Every node needs open-iscsi installed first; tick it once yours do.",
+        note: "Every node needs open-iscsi installed; untick it if yours don't have it.",
       },
       { appId: "authentik", required: true, hostPrefix: "auth" },
       { appId: "gitea", required: true, hostPrefix: "git", values: { adminUser: "gitea-admin" } },
@@ -70,7 +72,19 @@ const basicFor: Record<string, ClusterBasicId> = {
   "metrics-server": "metrics-server",
 };
 
-export function bundleView(bundle: CatalogBundle, report: DiscoveryReport): CatalogBundleView {
+// Why an optional item starts unticked: a preflight that fails on this
+// cluster. Prerequisites that can't be checked from here stay its note.
+function preflight(entry: CatalogEntry | undefined, report: DiscoveryReport): string | undefined {
+  if (!entry || entry.install.kind === "patch") return undefined;
+  const picked = pickVersion(entry.install, report.kubernetesVersion);
+  return picked.ok ? undefined : picked.reason;
+}
+
+export function bundleView(
+  bundle: CatalogBundle,
+  report: DiscoveryReport,
+  entries: readonly CatalogEntry[]
+): CatalogBundleView {
   const items = bundle.items.map((item): BundleItemView => {
     const detected = report.apps.find((app) => app.appId === item.appId)!;
     const basic = report.basics.find((b) => b.id === basicFor[item.appId]);
@@ -78,8 +92,15 @@ export function bundleView(bundle: CatalogBundle, report: DiscoveryReport): Cata
     if (detected.state === "installed") reason = "Already installed";
     else if (basic && (basic.status === "ok" || basic.status === "warn")) reason = `Already covered: ${basic.detail}`;
     const skip = reason !== undefined;
-    const selected = !skip && (item.required || !item.note);
-    if (!skip && !selected) reason = item.note;
+    const failed =
+      skip || item.required
+        ? undefined
+        : preflight(
+            entries.find((e) => e.id === item.appId),
+            report
+          );
+    const selected = !skip && !failed;
+    if (failed) reason = failed;
     return { ...structuredClone(item), detected, skip, selected, ...(reason ? { reason } : {}) };
   });
   const { baseDomain, storageClass } = report.suggested;

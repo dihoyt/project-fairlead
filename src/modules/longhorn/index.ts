@@ -19,6 +19,7 @@ const mod: Module = {
       default: "",
       env: "LONGHORN_UI_URL",
     });
+    ctx.reset.add({ scope: "links", settingKeys: ["longhorn.uiUrl"] });
     const graceMinutes = ctx.settings.declare({
       key: "longhorn.backupGraceMinutes",
       label: "Backup grace (minutes)",

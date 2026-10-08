@@ -12,6 +12,7 @@ export * from "./hosts.js";
 export * from "./k8s.js";
 export * from "./kubeversion.js";
 export * from "./disk.js";
+export * from "./mcp.js";
 export * from "./metrics.js";
 export * from "./module.js";
 export * from "./notify.js";

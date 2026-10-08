@@ -1,5 +1,6 @@
+import crypto from "node:crypto";
 import type { Request } from "express";
-import type { CreatePlatform, Platform, User } from "../contracts/platform.js";
+import { INTERNAL_CALL_HEADER, type CreatePlatform, type Platform, type User } from "../contracts/platform.js";
 import { createLogger, errorMessage } from "../runtime/log.js";
 import { createAudit } from "./audit.js";
 import {
@@ -37,8 +38,13 @@ function contractUser(user: PlatformUser): User {
     mustChangePassword: user.mustChangePassword,
     ...(user.mustEnrollTotp !== undefined ? { mustEnrollTotp: user.mustEnrollTotp } : {}),
     orgId: user.orgId,
+    ...(user.token ? { token: user.token } : {}),
   };
 }
+
+// An internal call is made within the same request handling, so a ticket
+// that is not used at once never will be.
+const TICKET_TTL_MS = 30 * 1000;
 
 export const createPlatform: CreatePlatform = (deps) => {
   const log = createLogger("platform");
@@ -52,7 +58,18 @@ export const createPlatform: CreatePlatform = (deps) => {
     limits: createLoginLimits(),
   };
   const resolveSession = createResolver(core);
+  const tickets = new Map<string, { auth: AuthResult; expires: number }>();
+  const redeem = (ticket: string): AuthResult => {
+    const now = Date.now();
+    for (const [key, entry] of tickets) if (entry.expires <= now) tickets.delete(key);
+    const hash = crypto.createHash("sha256").update(ticket).digest("hex");
+    const entry = tickets.get(hash);
+    tickets.delete(hash);
+    return entry ? entry.auth : { user: null, denied: "Internal call refused." };
+  };
   const resolve = (req: Request, res: Parameters<typeof resolveSession>[1]): AuthResult => {
+    const ticket = req.get(INTERNAL_CALL_HEADER);
+    if (ticket !== undefined) return redeem(ticket);
     if (!deps.identify) return resolveSession(req, res);
     const user = deps.identify(req);
     return { user };
@@ -97,11 +114,20 @@ export const createPlatform: CreatePlatform = (deps) => {
     },
     // Tenancy A: reading is for anyone signed in; changing anything, and
     // administering the install, is for admins.
-    can: (user, action) => user.admin || action === "read",
+    can: (user, action) => action === "read" || (user.admin && user.token?.scope !== "read"),
+    vouch(req) {
+      const auth = authOf(req) ?? resolve(req, null);
+      if (auth.user === null) throw new Error("vouch() called on a request with no identity.");
+      const ticket = crypto.randomBytes(32).toString("base64url");
+      const hash = crypto.createHash("sha256").update(ticket).digest("hex");
+      tickets.set(hash, { auth, expires: Date.now() + TICKET_TTL_MS });
+      return ticket;
+    },
     settings: core.settings,
     secrets: core.secrets,
     audit: core.audit,
-    clearSettings: ({ except = [], exceptPrefixes = [] }) => core.settings.clearOverrides(except, exceptPrefixes),
+    clearSettings: ({ only, except = [], exceptPrefixes = [] }) =>
+      core.settings.clearOverrides(only, except, exceptPrefixes),
     async resetAdminPassword() {
       const account = userByUsername(core.db, "admin");
       if (account === null) throw new Error('There is no built-in "admin" account.');
