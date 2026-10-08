@@ -235,8 +235,10 @@ export interface BundleItemView extends BundleItem {
   // Already installed, or its job already done (a default storage class
   // exists): the rollout skips it.
   skip: boolean;
-  // Ticked by default: optional items whose prerequisites can't be checked
-  // from here start unticked.
+  // Ticked by default: optional items are ticked unless a preflight the
+  // catalog can run fails (the chart doesn't support this cluster's
+  // Kubernetes); `reason` then says why. Prerequisites it can't check
+  // (open-iscsi on the nodes) stay a `note`, not an untick.
   selected: boolean;
   // Why it is skipped or unticked, when it is.
   reason?: string;
