@@ -13,6 +13,8 @@ import {
   type PlatformUser,
 } from "./auth/identity.js";
 import { createLoginLimits } from "./auth/limiter.js";
+import { generateTempPassword, hashPassword } from "./auth/passwords.js";
+import { updateUser, userByUsername } from "./auth/users.js";
 import { bootstrapAdmin } from "./bootstrap.js";
 import type { Core } from "./core.js";
 import { platformMigrations } from "./migrations.js";
@@ -124,6 +126,14 @@ export const createPlatform: CreatePlatform = (deps) => {
     settings: core.settings,
     secrets: core.secrets,
     audit: core.audit,
+    clearSettings: ({ except = [], exceptPrefixes = [] }) => core.settings.clearOverrides(except, exceptPrefixes),
+    async resetAdminPassword() {
+      const account = userByUsername(core.db, "admin");
+      if (account === null) throw new Error('There is no built-in "admin" account.');
+      const password = generateTempPassword();
+      updateUser(core.db, account.id, { passwordHash: await hashPassword(password), mustChangePassword: true });
+      return password;
+    },
     draining: drain.draining,
     handleSignals(server, stop) {
       let stopping = false;

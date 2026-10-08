@@ -9,6 +9,9 @@ import type {
   AdminOverview,
   ApiTokenView,
   AuditRow,
+  AuthentikWirePlan,
+  AuthentikWireRequest,
+  AuthentikWireResult,
   AuthMethods,
   LoginResponse,
   Me,
@@ -28,6 +31,8 @@ import type { CatalogAppView, CatalogBundleView, DiscoveryReport } from "./catal
 import type { CheckRequest, CheckView } from "./checks.js";
 import type { JoinLink, JoinLinkRequest, JoinStatus } from "./cluster.js";
 import type {
+  AccessRequest,
+  AccessView,
   BundlePlan,
   BundleRequest,
   BundleRunView,
@@ -52,6 +57,7 @@ import type { JsonRpcMessage } from "./mcp.js";
 import type { NodeSummary, SeriesInfo, SeriesResult } from "./metrics.js";
 import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
 import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
+import type { ResetRequest, ResetResult } from "./reset.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
 import type { EventView, LogLines, NamespaceView, PodView, WorkloadLinks, WorkloadView } from "./workloads.js";
 
@@ -92,6 +98,10 @@ export interface ApiRoutes {
   "GET /api/system/modules": Route<None, None, None, ModuleStatus[]>;
   // Admin only.
   "GET /api/system/jobs": Route<None, None, None, JobsView>;
+  // Admin only. Clears the chosen scopes in one transaction (secrets after
+  // it commits), audits the reset, and answers 400 unless confirm is
+  // RESET. A scope no loaded module provides is skipped, not an error.
+  "POST /api/system/reset": Route<None, None, ResetRequest, ResetResult>;
 
   // --- platform (S2), same shapes as code-console --------------------------
   // Browser navigations, not JSON: GET /auth/oidc/start[?link=1] and
@@ -118,6 +128,15 @@ export interface ApiRoutes {
   "DELETE /api/admin/settings/:key": Route<{ key: string }, None, None, { key: string; value: SettingValue }>;
   "PUT /api/admin/oidc/secret": Route<None, None, { value: string }, { hasSecret: boolean }>;
   "POST /api/admin/oidc/test": Route<None, None, None, { ok: boolean; issuer?: string; error?: string }>;
+  // Admin. 400 for a missing or non-http(s) url.
+  "GET /api/admin/oidc/authentik": Route<None, { url: string }, None, AuthentikWirePlan>;
+  // Admin, audited (never with the token or secret). Creates or reuses the
+  // provider and application, saves auth.oidc.{issuer,clientId,label,enabled}
+  // (and adminGroups when given) and the client secret. 400: bad url, no
+  // token given or stored, no public URL; 409: SECRETS_KEY not set; 502:
+  // Authentik unreachable, refused the token, or answered unexpectedly, with
+  // its status in the error.
+  "POST /api/admin/oidc/authentik": Route<None, None, AuthentikWireRequest, AuthentikWireResult>;
   "GET /api/admin/users": Route<None, None, None, UserView[]>;
   "POST /api/admin/users": Route<None, None, NewUserRequest, { user: UserView; temporaryPassword: string | null }>;
   "PATCH /api/admin/users/:id": Route<{ id: string }, None, UserChangesRequest, UserView>;
@@ -261,6 +280,11 @@ export interface ApiRoutes {
 
   // --- deploy (v0.1.x) ----------------------------------------------------
   "GET /api/deploy/status": Route<None, None, None, DeployStatus>;
+  // How the apps are reached, with the hosts and what to point at what.
+  "GET /api/deploy/access": Route<None, None, None, AccessView>;
+  // Admin, audited. Saves the mode and base domain; later deploys and bundle
+  // runs write their Ingresses for it. Deploys nothing itself.
+  "PUT /api/deploy/access": Route<None, None, AccessRequest, AccessView>;
   // Admin. Resolves defaults and validates inputs; runs nothing.
   "POST /api/deploy/plan": Route<None, None, DeployRequest, DeployPlan>;
   // Admin, audited. 409 while another job for the same release is running;

@@ -23,6 +23,14 @@ export type LinkKey = "rancher" | "headlamp" | "longhorn" | "gitea" | "grafana";
 
 export type CatalogInputKind = "text" | "hostname" | "secret" | "select" | "boolean" | "size";
 
+// Applies only while another input of the same form (a bundle's shared
+// inputs) has one of these values: the tunnel token only when "access" is
+// "cloudflare-tunnel".
+export interface InputCondition {
+  input: string;
+  in: string[];
+}
+
 export interface CatalogInput {
   // Stable within the app: "host", "adminEmail", "tunnelToken".
   key: string;
@@ -36,6 +44,9 @@ export interface CatalogInput {
   default?: string | boolean;
   // "select" only.
   options?: Array<{ value: string; label: string }>;
+  // Shown, validated and required only while the condition holds; ignored
+  // otherwise.
+  when?: InputCondition;
 }
 
 // What a deploy runs, shown to the user before it does. Every command line is
@@ -94,9 +105,20 @@ export interface CatalogEntry {
   exposesUi: boolean;
   // Persistent volume size it asks for by default, when it keeps data: "10Gi".
   storage?: string;
+  // Disk it takes once installed with these defaults, for the disk-space
+  // preflight (./disk.ts). Absent for a patch, which installs nothing.
+  disk?: DiskFootprint;
   // Things the user must know or do outside the cluster first, one sentence
   // each: "Every node needs open-iscsi installed."
   prerequisites: string[];
+}
+
+// Rough, in bytes, from the pinned version's defaults.
+export interface DiskFootprint {
+  // Sum of the PersistentVolumeClaims a default install requests.
+  volumeBytes: number;
+  // Container images it pulls, as unpacked on a node.
+  imageBytes: number;
 }
 
 export type DetectState = "installed" | "not-installed" | "unknown";
@@ -131,6 +153,13 @@ export interface IngressHost {
   ingress: string;
   // The backend Service of the first rule for this host.
   service?: string;
+  // That Service as the cluster reaches it, "http://<service>.<namespace>.svc:<port>",
+  // when its port could be resolved to a number. The checks module probes it
+  // when the host doesn't resolve.
+  serviceUrl?: string;
+  // spec.ingressClassName. "tailscale" marks a host that only resolves on the
+  // tailnet; its `host` comes from the Ingress status (the full MagicDNS name).
+  ingressClass?: string;
   // The catalog app this host belongs to, when discovery matched one.
   appId?: string;
 }
@@ -158,6 +187,9 @@ export interface DiscoveryReport {
   apps: DetectedApp[];
   ingressHosts: IngressHost[];
   basics: ClusterBasic[];
+  // Each node's free disk, from the kubelet's /stats/summary; absent when
+  // the nodes couldn't be listed.
+  nodeDisks?: NodeDisk[];
   // Defaults a deploy would use, from what was found; the deploy module's
   // settings override them.
   suggested: {
@@ -166,7 +198,28 @@ export interface DiscoveryReport {
     clusterIssuer?: string;
     // The domain most Ingress hosts share, for "<app>.<baseDomain>".
     baseDomain?: string;
+    // The default ingress controller's Service as the cluster reaches it,
+    // "http://traefik.kube-system.svc.cluster.local:80": the origin a tunnel
+    // routes to.
+    ingressService?: string;
+    // The address it answers on from the network (its LoadBalancer IP or
+    // hostname), for DNS records and hosts files.
+    ingressAddress?: string;
   };
+}
+
+export interface NodeDisk {
+  node: string;
+  // The kubelet's root filesystem, where local-path and Longhorn keep volume
+  // data by default. Absent when the node's stats couldn't be read.
+  availableBytes?: number;
+  capacityBytes?: number;
+  // The container runtime's image filesystem. Usually the same disk, which
+  // the kubelet reports with the same capacity.
+  imageAvailableBytes?: number;
+  imageCapacityBytes?: number;
+  // Why the numbers are missing: "forbidden", "timeout", "node not ready".
+  error?: string;
 }
 
 // A "Deploy bundle": a set of catalog apps rolled out in order from a few
@@ -190,6 +243,10 @@ export interface BundleItem {
   values?: Record<string, string | boolean>;
   // One sentence shown beside the item: why it is optional, what it needs.
   note?: string;
+  // Part of the rollout only while a shared input matches (cloudflared only
+  // for access "cloudflare-tunnel"); otherwise skipped like an item left out.
+  // The bundle view doesn't know the answers, so the client evaluates it.
+  when?: InputCondition;
 }
 
 export interface CatalogBundle {
@@ -198,7 +255,8 @@ export interface CatalogBundle {
   summary: string;
   // Install order: each item's requires come before it.
   items: BundleItem[];
-  // Asked once: "baseDomain", "adminEmail", "adminPassword", "storageClass".
+  // Asked once: "access", "baseDomain", "adminEmail", "adminPassword",
+  // "storageClass", and the access mode's own ("tunnelToken", ...).
   inputs: CatalogInput[];
 }
 
@@ -207,8 +265,10 @@ export interface BundleItemView extends BundleItem {
   // Already installed, or its job already done (a default storage class
   // exists): the rollout skips it.
   skip: boolean;
-  // Ticked by default: optional items whose prerequisites can't be checked
-  // from here start unticked.
+  // Ticked by default: optional items are ticked unless a preflight the
+  // catalog can run fails (the chart doesn't support this cluster's
+  // Kubernetes); `reason` then says why. Prerequisites it can't check
+  // (open-iscsi on the nodes) stay a `note`, not an untick.
   selected: boolean;
   // Why it is skipped or unticked, when it is.
   reason?: string;

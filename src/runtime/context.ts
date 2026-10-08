@@ -6,7 +6,7 @@ import type { HealthRegistry } from "../contracts/health.js";
 import type { MetricsRegistry } from "../contracts/metrics.js";
 import type { ModuleContext, ModuleId } from "../contracts/module.js";
 import type { Platform, SecretStore, SettingsRegistry } from "../contracts/platform.js";
-import type { Logger, ServiceRegistry } from "../contracts/runtime.js";
+import type { Logger, ResetRegistry, ServiceRegistry } from "../contracts/runtime.js";
 import type { SchedulerCore } from "./scheduler.js";
 import { bindPublicRoute, bindRoute, callRoute, publicErrorHandler } from "./http.js";
 
@@ -18,6 +18,7 @@ export interface SharedRuntime {
   health: HealthRegistry;
   metrics: MetricsRegistry;
   backups: BackupsRegistry;
+  reset: ResetRegistry;
   services: ServiceRegistry;
   orgId: string;
   logFor(scope: string): Logger;
@@ -82,6 +83,7 @@ export function buildContext(moduleId: ModuleId, shared: SharedRuntime): ModuleC
     health: shared.health,
     metrics: shared.metrics,
     backups: shared.backups,
+    reset: shared.reset,
     services: shared.services,
     orgId: shared.orgId,
     log,

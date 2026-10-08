@@ -19,6 +19,7 @@ import {
   mockTargets,
 } from "./backups.js";
 import {
+  mockAccess,
   mockBundlePlan,
   mockBundleRun,
   mockBundleView,
@@ -291,6 +292,7 @@ export const mockOnboarding: OnboardingState = {
   steps: [
     { id: "password", done: true, skipped: false, optional: false },
     { id: "cluster", done: true, skipped: false, optional: true },
+    { id: "access", done: false, skipped: false, optional: true },
     { id: "oidc", done: false, skipped: true, optional: true },
     { id: "links", done: true, skipped: false, optional: true },
     { id: "hosts", done: false, skipped: false, optional: true },
@@ -375,6 +377,15 @@ export const apiMocks: ApiMocks = {
     { id: "k8s", milestone: "A", registered: true, schemaVersion: 0 },
     { id: "health", milestone: "A", registered: true, schemaVersion: 2 },
   ],
+  "POST /api/system/reset": {
+    cleared: [
+      { scope: "settings", cleared: 4 },
+      { scope: "checks", cleared: 3 },
+      { scope: "onboarding", cleared: 5 },
+    ],
+    kept: ["links", "hosts", "notifications", "sshKey", "adminPassword"],
+    wizardReopens: true,
+  },
   "GET /api/system/jobs": [
     {
       name: "collect:cluster",
@@ -465,6 +476,28 @@ export const apiMocks: ApiMocks = {
   "DELETE /api/admin/settings/:key": { key: "site.name", value: "" },
   "PUT /api/admin/oidc/secret": { hasSecret: true },
   "POST /api/admin/oidc/test": { ok: true, issuer: "https://login.example.test/v2.0" },
+  "GET /api/admin/oidc/authentik": {
+    authentikUrl: "https://auth.example.test",
+    applicationName: "Console",
+    slug: "console",
+    redirectUri: "https://console.example.test/auth/oidc/callback",
+    issuer: "https://auth.example.test/application/o/console/",
+    hasStoredToken: false,
+    blocked: null,
+  },
+  "POST /api/admin/oidc/authentik": {
+    authentikUrl: "https://auth.example.test",
+    slug: "console",
+    issuer: "https://auth.example.test/application/o/console/",
+    clientId: "mock-client-id",
+    redirectUri: "https://console.example.test/auth/oidc/callback",
+    application: "created",
+    provider: "created",
+    settings: ["auth.oidc.issuer", "auth.oidc.clientId", "auth.oidc.label", "auth.oidc.enabled"],
+    tokenKept: false,
+    discovery: { ok: true },
+    testSignIn: "auth/oidc/start?link=1",
+  },
   "GET /api/admin/users": [mockUser],
   "POST /api/admin/users": {
     user: { ...mockUser, id: 2, username: "ops", role: "user", mustChangePassword: true },
@@ -671,6 +704,8 @@ export const apiMocks: ApiMocks = {
   "GET /api/catalog/bundles": [mockBundleView],
 
   "GET /api/deploy/status": mockDeployStatus,
+  "GET /api/deploy/access": mockAccess,
+  "PUT /api/deploy/access": mockAccess,
   "POST /api/deploy/plan": mockDeployPlan,
   "POST /api/deploy/jobs": { ...mockRunningJob, appId: "headlamp", release: "headlamp", namespace: "headlamp" },
   "GET /api/deploy/jobs": [mockRunningJob, mockDeployJob, mockFailedJob],

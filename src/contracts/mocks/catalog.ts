@@ -12,8 +12,9 @@ import type {
   DiscoveryReport,
   IngressHost,
 } from "../catalog.js";
-import type { BundlePlan, BundleRunView, DeployJobView, DeployPlan, DeployStatus } from "../deploy.js";
+import type { AccessView, BundlePlan, BundleRunView, DeployJobView, DeployPlan, DeployStatus } from "../deploy.js";
 import type { HostKeypair } from "../hosts.js";
+import { checkDisk } from "../disk.js";
 import { HOUR, MOCK_NOW, isoAgo } from "./time.js";
 
 const host = (
@@ -33,7 +34,7 @@ const helm = (repo: string, chart: string, version: string): CatalogEntry["insta
   version,
 });
 
-export const mockCatalog: readonly CatalogEntry[] = [
+const catalogEntries: CatalogEntry[] = [
   {
     id: "cert-manager",
     name: "cert-manager",
@@ -301,6 +302,18 @@ export const mockCatalog: readonly CatalogEntry[] = [
   },
 ];
 
+const GiB = 1024 ** 3;
+
+// Volumes from `storage` ("10Gi"), and half a GiB of images per app.
+export const mockCatalog: readonly CatalogEntry[] = catalogEntries.map((entry) =>
+  entry.install.kind === "patch"
+    ? entry
+    : {
+        ...entry,
+        disk: { volumeBytes: entry.storage ? Number.parseInt(entry.storage, 10) * GiB : 0, imageBytes: GiB / 2 },
+      }
+);
+
 const absent = (appId: string): DetectedApp => ({
   appId,
   state: "not-installed",
@@ -382,6 +395,8 @@ export const mockIngressHosts: IngressHost[] = [
     namespace: "monitoring",
     ingress: "grafana",
     service: "grafana",
+    serviceUrl: "http://grafana.monitoring.svc:80",
+    ingressClass: "traefik",
     appId: "grafana",
   },
   {
@@ -391,6 +406,8 @@ export const mockIngressHosts: IngressHost[] = [
     namespace: "longhorn-system",
     ingress: "longhorn-ingress",
     service: "longhorn-frontend",
+    serviceUrl: "http://longhorn-frontend.longhorn-system.svc:80",
+    ingressClass: "traefik",
     appId: "longhorn",
   },
   {
@@ -400,6 +417,7 @@ export const mockIngressHosts: IngressHost[] = [
     namespace: "media",
     ingress: "jellyfin",
     service: "jellyfin",
+    ingressClass: "traefik",
   },
 ];
 
@@ -408,6 +426,10 @@ export const mockDiscovery: DiscoveryReport = {
   kubernetesVersion: "v1.31.4+k3s1",
   apps: mockDetected,
   ingressHosts: mockIngressHosts,
+  nodeDisks: [
+    { node: "node-1", availableBytes: 60 * GiB, capacityBytes: 100 * GiB },
+    { node: "node-2", availableBytes: 40 * GiB, capacityBytes: 100 * GiB },
+  ],
   basics: [
     {
       id: "default-storage-class",
@@ -447,6 +469,8 @@ export const mockDiscovery: DiscoveryReport = {
     ingressClass: "traefik",
     clusterIssuer: "letsencrypt-prod",
     baseDomain: "example.test",
+    ingressService: "http://traefik.kube-system.svc.cluster.local:80",
+    ingressAddress: "10.0.0.20",
   },
 };
 
@@ -488,7 +512,7 @@ export const mockBundle: CatalogBundle = {
       hostPrefix: "longhorn",
       bind: {},
       values: {},
-      note: "Every node needs open-iscsi; tick it once yours do.",
+      note: "Every node needs open-iscsi; untick it if yours don't have it.",
     },
     { appId: "authentik", required: true, hostPrefix: "auth", bind: { adminEmail: "adminEmail" }, values: {} },
     {
@@ -513,7 +537,7 @@ export const mockBundleView: CatalogBundleView = {
   items: mockBundle.items.map((item): BundleItemView => {
     const detected = mockDetected.find((d) => d.appId === item.appId)!;
     const skip = detected.state === "installed" || item.appId === "local-path-provisioner";
-    const selected = !skip && (item.required || item.appId !== "longhorn");
+    const selected = !skip;
     return {
       ...item,
       detected,
@@ -544,7 +568,36 @@ export const mockDeployStatus: DeployStatus = {
   namespace: "console",
   installerServiceAccount: "console-installer",
   image: "docker.io/alpine/k8s@sha256:0000000000000000000000000000000000000000000000000000000000000000",
-  defaults: { ...mockDiscovery.suggested },
+  defaults: {
+    storageClass: mockDiscovery.suggested.storageClass,
+    ingressClass: mockDiscovery.suggested.ingressClass,
+    clusterIssuer: mockDiscovery.suggested.clusterIssuer,
+    baseDomain: mockDiscovery.suggested.baseDomain,
+  },
+};
+
+export const mockAccess: AccessView = {
+  mode: "cloudflare-tunnel",
+  baseDomain: "example.test",
+  appId: "cloudflared",
+  appInstalled: false,
+  hosts: [
+    { appId: "grafana", host: "grafana.example.test", url: "https://grafana.example.test", resolves: true },
+    { appId: "longhorn", host: "longhorn.example.test", url: "https://longhorn.example.test", resolves: false },
+  ],
+  wildcard: "*.example.test",
+  ingressService: "http://traefik.kube-system.svc.cluster.local:80",
+};
+
+export const mockAccessLocal: AccessView = {
+  mode: "local",
+  baseDomain: "example.test",
+  hosts: [
+    { appId: "grafana", host: "grafana.example.test", url: "http://grafana.example.test", resolves: false },
+    { appId: "longhorn", host: "longhorn.example.test", url: "http://longhorn.example.test", resolves: false },
+  ],
+  ingressAddress: "10.0.0.20",
+  hostsFile: "10.0.0.20 grafana.example.test\n10.0.0.20 longhorn.example.test\n",
 };
 
 export const mockDeployDisabled: DeployStatus = {
@@ -678,6 +731,27 @@ export const mockBundlePlan: BundlePlan = {
             plan: { ...mockDeployPlan, appId: item.appId, release: item.appId, namespace: item.appId },
           }
   ),
+};
+mockBundlePlan.disk = checkDisk(
+  mockBundlePlan.steps
+    .filter((step) => !step.skip)
+    .map((step) => mockCatalog.find((e) => e.id === step.appId)?.disk ?? { volumeBytes: 0, imageBytes: 0 }),
+  mockDiscovery.nodeDisks
+);
+
+// The same rollout on one small node that can't hold it.
+const smallNode = [{ node: "node-1", availableBytes: 6 * GiB, capacityBytes: 30 * GiB }];
+const noRoom = checkDisk(
+  mockBundlePlan.steps
+    .filter((step) => !step.skip)
+    .map((step) => mockCatalog.find((e) => e.id === step.appId)?.disk ?? { volumeBytes: 0, imageBytes: 0 }),
+  smallNode
+);
+export const mockBundlePlanNoRoom: BundlePlan = {
+  ...mockBundlePlan,
+  allowed: false,
+  blockedBy: noRoom.detail,
+  disk: noRoom,
 };
 
 // Halfway: metrics-server and Authentik done, Gitea installing.
