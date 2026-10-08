@@ -158,6 +158,14 @@ export const mockCloudflareView: CloudflareView = {
 
 export const mockCloudflareEmpty: CloudflareView = { accessPolicy: "never", hosts: [] };
 
+// Connected, no tunnel picked yet, and one left in the account by an earlier install.
+const { tunnel: _tunnel, ...untunnelled } = mockCloudflareView;
+export const mockCloudflareNoTunnel: CloudflareView = {
+  ...untunnelled,
+  existingTunnels: [{ id: tunnelId, name: "console", status: "down" }],
+  hosts: [],
+};
+
 export const mockCloudflareDiscovery: CloudflareDiscovery = {
   tokenStatus: "active",
   accounts: [{ id: "0123456789abcdef0123456789abcdef", name: "Example account" }],

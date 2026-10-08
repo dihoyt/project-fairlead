@@ -318,6 +318,32 @@ test("creates a tunnel, then a route and proxied CNAME per app", async () => {
   }
 });
 
+test("with no tunnel picked, the view lists the account's tunnels to adopt", async () => {
+  const state = mockCloudflareState();
+  const left = "44444444-4444-4444-8444-444444444444";
+  state.tunnels.push({
+    id: left,
+    account_tag: MOCK_ACCOUNT,
+    name: "left-behind",
+    status: "down",
+    config_src: "cloudflare",
+    deleted_at: null,
+    config: { ingress: [{ service: "http_status:404" }] },
+    token: "tok",
+  });
+  const s = await setup({ state });
+  try {
+    const { body } = await s.call<CloudflareView>("POST", "/sync");
+    assert.equal(body.tunnel, undefined);
+    assert.deepEqual(body.existingTunnels, [{ id: left, name: "left-behind", status: "down" }]);
+    const adopted = await s.call<CloudflareView>("POST", "/tunnel", { tunnelId: left });
+    assert.equal(adopted.body.tunnel!.id, left);
+    assert.equal(adopted.body.existingTunnels, undefined);
+  } finally {
+    await s.close();
+  }
+});
+
 test("adopts an existing tunnel and keeps its other routes, ours first", async () => {
   const state = mockCloudflareState();
   const id = "22222222-2222-4222-8222-222222222222";

@@ -12,6 +12,8 @@ import { useAction } from "./shared";
 import { PublicUrlField } from "./steps/PublicUrlField";
 
 const RUN_POLL_MS = 3_000;
+const SAVE_ACCESS_MS = 800;
+const DOMAIN = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
 
 // The bundle input choosing how Cloudflare Tunnel is set up. Its catalog
 // default is the pasted token, for API callers that predate it; here it
@@ -321,6 +323,28 @@ function ConnectorSetup({ baseDomain, onReady }: { baseDomain?: string; onReady:
     onReady(connected);
   }, [connected, onReady]);
   useEffect(() => () => onReady(false), [onReady]);
+
+  // The connector reads the access choice, which is otherwise saved only on
+  // Preview: until then its panel would ask for the Access step, the very
+  // choice being made here.
+  const access = useApi("GET /api/deploy/access");
+  const saved = access.data;
+  const reloadView = view.reload;
+  const reloadAccess = access.reload;
+  useEffect(() => {
+    if (!saved || !baseDomain || !DOMAIN.test(baseDomain)) return;
+    if (saved.mode === "cloudflare-tunnel" && saved.baseDomain === baseDomain) return;
+    const timer = setTimeout(() => {
+      void (async () => {
+        await apiRequest("PUT /api/deploy/access", { body: { mode: "cloudflare-tunnel", baseDomain } });
+        await apiRequest("POST /api/connector-cloudflare/sync").catch(() => undefined);
+        reloadAccess();
+        reloadView();
+      })().catch(() => undefined);
+    }, SAVE_ACCESS_MS);
+    return () => clearTimeout(timer);
+  }, [saved, baseDomain, reloadAccess, reloadView]);
+
   return (
     <Stack gap="sm">
       <Text size="sm" c="dimmed">

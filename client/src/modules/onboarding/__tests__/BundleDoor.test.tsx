@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import {
+  mockAccessLocal,
   mockBundlePlan,
   mockBundleRun,
   mockBundleView,
@@ -359,6 +360,23 @@ describe("BundleDoor", () => {
       fill();
       expect(screen.getByRole("button", { name: "Preview" })).toBeDisabled();
       expect(screen.getByRole("button", { name: "Deploy cloudflared" })).toBeInTheDocument();
+    });
+
+    it("saves the access choice as soon as the domain is set, so the connector stops asking for it", async () => {
+      const { calls } = stubApi({
+        ...noRuns,
+        "GET /api/catalog/bundles": [tunnelBundle],
+        "GET /api/deploy/access": mockAccessLocal,
+      });
+      renderWithApp(<BundleDoor onDone={() => {}} />);
+      await waitFor(() => expect(calls.some((c) => c.key === "PUT /api/deploy/access")).toBe(true));
+      const keys = calls.map((c) => c.key);
+      const saved = keys.indexOf("PUT /api/deploy/access");
+      expect(calls[saved]?.body).toEqual({ mode: "cloudflare-tunnel", baseDomain: "example.test" });
+      await waitFor(() =>
+        expect(calls.map((c) => c.key).indexOf("POST /api/connector-cloudflare/sync")).toBeGreaterThan(saved)
+      );
+      expect(keys).not.toContain("POST /api/deploy/bundles/plan");
     });
 
     it("previews without a tunnel token once cloudflared is connected, saving the access choice first", async () => {

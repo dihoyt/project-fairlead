@@ -235,6 +235,9 @@ export interface CloudflareView {
   accountId?: string;
   zone?: string;
   tunnel?: CloudflareTunnelView;
+  // While no tunnel is picked: the account's tunnels, to adopt one instead
+  // of creating another (a reinstall finds its old tunnel here, by name).
+  existingTunnels?: Array<{ id: string; name: string; status: string }>;
   // The origin tunnel routes point at (AccessView.ingressService).
   ingressService?: string;
   // The A (or AAAA) record target for direct exposure.

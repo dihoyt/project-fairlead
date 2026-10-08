@@ -312,15 +312,21 @@ function register(ctx: ModuleContext): void {
       const access = await ctx.services.get("deploy").access();
       const tunnelId = tunnelIdOf(instance);
       let tunnel: CloudflareTunnelView | undefined;
+      let existingTunnels: CloudflareView["existingTunnels"];
       if (tunnelId) {
         const t = await api.tunnel(instance.config.accountId!, tunnelId);
         const kept = store.tunnel();
         tunnel = { id: t.id, name: t.name, status: t.status, adopted: !(kept?.id === t.id && kept.created) };
+      } else {
+        existingTunnels = (await api.tunnels(instance.config.accountId!).catch(() => []))
+          .map((t) => ({ id: t.id, name: t.name, status: t.status }))
+          .toSorted((a, b) => a.name.localeCompare(b.name));
       }
       const warnings = await wildcardWarnings(api, instance.config.accountId!, zone, tunnelId).catch(() => []);
       const view: CloudflareView = {
         ...base,
         ...(tunnel ? { tunnel } : {}),
+        ...(existingTunnels?.length ? { existingTunnels } : {}),
         ...(access.ingressService ? { ingressService: access.ingressService } : {}),
         ...(warnings.length ? { warnings } : {}),
       };
@@ -607,7 +613,7 @@ function register(ctx: ModuleContext): void {
       const name = body.name ?? product.slug;
       const existing = (await api.tunnels(accountId)).find((t) => t.name === name);
       if (existing) {
-        throw new HttpError(409, `A tunnel named "${name}" already exists; adopt it by id or pick another name.`);
+        throw new HttpError(409, `A tunnel named "${name}" already exists: use it, or create one with another name.`);
       }
       const tunnel = await api.createTunnel(accountId, name).catch((err: unknown) => {
         throw new HttpError(502, message(err));

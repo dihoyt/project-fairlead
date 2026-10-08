@@ -4,6 +4,7 @@ import { renderWithApp } from "../../../test-utils";
 import { apiMocks } from "../../../ui/mocks/api";
 import { mockCloudflareEmpty } from "@contracts/mocks/connectors/views";
 import type { CloudflareView } from "@contracts/connectors";
+import { product } from "../../../product";
 import { CloudflarePage } from "../CloudflarePage";
 
 const json = (body: unknown, status = 200) =>
@@ -125,6 +126,25 @@ describe("CloudflarePage", () => {
     serve({ ...apiMocks["GET /api/connector-cloudflare/view"], accessPolicy: "per-app" });
     renderWithApp(<CloudflarePage />);
     expect(await screen.findByLabelText("Cloudflare Access for grafana.example.test")).toBeInTheDocument();
+  });
+
+  it("offers the tunnel an earlier install left, and a new name otherwise", async () => {
+    const { tunnel: _tunnel, ...noTunnel } = apiMocks["GET /api/connector-cloudflare/view"];
+    const left = "6f0c9a1e-2b3d-4c5e-8f70-1a2b3c4d5e6f";
+    const fetchMock = serve({
+      ...noTunnel,
+      existingTunnels: [
+        { id: left, name: product.slug, status: "down" },
+        { id: "7f0c9a1e-2b3d-4c5e-8f70-1a2b3c4d5e6f", name: "home", status: "healthy" },
+      ],
+    });
+    renderWithApp(<CloudflarePage />);
+    fireEvent.click(await screen.findByRole("button", { name: `Use the existing "${product.slug}" tunnel` }));
+    await waitFor(() => expect(body(fetchMock, "connector-cloudflare/tunnel")).toEqual({ tunnelId: left }));
+    expect(screen.getByText("Already taken in this account")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create a tunnel" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Or create a new tunnel named"), { target: { value: "lab" } });
+    expect(screen.getByRole("button", { name: "Create a tunnel" })).toBeEnabled();
   });
 
   it("offers to create a tunnel, then to deploy cloudflared", async () => {
