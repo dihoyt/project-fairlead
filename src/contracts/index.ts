@@ -8,6 +8,7 @@ export * from "./connectors.js";
 export * from "./deploy.js";
 export * from "./deployed.js";
 export * from "./events.js";
+export * from "./grants.js";
 export * from "./health.js";
 export * from "./hosts.js";
 export * from "./k8s.js";

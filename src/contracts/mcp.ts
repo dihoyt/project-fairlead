@@ -21,6 +21,8 @@ import type {
   DeployJobView,
   DeployPlan,
   DeployRequest,
+  NodeActionRequest,
+  NodeDrainOptions,
 } from "./deploy.js";
 import type {
   Category,
@@ -88,7 +90,8 @@ export interface McpTools {
   get_health_board: { input: None; result: HealthBoard };
   // GET /api/health/categories/:category
   get_health_category: { input: { category: Category }; result: CategoryDetail };
-  // GET /api/metrics-k8s/nodes
+  // GET /api/metrics-k8s/nodes: one row per node with its role, state,
+  // pressure, versions, uptime, pods and current usage, sparklines included.
   list_nodes: { input: None; result: Items<NodeSummary> };
   // GET /api/workloads/namespaces
   list_namespaces: { input: None; result: Items<NamespaceView> };
@@ -169,6 +172,16 @@ export interface McpTools {
   remove_template_app: { input: RemoveTemplateAppInput; result: DeployJobView };
   // POST /api/connector-entra/signin
   setup_entra_signin: { input: EntraSignInRequest; result: EntraSignInView };
+  // POST /api/deploy/actions/plan with a node action; runs nothing.
+  plan_node_action: { input: NodeActionRequest; result: DeployActionPlan };
+  // POST /api/deploy/actions/run with node-cordon.
+  cordon_node: { input: { node: string }; result: DeployJobView };
+  // POST /api/deploy/actions/run with node-uncordon.
+  uncordon_node: { input: { node: string }; result: DeployJobView };
+  // POST /api/deploy/actions/run with node-drain.
+  drain_node: { input: { node: string } & NodeDrainOptions; result: DeployJobView };
+  // POST /api/deploy/actions/run with node-reboot.
+  reboot_node: { input: { node: string } & NodeDrainOptions; result: DeployJobView };
 }
 
 export type McpToolName = keyof McpTools;
@@ -208,7 +221,8 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
   {
     name: "list_nodes",
     title: "Nodes",
-    description: "Kubernetes nodes with readiness, roles, CPU and memory use.",
+    description:
+      "Kubernetes nodes, one row each: role, Ready/cordoned, pressure, kubelet version drift, uptime, pods against capacity, CPU, memory, filesystem, network, load and Longhorn space left, with 30-minute sparklines.",
     scope: "read",
     readOnly: true,
     destructive: false,
@@ -482,5 +496,48 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
     scope: "write",
     readOnly: false,
     destructive: false,
+  },
+  {
+    name: "plan_node_action",
+    title: "Preview a node action",
+    description:
+      "What cordoning, uncordoning, draining or rebooting a node would do, with each pod a drain would evict, skip or wait on (PodDisruptionBudgets); runs nothing.",
+    scope: "write",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "cordon_node",
+    title: "Cordon a node",
+    description: "Marks a node unschedulable; its running pods stay. uncordon_node undoes it.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "uncordon_node",
+    title: "Uncordon a node",
+    description: "Makes a cordoned node schedulable again.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "drain_node",
+    title: "Drain a node",
+    description:
+      "Cordons a node and evicts its pods through the eviction API, respecting PodDisruptionBudgets; DaemonSet pods stay by default. Preview with plan_node_action first.",
+    scope: "write",
+    readOnly: false,
+    destructive: true,
+  },
+  {
+    name: "reboot_node",
+    title: "Reboot a node",
+    description:
+      "Drains a node, reboots it, waits for it to come back Ready and uncordons it. Preview with plan_node_action first; it says when a node can't be rebooted from here.",
+    scope: "write",
+    readOnly: false,
+    destructive: true,
   },
 ];
