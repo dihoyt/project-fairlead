@@ -792,14 +792,20 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
       }
       const scope = body.scope ?? requestedScope;
       if (scope !== "read" && scope !== "write") throw new AdminError(400, "Scope must be read or write.");
+      const limits = tokenLimits(body as Record<string, unknown>);
+      const grant = {
+        scope,
+        ...(limits.namespaces ? { namespaces: limits.namespaces } : {}),
+        ...(limits.areas ? { areas: limits.areas } : {}),
+      };
       const code = issueCode(core, {
         clientId: client.clientId,
         userId: admin.userId,
-        scope,
+        ...grant,
         redirectUri,
         codeChallenge: params.code_challenge!,
       });
-      record(req, admin, "oauth-approve", client.clientId, `${client.name} (${scope})`);
+      record(req, admin, "oauth-approve", client.clientId, `${client.name} (${grantSummary(grant)})`);
       return { ...view, redirect: redirectWith(redirectUri, { code, state: params.state }) };
     })
   );

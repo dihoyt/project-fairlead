@@ -1,8 +1,10 @@
+import type { Request } from "express";
 import { z } from "zod";
 import type {
   AccessMode,
   BundleRequest,
   DeployJobRequest,
+  DeployJobView,
   DeployRequest,
   UpgradeRequest,
 } from "../../contracts/deploy.js";
@@ -115,17 +117,33 @@ export function registerDeploy(
     return deployer.start(user.id, parse(jobRequestSchema, req.body) as DeployJobRequest);
   });
 
+  // A token limited to some namespaces sees only the jobs in them; any
+  // other job answers as if it didn't exist.
+  const visible = (req: Request) => {
+    const allowed = ctx.visibleNamespaces(req);
+    return (job: DeployJobView) => allowed === null || allowed.includes(job.namespace);
+  };
+  const visibleJob = (req: Request, id: string) => {
+    const record = deployer.mustGet(id);
+    if (!visible(req)(record.view)) throw new HttpError(404, `No deploy job "${id}".`);
+    return record;
+  };
+
   ctx.route("GET /api/deploy/jobs", (req) =>
-    deployer.list(req.query.appId || undefined, positive(req.query.limit, DEFAULT_LIMIT, MAX_LIMIT, "limit"))
+    deployer
+      .list(req.query.appId || undefined, positive(req.query.limit, DEFAULT_LIMIT, MAX_LIMIT, "limit"))
+      .filter(visible(req))
   );
 
-  ctx.route("GET /api/deploy/jobs/:id", (req) => deployer.mustGet(req.params.id).view);
+  ctx.route("GET /api/deploy/jobs/:id", (req) => visibleJob(req, req.params.id).view);
 
-  ctx.route("GET /api/deploy/jobs/:id/logs", (req) =>
-    deployer.logs(req.params.id, positive(req.query.tail, LOG_LINES, MAX_TAIL, "tail"))
-  );
+  ctx.route("GET /api/deploy/jobs/:id/logs", (req) => {
+    visibleJob(req, req.params.id);
+    return deployer.logs(req.params.id, positive(req.query.tail, LOG_LINES, MAX_TAIL, "tail"));
+  });
 
   ctx.route("GET /api/deploy/jobs/:id/logs/stream", async (req, res) => {
+    visibleJob(req, req.params.id);
     await deployer.follow(req.params.id, res);
     return undefined;
   });

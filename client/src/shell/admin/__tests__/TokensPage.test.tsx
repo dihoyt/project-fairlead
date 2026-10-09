@@ -11,6 +11,10 @@ function serve() {
     const url = String(input);
     if (url.includes("api/admin/tokens") && init?.method === "POST") return json(apiMocks["POST /api/admin/tokens"]);
     if (url.includes("api/admin/tokens") && init?.method === "DELETE") return json({ ok: true });
+    if (url.includes("api/admin/tokens") && init?.method === "PATCH") {
+      return json(apiMocks["PATCH /api/admin/tokens/:id"]);
+    }
+    if (url.includes("api/workloads/namespaces")) return json(apiMocks["GET /api/workloads/namespaces"]);
     if (url.includes("api/admin/tokens")) return json(apiMocks["GET /api/admin/tokens"]);
     if (url.includes("api/admin/overview")) {
       return json({
@@ -58,5 +62,41 @@ describe("TokensPage", () => {
         fetchMock.mock.calls.some(([url, init]) => String(url).includes("tokens/tok_1") && init?.method === "DELETE")
       ).toBe(true)
     );
+  });
+
+  it("shows each token's reach and limits a new one to some areas", async () => {
+    const fetchMock = serve();
+    renderWithApp(<TokensPage />);
+    expect(
+      await screen.findByText("Workloads, pods and logs, Apps, catalog and templates; namespaces apps, staging")
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "ci" } });
+    fireEvent.click(screen.getAllByText("Only some")[0]!);
+    expect(screen.getByText("Pick at least one area.")).toBeInTheDocument();
+    expect(screen.getByText("Create token").closest("button")).toBeDisabled();
+    fireEvent.click(screen.getByText("Hosts"));
+    fireEvent.click(screen.getByText("Create token"));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
+    expect(JSON.parse(String(post[1]!.body))).toEqual({
+      name: "ci",
+      scope: "read",
+      expiresInDays: 90,
+      areas: ["hosts"],
+    });
+  });
+
+  it("edits a token's limits", async () => {
+    const fetchMock = serve();
+    renderWithApp(<TokensPage />);
+    fireEvent.click((await screen.findAllByText("Edit"))[2]!);
+    fireEvent.click(await screen.findByText("Save"));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(true));
+    const patch = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH")!;
+    expect(String(patch[0])).toContain("tokens/tok_3");
+    expect(JSON.parse(String(patch[1]!.body))).toMatchObject({
+      namespaces: ["apps", "staging"],
+      areas: ["workloads", "deploy"],
+    });
   });
 });

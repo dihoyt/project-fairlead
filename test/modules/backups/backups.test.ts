@@ -10,6 +10,7 @@ import {
   createMockBackupSource,
   createMockCapacitySource,
   createMockContext,
+  mockTokenUser,
   isoAgo,
   mockAdmin,
   mockClusterObjects,
@@ -640,6 +641,20 @@ describe("HTTP and health provider", () => {
     assert.equal(posture.rows[0]!.pvc.name, "scratch-cache");
     assert.equal(posture.rows[0]!.protected, false);
     assert.ok(posture.rows.slice(1).every((r) => r.protected));
+  });
+
+  test("a token limited to some namespaces sees only their volumes", async () => {
+    const all = (await (await call("/posture")).json()) as BackupPosture;
+    const namespace = all.rows[0]!.pvc.namespace;
+    m.setUser(mockTokenUser({ scope: "read", namespaces: [namespace] }));
+    try {
+      const limited = (await (await call("/posture")).json()) as BackupPosture;
+      assert.ok(limited.rows.length > 0);
+      assert.ok(limited.rows.every((r) => r.pvc.namespace === namespace));
+      assert.equal(limited.rows.length, all.rows.filter((r) => r.pvc.namespace === namespace).length);
+    } finally {
+      m.setUser(mockAdmin);
+    }
   });
 
   test("GET /posture.csv downloads the same table", async () => {

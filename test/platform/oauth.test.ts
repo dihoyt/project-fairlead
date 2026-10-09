@@ -234,3 +234,26 @@ test("a non-admin can't approve, and tokens can't reach the consent route", asyn
   const res = await app.send("POST", "/api/admin/oauth/consent", { params, decision: "approve" }, plain);
   assert.equal(res.status, 403);
 });
+
+test("limits chosen on the consent page carry to the grant", async () => {
+  const { clientId, verifier, params } = await authorize();
+  const res = await app.send(
+    "POST",
+    "/api/admin/oauth/consent",
+    { params, decision: "approve", scope: "write", areas: ["workloads"], namespaces: ["apps"] },
+    cookie
+  );
+  const code = new URL(((await res.json()) as OAuthConsentView).redirect!).searchParams.get("code")!;
+  const issued = await token({
+    grant_type: "authorization_code",
+    code,
+    client_id: clientId,
+    redirect_uri: REDIRECT,
+    code_verifier: verifier,
+  });
+  assert.equal(issued.status, 200);
+  const list = (await (await app.get("/api/admin/tokens", cookie)).json()) as ApiTokenView[];
+  assert.deepEqual([list[0]?.areas, list[0]?.namespaces], [["workloads"], ["apps"]]);
+  const bad = await app.send("POST", "/api/admin/oauth/consent", { params, decision: "approve", areas: [] }, cookie);
+  assert.equal(bad.status, 400);
+});
