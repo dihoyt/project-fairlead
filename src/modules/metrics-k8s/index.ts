@@ -3,7 +3,9 @@ import type { Module, ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
 import { DEFAULT_THRESHOLDS, judge, type Thresholds } from "./health.js";
 import { migrations } from "./migrations.js";
-import { createScraper, toNodeSummaries, toSamples, type Scraper, type ScraperOptions } from "./scrape.js";
+import type { MetricsQuery } from "../../contracts/runtime.js";
+import { toNodeRows } from "./rows.js";
+import { createScraper, toSamples, type Scraper, type ScraperOptions } from "./scrape.js";
 
 export const COLLECT_INTERVAL_MS = 30_000;
 export const HEALTH_INTERVAL_MS = 60_000;
@@ -32,6 +34,7 @@ function declareThresholds(ctx: ModuleContext): () => Thresholds {
 
 export function registerMetricsK8s(ctx: ModuleContext, options: ScraperOptions = {}): Scraper {
   const scraper = createScraper(() => ctx.services.get("k8s"), options);
+  const now = options.now ?? Date.now;
   const thresholds = declareThresholds(ctx);
 
   ctx.metrics.addCollector({
@@ -58,10 +61,19 @@ export function registerMetricsK8s(ctx: ModuleContext, options: ScraperOptions =
     collect: async () => judge(await scraper.recent(COLLECT_INTERVAL_MS), thresholds()),
   });
 
-  ctx.route("GET /api/metrics-k8s/nodes", async () => {
+  ctx.route("GET /api/metrics-k8s/nodes", async (req) => {
     const snapshot = await scraper.recent(COLLECT_INTERVAL_MS);
     if (snapshot.error) throw new HttpError(503, snapshot.error);
-    return toNodeSummaries(snapshot);
+    // Hosts and stored history only add to the rows; without them the rows
+    // still carry what the cluster says.
+    const hosts = await ctx.call(req, "GET /api/hosts").catch(() => []);
+    let metrics: MetricsQuery | undefined;
+    try {
+      metrics = ctx.services.get("metrics");
+    } catch {
+      metrics = undefined;
+    }
+    return toNodeRows(snapshot, { hosts, metrics, now: now() });
   });
 
   return scraper;

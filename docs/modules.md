@@ -81,7 +81,20 @@ Judges the cluster's own objects. **Board**: Cluster.
 Usage from each node's kubelet Summary API, with metrics-server as the
 fallback for a node whose kubelet can't be read.
 
-- **Page**: `/nodes`, a node's charts and its pods' containers.
+- **Page**: `/nodes`, one row per node: name and role, Ready / Cordoned /
+  Not Ready with a dot for memory, disk or PID pressure, kubelet version with
+  a *drift* badge when it differs from the API server, uptime, pods against
+  capacity, and a 30-minute sparkline with the current value for CPU,
+  memory, disk, network in and out, load (nodes that are also under Hosts)
+  and, when Longhorn is installed, its schedulable space left. A new node is
+  a new row. Click a row for its CPU, memory, disk and network charts; the
+  node's own page adds its pods' containers. The default storage class and
+  *Add a node* sit above the table.
+- Row data comes from the node object, the kubelet summary already read for
+  the series below, Longhorn's Node objects, and the stored series (no extra
+  collectors). A node is matched to a Hosts entry by address (InternalIP,
+  ExternalIP or hostname); uptime falls back to the host's when the kubelet
+  doesn't report a start time.
 - **Board** (Cluster): *Memory on &lt;node&gt;*, *Disk on &lt;node&gt;* (absent
   on the metrics-server fallback, which has no disk data), *Node usage data*
   (warn when Ready nodes have no data).
