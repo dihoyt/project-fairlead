@@ -62,7 +62,10 @@ export function createCertificate(commonName: string, notBefore: Date, notAfter:
   const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", { modulusLength: RSA_BITS });
   const spki = publicKey.export({ type: "spki", format: "der" });
   const serial = crypto.randomBytes(16);
-  serial[0] = serial[0]! & 0x7f;
+  // DER integers are minimal and positive: a first byte of 0x00 (followed
+  // by one below 0x80) is "illegal padding", and one of 0x80 or more reads
+  // as negative. 0x40..0x7f avoids both.
+  serial[0] = (serial[0]! & 0x3f) | 0x40;
   const tbs = sequence(
     tlv(0xa0, integer(Buffer.from([2]))),
     integer(serial),

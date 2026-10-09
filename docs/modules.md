@@ -352,8 +352,7 @@ cluster. **Page**: Apps → Deploy, Catalog tab.
   and Gitea at `git.<domain>`. With Authentik ticked the bundle also adds
   CloudNativePG and the shared Postgres cluster ahead of it (and the Barman
   Cloud plugin, optional, for point-in-time recovery to S3 or MinIO).
-  Anything
-  already installed or covered by a basic is left out. Headlamp, Grafana and
+  Anything already installed or covered by a basic is left out. Headlamp, Grafana and
   ntfy are catalog-only.
 - `GET /api/catalog/apps`, `GET /api/catalog/bundles`,
   `GET /api/catalog/discovery`.
@@ -375,9 +374,9 @@ Installed and Apps → Deploy; the wizard's Access step.
   a Traefik forwardAuth Middleware, unless switched to **Public** on the
   Installed page. `auth.gate.allow` decides who gets through (admins, or
   everyone who can sign in). Authentik, Pocket ID and ntfy are never gated
-  (people sign in through the first two, phones talk to the other); for Gitea and Rancher a request
-  carrying its own `Authorization` header goes straight to the app, so git
-  and API clients keep working. **Board**:
+  (people sign in through the first two, phones talk to the other); for
+  Gitea and Rancher a request carrying its own `Authorization` header goes
+  straight to the app, so git and API clients keep working. **Board**:
   Access, one check per published app.
 - **Upgrade all**: every app the console installed, upgraded in dependency
   order with `helm upgrade --reset-then-reuse-values`, so its values are kept
@@ -390,7 +389,8 @@ Installed and Apps → Deploy; the wizard's Access step.
   leaves Longhorn's backups), the Backups page's Longhorn set-up, give an app
   a database on the shared Postgres (`pg-database`), set up, run and restore
   its backups (`pg-backups`, `pg-backup-now`, `pg-restore`) and delete a
-  cluster a restore replaced (`pg-remove-cluster`), remove a template app, publish a host directly
+  cluster a restore replaced (`pg-remove-cluster`), the node actions above,
+  the console's own backup, remove a template app, publish a host directly
   with its own certificate, and open forwarded ports on k3s's Traefik
   (`deploy.forwardedPorts`).
 - Defaults for new apps (`deploy.baseDomain`, `deploy.ingressClass`,
@@ -445,8 +445,8 @@ Small apps and your own containers. **Page**: Apps → Deploy, tabs
 "Templates and custom apps" and "External services".
 
 - Library: whoami, Uptime Kuma, IT-Tools, and **Custom app** (any image with
-  a tag or digest, its port, environment variables and an optional volume). Each instance is
-  remembered, upgraded from the Installed page to the library's current pin,
+  a tag or digest, its port, environment variables and an optional
+  volume). Each instance is remembered, upgraded from the Installed page to the library's current pin,
   and can be removed with or without its volumes.
 - **External services**: a machine outside the cluster (a NAS, a game
   server) published through Traefik: http and https through an Ingress, tcp

@@ -10,21 +10,24 @@ The product's working name is Fairlead; the name the code uses lives only in `pr
 
 - **One health board** over the cluster, storage, backups, GitOps, hosts, HTTP checks and connectors, with a history strip per check and the raw data behind every failure.
 - **Backup posture** for every PVC: which backup covers it (Longhorn, Velero), when it last succeeded, whether that is on schedule, how full the target is, and when a restore was last proven.
+- **A node list**: one row per node with its state, version drift, uptime, pods and sparklines for CPU, memory, disk, network and load; click a row for the full charts.
 - **Metrics with history** for nodes, containers and SSH hosts (NAS, Linux boxes), stored in its own database: no Prometheus needed.
 - **A workload browser**: namespaces, workloads, pods, events and logs, with live usage, secrets redacted, and links into Rancher or Headlamp.
-- **Notifications** to ntfy, Discord or any webhook when a check changes.
+- **Notifications** to email (SMTP with an app password, your own Gmail or Microsoft account, or Microsoft 365 through the Entra connector), ntfy, Discord or any webhook when a check changes.
 
 **Set up and run** (with app deploys turned on)
 
-- **A default bundle** for a first self-hosted cluster: an access tool (Cloudflare Tunnel, Tailscale, local network or direct ports), cert-manager, Authentik (or the lighter, passkey-only Pocket ID) for sign-in, Gitea for git, and Longhorn for replicated storage, each with sensible requests and limits.
-- **A catalog and Templates**: more apps (Headlamp, Grafana, ntfy, Rancher, Velero, ...), small app templates, your own container image as a custom app, and external services published through Traefik. A guardrail refuses host paths, privileged containers, host networking and RBAC in templates.
-- **Connectors** that manage other services for you: Cloudflare (tunnel, DNS records, optional Access apps, direct records with your public IP) and Microsoft Entra ID (the sign-in app registration and its secret).
+- **A default bundle** for a first self-hosted cluster: an access tool (Cloudflare Tunnel, Tailscale, local network or direct ports), cert-manager, Authentik (or the lighter, passkey-only Pocket ID) for sign-in, Gitea for git, Longhorn for replicated storage, and, with Authentik, a shared Postgres on CloudNativePG that gives each app its own database, each with sensible requests and limits.
+- **A catalog and Templates**: more apps (Headlamp, Grafana, ntfy, Rancher, ...), small app templates, your own container image as a custom app, and external services published through Traefik. A guardrail refuses host paths, privileged containers, host networking and RBAC in templates.
+- **Connectors** that manage other services for you: Cloudflare (tunnel, DNS records, optional Access apps, direct records with your public IP) and Microsoft Entra ID (the sign-in app registration, on certificate credentials the console rolls itself), and storage targets (NFS, S3/MinIO, SMB) for backups.
 - **The console's sign-in in front of every app** it publishes, through a Traefik forward-auth gate, with a per-app Public switch.
-- **Backups set up from the console**: point Longhorn at an NFS, S3/MinIO or SMB storage target, schedule snapshots and backups per volume group, back up now, and restore to a new claim or in place. Longhorn's own web UI is never published.
+- **Backups set up from the console**: point Longhorn at an NFS, S3/MinIO or SMB storage target, schedule snapshots and backups per volume group, back up now, and restore to a new claim or in place. Longhorn's own web UI is never published. The shared Postgres gets point-in-time restore on S3/MinIO, or nightly dumps on NFS and SMB.
 - **Storage actions**: raise Longhorn's replica count, and move an app's volumes between local-path and Longhorn under the same claim names.
-- **Nodes**: a one-time join link (or `add-node.sh` over SSH) adds a machine to a k3s cluster.
+- **Nodes**: a one-time join link (or `add-node.sh` over SSH) adds a machine to a k3s cluster; cordon, drain (respecting PodDisruptionBudgets), uncordon and reboot from the node list.
+- **Its own backup**: a nightly copy of the console's database to a storage target, and a recovery kit for its encryption key, which `install.sh --restore` takes on a fresh host.
 - **Upgrade all**: every app the console installed, upgraded in dependency order, keeping its values.
-- **An MCP server and API tokens**, so an assistant such as Claude can read the board and make the same changes you can, through the same permissions and audit log.
+- **An MCP server and API tokens**, so an assistant such as Claude can read the board and make the same changes you can, through the same permissions and audit log. A token can be limited to read or write, to areas of the product and to namespaces.
+- **Unattended setup**: `install.sh --env <file>` brings a first install up with its admin password, public URL, connectors, email channel and bundle already applied, then shreds the file.
 
 Everything runs as one pod with SQLite on a small volume. The console's own ServiceAccount is read-only. Deploys are off until you turn them on (`install.sh --enable-deploy`); then each change runs as a Kubernetes Job under a separate installer ServiceAccount, so the console's pod never holds cluster-admin itself. See [docs/install.md](docs/install.md#deploying-apps-from-the-console) for the trade-off.
 
@@ -58,7 +61,7 @@ To try the build that will become the next release, add `--channel next`; see [d
 
 | | |
 |---|---|
-| [docs/install.md](docs/install.md) | The installer and `update.sh`, Helm by hand, values, cluster access, app deploys, adding nodes |
+| [docs/install.md](docs/install.md) | The installer and `update.sh`, unattended setup, restoring the console, Helm by hand, values, cluster access, app deploys, adding nodes |
 | [docs/configuration.md](docs/configuration.md) | Environment variables, settings, and the Kubernetes permissions each feature needs |
 | [docs/modules.md](docs/modules.md) | What each part watches or does, and where it shows up |
 | [docs/mcp.md](docs/mcp.md) | The MCP server, API tokens and connecting an assistant |

@@ -69,20 +69,20 @@ OIDC sign-in with TOTP; the setup wizard; the installer and Helm chart.
 - The Apps section (Installed, Deploy with Catalog and Templates tabs) and
   a round of fixes from running it on a fresh VM.
 
-## Round 4 (in progress, on `next`)
+### Round 4 (on `next`, landing on `main` with the next release)
 
 | Area | What it delivers |
 |---|---|
-| Backups set up from the console | A **Storage target** connector (NFS export, S3/MinIO bucket, SMB/CIFS share) with a reachability check; the Backups page sets Longhorn's target, recurring snapshots and backups per volume or group, back up now and restore (to a new PVC by default); Longhorn runs headless; the console backs up its own database and offers a recovery kit for its encryption key; SMB client packages on nodes. |
-| Nodes as a list | One compact row per node with state, version drift, uptime, pods and sparklines; click for the full charts; cordon, drain, uncordon and reboot (over the install's SSH key) from the page and over MCP. |
-| Shared Postgres | CloudNativePG and one shared cluster as a bundle item, a database and role per app instead of chart-bundled Postgres, and point-in-time restore on the Backups page (S3/MinIO targets; nightly dumps on NFS and SMB). |
-| Scoped API tokens | Tokens limited to namespaces and areas of the product, read or write, enforced the same on REST and MCP. |
-| Unattended setup | `install.sh --env <file>` carries the admin password, public URL, connectors and bundle choices; the console applies them on first boot and the file is shredded. |
+| Backups set up from the console | A **Storage target** connector (NFS export, S3/MinIO bucket, SMB/CIFS share) with a reachability check. The Backups page sets Longhorn's target, recurring snapshots and backups per volume group, back up now, and restore to a new PVC (the default) or in place. Longhorn runs headless, and Velero is monitored but hidden from the catalog picker. |
+| The console's own backup | A nightly copy of its database to an NFS or S3/MinIO target, a passphrase-sealed recovery kit for `SECRETS_KEY`, and `install.sh --restore` to bring both back on a fresh host. |
+| Nodes as a list | One compact row per node with state, version drift, uptime, pods and sparklines; click for the full charts. Cordon, drain (PodDisruptionBudget-aware), uncordon and reboot from the page and over MCP, run as deploy Jobs. |
+| Shared Postgres | CloudNativePG and one shared cluster, added to the bundle with Authentik; a database and role per app instead of chart-bundled Postgres; point-in-time restore on S3/MinIO targets and nightly dumps on NFS and SMB, restored into a new cluster. |
+| Scoped API tokens | Tokens limited to areas of the product and to namespaces, read or write, enforced the same on REST and MCP. |
+| Unattended setup | `install.sh --env <file>` carries the admin password, public URL, Cloudflare, Entra, a storage target, an email channel, OIDC and the bundle; the console applies them on first boot and the file is shredded. |
 | Email notifications | SMTP with an app password, "sign in to send" through your own Google or Microsoft OAuth client, and Microsoft 365 through the Entra connector, with presets and a test send. |
-| Entra without secret rotation | Certificate credentials the console rolls itself. |
+| Entra without secret rotation | Certificate credentials, for the sign-in app and the connector's own management app, that the console rolls itself. |
 | A lighter identity provider | Pocket ID in the catalog and as the bundle's alternative sign-in service, wired up from the Sign-in step; Authentik stays the default. |
 | Move to local-path | The reverse of Convert to Longhorn, with a warning that the data then lives on one node. |
-| Docs | README, docs and this roadmap kept in step with the build. |
 
 ## Later
 
