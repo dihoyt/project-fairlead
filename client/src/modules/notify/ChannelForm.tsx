@@ -1,9 +1,16 @@
 import { useCallback, useState } from "react";
 import { Alert, Button, Group, PasswordInput, SegmentedControl, Select, Stack, Switch, TextInput } from "@mantine/core";
-import type { ChannelKind, ChannelRequest, ChannelView } from "@contracts/notify";
-import { CHANNEL_CHOICES, choiceKind, PUBLIC_NTFY, SelfHostedNtfy, type ChannelChoice } from "./ntfyChoice";
+import type { ChannelRequest, ChannelView } from "@contracts/notify";
+import {
+  CHANNEL_CHOICES,
+  choiceKind,
+  PUBLIC_NTFY,
+  SelfHostedNtfy,
+  type ChannelChoice,
+  type WebhookKind,
+} from "./ntfyChoice";
 
-const SECRET_FIELD: Record<ChannelKind, { label: string; placeholder: string; description: string }> = {
+const SECRET_FIELD: Record<WebhookKind, { label: string; placeholder: string; description: string }> = {
   webhook: {
     label: "URL",
     placeholder: "https://example.com/hooks/health",
@@ -22,6 +29,7 @@ const SECRET_FIELD: Record<ChannelKind, { label: string; placeholder: string; de
 };
 
 function initialChoice(channel: ChannelView): ChannelChoice {
+  if (channel.kind === "email") return "webhook";
   if (channel.kind !== "ntfy") return channel.kind;
   return (channel.config.server ?? PUBLIC_NTFY) === PUBLIC_NTFY ? "ntfy-public" : "ntfy-self";
 }

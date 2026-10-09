@@ -17,7 +17,10 @@ export const CHANNEL_CHOICES: { value: ChannelChoice; label: string }[] = [
   { value: "webhook", label: "Webhook" },
 ];
 
-export const choiceKind = (choice: ChannelChoice): ChannelKind =>
+// The kinds the ntfy/Discord/webhook choice covers.
+export type WebhookKind = Exclude<ChannelKind, "email">;
+
+export const choiceKind = (choice: ChannelChoice): WebhookKind =>
   choice === "ntfy-self" || choice === "ntfy-public" ? "ntfy" : choice;
 
 const trim = (url: string) => url.replace(/\/+$/, "");
