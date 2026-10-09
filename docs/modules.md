@@ -90,6 +90,41 @@ fallback for a node whose kubelet can't be read.
   (percent of one core), `container.memory.bytes`, `container.restarts.count`.
 - Needs `get` on `nodes/proxy`; a 403 is reported as exactly that.
 
+## Node actions (`deploy`)
+
+Cordon, uncordon, drain and reboot, from a node's **Actions** menu on the
+Nodes page (admins) or the MCP tools `plan_node_action`, `cordon_node`,
+`uncordon_node`, `drain_node` and `reboot_node`. Each one is previewed first
+and runs as a deploy Job under the installer service account, so it needs
+deploys turned on (the dialog shows the command that turns them on
+otherwise); the console's own service account stays read-only. The Job is
+kept off the node it acts on, its log is the progress, and it shows in the
+deploy job list as `node-<name>`. One action per node runs at a time.
+
+- **Drain** is `kubectl drain` through the eviction API, so
+  PodDisruptionBudgets are respected. The preview lists every pod on the node
+  and what happens to it: moves, stays (DaemonSet and static pods), waits (on
+  a named PodDisruptionBudget that allows no disruption right now) or blocks
+  (no controller, an emptyDir volume, or a DaemonSet when those aren't left
+  in place). A blocking pod refuses the drain up front; there is no force
+  option. Options: leave DaemonSet pods in place (default on), evict pods
+  with emptyDir volumes (default off), how long evictions may wait (30 to
+  3600 s, default 300). If the drain stops, the log names the budgets that
+  held it and the node stays cordoned.
+- **Reboot** drains, then starts a short-lived privileged pod pinned to the
+  node in `kube-system` that runs `systemctl reboot` in the host's
+  namespaces (`nsenter` into PID 1, a fixed command in code). It waits up to
+  15 minutes for the node to come back Ready with a new boot ID, deletes the
+  pod and uncordons the node. Offered for every Ready node; no SSH key is
+  involved. A node that doesn't come back stays cordoned.
+- The only node of a cluster is never drained or rebooted (cordon is still
+  allowed). The preview warns when the node runs the console's own pod (it
+  moves and the page reconnects), when no other node can take the pods, and
+  when rebooting the only control-plane node takes the API down for a while.
+- The chart's read-only role includes `get`/`list` on
+  `policy/poddisruptionbudgets` so the preview can name budgets; on an older
+  chart the preview just has no "waits" rows.
+
 ## Longhorn (`longhorn`)
 
 **Board**: Storage (*Longhorn volumes*) and Backups (*Longhorn backups*).
