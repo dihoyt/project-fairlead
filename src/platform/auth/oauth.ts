@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { ApiTokenScope, OAuthAuthorizeParams } from "../../contracts/auth.js";
+import type { TokenArea } from "../../contracts/grants.js";
 import type { Core } from "../core.js";
 import { createToken, hash, newSecret, secretPrefix, type TokenRow } from "./tokens.js";
 import { userById } from "./users.js";
@@ -135,15 +136,24 @@ export function redirectWith(redirectUri: string, values: Record<string, string 
 
 export function issueCode(
   core: Core,
-  input: { clientId: string; userId: number; scope: ApiTokenScope; redirectUri: string; codeChallenge: string }
+  input: {
+    clientId: string;
+    userId: number;
+    scope: ApiTokenScope;
+    namespaces?: string[];
+    areas?: TokenArea[];
+    redirectUri: string;
+    codeChallenge: string;
+  }
 ): string {
   const code = crypto.randomBytes(32).toString("base64url");
   const now = Date.now();
   core.db.prepare("DELETE FROM oauth_codes WHERE expires_at <= ?").run(now);
   core.db
     .prepare(
-      `INSERT INTO oauth_codes (code_hash, org_id, client_id, user_id, scope, redirect_uri, code_challenge, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO oauth_codes (code_hash, org_id, client_id, user_id, scope, namespaces, areas, redirect_uri,
+         code_challenge, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       hash(code),
@@ -151,6 +161,8 @@ export function issueCode(
       input.clientId,
       input.userId,
       input.scope,
+      input.namespaces ? JSON.stringify(input.namespaces) : null,
+      input.areas ? JSON.stringify(input.areas) : null,
       input.redirectUri,
       input.codeChallenge,
       now + CODE_TTL_MS
@@ -191,6 +203,8 @@ export function exchangeCode(
         client_id: string;
         user_id: number;
         scope: ApiTokenScope;
+        namespaces: string | null;
+        areas: string | null;
         redirect_uri: string;
         code_challenge: string;
         expires_at: number;
@@ -216,6 +230,8 @@ export function exchangeCode(
   const { row: grant, secret } = createToken(core, {
     name: client?.name ?? "OAuth client",
     scope: row.scope,
+    ...(row.namespaces ? { namespaces: JSON.parse(row.namespaces) as string[] } : {}),
+    ...(row.areas ? { areas: JSON.parse(row.areas) as TokenArea[] } : {}),
     userId: row.user_id,
     expiresInDays: null,
     oauth: { clientId: row.client_id, accessExpiresAt: Date.now() + ACCESS_TTL_MS, refreshHash: hash(refresh) },

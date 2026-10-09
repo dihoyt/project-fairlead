@@ -1,3 +1,4 @@
+import type { Request } from "express";
 import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { z } from "zod";
@@ -266,10 +267,18 @@ function register(ctx: ModuleContext): void {
     }
   };
 
-  ctx.route("GET /api/backups/posture", () => posture());
-
-  ctx.route("GET /api/backups/posture.csv", async (_req, res) => {
+  // A token limited to some namespaces sees only their volumes.
+  const visiblePosture = async (req: Request) => {
     const current = await posture();
+    const allowed = ctx.visibleNamespaces(req);
+    if (allowed === null) return current;
+    return { ...current, rows: current.rows.filter((row) => allowed.includes(row.pvc.namespace)) };
+  };
+
+  ctx.route("GET /api/backups/posture", (req) => visiblePosture(req));
+
+  ctx.route("GET /api/backups/posture.csv", async (req, res) => {
+    const current = await visiblePosture(req);
     const day = current.generatedAt.slice(0, 10);
     res
       .status(200)

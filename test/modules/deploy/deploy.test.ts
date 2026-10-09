@@ -5,7 +5,13 @@ import type { Events } from "../../../src/contracts/events.js";
 import { RESOURCES, type KubeObject } from "../../../src/contracts/k8s.js";
 import type { LogLines } from "../../../src/contracts/workloads.js";
 import { createMockCatalogService, mockDeployStatus, mockDiscovery } from "../../../src/contracts/mocks/catalog.js";
-import { createMockContext, mockAdmin, mockViewer, type MockContext } from "../../../src/contracts/mocks/context.js";
+import {
+  createMockContext,
+  mockAdmin,
+  mockTokenUser,
+  mockViewer,
+  type MockContext,
+} from "../../../src/contracts/mocks/context.js";
 import { createFakeK8s, type FakeK8s } from "../../../src/contracts/mocks/k8s.js";
 import { MOCK_NOW } from "../../../src/contracts/mocks/time.js";
 import type { K8sApi } from "../../../src/contracts/k8s.js";
@@ -467,6 +473,15 @@ test("the watch finishes a job: state, message from Helm, redacted log kept, eve
   await settle();
   const done = await call<DeployJobView>(e, "GET", "/jobs/dj_1");
   assert.equal(done.state, "succeeded");
+
+  // A token limited to other namespaces doesn't see the job at all.
+  e.mock.setUser(mockTokenUser({ scope: "read", namespaces: ["elsewhere"] }));
+  assert.deepEqual(await call<DeployJobView[]>(e, "GET", "/jobs"), []);
+  await call(e, "GET", "/jobs/dj_1", undefined, 404);
+  await call(e, "GET", "/jobs/dj_1/logs", undefined, 404);
+  e.mock.setUser(mockTokenUser({ scope: "read", namespaces: [done.namespace] }));
+  assert.equal((await call<DeployJobView[]>(e, "GET", "/jobs")).length, 1);
+  e.mock.setUser(mockAdmin);
   assert.equal(done.message, 'Release "gitea" deployed.');
   assert.ok(done.finishedAt);
   assert.deepEqual(e.events, [

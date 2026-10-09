@@ -98,7 +98,14 @@ import type { HostKeypair, HostRequest, HostTestResult, HostView } from "./hosts
 import type { CapabilityReport } from "./k8s.js";
 import type { JsonRpcMessage } from "./mcp.js";
 import type { NodeSummary, SeriesInfo, SeriesResult } from "./metrics.js";
-import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
+import type {
+  ChannelRequest,
+  ChannelView,
+  EmailOAuthCallbackQuery,
+  EmailOAuthStart,
+  EmailSetupView,
+  TestSendResult,
+} from "./notify.js";
 import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
 import type { ResetRequest, ResetResult } from "./reset.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
@@ -276,6 +283,15 @@ export interface ApiRoutes {
   "PUT /api/notify/channels/:id": Route<{ id: string }, None, ChannelRequest, ChannelView>;
   "DELETE /api/notify/channels/:id": Route<{ id: string }, None, None, Ok>;
   "POST /api/notify/channels/:id/test": Route<{ id: string }, None, None, TestSendResult>;
+  "GET /api/notify/email/setup": Route<None, None, None, EmailSetupView>;
+  // Write. 400 unless the channel is an email channel with an "oauth"
+  // preset, a client id and a stored client secret; 409 when
+  // EmailSetupView.oauthBlocked.
+  "POST /api/notify/channels/:id/oauth": Route<{ id: string }, None, None, EmailOAuthStart>;
+  // A browser navigation back from Google or Microsoft, not JSON: exchanges
+  // the code, seals the refresh token, records the account, audits
+  // "notify.oauth", and redirects (EmailOAuthCallbackQuery).
+  "GET /api/notify/oauth/callback": Route<None, EmailOAuthCallbackQuery, None, TextBody<"text/html">>;
 
   // --- hosts (A9) ---------------------------------------------------------
   "GET /api/hosts": Route<None, None, None, HostView[]>;

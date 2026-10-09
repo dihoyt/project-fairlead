@@ -2,6 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { Request, Response } from "express";
+import { MCP_TOOL_ROUTES, grantReaches } from "../../contracts/grants.js";
 import { MCP_TOOLS, type McpToolName } from "../../contracts/mcp.js";
 import type { Module, ModuleContext } from "../../contracts/module.js";
 import type { User } from "../../contracts/platform.js";
@@ -13,9 +14,15 @@ import { TOOLS, type Caller } from "./tools.js";
 
 const VERSION = process.env.GIT_SHA || "dev";
 
-// The tools a token's scope allows; a read token never sees the write ones.
+// The tools a token's scope and grant allow: a read token never sees the
+// write ones, and a tool whose route the grant can't reach isn't listed.
 export function toolsFor(user: User): typeof MCP_TOOLS {
-  return MCP_TOOLS.filter((spec) => spec.scope === "read" || user.token?.scope === "write");
+  const grant = user.token;
+  return MCP_TOOLS.filter(
+    (spec) =>
+      (spec.scope === "read" || grant?.scope === "write") &&
+      (grant === undefined || grantReaches(grant, MCP_TOOL_ROUTES[spec.name]))
+  );
 }
 
 // One server per request: the endpoint is stateless, so nothing about a
