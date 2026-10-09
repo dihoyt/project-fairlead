@@ -1,4 +1,4 @@
-import type { ChannelRequest, ChannelView, TestSendResult } from "@contracts/notify";
+import type { ChannelRequest, ChannelView, EmailOAuthStart, EmailSetupView, TestSendResult } from "@contracts/notify";
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(new URL(`api/notify/${path}`, document.baseURI), {
@@ -17,4 +17,6 @@ export const notifyApi = {
   update: (id: string, req: ChannelRequest) => call<ChannelView>("PUT", `channels/${encodeURIComponent(id)}`, req),
   remove: (id: string) => call<{ ok: true }>("DELETE", `channels/${encodeURIComponent(id)}`),
   test: (id: string) => call<TestSendResult>("POST", `channels/${encodeURIComponent(id)}/test`),
+  emailSetup: () => call<EmailSetupView>("GET", "email/setup"),
+  signIn: (id: string) => call<EmailOAuthStart>("POST", `channels/${encodeURIComponent(id)}/oauth`),
 };

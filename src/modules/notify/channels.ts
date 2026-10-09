@@ -6,7 +6,7 @@ const TIMEOUT_MS = 10_000;
 export const DEFAULT_NTFY_SERVER = "https://ntfy.sh";
 
 export interface Delivery {
-  kind: ChannelKind;
+  kind: Exclude<ChannelKind, "email">;
   config: { server?: string; topic?: string };
   secret: string | null;
   payload: WebhookPayload;
@@ -16,6 +16,7 @@ export interface DeliveryResult {
   ok: boolean;
   status?: number;
   error?: string;
+  response?: string;
 }
 
 // Whether a kind cannot work without its secret: for these the secret is the
@@ -55,8 +56,6 @@ function body(p: WebhookPayload): string {
 function request(d: Delivery): { url: string; headers: Record<string, string>; json: unknown } {
   const p = d.payload;
   switch (d.kind) {
-    case "email":
-      throw new Error("Email is not sent over a webhook.");
     case "webhook":
       return { url: d.secret ?? "", headers: {}, json: p };
     case "discord":
@@ -105,7 +104,6 @@ function redact(message: string, secret: string | null): string {
 export async function deliver(d: Delivery, signal?: AbortSignal): Promise<DeliveryResult> {
   if (SECRET_REQUIRED[d.kind] && !d.secret) return { ok: false, error: "No URL is stored for this channel." };
   if (d.kind === "ntfy" && !d.config.topic) return { ok: false, error: "No ntfy topic is set." };
-  if (d.kind === "email") return { ok: false, error: "Email channels are not available in this build." };
   const { url, headers, json } = request(d);
   const timeout = AbortSignal.timeout(TIMEOUT_MS);
   try {

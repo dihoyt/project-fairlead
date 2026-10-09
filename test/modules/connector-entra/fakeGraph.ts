@@ -28,6 +28,10 @@ export interface FakeGraph {
   apps: Map<string, FakeApp>;
   groups: Array<{ id: string; displayName: string; securityEnabled: boolean }>;
   requests: Array<{ method: string; path: string }>;
+  // Mailboxes the management app may send as (Exchange's role scope), and
+  // what was sent.
+  mailboxes: string[];
+  mail: Array<{ from: string; body: Record<string, unknown> }>;
   tokensIssued: number;
   // Makes every Graph call (not the token endpoint) answer this status.
   failWith?: number;
@@ -86,6 +90,8 @@ export async function startFakeGraph(): Promise<FakeGraph> {
       { id: "g-sales", displayName: "Sales", securityEnabled: true },
     ],
     requests: [],
+    mailboxes: [],
+    mail: [],
     tokensIssued: 0,
     close: async () => {},
   };
@@ -120,6 +126,14 @@ export async function startFakeGraph(): Promise<FakeGraph> {
       const body = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
       const path = url.pathname.slice("/v1.0".length);
       const manage = fake.roles.some((r) => r.startsWith("Application.ReadWrite"));
+
+      const mailTo = /^\/users\/([^/]+)\/sendMail$/.exec(path);
+      if (mailTo && req.method === "POST") {
+        const from = decodeURIComponent(mailTo[1]!);
+        if (!fake.mailboxes.includes(from)) return graphError(res, 403, "ErrorAccessDenied", "Access is denied.");
+        fake.mail.push({ from, body });
+        return send(res, 202);
+      }
 
       if (path === "/applications" && req.method === "POST") {
         if (!manage) return graphError(res, 403, "Authorization_RequestDenied", "Insufficient privileges.");
