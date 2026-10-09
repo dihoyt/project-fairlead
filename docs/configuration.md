@@ -42,6 +42,9 @@ No variable carries a product prefix.
 | `PORT`, `HOST` | Listen address; the chart sets `PORT=8080`. |
 | `GIT_SHA` | The build, reported by `/healthz`; set in the image. |
 | `KUBECONFIG`, `KUBE_CONTEXT` | Outside a cluster: the kubeconfig and context to use. Empty in a pod: its ServiceAccount. |
+| `DEPLOY_IMAGE`, `DEPLOY_SERVICE_ACCOUNT`, `DEPLOY_CHART`, `HELM_RELEASE`, `POD_NAMESPACE` | Set by the chart for app deploys: the helm/kubectl image the Jobs run, the installer ServiceAccount, this install's chart and release, and the namespace Jobs run in. |
+| `CLOUDFLARE_API_BASE` | The Cloudflare API base URL (default `https://api.cloudflare.com/client/v4`); for tests. |
+| `PUBLIC_ADDRESS_LOOKUP` | Space-separated URLs that answer with the caller's IP, tried in order, for direct DNS records when the Cloudflare connector has no public address. Default: Cloudflare's trace, icanhazip, ipify. |
 | `HEALTH_DEMO` | `1` adds a provider that cycles through every status, for trying the board without a cluster. |
 | `DEV_AUTH` | Development only: signs every request in as an admin. Refused when `NODE_ENV=production`, which the image sets. |
 
@@ -74,6 +77,7 @@ the UI hasn't.
 | `auth.oidc.adminEmails` | `OIDC_ADMIN_EMAILS` | none | A verified OIDC sign-in with one of these addresses or domains makes the account an admin (never demoted automatically). |
 | `auth.oidc.networks` | `OIDC_NETWORKS` | none | CIDRs OIDC sign-in is allowed from. |
 | `auth.oidc.recheckHours` | `OIDC_RECHECK_HOURS` | `0` | Send OIDC sessions back through the provider this often. |
+| `auth.gate.allow` | `GATE_ALLOW` | `admins` | Who gets through the sign-in gate in front of the apps the console publishes: `admins` or `everyone` who can sign in. |
 | `auth.session.idleDays` | `SESSION_IDLE_DAYS` | `14` | Sign out after this much inactivity. |
 | `auth.session.maxDays` | `SESSION_MAX_DAYS` | `30` | Absolute session lifetime. |
 
@@ -157,6 +161,23 @@ step is prefilled with the address you opened the page on.
 
 `RANCHER_URL` feeds both `workloads.rancherUrl` and `fleet.rancherUrl`.
 
+### Deploys and connectors
+
+These matter only with app deploys on.
+
+| Setting | Env | Default | Meaning |
+|---|---|---|---|
+| `deploy.baseDomain` | `DEPLOY_BASE_DOMAIN` | empty | New apps are offered `<app>.<base domain>`. Empty: the domain most Ingresses share. The Access step sets it. |
+| `deploy.ingressClass` | `DEPLOY_INGRESS_CLASS` | empty | Ingress class for new apps. Empty: the cluster's default class. |
+| `deploy.clusterIssuer` | `DEPLOY_CLUSTER_ISSUER` | empty | cert-manager ClusterIssuer for new apps. Empty: the one discovery found; with none, apps are served over plain HTTP. |
+| `deploy.storageClass` | `DEPLOY_STORAGE_CLASS` | empty | Storage class for new apps. Empty: the cluster's default. |
+| `deploy.forwardedPorts` | `DEPLOY_FORWARDED_PORTS` | empty | Ports your router forwards to the cluster, for external services over TCP and UDP, e.g. `25565-25575,27015`. From 1024 up, at most 100 in all. |
+| `connector-cloudflare.accessApps` | `CLOUDFLARE_ACCESS_APPS` | `never` | Put Cloudflare Access in front of app hostnames: `never`, `always`, or `per-app` (chosen on the Cloudflare page). |
+| `mcp.requestsPerMinute` | `MCP_REQUESTS_PER_MINUTE` | `120` | Per API token on `/mcp`; over it, requests are answered 429 until the minute is up. |
+
+Connectors themselves (Cloudflare, Entra ID) are records, not settings: add
+them under Admin → Connectors.
+
 ### Hosts
 
 | Setting | Env | Default | Meaning |
@@ -211,11 +232,14 @@ actually has and what is missing. A group whose CRDs aren't installed shows as
 | Fleet GitOps | `fleet.cattle.io` `gitrepos`, `bundles` | GitOps tile absent. |
 | Workload browser | `namespaces`, `deployments`, `statefulsets`, `daemonsets`, `replicasets`, `jobs`, `cronjobs`, `pods`, `events`, `pods/log`; `secrets` (`get`, only with the opt-in `rbac.secrets` grant) to mask the pod's own Secret values in its logs | Pages for the missing kinds are empty; logs unavailable without `pods/log`. |
 | Hosts, HTTP checks, notifications | nothing in the cluster; outbound SSH and HTTP(S) from the pod | |
+| App deploys, connectors that run something in the cluster, storage actions, Upgrade all | Nothing on the console's own account beyond a Role in its namespace (Jobs, and creating the Secrets that carry each Job's values). The changes run as `<release>-installer`, bound to `cluster-admin`, which exists only with `deploy.enabled`. | The pages show what is installed and the command that turns deploys on. |
 
 **`nodes/proxy`** is the one grant worth a decision: on some Kubernetes versions
 it also reaches the kubelet's exec endpoints. With `rbac.nodesProxy: false`
 the console still works and says which checks need it.
 
 Network: the pod needs to reach the API server, any host it checks over SSH
-(port 22 by default), the URLs of HTTP checks and notification channels, and
-the OIDC issuer. With `networkPolicy.enabled` only ingress is restricted.
+(port 22 by default), the URLs of HTTP checks and notification channels, the
+OIDC issuer, and, for connectors, `api.cloudflare.com` and Microsoft Graph
+(`login.microsoftonline.com`, `graph.microsoft.com`). Deploy Jobs pull charts
+and images from their registries. With `networkPolicy.enabled` only ingress is restricted.
