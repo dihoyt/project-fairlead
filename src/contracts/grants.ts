@@ -270,6 +270,12 @@ export const MCP_TOOL_ROUTES: { [K in McpToolName]: RouteKey } = {
   plan_template_removal: "POST /api/deploy/actions/plan",
   remove_template_app: "POST /api/deploy/actions/run",
   setup_entra_signin: "POST /api/connector-entra/signin",
+  // Node actions run as deploy actions, so they need the deploy area.
+  plan_node_action: "POST /api/deploy/actions/plan",
+  cordon_node: "POST /api/deploy/actions/run",
+  uncordon_node: "POST /api/deploy/actions/run",
+  drain_node: "POST /api/deploy/actions/run",
+  reboot_node: "POST /api/deploy/actions/run",
 };
 
 export function grantAllowsArea(grant: ApiTokenGrant, area: TokenArea): boolean {
