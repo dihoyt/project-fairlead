@@ -127,7 +127,9 @@ export interface AdminOverview {
   settings: SettingView[];
   environment: Array<{ name: string; help: string; value: string; set: boolean }>;
   publicUrl: PublicUrlView;
-  oidc: { redirectUri: string; hasSecret: boolean; unavailable: string | null };
+  // hasKey: sign-in authenticates with a private key (SignInClientKey), set
+  // by a connector; saving a client secret here replaces it.
+  oidc: { redirectUri: string; hasSecret: boolean; hasKey?: boolean; unavailable: string | null };
   secretKeyConfigured: boolean;
   you: { ip: string };
   version: string;

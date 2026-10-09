@@ -1,10 +1,11 @@
-import type { SignInOidcClient, SignInOidcView, SignInService } from "../platform.js";
+import type { SignInClientKey, SignInOidcClient, SignInOidcView, SignInService } from "../platform.js";
 
 export interface MockSignIn extends SignInService {
   // What oidc() answers; setOidcClient() writes into it.
   state: SignInOidcView;
-  // The last secret set, which oidc() only reports as hasSecret.
+  // The last secret or key set, which oidc() only reports as hasSecret / hasKey.
   secret?: string;
+  key?: SignInClientKey;
   writes: Array<{ client: SignInOidcClient; actor: string }>;
 }
 
@@ -18,6 +19,7 @@ export function createMockSignIn(state: Partial<SignInOidcView> = {}): MockSignI
       issuer: "",
       clientId: "",
       hasSecret: false,
+      hasKey: false,
       redirectUri: "https://console.example.test/auth/oidc/callback",
       blocked: null,
       ...state,
@@ -27,10 +29,18 @@ export function createMockSignIn(state: Partial<SignInOidcView> = {}): MockSignI
     async setOidcClient(client, actor) {
       if (mock.state.blocked !== null) throw new Error(mock.state.blocked);
       mock.writes.push({ client: structuredClone(client), actor });
-      mock.secret = client.clientSecret;
+      if (!client.clientSecret === !client.clientKey) throw new Error("Give either a client secret or a client key.");
+      if (client.clientKey) {
+        mock.key = structuredClone(client.clientKey);
+        delete mock.secret;
+      } else {
+        mock.secret = client.clientSecret;
+        delete mock.key;
+      }
       mock.state.issuer = client.issuer;
       mock.state.clientId = client.clientId;
-      mock.state.hasSecret = true;
+      mock.state.hasSecret = mock.secret !== undefined;
+      mock.state.hasKey = mock.key !== undefined;
       if (client.enabled !== undefined) mock.state.enabled = client.enabled;
     },
   };

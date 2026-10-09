@@ -51,6 +51,7 @@ test("the runtime provides it, and it reports the redirect URI and current clien
     issuer: "",
     clientId: "",
     hasSecret: false,
+    hasKey: false,
     redirectUri: "https://console.example.test/auth/oidc/callback",
     blocked: null,
   });

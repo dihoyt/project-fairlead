@@ -48,6 +48,7 @@ import {
   mockConnectorKinds,
   mockConnectors,
   mockEntraGroups,
+  mockEntraCertificate,
   mockEntraSignIn,
 } from "./connectors/views.js";
 import { mockCheckResults } from "./health.js";
@@ -873,6 +874,7 @@ export const apiMocks: ApiMocks = {
     namespace: "cloudflared",
   },
   "GET /api/connector-entra/view": mockEntraSignIn,
+  "GET /api/connector-entra/certificate": mockEntraCertificate,
   "POST /api/connector-entra/signin": mockEntraSignIn,
   "GET /api/connector-entra/groups": mockEntraGroups,
   "POST /api/mcp": {

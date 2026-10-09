@@ -1,5 +1,6 @@
+import crypto from "node:crypto";
 import type { SignInOidcClient, SignInService } from "../contracts/platform.js";
-import { CALLBACK_PATH, OIDC_SECRET } from "./auth/oidc.js";
+import { CALLBACK_PATH, OIDC_KEY, OIDC_SECRET } from "./auth/oidc.js";
 import { publicOrigin, type Core } from "./core.js";
 import { secretKeyConfigured } from "./secretBox.js";
 
@@ -12,13 +13,30 @@ export class SignInError extends Error {
   }
 }
 
-const settingFor: Record<Exclude<keyof SignInOidcClient, "clientSecret">, string> = {
+const settingFor: Record<Exclude<keyof SignInOidcClient, "clientSecret" | "clientKey">, string> = {
   issuer: "auth.oidc.issuer",
   clientId: "auth.oidc.clientId",
   label: "auth.oidc.label",
   adminGroups: "auth.oidc.adminGroups",
   enabled: "auth.oidc.enabled",
 };
+
+function credentialProblem(client: SignInOidcClient): SignInError | null {
+  const secret = typeof client.clientSecret === "string" && client.clientSecret !== "";
+  if (secret === (client.clientKey !== undefined))
+    return new SignInError(400, "Give either a client secret or a client key, not both or neither.");
+  if (client.clientKey) {
+    try {
+      const key = crypto.createPrivateKey(client.clientKey.privateKey);
+      if (key.asymmetricKeyType !== "rsa") return new SignInError(400, "The client key must be an RSA key.");
+      if (client.clientKey.certificate && !new crypto.X509Certificate(client.clientKey.certificate).publicKey)
+        throw new Error("no public key");
+    } catch {
+      return new SignInError(400, "The client key or its certificate is not valid PEM.");
+    }
+  }
+  return null;
+}
 
 // The one write path for "sign in through this provider": the Authentik
 // wiring route and connector modules (services "signin") both end here.
@@ -48,6 +66,7 @@ export function createSignIn(core: Core): SignInService & {
         issuer: core.settings.string("auth.oidc.issuer"),
         clientId: core.settings.string("auth.oidc.clientId"),
         hasSecret: await core.secrets.has(OIDC_SECRET.scope, OIDC_SECRET.id),
+        hasKey: await core.secrets.has(OIDC_KEY.scope, OIDC_KEY.id),
         redirectUri: origin ? `${origin}${CALLBACK_PATH}` : "",
         blocked: blocked(Object.values(settingFor))?.message ?? null,
       };
@@ -57,15 +76,21 @@ export function createSignIn(core: Core): SignInService & {
       for (const [field, key] of Object.entries(settingFor) as Array<[keyof typeof settingFor, string]>) {
         if (client[field] !== undefined) values.push([key, client[field]]);
       }
-      const refused = blocked(values.map(([key]) => key));
+      const refused = blocked(values.map(([key]) => key)) ?? credentialProblem(client);
       if (refused) throw refused;
-      await core.secrets.putAs(OIDC_SECRET.scope, OIDC_SECRET.id, client.clientSecret, actor);
+      if (client.clientKey) {
+        await core.secrets.putAs(OIDC_KEY.scope, OIDC_KEY.id, JSON.stringify(client.clientKey), actor);
+        await core.secrets.delete(OIDC_SECRET.scope, OIDC_SECRET.id);
+      } else {
+        await core.secrets.putAs(OIDC_SECRET.scope, OIDC_SECRET.id, client.clientSecret ?? "", actor);
+        await core.secrets.delete(OIDC_KEY.scope, OIDC_KEY.id);
+      }
       for (const [key, value] of values) core.settings.set(key, value, actor);
       core.audit.record({
         actor,
         action: "auth.oidc.wire",
         target: client.issuer,
-        detail: `clientId=${client.clientId} settings=${values.map(([key]) => key).join(",")}`,
+        detail: `clientId=${client.clientId} auth=${client.clientKey ? "private_key_jwt" : "client_secret"} settings=${values.map(([key]) => key).join(",")}`,
         result: "ok",
       });
     },

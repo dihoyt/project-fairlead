@@ -244,6 +244,12 @@ export function createConnectors(options: ConnectorsOptions) {
       return row && unseal(row);
     },
     owned: (instanceId) => ownedStore(db, orgId, instanceId, now),
+    async clearSecret(instanceId, field) {
+      const row = store.get(instanceId);
+      const kind = row && kinds.get(row.kind);
+      if (!kind || !secretFields(kind).includes(field)) return;
+      await secrets.delete(SCOPE, secretId(instanceId, field));
+    },
     reconcile(id) {
       const inFlight = running.get(id);
       if (inFlight) return inFlight;

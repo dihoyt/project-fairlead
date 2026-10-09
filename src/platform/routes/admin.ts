@@ -21,6 +21,7 @@ import {
   CALLBACK_PATH,
   GOOGLE_ISSUER,
   MICROSOFT_COMMON_ISSUER,
+  OIDC_KEY,
   OIDC_SECRET,
   OidcError,
   discover,
@@ -242,6 +243,7 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
         oidc: {
           redirectUri: publicUrl.value ? `${publicUrl.value}${CALLBACK_PATH}` : "",
           hasSecret: await core.secrets.has(OIDC_SECRET.scope, OIDC_SECRET.id),
+          hasKey: await core.secrets.has(OIDC_KEY.scope, OIDC_KEY.id),
           unavailable: await oidcUnavailableReason(core),
         },
         secretKeyConfigured: secretKeyConfigured(),
@@ -290,6 +292,9 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
         if (!secretKeyConfigured())
           throw new AdminError(409, "SECRETS_KEY is not set, so the secret cannot be stored.");
         await core.secrets.putAs(OIDC_SECRET.scope, OIDC_SECRET.id, value, admin.id);
+        // A secret typed here is what the admin wants used; a connector's
+        // key would otherwise keep winning.
+        await core.secrets.delete(OIDC_KEY.scope, OIDC_KEY.id);
       }
       record(req, admin, value ? "oidc-secret-set" : "oidc-secret-clear", "auth/oidc");
       return { hasSecret: value !== "" };
