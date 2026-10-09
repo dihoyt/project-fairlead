@@ -23,6 +23,10 @@ const MODE_LABEL: Record<DeployJobView["mode"] | DeployActionKind, string> = {
   "longhorn-backup-now": "backup now",
   "longhorn-restore": "restore",
   "console-backup": "console backup",
+  "node-cordon": "cordon",
+  "node-uncordon": "uncordon",
+  "node-drain": "drain",
+  "node-reboot": "reboot",
 };
 
 function JobsTable({

@@ -3,7 +3,7 @@ import type { ApiRoutes, RouteKey } from "../../contracts/api.js";
 import type { CheckRequest, CheckView } from "../../contracts/checks.js";
 import { CATEGORIES } from "../../contracts/health.js";
 import type { CatalogAppView, DiscoveryReport } from "../../contracts/catalog.js";
-import type { AccessView } from "../../contracts/deploy.js";
+import type { AccessView, NodeActionRequest } from "../../contracts/deploy.js";
 import type { CatalogAppSummary, McpToolName, McpTools } from "../../contracts/mcp.js";
 import type { CallInput } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
@@ -113,6 +113,23 @@ const restoreRequest = {
       "new-pvc: a new claim beside the old one, app untouched. in-place: stops the app and replaces the volume's data."
     ),
   newClaim: z.string().optional().describe('new-pvc only. Default "<claim>-restored-<yyyymmdd>".'),
+};
+
+const nodeArg = z.string().min(1).describe("Node name, from list_nodes.");
+
+const drainOptions = {
+  ignoreDaemonSets: z.boolean().optional().describe("Leave DaemonSet pods in place. Default true."),
+  deleteEmptyDirData: z
+    .boolean()
+    .optional()
+    .describe("Evict pods that use emptyDir volumes, losing that data. Default false: such a pod blocks the drain."),
+  timeoutSeconds: z
+    .number()
+    .int()
+    .min(30)
+    .max(3600)
+    .optional()
+    .describe("How long evictions may wait on PodDisruptionBudgets before the drain fails. Default 300."),
 };
 
 const items = <T>(list: T[]) => ({ items: list });
@@ -396,5 +413,29 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
   restore_volume: {
     input: z.object(restoreRequest),
     run: (call, body) => call("POST /api/backups/restore", { body }),
+  },
+  plan_node_action: {
+    input: z.object({
+      kind: z.enum(["node-cordon", "node-uncordon", "node-drain", "node-reboot"]),
+      node: nodeArg,
+      ...drainOptions,
+    }),
+    run: (call, body) => call("POST /api/deploy/actions/plan", { body: body as NodeActionRequest }),
+  },
+  cordon_node: {
+    input: z.object({ node: nodeArg }),
+    run: (call, { node }) => call("POST /api/deploy/actions/run", { body: { kind: "node-cordon", node } }),
+  },
+  uncordon_node: {
+    input: z.object({ node: nodeArg }),
+    run: (call, { node }) => call("POST /api/deploy/actions/run", { body: { kind: "node-uncordon", node } }),
+  },
+  drain_node: {
+    input: z.object({ node: nodeArg, ...drainOptions }),
+    run: (call, body) => call("POST /api/deploy/actions/run", { body: { ...body, kind: "node-drain" } }),
+  },
+  reboot_node: {
+    input: z.object({ node: nodeArg, ...drainOptions }),
+    run: (call, body) => call("POST /api/deploy/actions/run", { body: { ...body, kind: "node-reboot" } }),
   },
 };
