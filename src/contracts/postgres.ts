@@ -22,6 +22,14 @@ export const POSTGRES_APP = "postgres";
 // Where the shared Cluster, its databases' objects and its backups live.
 export const POSTGRES_NAMESPACE = "postgres";
 
+// The first shared Cluster's name, from product.json's slug.
+export const pgClusterName = (slug: string): string => `${slug}-postgres`;
+
+// Label, under ownerMarker.labelDomain, on every shared Cluster this product
+// made: "current" on the one the apps use, "previous" on ones a restore
+// replaced. Readers find the cluster by it, never by name.
+export const pgClusterLabel = (labelDomain: string): string => `${labelDomain}/postgres`;
+
 // The database and role an app gets: its catalog id with dashes as
 // underscores ("pocket-id" -> "pocket_id").
 export const pgName = (appId: string): string => appId.replace(/-/g, "_");
