@@ -43,20 +43,20 @@ they are.
 
 When the cluster is this host's k3s, the installer also installs Longhorn's
 node prerequisites, `open-iscsi` (with `iscsid` enabled and started) and the
-NFS client (`nfs-common` / `nfs-utils` / `nfs-client`), through apt, dnf, yum,
+NFS client (`nfs-common` / `nfs-utils` / `nfs-client`) and `cifs-utils` (SMB shares as backup targets), through apt, dnf, yum,
 zypper or apk. They are small (a few MB) and are skipped when already there,
 when no known package manager is found, or with `--no-node-packages`. The
 installer cannot reach other nodes: on a multi-node cluster, run the same on
 each agent node before deploying Longhorn, for example on Debian or Ubuntu
 
 ```
-sudo apt-get install -y open-iscsi nfs-common && sudo systemctl enable --now iscsid
+sudo apt-get install -y open-iscsi nfs-common cifs-utils && sudo systemctl enable --now iscsid
 ```
 
 or on Fedora, RHEL and their relatives
 
 ```
-sudo dnf install -y iscsi-initiator-utils nfs-utils && sudo systemctl enable --now iscsid
+sudo dnf install -y iscsi-initiator-utils nfs-utils cifs-utils && sudo systemctl enable --now iscsid
 ```
 
 While the repository and packages are private, fetch the script with a token
@@ -83,7 +83,7 @@ Two extras, both off unless asked for, and both only for this host's k3s:
   never upgrades k3s). It swaps the checksum-verified binary and restarts the
   `k3s` or `k3s-agent` service, so the flags k3s was installed with are kept.
   Other nodes are not touched: run it on each, servers first.
-- `--prereqs` installs open-iscsi and the NFS client on this host (see
+- `--prereqs` installs open-iscsi, the NFS client and cifs-utils on this host (see
   "Installer").
 
 `update.sh` is `install.sh` with one line changed, and takes the same flags
@@ -93,8 +93,8 @@ fails if it falls out of step.
 ## Adding nodes over SSH
 
 `add-node.sh` joins more machines to a k3s cluster from one of its server
-nodes. For each `user@host` it logs in over SSH, installs open-iscsi and the
-NFS client (Longhorn's node prerequisites), installs k3s at the server's own
+nodes. For each `user@host` it logs in over SSH, installs open-iscsi, the
+NFS client and cifs-utils (Longhorn's node prerequisites), installs k3s at the server's own
 version as an agent, and waits until the node is Ready.
 
 ```

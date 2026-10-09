@@ -66,7 +66,7 @@ its settings (port, host, origin, app deploys) unless a flag changes them.
 Usage: update.sh [flags]
 
   --k3s                 Also upgrade this host's k3s to the stable channel's release
-  --prereqs             Also install open-iscsi and the NFS client on this host
+  --prereqs             Also install open-iscsi, the NFS and SMB clients on this host
 
 Flags shared with install.sh (--uninstall, --purge and --no-k3s do not apply):
 EOF
@@ -96,7 +96,7 @@ EOF
                         ServiceAccount bound to cluster-admin; off unless given
   --kubeconfig PATH     Use this kubeconfig instead of detecting a cluster
   --no-k3s              Never install k3s; fail if no cluster is found
-  --no-node-packages    Don't install open-iscsi and the NFS client on this host's k3s node
+  --no-node-packages    Don't install open-iscsi, the NFS and SMB clients on this host's k3s node
   --timeout DURATION    How long to wait for the rollout (default: $TIMEOUT)
   --yes                 Don't ask before installing k3s or changing a cluster
   --dry-run             Print the changes instead of making them
@@ -311,27 +311,28 @@ install_k3s() {
   kube wait --for=condition=Ready node --all --timeout=180s >/dev/null
 }
 
-# Longhorn needs iscsid on every node, and an NFS client for its backups and
-# ReadWriteMany volumes. Only this host is reachable from here, and only when
+# Longhorn needs iscsid on every node, and NFS and SMB clients for its backups
+# and ReadWriteMany volumes. Only this host is reachable from here, and only when
 # it is the k3s node; other nodes are a documented manual step.
 node_packages() {
   [ "$NODE_PACKAGES" = 1 ] || return 0
-  if has iscsiadm && { has mount.nfs || [ -x /sbin/mount.nfs ] || [ -x /usr/sbin/mount.nfs ]; }; then
+  if has iscsiadm && { has mount.nfs || [ -x /sbin/mount.nfs ] || [ -x /usr/sbin/mount.nfs ]; } &&
+    { has mount.cifs || [ -x /sbin/mount.cifs ] || [ -x /usr/sbin/mount.cifs ]; }; then
     start_iscsid
     return 0
   fi
   if has apt-get; then
-    set -- open-iscsi nfs-common
+    set -- open-iscsi nfs-common cifs-utils
   elif has dnf; then
-    set -- iscsi-initiator-utils nfs-utils
+    set -- iscsi-initiator-utils nfs-utils cifs-utils
   elif has yum; then
-    set -- iscsi-initiator-utils nfs-utils
+    set -- iscsi-initiator-utils nfs-utils cifs-utils
   elif has zypper; then
-    set -- open-iscsi nfs-client
+    set -- open-iscsi nfs-client cifs-utils
   elif has apk; then
-    set -- open-iscsi nfs-utils
+    set -- open-iscsi nfs-utils cifs-utils
   else
-    say "Longhorn needs open-iscsi and an NFS client on each node; no known package manager here, so install them yourself."
+    say "Longhorn needs open-iscsi, an NFS client and cifs-utils on each node; no known package manager here, so install them yourself."
     return 0
   fi
   if [ "$YES" = 0 ] && tty_ok; then
