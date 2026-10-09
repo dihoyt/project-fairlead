@@ -1,8 +1,15 @@
 // Microsoft Graph, as much of it as the connector uses, with app-only
-// (client credentials) tokens for the management app registration.
+// (client credentials) tokens for the management app registration, which
+// signs in with a certificate (client assertion) or a client secret.
 //
 // Paths relied on (Graph v1.0):
 //   POST {login}/{tenant}/oauth2/v2.0/token          client_credentials, scope {graph}/.default
+//   GET  /applications(appId='{appId}')              the management app itself; 403/404 unless it
+//                                                    may read it (Application.ReadWrite.All, or it
+//                                                    owns itself)
+//   POST /applications/{id}/addKey                   { keyCredential, passwordCredential: null, proof };
+//                                                    no permission needed for an app's own keys
+//   POST /applications/{id}/removeKey                { keyId, proof }; 204
 //   POST /applications                               the caller becomes an owner (OwnedBy)
 //   GET  /applications/{objectId}                    404 once deleted; 403/404 when not owned
 //   PATCH /applications/{objectId}                   204
@@ -12,8 +19,14 @@
 //   GET  /groups?$filter=…&$top=&$select=            needs Group.Read.All (or Directory.Read.All)
 //   POST /users/{address}/sendMail                    202; needs Mail.Send for that mailbox (Exchange
 //                                                    RBAC for Applications, or the Graph permission)
-// Nothing here logs or returns the management secret or a created client secret
-// except addPassword's result to its caller.
+// {id} is an object id or appId='…'. PATCH keyCredentials replaces the whole
+// list; Graph never returns a certificate's key, so only a caller holding
+// every certificate it wants kept can PATCH it.
+// Nothing here logs or returns the management secret, a private key or a
+// created client secret except addPassword's result to its caller.
+
+import crypto from "node:crypto";
+import { signJwt } from "./x509.js";
 
 const TIMEOUT_MS = 15_000;
 // Tokens are reused until shortly before they expire.
@@ -27,11 +40,19 @@ export interface GraphEndpoints {
   graph: string;
 }
 
+export type GraphCredential =
+  | { kind: "secret"; clientSecret: string }
+  | { kind: "certificate"; privateKey: string; certificate: string; thumbprint: string };
+
 export interface GraphCredentials {
   tenantId: string;
   clientId: string;
-  clientSecret: string;
+  credential: GraphCredential;
 }
+
+// The audience of a key proof for addKey/removeKey: the AAD Graph app id.
+const PROOF_AUDIENCE = "00000002-0000-0000-c000-000000000000";
+const JWT_TTL_S = 600;
 
 export class GraphError extends Error {
   readonly status: number;
@@ -50,7 +71,61 @@ export interface GraphApplication {
   tags?: string[];
   groupMembershipClaims?: string | null;
   web?: { redirectUris?: string[] };
-  passwordCredentials?: Array<{ keyId: string; displayName?: string | null; endDateTime?: string | null }>;
+  passwordCredentials?: Array<{
+    keyId: string;
+    displayName?: string | null;
+    endDateTime?: string | null;
+    // The secret's first three characters.
+    hint?: string | null;
+  }>;
+  keyCredentials?: GraphKeyCredential[];
+}
+
+export interface GraphKeyCredential {
+  keyId: string;
+  displayName?: string | null;
+  endDateTime?: string | null;
+  type?: string;
+  // base64 of the certificate's SHA-1 thumbprint.
+  customKeyIdentifier?: string | null;
+}
+
+// A certificate as keyCredentials takes it on PATCH or addKey.
+export interface NewKeyCredential {
+  // base64 DER.
+  key: string;
+  displayName: string;
+}
+
+export const keyCredentialBody = (cert: NewKeyCredential) => ({
+  type: "AsymmetricX509Cert",
+  usage: "Verify",
+  key: cert.key,
+  displayName: cert.displayName,
+});
+
+// Whether Graph's keyCredential is this certificate: by display name (which
+// carries the thumbprint) or by customKeyIdentifier, which Entra fills in
+// with the thumbprint.
+export function isCertificate(credential: GraphKeyCredential, thumbprint: string): boolean {
+  if (credential.displayName?.includes(thumbprint)) return true;
+  const id = credential.customKeyIdentifier ?? "";
+  return (
+    id !== "" &&
+    (Buffer.from(id, "base64").toString("hex").toUpperCase() === thumbprint ||
+      Buffer.from(id, "base64").toString("utf8").toUpperCase() === thumbprint)
+  );
+}
+
+// A proof of possession for addKey/removeKey on application `objectId`,
+// signed with one of its current certificates.
+export function keyProof(
+  key: { privateKey: string; certificate: string },
+  objectId: string,
+  nowMs = Date.now()
+): string {
+  const now = Math.floor(nowMs / 1000);
+  return signJwt(key, { aud: PROOF_AUDIENCE, iss: objectId, nbf: now, exp: now + JWT_TTL_S, jti: crypto.randomUUID() });
 }
 
 export interface GraphPassword {
@@ -117,6 +192,12 @@ export interface GraphClient {
   // Fetches (or reuses, unless fresh) an app-only token; throws GraphError
   // when refused. A fresh one carries permissions consented since.
   token(signal?: AbortSignal, fresh?: boolean): Promise<string>;
+  // The management app itself, by its client id; undefined when Graph
+  // refuses (403) or hides it (404) from this caller.
+  self(signal?: AbortSignal): Promise<GraphApplication | undefined>;
+  // `app`: an object id, or appId='…' for the caller itself.
+  addKey(app: string, cert: NewKeyCredential, proof: string, signal?: AbortSignal): Promise<GraphKeyCredential>;
+  removeKey(app: string, keyId: string, proof: string, signal?: AbortSignal): Promise<void>;
   createApplication(body: Record<string, unknown>, signal?: AbortSignal): Promise<GraphApplication>;
   // undefined when Graph says 404 (deleted, or not visible to an OwnedBy caller).
   getApplication(objectId: string, signal?: AbortSignal): Promise<GraphApplication | undefined>;
@@ -137,25 +218,50 @@ export interface GraphMail {
 const withTimeout = (signal?: AbortSignal) =>
   signal ? AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) : AbortSignal.timeout(TIMEOUT_MS);
 
-const appPath = (objectId: string) => `/applications/${encodeURIComponent(objectId)}`;
+// An object id, or "appId='…'" (already in Graph's alternate-key form).
+const appPath = (objectId: string) =>
+  objectId.startsWith("appId=") ? `/applications(${objectId})` : `/applications/${encodeURIComponent(objectId)}`;
+
+export const selfRef = (clientId: string) => `appId='${clientId.replace(/'/g, "''")}'`;
 
 const tokens = new Map<string, { value: string; expires: number }>();
 
+function credentialForm(creds: GraphCredentials, tokenUrl: string): Record<string, string> {
+  const c = creds.credential;
+  if (c.kind === "secret") return { client_secret: c.clientSecret };
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+    client_assertion: signJwt(c, {
+      aud: tokenUrl,
+      iss: creds.clientId,
+      sub: creds.clientId,
+      jti: crypto.randomUUID(),
+      iat: now,
+      nbf: now,
+      exp: now + JWT_TTL_S,
+    }),
+  };
+}
+
 export function createGraphClient(creds: GraphCredentials, endpoints: GraphEndpoints): GraphClient {
-  const cacheKey = `${endpoints.login}|${creds.tenantId}|${creds.clientId}|${creds.clientSecret}`;
+  const c = creds.credential;
+  const credentialKey = c.kind === "secret" ? `s:${c.clientSecret}` : `c:${c.thumbprint}`;
+  const cacheKey = `${endpoints.login}|${creds.tenantId}|${creds.clientId}|${credentialKey}`;
 
   async function token(signal?: AbortSignal, fresh = false): Promise<string> {
     const cached = tokens.get(cacheKey);
     if (!fresh && cached && cached.expires > Date.now() + TOKEN_MARGIN_MS) return cached.value;
     const problem = tenantProblem(creds.tenantId);
     if (problem) throw new GraphError(400, "invalid_tenant", problem);
-    const res = await fetch(`${endpoints.login}/${encodeURIComponent(creds.tenantId)}/oauth2/v2.0/token`, {
+    const tokenUrl = `${endpoints.login}/${encodeURIComponent(creds.tenantId)}/oauth2/v2.0/token`;
+    const res = await fetch(tokenUrl, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "client_credentials",
         client_id: creds.clientId,
-        client_secret: creds.clientSecret,
+        ...credentialForm(creds, tokenUrl),
         scope: `${new URL(endpoints.graph).origin}/.default`,
       }),
       signal: withTimeout(signal),
@@ -188,6 +294,32 @@ export function createGraphClient(creds: GraphCredentials, endpoints: GraphEndpo
 
   return {
     token,
+    async self(signal) {
+      try {
+        return (await call(
+          "GET",
+          appPath(selfRef(creds.clientId)),
+          "Reading the management app",
+          undefined,
+          signal
+        )) as GraphApplication;
+      } catch (err) {
+        if (err instanceof GraphError && (err.status === 403 || err.status === 404)) return undefined;
+        throw err;
+      }
+    },
+    async addKey(app, cert, proof, signal) {
+      return (await call(
+        "POST",
+        `${appPath(app)}/addKey`,
+        "Adding a certificate",
+        { keyCredential: keyCredentialBody(cert), passwordCredential: null, proof },
+        signal
+      )) as GraphKeyCredential;
+    },
+    async removeKey(app, keyId, proof, signal) {
+      await call("POST", `${appPath(app)}/removeKey`, "Removing an old certificate", { keyId, proof }, signal);
+    },
     async createApplication(body, signal) {
       return (await call("POST", "/applications", "Creating the app registration", body, signal)) as GraphApplication;
     },
