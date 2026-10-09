@@ -336,7 +336,8 @@ cluster. **Page**: Apps → Deploy, Catalog tab.
   Longhorn (headless: no Ingress for its UI; the `longhorn-frontend` Service
   stays for `kubectl port-forward`), Longhorn backups (the backup target),
   Rancher, Headlamp, Gitea, Grafana, Authentik, Pocket ID, Velero, ntfy,
-  Cloudflare Tunnel, Tailscale. Each pins a chart version per Kubernetes
+  Cloudflare Tunnel, Tailscale, CloudNativePG, its Barman Cloud plugin and
+  the shared Postgres cluster. Each pins a chart version per Kubernetes
   version range and refuses one it doesn't fit. Velero is hidden from the
   picker until it is installed; it can still be deployed over the API and MCP.
 - **Discovery** recognises installs by their labels, or by image when the
@@ -348,7 +349,10 @@ cluster. **Page**: Apps → Deploy, Catalog tab.
   Local Path Provisioner, Longhorn (optional; it needs open-iscsi on every
   node), a sign-in service at `auth.<domain>` (Authentik by default, or
   Pocket ID: passkeys only, a fraction of the memory, and https required)
-  and Gitea at `git.<domain>`. Anything
+  and Gitea at `git.<domain>`. With Authentik ticked the bundle also adds
+  CloudNativePG and the shared Postgres cluster ahead of it (and the Barman
+  Cloud plugin, optional, for point-in-time recovery to S3 or MinIO).
+  Anything
   already installed or covered by a basic is left out. Headlamp, Grafana and
   ntfy are catalog-only.
 - `GET /api/catalog/apps`, `GET /api/catalog/bundles`,
@@ -383,12 +387,36 @@ Installed and Apps → Deploy; the wizard's Access step.
   claim names, whichever way applies (the old volume is kept until the app
   answers on the copy; to Longhorn with an optional download first; to
   local-path with a warning that the data then lives on one node's disk and
-  leaves Longhorn's backups), the Backups page's Longhorn set-up, remove a template app, publish a host directly
+  leaves Longhorn's backups), the Backups page's Longhorn set-up, give an app
+  a database on the shared Postgres (`pg-database`), remove a template app, publish a host directly
   with its own certificate, and open forwarded ports on k3s's Traefik
   (`deploy.forwardedPorts`).
 - Defaults for new apps (`deploy.baseDomain`, `deploy.ingressClass`,
   `deploy.clusterIssuer`, `deploy.storageClass`) are empty, meaning what the
   cluster already uses; see [configuration.md](configuration.md#deploys-and-connectors).
+
+## Shared Postgres (`postgres`)
+
+One Postgres cluster, run by CloudNativePG in the `postgres` namespace, for
+the apps that need a database. **Board**: Storage (*Shared Postgres*).
+Absent until the cluster exists.
+
+- **The cluster**: one instance per node up to two (a replica on a second
+  node when there is one), on the default storage class, 10 GiB by default.
+  It is labelled `<label domain>/postgres=current`; a restore makes a new
+  cluster and moves the label, so the name can change.
+- **Per app**: Authentik and Grafana installed while the shared cluster
+  exists get their own role and database on it (a `DatabaseRole` and a
+  `Database`, kept if the app is removed) and a Secret `<app>-postgres` in
+  their namespace with `host`, `port`, `dbname`, `user`, `password` and
+  `uri`. Their charts' own Postgres is turned off and they read the
+  connection from that Secret. An app already installed with its own
+  database keeps it.
+- Checks: the cluster's ready instances and phase, and *Postgres
+  databases* (each role and database the operator has applied).
+- Database size and connection counts come from the primary's metrics
+  exporter (port 9187), so the console needs no database credentials.
+- `GET /api/postgres/cluster`, `GET /api/postgres/databases`.
 
 ## Templates (`templates`)
 

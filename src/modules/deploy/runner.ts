@@ -22,6 +22,8 @@ import type { ModuleContext } from "../../contracts/module.js";
 import type { LogLines } from "../../contracts/workloads.js";
 import { HttpError } from "../../runtime/http.js";
 import { errorMessage } from "../../runtime/log.js";
+import { POSTGRES_APP, POSTGRES_NAMESPACE, pgClusterName, pgName } from "../../contracts/postgres.js";
+import { product } from "../../product.js";
 import { type GateActionContext } from "./actions/gate.js";
 import { createConsoleDatabase } from "./actions/console-backup.js";
 import {
@@ -31,6 +33,7 @@ import {
   type ActionRendered,
   type ConsoleDatabase,
 } from "./actions/index.js";
+import { currentCluster, type SharedPostgres } from "./actions/pg-objects.js";
 import type { Defaults, Step } from "./apps.js";
 import { accessView, AccessStore, resolves as lookupHost, type Resolver } from "./access.js";
 import { enableHint, type DeployConfig } from "./config.js";
@@ -323,6 +326,10 @@ export class Deployer {
         discovery: found.discovery,
         discoveryError: found.error,
         namespaceExists: await this.namespaceExists(namespace),
+        postgres:
+          entry.database === "postgres" || entry.id === POSTGRES_APP
+            ? await this.sharedPostgres(entry, found.discovery, context.installedBefore)
+            : undefined,
         jobNamespace: this.config.namespace(),
         jobName: jobName(entry.id, this.store.nextSeq()),
         valuesSecret: valuesSecretName(entry.id),
@@ -331,6 +338,50 @@ export class Deployer {
       mode,
       this.options.generate
     );
+  }
+
+  // The shared Postgres an app uses: the cluster the apps use now, or the
+  // one an earlier step of the same bundle makes. The shared cluster itself
+  // keeps the name it has. An app already installed with its own Postgres
+  // keeps it: moving its data over is not something a re-install does.
+  private async sharedPostgres(
+    entry: CatalogEntry,
+    discovery: DiscoveryReport | undefined,
+    installedBefore: readonly string[] | undefined
+  ): Promise<SharedPostgres | undefined> {
+    const self = discovery?.apps.find((app) => app.appId === entry.id);
+    if (entry.id !== POSTGRES_APP && self?.state === "installed" && !(await this.onSharedPostgres(entry))) {
+      return undefined;
+    }
+    const k8s = this.k8s();
+    let cluster: Awaited<ReturnType<typeof currentCluster>> | undefined;
+    try {
+      cluster = k8s ? await currentCluster(k8s) : undefined;
+    } catch (err) {
+      this.ctx.log.warn("Could not look for the shared Postgres", { error: errorMessage(err) });
+    }
+    if (cluster && cluster !== "absent") {
+      return { namespace: cluster.metadata.namespace ?? POSTGRES_NAMESPACE, cluster: cluster.metadata.name };
+    }
+    if (entry.id === POSTGRES_APP || installedBefore?.includes(POSTGRES_APP)) {
+      return { namespace: POSTGRES_NAMESPACE, cluster: pgClusterName(product.slug) };
+    }
+    return undefined;
+  }
+
+  // Whether an installed app already reads its connection from the shared
+  // Postgres (its connection Secret exists).
+  private async onSharedPostgres(entry: CatalogEntry): Promise<boolean> {
+    const k8s = this.k8s();
+    if (!k8s) return false;
+    try {
+      const listed = await k8s.list(RESOURCES.cnpgDatabases, { namespace: POSTGRES_NAMESPACE });
+      return (
+        listed !== "absent" && listed.some((db) => (db as { spec?: { name?: string } }).spec?.name === pgName(entry.id))
+      );
+    } catch {
+      return false;
+    }
   }
 
   // What the sign-in gate is applied with; undefined without the platform's

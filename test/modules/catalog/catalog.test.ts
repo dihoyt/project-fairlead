@@ -237,7 +237,7 @@ describe("catalog entries", () => {
   test("every installable app has a disk footprint; volumes match its storage", () => {
     const GiB = 1024 ** 3;
     for (const entry of catalog) {
-      if (entry.install.kind === "patch") {
+      if (entry.install.kind === "patch" && !entry.storage) {
         assert.equal(entry.disk, undefined, entry.id);
         continue;
       }
@@ -247,6 +247,8 @@ describe("catalog entries", () => {
     const gitea = catalog.find((e) => e.id === "gitea")!;
     assert.equal(gitea.disk?.volumeBytes, 5 * GiB);
     assert.equal(catalog.find((e) => e.id === "ntfy")!.disk?.volumeBytes, GiB / 2);
+    // Every Postgres instance holds a full copy.
+    assert.equal(catalog.find((e) => e.id === "postgres")!.disk?.volumeBytes, 20 * GiB);
     assert.match(ntfyManifest, /storage: 512Mi/);
     // ntfy exits at start when attachment-cache-dir is set without base-url.
     assert.doesNotMatch(ntfyManifest, /attachment-cache-dir/);
@@ -729,6 +731,9 @@ describe("deploy bundles", () => {
       [
         ["cloudflared", ["token"]],
         ["tailscale-operator", ["tailscale"]],
+        ["cloudnative-pg", ["authentik"]],
+        ["barman-cloud", ["authentik"]],
+        ["postgres", ["authentik"]],
         ["authentik", ["authentik"]],
         ["pocket-id", ["pocket-id"]],
       ]

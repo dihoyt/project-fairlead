@@ -37,6 +37,16 @@ export const signatures: Record<string, Signature> = {
     charts: ["longhorn"],
     images: ["longhornio/longhorn-ui", "longhornio/longhorn-manager"],
   },
+  "cloudnative-pg": {
+    names: ["cloudnative-pg"],
+    charts: ["cloudnative-pg"],
+    images: ["cloudnative-pg/cloudnative-pg"],
+  },
+  "barman-cloud": {
+    names: ["plugin-barman-cloud"],
+    charts: ["plugin-barman-cloud"],
+    images: ["cloudnative-pg/plugin-barman-cloud"],
+  },
   rancher: {
     names: ["rancher"],
     charts: ["rancher"],
