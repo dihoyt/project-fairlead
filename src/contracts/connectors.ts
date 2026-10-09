@@ -170,6 +170,9 @@ export interface ConnectorRegistry {
   addKind(kind: ConnectorKind): void;
   instances(kind: string): Promise<ConnectorInstance[]>;
   instance(id: string): Promise<ConnectorInstance | undefined>;
+  // What GET /api/connectors/:id answers (status and the latest checks),
+  // for a kind that reports its instances in a view of its own.
+  view(id: string): Promise<ConnectorView | undefined>;
   owned(instanceId: string): OwnedStore;
   // Runs the kind's reconcile now (one at a time per instance), stores the
   // report on the instance and returns it. Undefined for an unknown instance
