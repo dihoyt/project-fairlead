@@ -219,7 +219,7 @@ the image as `:next` and `:next.<run>` and the chart as `<base>-next.<run>` at
 `oci://ghcr.io/<owner>/charts-next/<chartName>`, a separate path so the plain
 installer, which takes the newest edge build, never picks one up. Select it
 with `--channel next` on `install.sh` or `update.sh`; `--version` still pins a
-build (`--channel next --version 0.1.1-next.7`).
+build (`--channel next --version 0.2.0-next.7`).
 
 ```
 curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/update.sh | sh -s -- --channel next
@@ -274,8 +274,11 @@ package settings.
 Everything is read-only. The ClusterRole covers nodes, namespaces, pods and
 their logs, events, workloads (deployments, statefulsets, daemonsets,
 replicasets, jobs, cronjobs), services, ingresses, PVCs, PVs, storage classes,
-`metrics.k8s.io`, and, when the CRDs exist, Longhorn (volumes, nodes, replicas, snapshots, backups, settings), Velero, Fleet and
-cert-manager objects. A missing CRD shows as "absent", not an error.
+`metrics.k8s.io`, PodDisruptionBudgets (`get`, `list`; for the drain
+preview), and, when the CRDs exist, Longhorn (volumes, nodes, replicas,
+snapshots, backups, backup volumes, backup targets, recurring jobs, settings),
+Velero, Fleet, cert-manager and CloudNativePG (clusters, backups, scheduled
+backups, databases, database roles, Barman Cloud object stores) objects. A missing CRD shows as "absent", not an error.
 
 Two grants need a decision:
 
@@ -426,6 +429,7 @@ are set up separately.
      host key pinned.
    - **Checks**: a first HTTP check, run straight away.
    - **Alerts**: an ntfy, Discord or webhook channel, with a test message.
+     Email channels are added under Admin → Notifications.
    - **Findings**: unprotected PVCs, nodes not Ready and failing backups.
    Every step but the last can be skipped. The wizard stays under **Setup** in
    the admin part of the sidebar.

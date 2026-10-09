@@ -256,6 +256,8 @@ actually has and what is missing. A group whose CRDs aren't installed shows as
 | TLS expiry from Secrets | `secrets` (`rbac.secrets.enabled`, default off; scope it with `rbac.secrets.namespaces`) | Only cert-manager certificates are checked. RBAC can't grant metadata only, so this reads Secret contents. |
 | Longhorn storage and backups | `longhorn.io` `volumes`, `nodes`, `replicas`, `snapshots`, `backups`, `backupvolumes`, `backuptargets`, `recurringjobs`, `settings` | Storage tile shows Longhorn as absent; Longhorn-protected PVCs read as unprotected. |
 | Velero backups | `velero.io` `backups`, `schedules`, `restores`, `backupstoragelocations` | Velero absent. |
+| Shared Postgres | `postgresql.cnpg.io` `clusters`, `backups`, `scheduledbackups`, `databases`, `databaseroles`; `barmancloud.cnpg.io` `objectstores` | Shared Postgres absent. |
+| Node drain preview | `policy` `poddisruptionbudgets` (`get`, `list`) | The preview has no "waits on a budget" rows; the drain itself still respects budgets. |
 | Backup posture | the Longhorn and Velero reads above, plus `persistentvolumeclaims`, `pods` (which workload mounts a PVC) | |
 | Fleet GitOps | `fleet.cattle.io` `gitrepos`, `bundles` | GitOps tile absent. |
 | Workload browser | `namespaces`, `deployments`, `statefulsets`, `daemonsets`, `replicasets`, `jobs`, `cronjobs`, `pods`, `events`, `pods/log`; `secrets` (`get`, only with the opt-in `rbac.secrets` grant) to mask the pod's own Secret values in its logs | Pages for the missing kinds are empty; logs unavailable without `pods/log`. |
