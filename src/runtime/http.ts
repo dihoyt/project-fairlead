@@ -1,7 +1,8 @@
 import type { ErrorRequestHandler, NextFunction, Request, Response, Router } from "express";
 import { PUBLIC_ROUTES, type ApiRoutes, type PublicRouteKey, type RouteKey } from "../contracts/api.js";
 import type { CallInput } from "../contracts/module.js";
-import { INTERNAL_CALL_HEADER, type Platform } from "../contracts/platform.js";
+import { grantRefusal } from "../contracts/grants.js";
+import { INTERNAL_CALL_HEADER, type Platform, type User } from "../contracts/platform.js";
 import type { RouteHandler } from "../contracts/routing.js";
 import type { Logger } from "../contracts/runtime.js";
 
@@ -25,13 +26,25 @@ export function parseRouteKey(key: string): { method: Method; path: string } {
   return { method: method as Method, path };
 }
 
+// A token's grant against the route (src/contracts/grants.ts): answers 403
+// and returns false when it falls outside it. Sessions always pass.
+export function guardGrant(user: User | null, key: RouteKey, req: Request, res: Response): boolean {
+  if (!user?.token) return true;
+  const refusal = grantRefusal(user.token, key, { params: req.params, query: req.query, body: req.body });
+  if (refusal === null) return true;
+  res.status(403).json({ error: refusal });
+  return false;
+}
+
 // Binds a contract route on a module's router (mounted at /api/<moduleId>),
-// refusing paths that belong to another module or the platform.
+// refusing paths that belong to another module or the platform. With
+// `identify`, a token's grant is checked before the handler runs.
 export function bindRoute<K extends RouteKey>(
   router: Router,
   moduleId: string,
   key: K,
-  handler: RouteHandler<K>
+  handler: RouteHandler<K>,
+  identify?: (req: Request) => User | null
 ): void {
   const { method, path } = parseRouteKey(key);
   const prefix = `/api/${moduleId}`;
@@ -41,6 +54,7 @@ export function bindRoute<K extends RouteKey>(
   const relative = path.slice(prefix.length) || "/";
   router[method](relative, async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (identify && !guardGrant(identify(req), key, req, res)) return;
       const body = await handler(req as never, res);
       if (body !== undefined && !res.headersSent) res.json(body);
     } catch (err) {

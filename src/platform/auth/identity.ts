@@ -5,7 +5,7 @@ import { clientIp } from "../net.js";
 import { networkAllows, ruleAllows } from "./networks.js";
 import { groupIsAdmin } from "./oidc.js";
 import { sessionDueRecheck, sessionFromRequest, sessionHandle } from "./sessions.js";
-import { bearerOf, tokenFromSecret } from "./tokens.js";
+import { bearerOf, grantOf, tokenFromSecret } from "./tokens.js";
 import { totpEnabledFor, totpRequiredFor } from "./totp.js";
 import { userById, type UserRow } from "./users.js";
 
@@ -142,7 +142,7 @@ export function createResolver(core: Core): (req: Request, res: Response | null)
           groups: [],
           admin: account.role === "admin" || envAdmin([account.username, account.email], []),
           source: "token",
-          token: { id: token.id, scope: token.scope },
+          token: { id: token.id, ...grantOf(token) },
           userId: account.id,
           mustChangePassword: false,
           orgId: account.orgId,
