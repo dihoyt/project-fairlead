@@ -135,6 +135,10 @@ export const ROUTE_ACCESS: { [K in RouteKey]: RouteAccess } = {
   "PUT /api/notify/channels/:id": a("notify"),
   "DELETE /api/notify/channels/:id": a("notify"),
   "POST /api/notify/channels/:id/test": a("notify"),
+  "GET /api/notify/email/setup": a("notify"),
+  // A person signing in to a mailbox in their browser, never a token.
+  "POST /api/notify/channels/:id/oauth": "session",
+  "GET /api/notify/oauth/callback": "session",
 
   "GET /api/hosts": a("hosts"),
   "POST /api/hosts": a("hosts"),
