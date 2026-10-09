@@ -1,5 +1,5 @@
 import { RESOURCES, type K8sApi, type KubeObject } from "../../contracts/k8s.js";
-import type { NodeSummary, Sample } from "../../contracts/metrics.js";
+import type { NodePressure, NodeRole, NodeSummary, Sample } from "../../contracts/metrics.js";
 import { parseQuantity } from "./quantity.js";
 
 export type Source = NodeSummary["source"];
@@ -25,6 +25,16 @@ export interface NodeStats {
   rxBytesPerSec?: number;
   txBytesPerSec?: number;
   pods: number;
+  roles: NodeRole[];
+  schedulable: boolean;
+  pressure: NodePressure[];
+  kubeletVersion?: string;
+  // The kubelet summary's node.startTime.
+  bootTime?: string;
+  podCapacity?: number;
+  // InternalIP, ExternalIP and Hostname, as the node reports them.
+  addresses: string[];
+  longhornAvailableBytes?: number;
 }
 
 export interface ContainerStats {
@@ -39,6 +49,8 @@ export interface ContainerStats {
 
 export interface Snapshot {
   at: number;
+  // The API server's gitVersion, when /version answered.
+  apiVersion?: string;
   nodes: NodeStats[];
   containers: ContainerStats[];
   // Set when the node list itself could not be read.
@@ -64,7 +76,7 @@ interface NetworkUsage extends Usage {
 }
 
 interface KubeletSummary {
-  node?: { cpu?: Usage; memory?: Usage; fs?: Usage; network?: NetworkUsage };
+  node?: { startTime?: string; cpu?: Usage; memory?: Usage; fs?: Usage; network?: NetworkUsage };
   pods?: Array<{
     podRef?: { name?: string; namespace?: string };
     containers?: Array<{ name?: string; cpu?: Usage; memory?: Usage }>;
@@ -72,11 +84,21 @@ interface KubeletSummary {
 }
 
 interface NodeObject extends KubeObject {
+  spec?: { unschedulable?: boolean };
   status?: {
     allocatable?: Record<string, string>;
     capacity?: Record<string, string>;
     conditions?: Array<{ type?: string; status?: string }>;
+    addresses?: Array<{ type?: string; address?: string }>;
+    nodeInfo?: { kubeletVersion?: string };
   };
+}
+
+interface LonghornNodeObject extends KubeObject {
+  spec?: {
+    disks?: Record<string, { allowScheduling?: boolean; evictionRequested?: boolean; storageReserved?: number }>;
+  };
+  status?: { diskStatus?: Record<string, { storageAvailable?: number }> };
 }
 
 interface PodObject extends KubeObject {
@@ -128,6 +150,43 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
 
 const isReady = (node: NodeObject) =>
   node.status?.conditions?.some((c) => c.type === "Ready" && c.status === "True") ?? false;
+
+const PRESSURES: readonly NodePressure[] = ["MemoryPressure", "DiskPressure", "PIDPressure"];
+
+const CONTROL_PLANE_LABELS = ["node-role.kubernetes.io/control-plane", "node-role.kubernetes.io/master"];
+
+const ADDRESS_TYPES = new Set(["InternalIP", "ExternalIP", "Hostname"]);
+
+function nodeFacts(node: NodeObject) {
+  const labels = node.metadata.labels ?? {};
+  const role: NodeRole = CONTROL_PLANE_LABELS.some((l) => l in labels) ? "control-plane" : "worker";
+  const conditions = node.status?.conditions ?? [];
+  const podCapacity = parseQuantity(node.status?.allocatable?.pods) ?? parseQuantity(node.status?.capacity?.pods);
+  const kubeletVersion = node.status?.nodeInfo?.kubeletVersion;
+  return {
+    roles: [role],
+    schedulable: node.spec?.unschedulable !== true,
+    pressure: PRESSURES.filter((type) => conditions.some((c) => c.type === type && c.status === "True")),
+    ...(kubeletVersion ? { kubeletVersion } : {}),
+    ...(podCapacity !== undefined ? { podCapacity } : {}),
+    addresses: (node.status?.addresses ?? [])
+      .filter((a) => a.type && ADDRESS_TYPES.has(a.type) && a.address)
+      .map((a) => a.address!),
+  };
+}
+
+// Schedulable space left on the node's Longhorn disks, as Longhorn counts
+// it before placing a replica: available minus what is held in reserve.
+function longhornAvailable(node: LonghornNodeObject): number {
+  let total = 0;
+  for (const [name, disk] of Object.entries(node.spec?.disks ?? {})) {
+    if (disk.allowScheduling === false || disk.evictionRequested === true) continue;
+    const available = num(node.status?.diskStatus?.[name]?.storageAvailable);
+    if (available === undefined) continue;
+    total += Math.max(0, available - (num(disk.storageReserved) ?? 0));
+  }
+  return total;
+}
 
 function allocatable(node: NodeObject, resource: "cpu" | "memory"): number | undefined {
   return parseQuantity(node.status?.allocatable?.[resource]) ?? parseQuantity(node.status?.capacity?.[resource]);
@@ -204,7 +263,7 @@ export function createScraper(getK8s: () => K8sApi, options: ScraperOptions = {}
       return { at, nodes: [], containers: [], error: `Could not list nodes: ${errorText(err)}` };
     }
 
-    const [pods, summaries] = await Promise.all([
+    const [pods, summaries, apiVersion, longhornNodes] = await Promise.all([
       api
         .list<PodObject>(RESOURCES.pods, { fieldSelector: "status.phase!=Succeeded,status.phase!=Failed" })
         .then((list) =>
@@ -226,6 +285,14 @@ export function createScraper(getK8s: () => K8sApi, options: ScraperOptions = {}
           return { error: errorText(err) };
         }
       }),
+      api
+        .version()
+        .then((v) => v.gitVersion)
+        .catch(() => undefined),
+      api
+        .list<LonghornNodeObject>(RESOURCES.longhornNodes)
+        .then((list) => (list === "absent" ? undefined : list))
+        .catch(() => undefined),
     ]);
 
     const fallbackNeeded = summaries.some((s) => !s.summary);
@@ -273,7 +340,13 @@ export function createScraper(getK8s: () => K8sApi, options: ScraperOptions = {}
       const cpuAlloc = allocatable(node, "cpu");
       const memAlloc = allocatable(node, "memory");
       const { summary, error } = summaries[i]!;
-      const base = { name, ready: isReady(node) };
+      const longhorn = longhornNodes?.find((l) => l.metadata.name === name);
+      const base = {
+        name,
+        ready: isReady(node),
+        ...nodeFacts(node),
+        ...(longhorn ? { longhornAvailableBytes: longhornAvailable(longhorn) } : {}),
+      };
 
       if (summary) {
         const cpuNano = num(summary.node?.cpu?.usageNanoCores);
@@ -293,9 +366,11 @@ export function createScraper(getK8s: () => K8sApi, options: ScraperOptions = {}
           }
         }
         const fs = fsStats(summary.node?.fs);
+        const startTime = summary.node?.startTime;
         return {
           ...base,
           source: "kubelet",
+          ...(startTime && !Number.isNaN(Date.parse(startTime)) ? { bootTime: startTime } : {}),
           ...(cpuCores !== undefined ? { cpuCores, cpuPercent: percent(cpuCores, cpuAlloc) } : {}),
           ...(memoryBytes !== undefined ? { memoryBytes, memoryPercent: percent(memoryBytes, memAlloc) } : {}),
           ...(fs ? { fs } : {}),
@@ -334,7 +409,7 @@ export function createScraper(getK8s: () => K8sApi, options: ScraperOptions = {}
     }
 
     for (const name of counters.keys()) if (!nodes.some((n) => n.metadata.name === name)) counters.delete(name);
-    return { at, nodes: nodeStats, containers: [...containers.values()] };
+    return { at, ...(apiVersion ? { apiVersion } : {}), nodes: nodeStats, containers: [...containers.values()] };
   }
 
   const scraper: Scraper = {
@@ -407,13 +482,30 @@ export function toSamples(snapshot: Snapshot): Sample[] {
   return samples;
 }
 
+const patchVersion = (version: string | undefined) => version?.match(/^v?(\d+\.\d+\.\d+)/)?.[1];
+
 export function toNodeSummaries(snapshot: Snapshot): NodeSummary[] {
-  return snapshot.nodes.map((n) => ({
-    name: n.name,
-    ready: n.ready,
-    ...(n.cpuPercent !== undefined ? { cpuPercent: n.cpuPercent } : {}),
-    ...(n.memoryPercent !== undefined ? { memoryPercent: n.memoryPercent } : {}),
-    pods: n.pods,
-    source: n.source,
-  }));
+  const apiVersion = patchVersion(snapshot.apiVersion);
+  return snapshot.nodes.map((n) => {
+    const kubelet = patchVersion(n.kubeletVersion);
+    return {
+      name: n.name,
+      ready: n.ready,
+      ...(n.cpuPercent !== undefined ? { cpuPercent: n.cpuPercent } : {}),
+      ...(n.memoryPercent !== undefined ? { memoryPercent: n.memoryPercent } : {}),
+      pods: n.pods,
+      source: n.source,
+      roles: n.roles,
+      schedulable: n.schedulable,
+      pressure: n.pressure,
+      ...(n.kubeletVersion ? { kubeletVersion: n.kubeletVersion } : {}),
+      ...(kubelet && apiVersion ? { versionDrift: kubelet !== apiVersion } : {}),
+      ...(n.bootTime ? { bootTime: n.bootTime } : {}),
+      ...(n.podCapacity !== undefined ? { podCapacity: n.podCapacity } : {}),
+      ...(n.fs ? { filesystemPercent: n.fs.percent } : {}),
+      ...(n.rxBytesPerSec !== undefined ? { netRxBps: n.rxBytesPerSec } : {}),
+      ...(n.txBytesPerSec !== undefined ? { netTxBps: n.txBytesPerSec } : {}),
+      ...(n.longhornAvailableBytes !== undefined ? { longhornAvailableBytes: n.longhornAvailableBytes } : {}),
+    };
+  });
 }
