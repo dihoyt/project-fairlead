@@ -110,6 +110,9 @@ export interface DeployJobView {
   url?: string;
   // The Kubernetes Job running it.
   job: { namespace: string; name: string };
+  // Set on a retry (POST /api/deploy/jobs/:id/retry): the failed job it runs
+  // again. A retry keeps that job's mode.
+  retryOf?: string;
 }
 
 export interface DeployJobRequest extends DeployRequest {
@@ -307,7 +310,11 @@ export interface BackupVolumesAction {
 }
 
 // Removes an app deployed from the Templates page (a namespace labelled
-// <labelDomain>/app-template; any other app is refused). Without
+// <labelDomain>/app-template), or a catalog app installed with Helm by this
+// product's deploy runner (helm uninstall; deleteVolumes also deletes the
+// release's PersistentVolumeClaims, the namespace stays). Any other app is
+// refused, and so is Longhorn, which every volume depends on. For a
+// Templates app: without
 // deleteVolumes (the default) everything in its namespace goes except the
 // namespace itself and its PersistentVolumeClaims, so deploying the same
 // name again picks the data back up; with it the namespace is deleted and

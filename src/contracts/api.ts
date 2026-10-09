@@ -462,6 +462,15 @@ export interface ApiRoutes {
   "GET /api/deploy/jobs/:id/logs/stream": Route<{ id: string }, None, None, EventStream<{ line: string }>>;
   // Admin, audited. Deletes the Job; what helm already applied stays.
   "POST /api/deploy/jobs/:id/cancel": Route<{ id: string }, None, None, DeployJobView>;
+  // Admin, audited. Runs a failed or cancelled install or upgrade again as a
+  // new job (retryOf set, same mode and version): Helm upgrades the release
+  // with the values the failed attempt saved, so generated passwords stay
+  // the same; a manifest app is applied again. The failed Job is deleted
+  // first (its log stays on the record). 400 when the job is not a failed or
+  // cancelled install or upgrade, a later install or upgrade of the release
+  // exists, or the release was never created (deploy it again instead); 409
+  // while another job for the release is running.
+  "POST /api/deploy/jobs/:id/retry": Route<{ id: string }, None, None, DeployJobView>;
   // Admin. Every step's plan, in order, with the skipped ones marked; runs nothing.
   "POST /api/deploy/bundles/plan": Route<None, None, BundleRequest, BundlePlan>;
   // Admin, audited. One step at a time, each an ordinary deploy job; stops
@@ -472,6 +481,13 @@ export interface ApiRoutes {
   "GET /api/deploy/bundles/:id": Route<{ id: string }, None, None, BundleRunView>;
   // Admin, audited. Cancels the running step and leaves the rest pending.
   "POST /api/deploy/bundles/:id/cancel": Route<{ id: string }, None, None, BundleRunView>;
+  // Admin, audited. Resumes a failed run: its failed steps are retried (as
+  // POST /api/deploy/jobs/:id/retry, or installed afresh when the release
+  // was never created) and the steps left pending run after them, with the
+  // answers the run started with. A failed run keeps its sealed answers
+  // until it is resumed or another run starts. 400 when the run did not
+  // fail or its answers are gone; 409 while another run is running.
+  "POST /api/deploy/bundles/:id/retry": Route<{ id: string }, None, None, BundleRunView>;
   // Every app the deploy runner installed, against the catalog's pins.
   // refresh=1 forces a new discovery.
   "GET /api/deploy/upgrades": Route<None, { refresh?: "1" }, None, UpgradeReport>;
