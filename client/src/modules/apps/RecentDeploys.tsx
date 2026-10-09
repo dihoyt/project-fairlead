@@ -13,10 +13,16 @@ const MODE_LABEL: Record<DeployJobView["mode"] | DeployActionKind, string> = {
   action: "action",
   "longhorn-replicas": "replicas",
   "migrate-to-longhorn": "convert",
+  "migrate-storage": "convert",
   "backup-volumes": "backup",
   "remove-app": "remove",
   "app-gate": "sign-in gate",
   "traefik-ports": "ports",
+  "longhorn-target": "backup target",
+  "longhorn-recurring": "backup schedule",
+  "longhorn-backup-now": "backup now",
+  "longhorn-restore": "restore",
+  "console-backup": "console backup",
 };
 
 function JobsTable({

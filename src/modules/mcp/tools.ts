@@ -88,6 +88,33 @@ const removeRequest = {
     .describe("Also delete its namespace and volumes, and with them its data. Default false."),
 };
 
+const uidArg = z.string().min(1).describe("The PVC's uid, from get_backup_posture (rows[].pvc.uid).");
+
+const scheduleFields = {
+  group: z
+    .string()
+    .regex(/^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$/)
+    .describe('Volume group: "default" covers every volume in no other group; "critical", or a name of yours.'),
+  snapshotCron: z.string().optional().describe('Five-field cron for snapshots, e.g. "0 * * * *". Left out: none.'),
+  snapshotRetain: z.number().int().min(1).max(250).optional().describe("Snapshots kept. Default 24."),
+  backupCron: z
+    .string()
+    .optional()
+    .describe('Five-field cron for backups to the target, e.g. "0 3 * * *". Left out: none.'),
+  backupRetain: z.number().int().min(1).max(250).optional().describe("Backups kept on the target. Default 14."),
+};
+
+const restoreRequest = {
+  uid: uidArg,
+  backupId: z.string().min(1).describe("A restore point's id, from list_volume_backups."),
+  mode: z
+    .enum(["new-pvc", "in-place"])
+    .describe(
+      "new-pvc: a new claim beside the old one, app untouched. in-place: stops the app and replaces the volume's data."
+    ),
+  newClaim: z.string().optional().describe('new-pvc only. Default "<claim>-restored-<yyyymmdd>".'),
+};
+
 const items = <T>(list: T[]) => ({ items: list });
 
 const httpsFirst = (a: string, b: string) => Number(b.startsWith("https:")) - Number(a.startsWith("https:"));
@@ -245,6 +272,15 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
     run: async (call, { search }) =>
       items(await call("GET /api/connector-entra/groups", { query: search ? { search } : {} })),
   },
+  list_storage_targets: {
+    input: z.object({}),
+    run: async (call) => items(await call("GET /api/connector-storage/targets")),
+  },
+  get_backup_schedules: { input: z.object({}), run: (call) => call("GET /api/backups/schedules") },
+  list_volume_backups: {
+    input: z.object({ uid: uidArg }),
+    run: async (call, { uid }) => items(await call("GET /api/backups/volumes/:uid/backups", { params: { uid } })),
+  },
 
   create_check: { input: z.object(checkFields), run: (call, body) => call("POST /api/checks", { body }) },
   update_check: {
@@ -330,5 +366,35 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
       label: z.string().max(80).optional().describe('Sign-in button text. Default "Sign in with Microsoft".'),
     }),
     run: (call, body) => call("POST /api/connector-entra/signin", { body }),
+  },
+  set_backup_target: {
+    input: z.object({
+      connectorId: z
+        .string()
+        .min(1)
+        .nullable()
+        .describe("A storage target's id from list_storage_targets; null clears Longhorn's backup target."),
+    }),
+    run: (call, { connectorId }) => call("PUT /api/backups/target", { body: { connectorId } }),
+  },
+  set_backup_schedule: {
+    input: z.object(scheduleFields),
+    run: async (call, schedule) => {
+      const { schedules } = await call("GET /api/backups/schedules");
+      const rest = schedules.filter((s) => s.group !== schedule.group);
+      return call("PUT /api/backups/schedules", { body: { schedules: [...rest, schedule] } });
+    },
+  },
+  backup_volume_now: {
+    input: z.object({ uid: uidArg }),
+    run: (call, { uid }) => call("POST /api/backups/volumes/:uid/backup-now", { params: { uid } }),
+  },
+  plan_volume_restore: {
+    input: z.object(restoreRequest),
+    run: (call, body) => call("POST /api/backups/restore/plan", { body }),
+  },
+  restore_volume: {
+    input: z.object(restoreRequest),
+    run: (call, body) => call("POST /api/backups/restore", { body }),
   },
 };

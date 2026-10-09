@@ -32,6 +32,7 @@ export const MODULE_IDS = [
   "connectors",
   "connector-cloudflare",
   "connector-entra",
+  "connector-storage",
   "templates",
   "publish",
 ] as const;

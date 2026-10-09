@@ -6,6 +6,7 @@
 //
 // Server-free on purpose: the client imports this file.
 
+import type { BackupSchedule, RestoreMode } from "./backups.js";
 import type { CatalogEntry } from "./catalog.js";
 import type { DiskCheck } from "./disk.js";
 
@@ -249,7 +250,18 @@ export interface UpgradeRequest {
 // ends with deploy.finished. Needs deploy.enabled, like installs.
 
 export type DeployActionKind =
-  "longhorn-replicas" | "migrate-to-longhorn" | "backup-volumes" | "remove-app" | "app-gate" | "traefik-ports";
+  | "longhorn-replicas"
+  | "migrate-to-longhorn"
+  | "migrate-storage"
+  | "backup-volumes"
+  | "remove-app"
+  | "app-gate"
+  | "traefik-ports"
+  | "longhorn-target"
+  | "longhorn-recurring"
+  | "longhorn-backup-now"
+  | "longhorn-restore"
+  | "console-backup";
 
 // Raises Longhorn's default-replica-count Setting (what new volumes get),
 // the replica count pinned by a Longhorn StorageClass when it is lower, and,
@@ -322,13 +334,90 @@ export interface TraefikPortsAction {
   kind: "traefik-ports";
 }
 
+// migrate-to-longhorn in either direction, by the same claim swap:
+// to "longhorn" is migrate-to-longhorn (that kind stays as its alias);
+// to "local-path" moves every Longhorn volume the app mounts onto one
+// node's local-path volume, which the plan warns leaves Longhorn backups
+// and replicas behind. Refused when the app has no volume to move.
+export interface MigrateStorageAction {
+  kind: "migrate-storage";
+  appId: string;
+  to: "longhorn" | "local-path";
+}
+
+// --- Backup set-up actions (module "backups" starts them) ---
+// All run in longhorn-system and take the release "longhorn", so one runs at
+// a time; refused while Longhorn is not installed.
+
+// Points Longhorn's default BackupTarget at a storage-target connector
+// (spec.backupTargetURL from StorageTargetView.url) and, for s3 and smb,
+// applies the credential Secret from StorageTargetService.credentialsSecret()
+// in longhorn-system and sets spec.credentialSecret to it. connectorId null
+// clears the URL and the credential reference; the Secret this product made
+// is deleted.
+export interface LonghornTargetAction {
+  kind: "longhorn-target";
+  connectorId: string | null;
+}
+
+// Makes Longhorn's RecurringJobs match the schedules (one snapshot and one
+// backup job per group, named "<externalPrefix><group>-snapshot" and
+// "-backup", labelled managed-by; others are left alone), and/or sets
+// volumes' group labels (recurring-job-group.longhorn.io/<group>: enabled)
+// on their Longhorn Volume. At least one of the two is given; schedules is
+// the whole set, as BackupSchedulesRequest.
+export interface LonghornRecurringAction {
+  kind: "longhorn-recurring";
+  schedules?: BackupSchedule[];
+  volumes?: Array<{ namespace: string; claim: string; groups: string[] }>;
+}
+
+// Takes a snapshot of the claim's Longhorn volume and backs it up to the
+// target now. Refused without an available target.
+export interface LonghornBackupNowAction {
+  kind: "longhorn-backup-now";
+  namespace: string;
+  claim: string;
+}
+
+// Restores a Longhorn Backup (VolumeRestorePoint.id) of the claim's volume.
+// new-pvc: a new Longhorn volume from the backup and a claim `newClaim`
+// bound to it in the same namespace. in-place: scale the workloads that
+// mount the claim to zero, restore to a new volume, rebind the claim under
+// the same name to it (actions/migrate.ts's swap, old volume kept with
+// Retain until the app answers), scale back up, check.
+export interface LonghornRestoreAction {
+  kind: "longhorn-restore";
+  namespace: string;
+  claim: string;
+  backup: string;
+  mode: RestoreMode;
+  // new-pvc only; required there.
+  newClaim?: string;
+}
+
+// The console's own data, now: SQLite's online backup of its database to a
+// file on its volume, copied to the storage target. Runs in the console's
+// namespace under the installer ServiceAccount. Nightly runs are scheduled
+// by module "backups" through the same action.
+export interface ConsoleBackupAction {
+  kind: "console-backup";
+  connectorId: string;
+}
+
 export type DeployActionRequest =
   | LonghornReplicasAction
   | MigrateToLonghornAction
+  | MigrateStorageAction
   | BackupVolumesAction
   | RemoveAppAction
   | AppGateAction
-  | TraefikPortsAction;
+  | TraefikPortsAction
+  | LonghornTargetAction
+  | LonghornRecurringAction
+  | LonghornBackupNowAction
+  | LonghornRestoreAction
+  | ConsoleBackupAction;
 
 export interface DeployActionStep {
   // "Raise the default replica count to 2".

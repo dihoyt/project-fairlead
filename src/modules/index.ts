@@ -19,6 +19,7 @@ import mcp from "./mcp/index.js";
 import connectors from "./connectors/index.js";
 import connectorCloudflare from "./connector-cloudflare/index.js";
 import connectorEntra from "./connector-entra/index.js";
+import connectorStorage from "./connector-storage/index.js";
 import templates from "./templates/index.js";
 import publish from "./publish/index.js";
 
@@ -47,6 +48,7 @@ export const modules: readonly Module[] = [
   connectors,
   connectorCloudflare,
   connectorEntra,
+  connectorStorage,
   templates,
   publish,
 ];
