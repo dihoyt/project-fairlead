@@ -45,6 +45,7 @@ describe("Convert to Longhorn", () => {
     await waitFor(() => expect(within(gitea).getByRole("button", { name: "Convert to Longhorn" })).toBeInTheDocument());
     const longhorn = document.querySelector<HTMLElement>('[data-installed="longhorn"]')!;
     expect(within(longhorn).queryByRole("button", { name: "Convert to Longhorn" })).toBeNull();
+    expect(within(gitea).queryByRole("button", { name: "Move to local-path" })).toBeNull();
   });
 
   it("is not offered once every volume of the app is on Longhorn", async () => {
@@ -53,6 +54,34 @@ describe("Convert to Longhorn", () => {
     const gitea = await giteaRow();
     await waitFor(() => expect(calls.some((c) => c.key === "GET /api/longhorn/replicas")).toBe(true));
     await waitFor(() => expect(within(gitea).queryByRole("button", { name: "Convert to Longhorn" })).toBeNull());
+    expect(within(gitea).getByRole("button", { name: "Move to local-path" })).toBeInTheDocument();
+  });
+
+  it("moves to local-path with migrate-storage and no download offered", async () => {
+    const { calls } = stubApi({
+      "POST /api/deploy/actions/plan": {
+        ...mockMigratePlan,
+        kind: "migrate-storage",
+        title: "Move Gitea to local-path",
+      },
+      "POST /api/deploy/actions/run": runs,
+    });
+    stubEventSource();
+    renderWithApp(<ConvertDialog appId="gitea" name="Gitea" to="local-path" onFinished={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Move Gitea to local-path" }));
+    expect(screen.queryByRole("checkbox", { name: /Download a backup first/ })).toBeNull();
+    expect(calls.find((c) => c.key === "POST /api/deploy/actions/plan")?.body).toEqual({
+      kind: "migrate-storage",
+      appId: "gitea",
+      to: "local-path",
+    });
+    await waitFor(() =>
+      expect(calls.find((c) => c.key === "POST /api/deploy/actions/run")?.body).toEqual({
+        kind: "migrate-storage",
+        appId: "gitea",
+        to: "local-path",
+      })
+    );
   });
 
   it("previews volumes and downtime, offers the backup download, then converts", async () => {

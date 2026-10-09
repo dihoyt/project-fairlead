@@ -237,7 +237,7 @@ describe("catalog entries", () => {
   test("every installable app has a disk footprint; volumes match its storage", () => {
     const GiB = 1024 ** 3;
     for (const entry of catalog) {
-      if (entry.install.kind === "patch") {
+      if (entry.install.kind === "patch" && !entry.storage) {
         assert.equal(entry.disk, undefined, entry.id);
         continue;
       }
@@ -247,6 +247,8 @@ describe("catalog entries", () => {
     const gitea = catalog.find((e) => e.id === "gitea")!;
     assert.equal(gitea.disk?.volumeBytes, 5 * GiB);
     assert.equal(catalog.find((e) => e.id === "ntfy")!.disk?.volumeBytes, GiB / 2);
+    // Every Postgres instance holds a full copy.
+    assert.equal(catalog.find((e) => e.id === "postgres")!.disk?.volumeBytes, 20 * GiB);
     assert.match(ntfyManifest, /storage: 512Mi/);
     // ntfy exits at start when attachment-cache-dir is set without base-url.
     assert.doesNotMatch(ntfyManifest, /attachment-cache-dir/);
@@ -320,7 +322,7 @@ describe("discovery over the real fixture set", () => {
   });
 
   test("apps that are not there are not-installed, never unknown", () => {
-    for (const id of ["grafana", "authentik", "velero", "ntfy", "tailscale-operator"]) {
+    for (const id of ["grafana", "authentik", "pocket-id", "velero", "ntfy", "tailscale-operator"]) {
       assert.equal(app(report, id).state, "not-installed", id);
     }
     // A sidecar image from a different repository under the same org must not match.
@@ -722,19 +724,25 @@ describe("deploy bundles", () => {
     assert.deepEqual(skipped, ["traefik", "cert-manager", "metrics-server", "local-path-provisioner"]);
     assert.match(view.items.find((i) => i.appId === "metrics-server")!.reason!, /^Already /);
     assert.match(view.items.find((i) => i.appId === "traefik")!.reason!, /^Already covered: IngressClass traefik/);
-    // Items for one way of reaching the apps are left to the client, which
-    // knows the answer.
+    // Items for one way of reaching the apps, or one sign-in service, are
+    // left to the client, which knows the answer.
     assert.deepEqual(
       view.items.filter((i) => i.when).map((i) => [i.appId, i.when!.in]),
       [
         ["cloudflared", ["token"]],
         ["tailscale-operator", ["tailscale"]],
+        ["cloudnative-pg", ["authentik"]],
+        ["barman-cloud", ["authentik"]],
+        ["postgres", ["authentik"]],
+        ["authentik", ["authentik"]],
+        ["pocket-id", ["pocket-id"]],
       ]
     );
     assert.deepEqual(
       view.items.filter((i) => i.selected && !i.when).map((i) => i.appId),
-      ["longhorn", "authentik", "gitea"]
+      ["longhorn", "gitea"]
     );
+    assert.equal(view.inputs.find((i) => i.key === "signIn")!.default, "authentik");
     assert.equal(
       view.items.find((i) => i.appId === "ntfy"),
       undefined,
@@ -951,7 +959,7 @@ describe("catalog routes", () => {
 
   test("slot filters, and an unknown slot is a 400", async () => {
     const links = await get<CatalogAppView[]>("/apps?slot=links");
-    assert.deepEqual(links.map((a) => a.id).toSorted(), ["gitea", "grafana", "headlamp", "longhorn", "rancher"]);
+    assert.deepEqual(links.map((a) => a.id).toSorted(), ["gitea", "grafana", "headlamp", "rancher"]);
     await get("/apps?slot=nope", 400);
   });
 

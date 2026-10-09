@@ -6,6 +6,8 @@ import type {
   OAuthConsentView,
   AuthentikWirePlan,
   AuthentikWireResult,
+  PocketIdWirePlan,
+  PocketIdWireResult,
   PublicSignInProvider,
   PublicSignInResult,
   Role,
@@ -15,22 +17,31 @@ import type {
 } from "../../contracts/auth.js";
 import { product } from "../../product.js";
 import { AuthentikError, authentikUrlProblem, issuerFor, wireAuthentik } from "../auth/authentik.js";
+import { PocketIdError, pocketIdIssuer, pocketIdUrlProblem, wirePocketId } from "../auth/pocketid.js";
 import { authOf, envAdmin, refuseUnready, type PlatformUser } from "../auth/identity.js";
 import { effectiveRule, ruleAllows } from "../auth/networks.js";
 import {
   CALLBACK_PATH,
   GOOGLE_ISSUER,
   MICROSOFT_COMMON_ISSUER,
+  OIDC_KEY,
   OIDC_SECRET,
   OidcError,
   discover,
   oidcUnavailableReason,
 } from "../auth/oidc.js";
-import { generateTempPassword, hashPassword, passwordProblem } from "../auth/passwords.js";
-import { revokeAllSessions, revokeSession, sessionHandle, sessionsOf } from "../auth/sessions.js";
+import { generateTempPassword, hashPassword, passwordProblem, verifyPassword } from "../auth/passwords.js";
+import {
+  liveSessionByHash,
+  requestSessionHash,
+  revokeAllSessions,
+  revokeSession,
+  sessionHandle,
+  sessionsOf,
+} from "../auth/sessions.js";
 import { OAuthError, checkAuthorizeRequest, issueCode, redirectWith, scopeOf } from "../auth/oauth.js";
-import { createToken, listTokens, revokeToken, tokenView } from "../auth/tokens.js";
-import { clearTotp, totpEnabledFor } from "../auth/totp.js";
+import { createToken, limitsOf, listTokens, revokeToken, tokenView, updateToken } from "../auth/tokens.js";
+import { clearTotp, totpEnabledFor, verifyTotp } from "../auth/totp.js";
 import {
   countActiveAdmins,
   createUser,
@@ -47,7 +58,8 @@ import {
 } from "../auth/users.js";
 import { effectivePublicUrl, iso, isoOrNull, publicOrigin, type Core } from "../core.js";
 import { clientIp, parseCidrList } from "../net.js";
-import { secretKeyConfigured } from "../secretBox.js";
+import { MIN_PASSPHRASE, sealKit } from "../recoveryKit.js";
+import { rawSecretKey, secretKeyConfigured } from "../secretBox.js";
 import { SettingError } from "../settings.js";
 import { SignInError, createSignIn } from "../signin.js";
 import { mcpResource, oauthBase } from "./oauth.js";
@@ -57,12 +69,31 @@ import { mcpResource, oauthBase } from "./oauth.js";
 // is audited, and every change that could lock the acting admin (or every
 // admin) out is refused before it is made. Mounted at /api/admin.
 
+// How recent an OIDC sign-in must be to stand in for a password.
+const REAUTH_MS = 15 * 60_000;
+
 class AdminError extends Error {
   readonly status: number;
   constructor(status: number, message: string) {
     super(message);
     this.status = status;
   }
+}
+
+function tokenLimits(body: Record<string, unknown>): ReturnType<typeof limitsOf> {
+  try {
+    return limitsOf(body);
+  } catch (err) {
+    throw new AdminError(400, (err as Error).message);
+  }
+}
+
+// For the audit row: the scope and, when limited, what to.
+function grantSummary(row: { scope: string; namespaces?: string[]; areas?: string[] }): string {
+  const parts = [row.scope];
+  if (row.areas) parts.push(`areas ${row.areas.join(", ")}`);
+  if (row.namespaces) parts.push(`namespaces ${row.namespaces.join(", ")}`);
+  return parts.join("; ");
 }
 
 function roleOf(raw: unknown): Role {
@@ -88,12 +119,22 @@ const isAdmin = (account: UserRow) => account.role === "admin" || envAdmin([acco
 const AUTHENTIK_TOKEN = { scope: "auth", id: "authentik-api" } as const;
 const WIRED_KEYS = ["auth.oidc.issuer", "auth.oidc.clientId", "auth.oidc.label", "auth.oidc.enabled"];
 
-const authentikBase = (raw: unknown, use: "public" | "api" = "public"): string => {
-  const value = typeof raw === "string" ? raw.trim().replace(/\/+$/, "") : "";
-  const problem = authentikUrlProblem(value, use);
-  if (problem !== null) throw new AdminError(400, problem);
-  return value;
-};
+const baseUrl =
+  (problemOf: (raw: string, use: "public" | "api") => string | null) =>
+  (raw: unknown, use: "public" | "api" = "public"): string => {
+    const value = typeof raw === "string" ? raw.trim().replace(/\/+$/, "") : "";
+    const problem = problemOf(value, use);
+    if (problem !== null) throw new AdminError(400, problem);
+    return value;
+  };
+const authentikBase = baseUrl(authentikUrlProblem);
+
+const POCKET_ID_KEY = { scope: "auth", id: "pocket-id-api" } as const;
+const pocketIdBase = baseUrl(pocketIdUrlProblem);
+// Pocket ID puts the groups claim in tokens only for this scope.
+const GROUPS_SCOPE = "groups";
+const pocketIdKeys = (adminGroups: boolean) =>
+  adminGroups ? [...WIRED_KEYS, "auth.oidc.adminGroups", "auth.oidc.scopes"] : WIRED_KEYS;
 
 type Handler = (req: Request, res: Response, admin: PlatformUser) => Promise<unknown> | unknown;
 
@@ -124,6 +165,34 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
         res.status(500).json({ error: "Internal error." });
       }
     };
+
+  const reauthenticate = async (req: Request, admin: PlatformUser, body: Record<string, unknown>) => {
+    if (admin.source === "dev-bypass") return;
+    if (admin.userId === undefined || admin.source === "token") {
+      throw new AdminError(403, "Sign in with an account to download the recovery kit.");
+    }
+    const account = userById(core.db, admin.userId);
+    if (account === null) throw new AdminError(403, "Sign in with an account to download the recovery kit.");
+    if (admin.source === "oidc") {
+      const hash = requestSessionHash(req);
+      const session = hash === null ? null : liveSessionByHash(core, hash);
+      const signedInAt = session?.oidcCheckedAt ?? session?.createdAt ?? 0;
+      if (Date.now() - signedInAt > REAUTH_MS) {
+        throw new AdminError(401, "Sign in again to download the recovery kit.");
+      }
+      return;
+    }
+    const password = typeof body.password === "string" ? body.password : "";
+    if (!(await verifyPassword(account.passwordHash, password))) {
+      throw new AdminError(401, "That password is not right.");
+    }
+    if (totpEnabledFor(core, account.id)) {
+      const code = typeof body.code === "string" ? body.code.trim() : "";
+      if (!code || !verifyTotp(core, account.id, code)) {
+        throw new AdminError(401, "Enter the current code from your authenticator.");
+      }
+    }
+  };
 
   const record = (req: Request, admin: PlatformUser, action: string, target: string, detail = "") => {
     core.audit.record({ actor: admin.id, ip: clientIp(req), action: `admin.${action}`, target, detail, result: "ok" });
@@ -226,6 +295,7 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
         oidc: {
           redirectUri: publicUrl.value ? `${publicUrl.value}${CALLBACK_PATH}` : "",
           hasSecret: await core.secrets.has(OIDC_SECRET.scope, OIDC_SECRET.id),
+          hasKey: await core.secrets.has(OIDC_KEY.scope, OIDC_KEY.id),
           unavailable: await oidcUnavailableReason(core),
         },
         secretKeyConfigured: secretKeyConfigured(),
@@ -274,6 +344,9 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
         if (!secretKeyConfigured())
           throw new AdminError(409, "SECRETS_KEY is not set, so the secret cannot be stored.");
         await core.secrets.putAs(OIDC_SECRET.scope, OIDC_SECRET.id, value, admin.id);
+        // A secret typed here is what the admin wants used; a connector's
+        // key would otherwise keep winning.
+        await core.secrets.delete(OIDC_KEY.scope, OIDC_KEY.id);
       }
       record(req, admin, value ? "oidc-secret-set" : "oidc-secret-clear", "auth/oidc");
       return { hasSecret: value !== "" };
@@ -401,6 +474,116 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
         provider: outcome.provider,
         settings,
         tokenKept,
+        discovery,
+        testSignIn: "auth/oidc/start?link=1",
+      };
+    })
+  );
+
+  // --- Pocket ID ----------------------------------------------------------
+
+  router.get(
+    "/oidc/pocket-id",
+    route(async (req): Promise<PocketIdWirePlan> => {
+      const base = pocketIdBase(req.query.url);
+      const apiUrl = pocketIdBase(req.query.apiUrl || base, "api");
+      const origin = publicOrigin(core);
+      return {
+        pocketIdUrl: base,
+        ...(apiUrl !== base ? { apiUrl } : {}),
+        clientName: product.displayName,
+        clientId: product.slug,
+        redirectUri: origin ? `${origin}${CALLBACK_PATH}` : "",
+        issuer: pocketIdIssuer(base),
+        hasStoredKey: await core.secrets.has(POCKET_ID_KEY.scope, POCKET_ID_KEY.id),
+        blocked: signIn.blocked(WIRED_KEYS)?.message ?? null,
+      };
+    })
+  );
+
+  router.post(
+    "/oidc/pocket-id",
+    route(async (req, _res, admin): Promise<PocketIdWireResult> => {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const base = pocketIdBase(body.pocketIdUrl);
+      const apiUrl = pocketIdBase(body.apiUrl || base, "api");
+      let adminGroups: string[] | undefined;
+      if (body.adminGroups !== undefined) {
+        if (!Array.isArray(body.adminGroups)) throw new AdminError(400, "Admin groups must be a list.");
+        adminGroups = body.adminGroups.map((g) => String(g).trim()).filter(Boolean);
+      }
+      const settings = pocketIdKeys(adminGroups !== undefined);
+      const blocked = signIn.blocked(settings);
+      if (blocked !== null) throw new AdminError(blocked.status, blocked.message);
+
+      const pasted = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
+      const apiKey = pasted || ((await core.secrets.get(POCKET_ID_KEY.scope, POCKET_ID_KEY.id)) ?? "");
+      if (!apiKey) throw new AdminError(400, "Paste a Pocket ID API key.");
+
+      const origin = publicOrigin(core);
+      const redirectUri = `${origin}${CALLBACK_PATH}`;
+      let outcome;
+      try {
+        outcome = await wirePocketId({
+          apiUrl,
+          publicUrl: base,
+          apiKey,
+          clientId: product.slug,
+          name: product.displayName,
+          redirectUri,
+          launchUrl: origin,
+        });
+      } catch (err) {
+        if (err instanceof PocketIdError) throw new AdminError(502, err.message);
+        throw err;
+      }
+
+      const scopes = new Set(s.string("auth.oidc.scopes").split(/\s+/).filter(Boolean));
+      scopes.add(GROUPS_SCOPE);
+      try {
+        await signIn.setOidcClient(
+          {
+            issuer: outcome.issuer,
+            clientId: outcome.clientId,
+            clientSecret: outcome.clientSecret,
+            label: "Sign in with Pocket ID",
+            enabled: true,
+            ...(adminGroups !== undefined ? { adminGroups, scopes: [...scopes].join(" ") } : {}),
+          },
+          admin.id
+        );
+      } catch (err) {
+        if (err instanceof SignInError) throw new AdminError(err.status, err.message);
+        throw err;
+      }
+
+      const keyKept = body.keepKey === true;
+      if (keyKept) await core.secrets.putAs(POCKET_ID_KEY.scope, POCKET_ID_KEY.id, apiKey, admin.id);
+      else await core.secrets.delete(POCKET_ID_KEY.scope, POCKET_ID_KEY.id);
+
+      let discovery: PocketIdWireResult["discovery"];
+      try {
+        await discover(outcome.issuer);
+        discovery = { ok: true };
+      } catch (err) {
+        discovery = { ok: false, error: err instanceof OidcError ? err.message : "Discovery failed." };
+      }
+
+      record(
+        req,
+        admin,
+        "oidc-pocket-id-wire",
+        base,
+        `clientId=${outcome.clientId} client=${outcome.client} key=${keyKept ? "kept" : "discarded"}`
+      );
+      return {
+        pocketIdUrl: base,
+        issuer: outcome.issuer,
+        clientId: outcome.clientId,
+        redirectUri,
+        client: outcome.client,
+        settings,
+        keyKept,
         discovery,
         testSignIn: "auth/oidc/start?link=1",
       };
@@ -697,9 +880,42 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
       if (days !== null && (typeof days !== "number" || !Number.isInteger(days) || days < 1 || days > 3650)) {
         throw new AdminError(400, "Expiry must be a whole number of days from 1 to 3650, or none.");
       }
-      const { row, secret } = createToken(core, { name, scope: body.scope, userId: admin.userId, expiresInDays: days });
-      record(req, admin, "token-create", row.id, `${name} (${row.scope})`);
+      const limits = tokenLimits(body);
+      const { row, secret } = createToken(core, {
+        name,
+        scope: body.scope,
+        ...(limits.namespaces ? { namespaces: limits.namespaces } : {}),
+        ...(limits.areas ? { areas: limits.areas } : {}),
+        userId: admin.userId,
+        expiresInDays: days,
+      });
+      record(req, admin, "token-create", row.id, `${name} (${grantSummary(row)})`);
       return { token: tokenView(core, row, isAdmin), secret };
+    })
+  );
+
+  router.patch(
+    "/tokens/:id",
+    route((req, _res, admin) => {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      let name: string | undefined;
+      if (body.name !== undefined) {
+        name = typeof body.name === "string" ? body.name.trim() : "";
+        if (!name || name.length > 80) throw new AdminError(400, "Give the token a name of up to 80 characters.");
+      }
+      if (body.scope !== undefined && body.scope !== "read" && body.scope !== "write") {
+        throw new AdminError(400, "Scope must be read or write.");
+      }
+      const limits = tokenLimits(body);
+      const row = updateToken(core, req.params.id ?? "", {
+        ...(name !== undefined ? { name } : {}),
+        ...(body.scope !== undefined ? { scope: body.scope as "read" | "write" } : {}),
+        ...(limits.namespaces !== undefined ? { namespaces: limits.namespaces } : {}),
+        ...(limits.areas !== undefined ? { areas: limits.areas } : {}),
+      });
+      if (row === null) throw new AdminError(404, "No such token.");
+      record(req, admin, "token-update", row.id, `${row.name} (${grantSummary(row)})`);
+      return tokenView(core, row, isAdmin);
     })
   );
 
@@ -743,15 +959,59 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
       }
       const scope = body.scope ?? requestedScope;
       if (scope !== "read" && scope !== "write") throw new AdminError(400, "Scope must be read or write.");
+      const limits = tokenLimits(body as Record<string, unknown>);
+      const grant = {
+        scope,
+        ...(limits.namespaces ? { namespaces: limits.namespaces } : {}),
+        ...(limits.areas ? { areas: limits.areas } : {}),
+      };
       const code = issueCode(core, {
         clientId: client.clientId,
         userId: admin.userId,
-        scope,
+        ...grant,
         redirectUri,
         codeChallenge: params.code_challenge!,
       });
-      record(req, admin, "oauth-approve", client.clientId, `${client.name} (${scope})`);
+      record(req, admin, "oauth-approve", client.clientId, `${client.name} (${grantSummary(grant)})`);
       return { ...view, redirect: redirectWith(redirectUri, { code, state: params.state }) };
+    })
+  );
+
+  // --- Recovery kit -------------------------------------------------------
+
+  // SECRETS_KEY leaves the process only here, so the admin proves who they
+  // are again first: a password account by its password (and authenticator
+  // when enrolled), an OIDC account by a sign-in this recent.
+  router.post(
+    "/recovery-kit",
+    route(async (req, res, admin) => {
+      if (!secretKeyConfigured()) {
+        throw new AdminError(409, "SECRETS_KEY is not set, so nothing is sealed and there is no key to keep.");
+      }
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const passphrase = typeof body.passphrase === "string" ? body.passphrase : "";
+      if (passphrase.length < MIN_PASSPHRASE) {
+        throw new AdminError(400, `Choose a passphrase of at least ${MIN_PASSPHRASE} characters.`);
+      }
+      await reauthenticate(req, admin, body);
+      const kit = sealKit(
+        {
+          secretsKey: rawSecretKey(),
+          release: process.env.HELM_RELEASE || product.slug,
+          namespace: process.env.POD_NAMESPACE || product.defaultNamespace,
+          version: process.env.GIT_SHA || "dev",
+          createdAt: new Date().toISOString(),
+        },
+        passphrase
+      );
+      record(req, admin, "recovery-kit", "SECRETS_KEY", "downloaded");
+      res
+        .status(200)
+        .type("text/plain")
+        .set("Cache-Control", "no-store")
+        .set("Content-Disposition", `attachment; filename="${product.slug}-recovery-kit.txt"`)
+        .send(kit);
+      return undefined;
     })
   );
 

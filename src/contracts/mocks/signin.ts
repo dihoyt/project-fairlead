@@ -1,11 +1,19 @@
-import type { SignInOidcClient, SignInOidcView, SignInService } from "../platform.js";
+import type { SignInClientKey, SignInOidcClient, SignInOidcView, SignInService } from "../platform.js";
 
 export interface MockSignIn extends SignInService {
   // What oidc() answers; setOidcClient() writes into it.
   state: SignInOidcView;
-  // The last secret set, which oidc() only reports as hasSecret.
+  // The last secret or key set, which oidc() only reports as hasSecret / hasKey.
   secret?: string;
+  key?: SignInClientKey;
   writes: Array<{ client: SignInOidcClient; actor: string }>;
+  // seedAdminPassword() refuses (resolves false) once this is true.
+  adminSignedIn: boolean;
+  // The last password seedAdminPassword() set.
+  adminPassword?: string;
+  // setPublicUrl() refuses with this when set, as PUBLIC_ORIGIN makes the platform.
+  publicUrlLocked?: string;
+  publicUrl?: string;
 }
 
 // Services "signin" for module tests. Set state.blocked to make
@@ -18,20 +26,42 @@ export function createMockSignIn(state: Partial<SignInOidcView> = {}): MockSignI
       issuer: "",
       clientId: "",
       hasSecret: false,
+      hasKey: false,
       redirectUri: "https://console.example.test/auth/oidc/callback",
       blocked: null,
       ...state,
     },
     writes: [],
+    adminSignedIn: false,
     oidc: async () => structuredClone(mock.state),
     async setOidcClient(client, actor) {
       if (mock.state.blocked !== null) throw new Error(mock.state.blocked);
       mock.writes.push({ client: structuredClone(client), actor });
-      mock.secret = client.clientSecret;
+      if (!client.clientSecret === !client.clientKey) throw new Error("Give either a client secret or a client key.");
+      if (client.clientKey) {
+        mock.key = structuredClone(client.clientKey);
+        delete mock.secret;
+      } else {
+        mock.secret = client.clientSecret;
+        delete mock.key;
+      }
       mock.state.issuer = client.issuer;
       mock.state.clientId = client.clientId;
-      mock.state.hasSecret = true;
+      mock.state.hasSecret = mock.secret !== undefined;
+      mock.state.hasKey = mock.key !== undefined;
       if (client.enabled !== undefined) mock.state.enabled = client.enabled;
+    },
+    async seedAdminPassword(password) {
+      if (password.length < 10) throw new Error("Passwords must be at least 10 characters.");
+      if (mock.adminSignedIn) return false;
+      mock.adminPassword = password;
+      return true;
+    },
+    async setPublicUrl(url) {
+      if (mock.publicUrlLocked) throw new Error(mock.publicUrlLocked);
+      if (!/^https?:\/\/[^/]/.test(url)) throw new Error("Public URL: must be an http or https URL.");
+      mock.publicUrl = url.replace(/\/+$/, "");
+      mock.state.redirectUri = `${mock.publicUrl}/auth/oidc/callback`;
     },
   };
   return mock;

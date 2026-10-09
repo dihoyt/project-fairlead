@@ -2,7 +2,7 @@ import type { Request, Express } from "express";
 import type { Server } from "node:http";
 import type { ZodType } from "zod";
 import type { Database } from "better-sqlite3";
-import type { ApiTokenScope } from "./auth.js";
+import type { ApiTokenGrant } from "./grants.js";
 import type { Migration } from "./runtime.js";
 
 // Everything in this file is implemented by the platform (S2, src/platform/).
@@ -24,8 +24,9 @@ export interface User {
   mustEnrollTotp?: boolean;
   orgId: string;
   // Set when the request carried an API token (source "token"): which one,
-  // and the scope that caps what can() allows.
-  token?: { id: string; scope: ApiTokenScope };
+  // the scope that caps what can() allows, and the grant's areas and
+  // namespaces that the runtime checks each route against (./grants.ts).
+  token?: { id: string } & ApiTokenGrant;
 }
 
 // Tenancy A: "read" is any signed-in user; "write" and "admin" are admins.
@@ -76,30 +77,64 @@ export interface SignInOidcView {
   issuer: string;
   clientId: string;
   hasSecret: boolean;
+  // A private key is stored: the token endpoint is called with a signed
+  // client assertion (private_key_jwt) instead of the secret.
+  hasKey: boolean;
   // <public URL>/auth/oidc/callback; "" until site.publicUrl or PUBLIC_ORIGIN is set.
   redirectUri: string;
   // Why setOidcClient() would refuse now, one sentence; null when it would not.
   blocked: string | null;
 }
 
+// A key pair registered with the provider for private_key_jwt client
+// authentication (RFC 7523): the console signs a short-lived assertion with
+// the private key at every code redemption, so no shared secret exists.
+export interface SignInClientKey {
+  // PKCS#8 PEM, RSA. Sealed like the client secret; never read back.
+  privateKey: string;
+  // The X.509 certificate (PEM) registered with the provider. Its SHA-1 and
+  // SHA-256 thumbprints go in the assertion's x5t and x5t#S256 headers,
+  // which is how Entra ID finds the key.
+  certificate?: string;
+  // The assertion's kid header, for providers that look keys up by id.
+  keyId?: string;
+}
+
 export interface SignInOidcClient {
   issuer: string;
   clientId: string;
-  clientSecret: string;
+  // Exactly one of clientSecret and clientKey. Storing one removes the other.
+  clientSecret?: string;
+  clientKey?: SignInClientKey;
   // Left out: unchanged.
   label?: string;
   adminGroups?: string[];
+  // auth.oidc.scopes, space-separated.
+  scopes?: string;
   enabled?: boolean;
 }
 
 export interface SignInService {
   oidc(): Promise<SignInOidcView>;
-  // The same writes as POST /api/admin/oidc/authentik: the client secret and
-  // the auth.oidc.* settings given, audited as "auth.oidc.wire" with `actor`
+  // The same writes as POST /api/admin/oidc/authentik and /pocket-id: the
+  // client secret (or key) and the auth.oidc.* settings given, audited as
+  // "auth.oidc.wire" with `actor`
   // (the username, or the module id for scheduled work). Throws with the
   // reason, writing nothing, when no public URL is set, SECRETS_KEY is
-  // unset, or one of the settings is locked by the environment.
+  // unset, one of the settings is locked by the environment, or the client
+  // carries neither or both of clientSecret and clientKey.
   setOidcClient(client: SignInOidcClient, actor: string): Promise<void>;
+  // The install seed (./onboarding.ts) only. Gives the built-in "admin"
+  // account this password with no change asked at the next sign-in, while
+  // that account has never signed in; audited "auth.seed-password" with
+  // `actor`. Resolves false, changing nothing, once it has signed in or when
+  // there is no such account. Throws with the reason on a password the
+  // password policy refuses.
+  seedAdminPassword(password: string, actor: string): Promise<boolean>;
+  // Saves site.publicUrl as the admin settings page would, audited
+  // "admin.setting-change" with `actor`. Throws with the reason when PUBLIC_ORIGIN
+  // locks it or the value is not an http(s) URL.
+  setPublicUrl(url: string, actor: string): Promise<void>;
 }
 
 // The sign-in gate in front of deployed apps (deploy.ts, "Sign-in gate").

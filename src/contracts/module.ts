@@ -32,6 +32,8 @@ export const MODULE_IDS = [
   "connectors",
   "connector-cloudflare",
   "connector-entra",
+  "connector-storage",
+  "postgres",
   "templates",
   "publish",
 ] as const;
@@ -74,6 +76,11 @@ export interface ModuleContext {
   can(user: User, action: Action): boolean;
   // Responds 403 and returns null when the caller may not do `action`.
   require(req: Request, res: Response, action: Action): User | null;
+  // The namespaces the caller may see: null for every one (any session, or a
+  // token whose grant names none). A route that lists objects across
+  // namespaces keeps only these; one that acts on a single namespace is
+  // already refused outside them before its handler runs (./grants.ts).
+  visibleNamespaces(req: Request): readonly string[] | null;
   // Calls a JSON route from ./api.ts in-process, as the caller of `req`
   // (Platform.vouch), through the same authentication, permission checks,
   // validation and audit as any other request: what another module offers

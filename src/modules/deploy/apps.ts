@@ -1,6 +1,20 @@
 import type { CatalogEntry, DiscoveryReport } from "../../contracts/catalog.js";
 import type { AccessMode, DeployValue } from "../../contracts/deploy.js";
 import { deployedLabel } from "../../contracts/deployed.js";
+import type { KubeObject } from "../../contracts/k8s.js";
+import { pgClusterName, pgSecretName } from "../../contracts/postgres.js";
+import { product } from "../../product.js";
+import {
+  CLUSTER_LABEL,
+  CNPG_API,
+  databaseFile,
+  databaseObjects,
+  databaseSteps,
+  listOf,
+  PASSWORD_ANNOTATION,
+  passwordStamp,
+  type SharedPostgres,
+} from "./actions/pg-objects.js";
 import { MIDDLEWARES_ANNOTATION } from "./gate.js";
 import type { YamlValue } from "./yaml.js";
 
@@ -37,6 +51,10 @@ export interface RecipeInput {
   discovery?: DiscoveryReport;
   // A random value generated per run (database passwords, signing keys).
   generated(name: string): string;
+  // Set for an app whose CatalogEntry.database is "postgres" while the
+  // shared Postgres is installed or comes earlier in the same bundle: the
+  // app gets its own database there instead of a bundled Postgres.
+  postgres?: SharedPostgres;
 }
 
 // One command of the Job's script. argv comes from the fixed templates in
@@ -55,6 +73,8 @@ export interface Recipe {
   values?(r: RecipeInput): YamlValue;
   // Extra files written into the values Secret, by file name.
   files?(r: RecipeInput): Record<string, YamlValue>;
+  // Run before the install itself.
+  before?(r: RecipeInput): Step[];
   // Run after the install itself.
   after?(r: RecipeInput): Step[];
   // The whole change, for "patch" installs.
@@ -172,6 +192,55 @@ const resources = (cpu: string, memory: string, limit: string) => ({
   limits: { memory: limit },
 });
 
+// An app on the shared Postgres: its database and connection Secret before
+// the chart (the pg-database action's objects), and its chart told to read
+// the connection from that Secret.
+const sharedDatabase: Pick<Recipe, "files" | "before"> = {
+  files: (r) =>
+    r.postgres
+      ? {
+          [databaseFile(r.app.id)]: listOf(
+            databaseObjects(r.postgres, r.app.id, r.namespace, r.generated("postgresPassword"))
+          ),
+        }
+      : {},
+  before: (r) => (r.postgres ? databaseSteps(r.postgres, r.app.id) : []),
+};
+
+const fromSecret = (r: RecipeInput, key: string) => ({ secretKeyRef: { name: pgSecretName(r.app.id), key } });
+const passwordAnnotation = (r: RecipeInput) => ({
+  [PASSWORD_ANNOTATION]: passwordStamp(r.generated("postgresPassword")),
+});
+
+// The shared cluster's own object; restored clusters keep their name.
+function sharedCluster(r: RecipeInput): KubeObject[] {
+  const name = r.postgres?.cluster ?? pgClusterName(product.slug);
+  const owned = { "app.kubernetes.io/managed-by": product.ownerMarker.labelDomain, ...deployedLabel() };
+  return [
+    { apiVersion: "v1", kind: "Namespace", metadata: { name: r.namespace, labels: owned } },
+    {
+      apiVersion: CNPG_API,
+      kind: "Cluster",
+      metadata: { name, namespace: r.namespace, labels: { ...owned, [CLUSTER_LABEL]: "current" } },
+      spec: {
+        instances: upToNodes(r, 2),
+        // Backups and restores run as the superuser from Jobs in this namespace.
+        enableSuperuserAccess: true,
+        storage: {
+          size: str(r.inputs.size) || r.app.storage,
+          ...(storageClass(r) ? { storageClass: storageClass(r) } : {}),
+        },
+        affinity: {
+          enablePodAntiAffinity: true,
+          topologyKey: "kubernetes.io/hostname",
+          podAntiAffinityType: "preferred",
+        },
+        resources: resources("50m", "256Mi", "1Gi"),
+      },
+    } as KubeObject,
+  ];
+}
+
 export const recipes: Record<string, Recipe> = {
   "cert-manager": {
     values: () => ({
@@ -256,16 +325,11 @@ export const recipes: Record<string, Recipe> = {
       commonLabels: labels(),
       defaultSettings: { defaultReplicaCount: longhornReplicas(r) },
       persistence: { defaultClass: longhornTakesDefault(r), defaultClassReplicaCount: longhornReplicas(r) },
-      ingress: {
-        enabled: r.chartIngress,
-        ingressClassName: r.defaults.ingressClass,
-        host: r.host,
-        tls: r.tls,
-        tlsSecret: r.tls ? tlsSecret(r) : undefined,
-        annotations: ingressAnnotations(r),
-      },
+      // Headless: the console sets Longhorn up, so its UI (no sign-in of its
+      // own) is never published. An upgrade removes an Ingress an earlier
+      // install made; the longhorn-frontend Service stays for port-forward.
+      ingress: { enabled: false },
     }),
-    service: () => ({ name: "longhorn-frontend", port: 80 }),
     after: (r) =>
       longhornTakesDefault(r) && defaultStorageClasses(r)!.includes(NODE_LOCAL_CLASS)
         ? [unsetDefault(NODE_LOCAL_CLASS)]
@@ -275,7 +339,7 @@ export const recipes: Record<string, Recipe> = {
       const defaults = defaultStorageClasses(r) ?? [];
       const others = defaults.filter((name) => name !== "longhorn");
       return [
-        "Longhorn's UI has no sign-in of its own: anyone who can reach the hostname can use it.",
+        "Longhorn's own web UI is not published; set backups up on the Backups page.",
         ...(replicas === 1 ? ["1 replica on a single node; raise it in Longhorn when you add nodes."] : []),
         ...(longhornTakesDefault(r) && others.length > 0
           ? [
@@ -285,6 +349,52 @@ export const recipes: Record<string, Recipe> = {
         ...(!longhornTakesDefault(r) && others.length > 0
           ? [`${others.join(", ")} stays the default storage class; apps that should use Longhorn must name it.`]
           : []),
+      ];
+    },
+  },
+
+  "cloudnative-pg": {
+    values: () => ({
+      podLabels: labels(),
+      resources: resources("10m", "64Mi", "256Mi"),
+    }),
+  },
+
+  "barman-cloud": {
+    values: () => ({
+      podLabels: labels(),
+      resources: resources("10m", "32Mi", "256Mi"),
+    }),
+  },
+
+  postgres: {
+    files: (r) => ({ "cluster.yaml": listOf(sharedCluster(r)) }),
+    patch: (r) => {
+      const name = r.postgres?.cluster ?? pgClusterName(product.slug);
+      return [
+        // The operator's webhook may still be starting right after it installs.
+        { argv: ["kubectl", "apply", "-f", `${VALUES_DIR}/cluster.yaml`], dryRun: "--dry-run=client", retry: true },
+        {
+          argv: [
+            "kubectl",
+            "wait",
+            `clusters.postgresql.cnpg.io/${name}`,
+            "--namespace",
+            r.namespace,
+            "--for=condition=Ready",
+            "--timeout=15m",
+          ],
+        },
+      ];
+    },
+    warnings: (r) => {
+      const instances = upToNodes(r, 2);
+      return [
+        ...(instances === 1
+          ? ["One instance on a single node: no failover until you add a node and raise instances."]
+          : []),
+        "Apps that use Postgres get their own database here from now on; ones already installed keep their own.",
+        "Not backed up until you pick a storage target for it on the Backups page.",
       ];
     },
   },
@@ -351,9 +461,22 @@ export const recipes: Record<string, Recipe> = {
   },
 
   grafana: {
+    ...sharedDatabase,
     values: (r) => ({
       extraLabels: labels(),
       adminPassword: str(r.inputs.adminPassword),
+      ...(r.postgres
+        ? {
+            "grafana.ini": { database: { type: "postgres", ssl_mode: "require" } },
+            envValueFrom: {
+              GF_DATABASE_HOST: fromSecret(r, "host"),
+              GF_DATABASE_NAME: fromSecret(r, "dbname"),
+              GF_DATABASE_USER: fromSecret(r, "user"),
+              GF_DATABASE_PASSWORD: fromSecret(r, "password"),
+            },
+            podAnnotations: passwordAnnotation(r),
+          }
+        : {}),
       ingress: {
         enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
@@ -367,27 +490,44 @@ export const recipes: Record<string, Recipe> = {
   },
 
   authentik: {
+    ...sharedDatabase,
     values: (r) => {
       const dbPassword = r.generated("postgresPassword");
       const password = str(r.inputs.adminPassword);
       const https = forwardedHttps(r);
+      const shared = r.postgres
+        ? {
+            // An empty value leaves its variable out of the chart's Secret; these come from ours.
+            env: [
+              ["HOST", "host"],
+              ["PORT", "port"],
+              ["NAME", "dbname"],
+              ["USER", "user"],
+              ["PASSWORD", "password"],
+            ].map(([field, key]) => ({ name: `AUTHENTIK_POSTGRESQL__${field}`, valueFrom: fromSecret(r, key!) })),
+            podAnnotations: passwordAnnotation(r),
+          }
+        : undefined;
       return {
+        ...(shared ? { global: shared } : {}),
         authentik: {
           secret_key: r.generated("secretKey"),
-          postgresql: { password: dbPassword },
+          postgresql: shared ? { host: "", name: "", user: "", password: "" } : { password: dbPassword },
           // Read once, on first start: the bootstrap blueprint creates akadmin
           // with it and marks setup done, so /if/flow/initial-setup/ never shows.
           bootstrap_email: str(r.inputs.adminEmail),
           ...(password ? { bootstrap_password: password } : {}),
         },
-        postgresql: {
-          enabled: true,
-          auth: { password: dbPassword },
-          primary: {
-            persistence: { size: r.app.storage, storageClass: storageClass(r) },
-            resources: resources("25m", "96Mi", "512Mi"),
-          },
-        },
+        postgresql: shared
+          ? { enabled: false }
+          : {
+              enabled: true,
+              auth: { password: dbPassword },
+              primary: {
+                persistence: { size: r.app.storage, storageClass: storageClass(r) },
+                resources: resources("25m", "96Mi", "512Mi"),
+              },
+            },
         // Idle, the server and worker each hold about half a GiB.
         worker: { resources: resources("50m", "448Mi", "1Gi") },
         server: {
@@ -411,6 +551,37 @@ export const recipes: Record<string, Recipe> = {
       str(r.inputs.adminPassword)
         ? [`Sign in at ${r.scheme}://${r.host ?? "<host>"} as akadmin with the admin password.`]
         : [`Finish setup at ${r.scheme}://${r.host ?? "<host>"}/if/flow/initial-setup/ to set the admin password.`],
+  },
+
+  "pocket-id": {
+    values: (r) => ({
+      // APP_URL is https://<host>: the chart assumes https, which passkeys need anyway.
+      host: r.host,
+      encryptionKey: r.generated("encryptionKey"),
+      analyticsDisabled: true,
+      // The Service and StatefulSet named after the release, whatever it is.
+      fullnameOverride: r.release,
+      pocketID: { resources: resources("10m", "32Mi", "256Mi") },
+      persistence: { data: { enabled: true, size: r.app.storage, storageClass: storageClass(r) ?? "" } },
+      ingress: {
+        enabled: r.chartIngress,
+        className: r.defaults.ingressClass ?? "",
+        annotations: ingressAnnotations(r),
+        host: r.host,
+        paths: [{ path: "/", pathType: "Prefix" }],
+        tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
+      },
+    }),
+    service: (r) => ({ name: r.release, port: 80 }),
+    warnings: (r) => {
+      const url = `https://${r.host ?? "<host>"}`;
+      return [
+        ...(r.scheme === "http"
+          ? [`Pocket ID serves itself as ${url}; passkeys fail until that address has https.`]
+          : []),
+        `Register the first admin's passkey at ${url}/setup, then make an API key under Settings > Admin > API Keys to wire up sign-in.`,
+      ];
+    },
   },
 
   velero: {

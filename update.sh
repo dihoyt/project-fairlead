@@ -23,6 +23,7 @@ DEFAULT_NAMESPACE="fairlead" # brand:generated defaultNamespace
 CHART_NAME="fairlead" # brand:generated chartName
 IMAGE_REGISTRY="ghcr.io/dihoyt" # brand:generated imageRegistry
 OWNER_LABEL="fairlead" # brand:generated ownerLabelDomain
+DB_FILE="fairlead.db" # brand:generated dbFile
 
 # A fresh k3s is the stable channel's newest release, read at install time;
 # this pin is used only when the channel can't be read.
@@ -56,6 +57,25 @@ NODE_PORT=""
 DEFAULT_NODE_PORT=32450
 UPGRADE_K3S=0
 PREREQS=0
+ENV_FILE=""
+ENV_FILE_GIVEN=0
+KEEP_ENV=0
+DEFAULT_ENV_FILE="/etc/$SLUG/install.env"
+RESTORE_KIT=""
+RESTORE_FROM=""
+RESTORE_KEY=""
+NAMESPACE_GIVEN=0
+RELEASE_GIVEN=0
+SEED_SECRET_NAME="install-seed"
+# The env-file keys the console reads (INSTALL_SEED_KEYS in
+# src/contracts/onboarding.ts; a test keeps the two lists the same).
+SEED_KEYS="ADMIN_PASSWORD PUBLIC_URL
+CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_ZONE CLOUDFLARE_ACCESS_APPS
+ENTRA_TENANT_ID ENTRA_CLIENT_ID ENTRA_CLIENT_SECRET ENTRA_ADMIN_GROUPS
+STORAGE_URL STORAGE_PATH STORAGE_ENDPOINT STORAGE_USER STORAGE_SECRET
+SMTP_PRESET SMTP_HOST SMTP_PORT SMTP_SECURITY SMTP_USER SMTP_PASSWORD SMTP_FROM SMTP_TO
+OIDC_ISSUER OIDC_CLIENT_ID OIDC_CLIENT_SECRET OIDC_LABEL OIDC_ADMIN_GROUPS
+BUNDLE BUNDLE_ACCESS BASE_DOMAIN ADMIN_EMAIL STORAGE_CLASS AUTHENTIK_BOOTSTRAP_PASSWORD"
 
 usage() {
   if [ "$MODE" = update ]; then
@@ -94,6 +114,20 @@ EOF
   --values FILE         Extra Helm values file; repeatable, applied last
   --enable-deploy       Let the console deploy apps from its catalog. Creates an installer
                         ServiceAccount bound to cluster-admin; off unless given
+EOF
+  [ "$MODE" = update ] || cat <<EOF
+  --env FILE            First install only: set the console up from this env file (admin
+                        password, public URL, connectors, email, the deploy bundle; keys in
+                        docs/install.md). Default: $DEFAULT_ENV_FILE when it exists.
+                        Shredded once the install succeeds
+  --keep-env            Keep the env file instead of shredding it
+  --restore KIT         First install only: reinstall with the SECRETS_KEY sealed in this
+                        recovery kit (from Backups -> This console). Asks for its passphrase,
+                        or reads KIT_PASSPHRASE from the environment
+  --from FILE           With --restore: a copy of the console's database (<release>-<time>.db
+                        from the storage target) to start from instead of an empty one
+EOF
+  cat <<EOF
   --kubeconfig PATH     Use this kubeconfig instead of detecting a cluster
   --no-k3s              Never install k3s; fail if no cluster is found
   --no-node-packages    Don't install open-iscsi, the NFS and SMB clients on this host's k3s node
@@ -132,8 +166,8 @@ need_arg() {
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --namespace) need_arg "$@"; NAMESPACE="$2"; shift 2 ;;
-    --release) need_arg "$@"; RELEASE="$2"; shift 2 ;;
+    --namespace) need_arg "$@"; NAMESPACE="$2"; NAMESPACE_GIVEN=1; shift 2 ;;
+    --release) need_arg "$@"; RELEASE="$2"; RELEASE_GIVEN=1; shift 2 ;;
     --channel) need_arg "$@"; CHANNEL="$2"; shift 2 ;;
     --version) need_arg "$@"; CHART_VERSION="$2"; shift 2 ;;
     --image-tag) need_arg "$@"; IMAGE_TAG="$2"; shift 2 ;;
@@ -152,6 +186,10 @@ while [ "$#" -gt 0 ]; do
     --kubeconfig) need_arg "$@"; KUBECONFIG_PATH="$2"; shift 2 ;;
     --timeout) need_arg "$@"; TIMEOUT="$2"; shift 2 ;;
     --enable-deploy) ENABLE_DEPLOY=1; shift ;;
+    --env) need_arg "$@"; ENV_FILE="$2"; ENV_FILE_GIVEN=1; shift 2 ;;
+    --keep-env) KEEP_ENV=1; shift ;;
+    --restore) need_arg "$@"; RESTORE_KIT="$2"; shift 2 ;;
+    --from) need_arg "$@"; RESTORE_FROM="$2"; shift 2 ;;
     --no-k3s) NO_K3S=1; shift ;;
     --no-node-packages) NODE_PACKAGES=0; shift ;;
     --k3s) UPGRADE_K3S=1; shift ;;
@@ -192,11 +230,25 @@ esac
 [ "$PURGE" = 0 ] || [ "$UNINSTALL" = 1 ] || die "--purge only goes with --uninstall"
 if [ "$MODE" = update ]; then
   [ "$UNINSTALL" = 0 ] || die "update.sh does not uninstall; use install.sh --uninstall"
+  if [ "$ENV_FILE_GIVEN" = 1 ] || [ "$KEEP_ENV" = 1 ]; then die "--env and --keep-env set up a first install; use install.sh"; fi
   NO_K3S=1
 else
   if [ "$UPGRADE_K3S" = 1 ] || [ "$PREREQS" = 1 ]; then die "--k3s and --prereqs are update.sh flags"; fi
+  if [ "$UNINSTALL" = 1 ] && { [ "$ENV_FILE_GIVEN" = 1 ] || [ "$KEEP_ENV" = 1 ]; }; then die "--env does not go with --uninstall"; fi
+  if [ "$ENV_FILE_GIVEN" = 0 ] && [ "$UNINSTALL" = 0 ] && [ -e "$DEFAULT_ENV_FILE" ]; then ENV_FILE="$DEFAULT_ENV_FILE"; fi
+  [ "$KEEP_ENV" = 0 ] || [ -n "$ENV_FILE" ] || die "--keep-env goes with --env"
 fi
 [ "$ENABLE_DEPLOY" = 0 ] || [ "$UNINSTALL" = 0 ] || die "--enable-deploy does not go with --uninstall"
+if [ -n "$RESTORE_KIT" ] || [ -n "$RESTORE_FROM" ]; then
+  [ "$MODE" = install ] || die "--restore and --from reinstall from a backup; use install.sh"
+  [ "$UNINSTALL" = 0 ] || die "--restore does not go with --uninstall"
+  [ -z "$ENV_FILE" ] || die "--restore and --env both set up a first install; use one (move $ENV_FILE away)"
+  [ -n "$RESTORE_KIT" ] || die "--from goes with --restore: without the kit's key the copy's stored secrets can't be read"
+  if [ -n "$RESTORE_FROM" ]; then
+    [ -r "$RESTORE_FROM" ] || die "cannot read database copy $RESTORE_FROM"
+    [ "$(head -c 15 "$RESTORE_FROM")" = "SQLite format 3" ] || die "$RESTORE_FROM is not a SQLite database"
+  fi
+fi
 [ -n "$ORIGIN" ] || [ -z "$HOST" ] || ORIGIN="http://$HOST"
 if [ -z "$CHART_REF" ]; then
   if [ "$CHANNEL" = next ]; then CHART_REF="oci://$IMAGE_REGISTRY/charts-next/$CHART_NAME"; else CHART_REF="oci://$IMAGE_REGISTRY/charts/$CHART_NAME"; fi
@@ -214,6 +266,110 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 tty_ok() { (exec </dev/tty) 2>/dev/null; }
+
+# Checks the env file before anything is changed and writes its values,
+# unquoted, to $TMP/seed.env. Errors name the line and the key, never a
+# value: the file holds passwords and tokens.
+SEED_COUNT=0
+SEED_ADMIN_PASSWORD=0
+read_env_file() {
+  reader=""
+  if [ ! -r "$ENV_FILE" ]; then
+    { [ -e "$ENV_FILE" ] && [ -n "$SUDO" ]; } || die "cannot read env file $ENV_FILE"
+    reader="$SUDO"
+  fi
+  # shellcheck disable=SC2086
+  case "$($reader ls -ln "$ENV_FILE" | cut -c5-10)" in
+    *[rwx]*) warn "other users on this host can read $ENV_FILE (chmod 600 it)" ;;
+  esac
+  (
+    umask 077
+    # shellcheck disable=SC2086
+    $reader cat "$ENV_FILE" >"$TMP/env.raw"
+    : >"$TMP/seed.env"
+  ) || die "cannot read env file $ENV_FILE"
+  keys=" $(printf '%s' "$SEED_KEYS" | tr '\n' ' ') "
+  bundle=0
+  n=0
+  seen=" "
+  while IFS= read -r line || [ -n "$line" ]; do
+    n=$((n + 1))
+    line=$(printf '%s' "$line" | sed 's/\r$//; s/^[[:space:]]*//; s/^export[[:space:]][[:space:]]*//')
+    case "$line" in "" | "#"*) continue ;; esac
+    key=${line%%=*}
+    case "$line" in *=*) ;; *) key="" ;; esac
+    case "$key" in "" | [!A-Z]* | *[!A-Z0-9_]*) die "line $n of $ENV_FILE is not KEY=value" ;; esac
+    case "$keys" in *" $key "*) ;; *) die "unknown key $key on line $n of $ENV_FILE (docs/install.md lists the keys)" ;; esac
+    case "$seen" in *" $key "*) die "$key is set twice in $ENV_FILE (line $n)" ;; esac
+    seen="$seen$key "
+    value=${line#*=}
+    case "$value" in
+      \"*\") value=${value#\"}; value=${value%\"} ;;
+      \'*\') value=${value#\'}; value=${value%\'} ;;
+    esac
+    [ -n "$value" ] || continue
+    printf '%s=%s\n' "$key" "$value" >>"$TMP/seed.env"
+    SEED_COUNT=$((SEED_COUNT + 1))
+    case "$key" in
+      ADMIN_PASSWORD)
+        [ "${#value}" -ge 10 ] || die "ADMIN_PASSWORD in $ENV_FILE is shorter than 10 characters"
+        SEED_ADMIN_PASSWORD=1
+        ;;
+      BUNDLE) bundle=1 ;;
+    esac
+  done <"$TMP/env.raw"
+  rm -f "$TMP/env.raw"
+  [ "$SEED_COUNT" -gt 0 ] || die "$ENV_FILE sets none of the keys docs/install.md lists"
+  if [ "$bundle" = 1 ] && [ "$ENABLE_DEPLOY" = 0 ]; then
+    warn "BUNDLE needs --enable-deploy; without it the console reports the bundle as failed"
+  fi
+}
+
+# The Secret the console reads once at first boot and then deletes. Values
+# reach kubectl base64 in a 0600 file, never as an argument.
+write_seed_secret() {
+  (
+    umask 077
+    {
+      say "apiVersion: v1"
+      say "kind: Secret"
+      say "metadata:"
+      say "  name: $SEED_SECRET_NAME"
+      say "  namespace: $NAMESPACE"
+      say "  labels:"
+      say "    app.kubernetes.io/managed-by: $OWNER_LABEL"
+      say "type: Opaque"
+      say "data:"
+      while IFS= read -r line; do
+        printf '  %s: %s\n' "${line%%=*}" "$(printf '%s' "${line#*=}" | base64 | tr -d '\n')"
+      done <"$TMP/seed.env"
+    } >"$TMP/seed-secret.yaml"
+  )
+  run kube apply -f "$TMP/seed-secret.yaml" >/dev/null
+  rm -f "$TMP/seed-secret.yaml" "$TMP/seed.env"
+  say "Stored $SEED_COUNT settings from $ENV_FILE in Secret $SEED_SECRET_NAME; the console applies them at first boot."
+}
+
+# shred overwrites the file in place; without it, zeros its own size do.
+remove_env_file() {
+  if [ "$KEEP_ENV" = 1 ]; then
+    say "Kept $ENV_FILE (--keep-env). It holds passwords and tokens: delete it when you are done."
+    return 0
+  fi
+  if [ -w "$ENV_FILE" ] && [ -w "$(dirname "$ENV_FILE")" ]; then as=""; else as="$SUDO"; fi
+  # shellcheck disable=SC2086
+  if has shred; then
+    run $as shred -u "$ENV_FILE"
+  else
+    size=$($as wc -c <"$ENV_FILE" | tr -d ' ')
+    run $as dd if=/dev/zero of="$ENV_FILE" bs=1 count="$size" conv=notrunc 2>/dev/null \
+      && run $as rm -f "$ENV_FILE"
+  fi || {
+    warn "could not delete $ENV_FILE; it holds passwords and tokens, so delete it yourself"
+    return 0
+  }
+  say "Shredded $ENV_FILE (--keep-env keeps it)."
+}
 
 confirm() {
   [ "$YES" = 1 ] && return 0
@@ -733,6 +889,121 @@ do_uninstall() {
   fi
 }
 
+# --- Restore from a recovery kit and a database copy ------------------------
+
+# The kit is "#" comment lines and one base64 line that openssl opens with
+# the passphrase (src/platform/recoveryKit.ts). Its RELEASE and NAMESPACE
+# stand in for flags not given.
+open_kit() {
+  [ -r "$RESTORE_KIT" ] || die "cannot read recovery kit $RESTORE_KIT"
+  has openssl || die "--restore needs openssl to open the recovery kit"
+  pass="${KIT_PASSPHRASE:-}"
+  if [ -z "$pass" ]; then
+    tty_ok || die "set KIT_PASSPHRASE to the kit's passphrase (no terminal to ask on)"
+    printf 'Recovery kit passphrase: ' >/dev/tty
+    stty -echo </dev/tty 2>/dev/null || true
+    IFS= read -r pass </dev/tty || true
+    stty echo </dev/tty 2>/dev/null || true
+    printf '\n' >/dev/tty
+  fi
+  opened=$(grep -v '^#' "$RESTORE_KIT" | tr -d ' \r\n' \
+    | KIT_PASS="$pass" openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -a -A -pass env:KIT_PASS 2>/dev/null) \
+    || die "the passphrase does not open $RESTORE_KIT"
+  pass=""
+  [ "$(kit_value KIT_VERSION)" = 1 ] || die "the passphrase does not open $RESTORE_KIT, or it is not a recovery kit"
+  RESTORE_KEY=$(kit_value SECRETS_KEY)
+  [ -n "$RESTORE_KEY" ] || die "$RESTORE_KIT holds no SECRETS_KEY"
+  if [ "$RELEASE_GIVEN" = 0 ] && [ -n "$(kit_value RELEASE)" ]; then RELEASE=$(kit_value RELEASE); fi
+  if [ "$NAMESPACE_GIVEN" = 0 ] && [ -n "$(kit_value NAMESPACE)" ]; then NAMESPACE=$(kit_value NAMESPACE); fi
+  dns_label --namespace "$NAMESPACE"
+  dns_label --release "$RELEASE"
+  SECRET_NAME="$RELEASE-secrets"
+  PULL_SECRET_NAME="$RELEASE-registry"
+  say "Opened the recovery kit made $(kit_value CREATED_AT) for $RELEASE in $NAMESPACE."
+  opened=""
+}
+kit_value() { printf '%s\n' "$opened" | sed -n "s/^$1=//p" | head -n 1; }
+
+# Before the first start, so the console opens the restored secrets with the
+# key they were sealed with.
+restore_secret() {
+  if kube -n "$NAMESPACE" get secret "$SECRET_NAME" >/dev/null 2>&1; then
+    current=$(kube -n "$NAMESPACE" get secret "$SECRET_NAME" -o jsonpath='{.data.SECRETS_KEY}' | base64 -d 2>/dev/null || true)
+    [ "$current" = "$RESTORE_KEY" ] \
+      || die "Secret $SECRET_NAME in $NAMESPACE holds another SECRETS_KEY; delete it (or the namespace) to restore"
+    return 0
+  fi
+  PASSWORD=$(head -c 18 /dev/urandom | base64 | tr '+/' 'xy')
+  (
+    umask 077
+    printf 'SECRETS_KEY=%s\nBOOTSTRAP_ADMIN_PASSWORD=%s\n' "$RESTORE_KEY" "$PASSWORD" >"$TMP/secret.env"
+  )
+  run kube -n "$NAMESPACE" create secret generic "$SECRET_NAME" --from-env-file="$TMP/secret.env" >/dev/null
+  run kube -n "$NAMESPACE" label secret "$SECRET_NAME" "app.kubernetes.io/managed-by=$OWNER_LABEL" >/dev/null
+  rm -f "$TMP/secret.env"
+  say "Stored the kit's SECRETS_KEY in Secret $SECRET_NAME."
+}
+
+restore_failed() {
+  kube -n "$NAMESPACE" delete pod "$RELEASE-restore" --ignore-not-found --wait=false >/dev/null 2>&1 || true
+  kube -n "$NAMESPACE" scale deploy "$RELEASE" --replicas=1 >/dev/null 2>&1 || true
+  die "$1 ($DISPLAY_NAME is back up on an empty database)"
+}
+
+# The console stops, a pod with its image and user mounts its volume, the
+# copy replaces the database (and its WAL), and the console starts on it.
+restore_database() {
+  dep="deploy/$RELEASE"
+  claim=$(kube -n "$NAMESPACE" get "$dep" \
+    -o jsonpath='{.spec.template.spec.volumes[?(@.name=="data")].persistentVolumeClaim.claimName}' 2>/dev/null || true)
+  [ -n "$claim" ] || die "$RELEASE keeps its data on no volume (persistence off), so there is nowhere to restore $RESTORE_FROM to"
+  image=$(release_image)
+  uid=$(kube -n "$NAMESPACE" get "$dep" -o jsonpath='{.spec.template.spec.securityContext.runAsUser}')
+  gid=$(kube -n "$NAMESPACE" get "$dep" -o jsonpath='{.spec.template.spec.securityContext.fsGroup}')
+  pull=""
+  [ "$PULL_SECRET" = 0 ] || pull="  imagePullSecrets: [{ name: $PULL_SECRET_NAME }]"
+  say "Restoring the database from $RESTORE_FROM ..."
+  run kube -n "$NAMESPACE" scale "$dep" --replicas=0 >/dev/null
+  kube -n "$NAMESPACE" wait --for=delete pod -l "app.kubernetes.io/instance=$RELEASE" --timeout="$TIMEOUT" >/dev/null 2>&1 || true
+  cat >"$TMP/restore-pod.yaml" <<YAML
+apiVersion: v1
+kind: Pod
+metadata:
+  name: $RELEASE-restore
+  labels: { app.kubernetes.io/managed-by: $OWNER_LABEL }
+spec:
+  restartPolicy: Never
+$pull
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: ${uid:-10001}
+    runAsGroup: ${gid:-10001}
+    fsGroup: ${gid:-10001}
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: restore
+      image: $image
+      command: ["sleep", "3600"]
+      securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] } }
+      volumeMounts: [{ name: data, mountPath: /data }]
+  volumes: [{ name: data, persistentVolumeClaim: { claimName: $claim } }]
+YAML
+  kube -n "$NAMESPACE" apply -f "$TMP/restore-pod.yaml" >/dev/null || restore_failed "could not start the restore pod"
+  kube -n "$NAMESPACE" wait --for=condition=Ready "pod/$RELEASE-restore" --timeout="$TIMEOUT" >/dev/null \
+    || restore_failed "the restore pod did not start"
+  kube -n "$NAMESPACE" cp "$RESTORE_FROM" "$RELEASE-restore:/data/.$DB_FILE.restore" >/dev/null \
+    || restore_failed "could not copy $RESTORE_FROM into the volume"
+  # shellcheck disable=SC2016
+  kube -n "$NAMESPACE" exec "$RELEASE-restore" -- sh -c \
+    'cd /data && rm -f "$1-wal" "$1-shm" && mv ".$1.restore" "$1"' sh "$DB_FILE" \
+    || restore_failed "could not put the copy in place"
+  run kube -n "$NAMESPACE" delete pod "$RELEASE-restore" --wait=true >/dev/null
+  run kube -n "$NAMESPACE" scale "$dep" --replicas=1 >/dev/null
+  kube -n "$NAMESPACE" rollout status "$dep" --timeout="$TIMEOUT" >/dev/null
+  rm -f "$TMP/restore-pod.yaml"
+  say "Restored the database from $RESTORE_FROM."
+}
+
 do_install() {
   find_cluster
   if [ "$MODE" = install ] && [ "$KUBECONFIG_PATH" = "$K3S_KUBECONFIG" ]; then node_packages; fi
@@ -761,9 +1032,18 @@ do_install() {
       NODE_PORT=$(kube -n "$NAMESPACE" get svc "$RELEASE" -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || true)
     fi
   fi
+  # A Secret still there is a first install that didn't finish: run it again.
+  if [ -n "$ENV_FILE" ] && [ "$existing" = 1 ] && ! kube -n "$NAMESPACE" get secret "$SEED_SECRET_NAME" >/dev/null 2>&1; then
+    die "--env is for a first install, and $RELEASE is already installed in $NAMESPACE (move $ENV_FILE away to upgrade)"
+  fi
+  if [ -n "$RESTORE_KIT" ] && [ "$existing" = 1 ]; then
+    die "--restore is for a fresh install, and $RELEASE is already installed in $NAMESPACE (install.sh --uninstall first)"
+  fi
   check_webhooks
   ensure_namespace
+  [ -z "$RESTORE_KEY" ] || restore_secret
   ensure_secret
+  [ -z "$ENV_FILE" ] || write_seed_secret
   ensure_join_secret
   registry_auth
   [ -z "$HOST" ] || default_ingress_class
@@ -802,6 +1082,7 @@ do_install() {
   run hh "$@" >/dev/null
   [ "$DRY_RUN" = 0 ] || return 0
   kube -n "$NAMESPACE" rollout status "deploy/$RELEASE" --timeout="$TIMEOUT" >/dev/null
+  [ -z "$RESTORE_FROM" ] || restore_database
 
   url=""
   host=$(kube -n "$NAMESPACE" get ingress "$RELEASE" -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || true)
@@ -846,6 +1127,17 @@ do_install() {
     say "Reach it with: $(kubectl_hint) -n $NAMESPACE port-forward svc/$RELEASE 8080:80"
   fi
   [ "$MODE" = install ] || return 0
+  [ -z "$ENV_FILE" ] || remove_env_file
+  if [ -n "$RESTORE_FROM" ]; then
+    say ""
+    say "Sign in with an account from the restored database."
+    return 0
+  fi
+  if [ "$SEED_ADMIN_PASSWORD" = 1 ]; then
+    say ""
+    say "Sign in as admin with the ADMIN_PASSWORD from the env file."
+    return 0
+  fi
   if [ -n "$PASSWORD" ]; then
     say ""
     say "Sign in as admin with this password. It is shown once, and you will be asked to change it:"
@@ -861,5 +1153,7 @@ do_install() {
 if [ "$UNINSTALL" = 1 ]; then
   do_uninstall
 else
+  [ -z "$ENV_FILE" ] || read_env_file
+  [ -z "$RESTORE_KIT" ] || open_kit
   do_install
 fi

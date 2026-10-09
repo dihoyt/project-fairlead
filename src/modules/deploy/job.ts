@@ -48,6 +48,20 @@ export interface JobSpecInput {
   script?: string;
   // Default DEADLINE_SECONDS.
   deadlineSeconds?: number;
+  // Kept off this node: a drain would evict the Job's own pod, and a reboot
+  // would end it.
+  avoidNode?: string;
+  pod?: PodExtras;
+}
+
+// What an action adds to its Job's pod beyond the installer's defaults: the
+// node to run on (a node-local volume), the user to run as (to read files
+// another pod wrote), and volumes mounted beside /values.
+export interface PodExtras {
+  nodeName?: string;
+  runAs?: { user: number; group: number };
+  volumes?: Array<{ name: string } & Record<string, unknown>>;
+  mounts?: Array<{ name: string; mountPath: string; readOnly?: boolean; subPath?: string }>;
 }
 
 export function jobManifest(input: JobSpecInput): KubeObject {
@@ -65,10 +79,28 @@ export function jobManifest(input: JobSpecInput): KubeObject {
         spec: {
           serviceAccountName: input.serviceAccount,
           restartPolicy: "Never",
+          ...(input.pod?.nodeName ? { nodeName: input.pod.nodeName } : {}),
+          ...(input.avoidNode
+            ? {
+                affinity: {
+                  nodeAffinity: {
+                    requiredDuringSchedulingIgnoredDuringExecution: {
+                      nodeSelectorTerms: [
+                        {
+                          matchExpressions: [
+                            { key: "kubernetes.io/hostname", operator: "NotIn", values: [input.avoidNode] },
+                          ],
+                        },
+                      ],
+                    },
+                  },
+                },
+              }
+            : {}),
           securityContext: {
             runAsNonRoot: true,
-            runAsUser: 65532,
-            runAsGroup: 65532,
+            runAsUser: input.pod?.runAs?.user ?? 65532,
+            runAsGroup: input.pod?.runAs?.group ?? 65532,
             seccompProfile: { type: "RuntimeDefault" },
           },
           containers: [
@@ -95,6 +127,7 @@ export function jobManifest(input: JobSpecInput): KubeObject {
               volumeMounts: [
                 { name: "values", mountPath: VALUES_DIR, readOnly: true },
                 { name: "tmp", mountPath: "/tmp" },
+                ...(input.pod?.mounts ?? []),
               ],
             },
           ],
@@ -103,6 +136,7 @@ export function jobManifest(input: JobSpecInput): KubeObject {
             // otherwise not be readable by.
             { name: "values", secret: { secretName: input.valuesSecret, defaultMode: 0o444 } },
             { name: "tmp", emptyDir: { sizeLimit: "256Mi" } },
+            ...(input.pod?.volumes ?? []),
           ],
         },
       },

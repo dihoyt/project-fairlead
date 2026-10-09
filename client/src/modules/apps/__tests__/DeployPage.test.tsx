@@ -54,6 +54,13 @@ describe("DeployPage", () => {
     expect(screen.getByRole("region", { name: "Remote access" })).toBeInTheDocument();
   });
 
+  it("leaves a hidden app out of the picker while it is not installed", async () => {
+    stubApi();
+    renderWithApp(<DeployPage />);
+    await card("longhorn");
+    expect(document.querySelector('[data-app="velero"]')).toBeNull();
+  });
+
   it("lists recent deploys and opens a job's log", async () => {
     stubApi({ "GET /api/deploy/jobs/:id": mockFailedJob });
     stubEventSource();

@@ -2,7 +2,9 @@
 
 The chart is `chart/` in this repository. It deploys one pod (SQLite on a
 ReadWriteOnce volume), a Service, an optional Ingress and NetworkPolicy, and a
-read-only ClusterRole. Nothing in the defaults is specific to an install.
+read-only ClusterRole. With app deploys turned on it adds an installer
+ServiceAccount that the console's Jobs run as (see "Deploying apps from the
+console"). Nothing in the defaults is specific to an install.
 
 There are three ways in, from quickest to most controlled:
 
@@ -59,9 +61,95 @@ or on Fedora, RHEL and their relatives
 sudo dnf install -y iscsi-initiator-utils nfs-utils cifs-utils && sudo systemctl enable --now iscsid
 ```
 
-While the repository and packages are private, fetch the script with a token
-and pass `REGISTRY_USER` / `REGISTRY_TOKEN`; the steps and every flag are in
-[scripts/install/README.md](../scripts/install/README.md).
+Every flag is in [scripts/install/README.md](../scripts/install/README.md).
+Installing from a private fork or mirror takes `REGISTRY_USER` /
+`REGISTRY_TOKEN`, described there too.
+
+## Unattended setup from an env file
+
+`install.sh --env <file>` sets the console up on its first boot from a file of
+`KEY=value` lines, so a fresh install comes up with its admin password, public
+URL, connectors, email channel and app bundle already in place. Without
+`--env`, the installer uses `/etc/<slug>/install.env` (the product's slug, as in
+the namespace) when that file exists.
+
+```
+sudo install -m 600 /dev/stdin /root/install.env <<'ENV'
+ADMIN_PASSWORD=a-long-password-you-chose
+PUBLIC_URL=https://console.example.com
+CLOUDFLARE_API_TOKEN=...
+CLOUDFLARE_ZONE=example.com
+STORAGE_URL=cifs://nas.example.com/backups
+STORAGE_USER=backup
+STORAGE_SECRET=...
+SMTP_PRESET=gmail
+SMTP_USER=alerts@example.com
+SMTP_PASSWORD=...
+SMTP_FROM=alerts@example.com
+SMTP_TO=you@example.com
+BUNDLE=default
+ADMIN_EMAIL=you@example.com
+ENV
+curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install.sh | sudo sh -s -- --env /root/install.env --enable-deploy
+```
+
+Before changing anything, the installer checks every line: blank lines,
+`# comments`, `export KEY=value` and quoted values are fine; an unknown key, a
+key set twice or a line that isn't `KEY=value` stops it with the line number
+and the key, never the value. It stores the values in the Secret
+`install-seed` in the console's namespace, which the console can read and
+delete and nothing else, and once the install has succeeded it overwrites and
+deletes the file (`shred -u`, or zeros then `rm` where `shred` is missing).
+`--keep-env` keeps it. Empty values are left out. `--env` is for a first
+install: on a cluster where the console is already installed, it stops
+(unless the earlier `--env` install never finished, in which case it tries
+again). `update.sh` doesn't take it.
+
+On its first boot the console reads the Secret, keeps the values sealed with
+`SECRETS_KEY`, sets the admin password, the public URL and OIDC sign-in, and
+deletes the Secret. The rest is applied as the first admin who signs in, through
+the same checks and audit log as the forms; the welcome page does it on its
+own and shows a "Set up from your file" summary with each item's result and,
+for a failure, the reason. With `ADMIN_PASSWORD` set, that password signs in
+and is not asked to be changed (an authenticator, if required, still is); the
+installer prints no generated password.
+
+| Keys | Sets up |
+|---|---|
+| `ADMIN_PASSWORD` | The `admin` account's password, at least 10 characters. |
+| `PUBLIC_URL` | The public URL (Admin > Settings), e.g. `https://console.example.com`. |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCESS_APPS` | The Cloudflare connector, its tunnel and cloudflared. The account ID can be left out when the token sees one account. `CLOUDFLARE_ACCESS_APPS`: `never` (default), `always` or `per-app`. |
+| `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_ADMIN_GROUPS` | The Entra ID connector (the management app), then sign-in through the app registration it creates. Admin groups are object ids, comma separated. Needs an `https` public URL. |
+| `STORAGE_URL`, `STORAGE_PATH`, `STORAGE_ENDPOINT`, `STORAGE_USER`, `STORAGE_SECRET` | A backup storage target. The scheme picks the protocol: `nfs://server:/export`, `s3://bucket@region/` (with `STORAGE_ENDPOINT` for MinIO) or `cifs://server/share`. User and secret are the S3 access key pair or the SMB username and password. |
+| `SMTP_PRESET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TO` | An email notification channel. Presets: `gmail`, `yahoo`, `icloud`, `fastmail`, `sendgrid`, `mailgun`, `ses`, `smtp` (any server: give host and port), or `entra` (Microsoft 365 through the Entra connector, no password). The sign-in-to-send presets need a person at a browser, so they aren't offered here. `SMTP_TO`: comma separated. |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_LABEL`, `OIDC_ADMIN_GROUPS` | Sign-in through any OIDC provider, as in Admin > Sign-in. |
+| `BUNDLE`, `BUNDLE_ACCESS`, `BASE_DOMAIN`, `ADMIN_EMAIL`, `STORAGE_CLASS`, `AUTHENTIK_BOOTSTRAP_PASSWORD` | The Deploy bundle (needs `--enable-deploy`). `BUNDLE=default` takes the bundle's own ticks; a comma-separated list of optional apps (`longhorn`) ticks those instead. `BUNDLE_ACCESS`: `cloudflare-tunnel` (through the connector above; the default when a Cloudflare token is given), `local` (otherwise the default) or `direct`. `BASE_DOMAIN` defaults to `CLOUDFLARE_ZONE`. `ADMIN_EMAIL` is required. `AUTHENTIK_BOOTSTRAP_PASSWORD` is the apps' first admin password, `ADMIN_PASSWORD` when left out. |
+
+## Restoring the console
+
+What a lost console needs back is its database and the `SECRETS_KEY` that
+opens the secrets stored in it. Backups → This console keeps both: a nightly
+copy of the database on the storage target, and **Download recovery kit**,
+`SECRETS_KEY` sealed with a passphrase you choose. Keep the kit and its
+passphrase away from the cluster.
+
+On a fresh host or cluster, fetch the newest copy from the target
+(`<prefix>console/<release>-<UTC time>.db` on the NFS export or in the
+bucket), then:
+
+```sh
+sudo ./install.sh --restore ./recovery-kit.txt --from ./<release>-<UTC time>.db
+```
+
+It asks for the passphrase (or reads `KIT_PASSPHRASE`), takes the release
+name and namespace from the kit unless `--release` or `--namespace` say
+otherwise, stores the kit's key in the release's Secret, installs as usual,
+then stops the console, puts the copy in place of its database and starts it
+again. Sign in with an account from the copy; connectors, sign-in and
+notifications come back as they were. `--restore` without `--from` installs
+with the kit's key and an empty database, for a volume that survived. It
+refuses an existing release (`install.sh --uninstall` first) and a Secret
+holding another key.
 
 ## Updating
 
@@ -131,7 +219,7 @@ the image as `:next` and `:next.<run>` and the chart as `<base>-next.<run>` at
 `oci://ghcr.io/<owner>/charts-next/<chartName>`, a separate path so the plain
 installer, which takes the newest edge build, never picks one up. Select it
 with `--channel next` on `install.sh` or `update.sh`; `--version` still pins a
-build (`--channel next --version 0.1.1-next.7`).
+build (`--channel next --version 0.2.0-next.7`).
 
 ```
 curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/update.sh | sh -s -- --channel next
@@ -140,6 +228,9 @@ curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/update.
 Running the same command without `--channel next` moves the install back to
 the newest edge build. Next builds can carry migrations that edge does not
 know, so treat going back as a reinstall.
+
+[testing-next.md](testing-next.md) walks through a test install, updates and
+rolling back.
 
 ## Install with Helm
 
@@ -157,8 +248,9 @@ Published artefacts (from `main`): the image at `ghcr.io/<owner>/<imageName>`
 tagged `:<sha>` and `:edge`, and the chart as an OCI artefact at
 `oci://ghcr.io/<owner>/charts/<chartName>` (`helm install <release> oci://... --version 0.1.1-edge.<n>`;
 its `appVersion` is the commit sha, which is the default image tag).
-`<imageName>` and `<chartName>` are in `product.json`. New ghcr packages are
-private until made public in the package settings.
+`<imageName>` and `<chartName>` are in `product.json`. The packages are
+public; in a fork, new ghcr packages stay private until made public in the
+package settings.
 
 `deploy/examples/values.yaml` is a starting values file.
 
@@ -182,8 +274,11 @@ private until made public in the package settings.
 Everything is read-only. The ClusterRole covers nodes, namespaces, pods and
 their logs, events, workloads (deployments, statefulsets, daemonsets,
 replicasets, jobs, cronjobs), services, ingresses, PVCs, PVs, storage classes,
-`metrics.k8s.io`, and, when the CRDs exist, Longhorn (volumes, nodes, replicas, snapshots, backups, settings), Velero, Fleet and
-cert-manager objects. A missing CRD shows as "absent", not an error.
+`metrics.k8s.io`, PodDisruptionBudgets (`get`, `list`; for the drain
+preview), and, when the CRDs exist, Longhorn (volumes, nodes, replicas,
+snapshots, backups, backup volumes, backup targets, recurring jobs, settings),
+Velero, Fleet, cert-manager and CloudNativePG (clusters, backups, scheduled
+backups, databases, database roles, Barman Cloud object stores) objects. A missing CRD shows as "absent", not an error.
 
 Two grants need a decision:
 
@@ -199,7 +294,7 @@ Two grants need a decision:
 ## Deploying apps from the console
 
 The Apps page and the setup wizard can install tools from a fixed catalog
-(Headlamp, Longhorn, cert-manager, Authentik and others). This is off by
+(Headlamp, Longhorn, cert-manager, Authentik, Pocket ID and others). This is off by
 default (`deploy.enabled: false`): the console detects what is installed and
 shows the one command that turns deploys on, but changes nothing. Turn it on
 with `install.sh --enable-deploy`, or:
@@ -294,8 +389,8 @@ One-time setup:
    only its namespace plus the one cluster role the chart creates; read the
    comments in that file for the trade-off.
 3. **Secrets for the install.** Create the `SECRETS_KEY` /
-   `BOOTSTRAP_ADMIN_PASSWORD` Secret as under Install. While the ghcr package is
-   private, add a pull secret
+   `BOOTSTRAP_ADMIN_PASSWORD` Secret as under Install. For images from a
+   private fork, add a pull secret
    (`kubectl -n <ns> create secret docker-registry ghcr-pull --docker-server=ghcr.io --docker-username=<user> --docker-password=<token with read:packages>`)
    and list it in `imagePullSecrets`.
 4. **Values.** Copy `deploy/examples/values.yaml` and set the ingress host,
@@ -303,15 +398,12 @@ One-time setup:
 5. **Workflow.** Copy `deploy/examples/gitea-deploy.yaml` and
    `wait-for-image.sh` into your homelab repository, and set the variables
    `MIRROR_URL`, `NAMESPACE`, `RELEASE`, `IMAGE` and the secrets `KUBECONFIG`,
-   `GHCR_USER`, `GHCR_TOKEN` (read:packages; unneeded once the package is
-   public) named in its header. It runs every ten minutes, deploys the
+   `GHCR_USER`, `GHCR_TOKEN` (read:packages; only for a private fork) named in
+   its header. It runs every ten minutes, deploys the
    mirror's HEAD once its image exists on ghcr, and does nothing when that
    commit is already deployed.
 6. **Sign-in.** Entra ID, or any OIDC provider, is configured in the setup
    wizard or under Admin → Sign-in after the first local sign-in.
-
-A worked example for one real cluster (Rancher, Longhorn, Fleet, Gitea, a NAS)
-is [dogfood.md](dogfood.md).
 
 Not covered by the chart: SSH users for host checks and `scripts/capture-fixtures.sh`
 are set up separately.
@@ -322,8 +414,13 @@ are set up separately.
    installer prints it; otherwise it is in the Secret you created). The
    password must be changed before anything else answers.
 2. The setup wizard opens on its own for an admin until it is finished:
+   - **Password**: the forced change, then the public URL people use to reach
+     the console.
    - **Cluster**: what the ServiceAccount can read, and the grant or CRD each
      missing item needs. Missing items show as gaps, not errors.
+   - **Access**: how you reach your apps (Cloudflare Tunnel, Tailscale, local
+     network or direct ports) and the base domain, or the whole default
+     bundle in one go. Needs deploys on to install anything.
    - **Sign-in**: issuer, client ID and secret for an OIDC provider, tested in
      place. Needs `SECRETS_KEY`. The redirect URI to register is shown.
    - **Links**: Rancher, Headlamp, Longhorn, Gitea and Grafana addresses, used
@@ -332,6 +429,7 @@ are set up separately.
      host key pinned.
    - **Checks**: a first HTTP check, run straight away.
    - **Alerts**: an ntfy, Discord or webhook channel, with a test message.
+     Email channels are added under Admin → Notifications.
    - **Findings**: unprotected PVCs, nodes not Ready and failing backups.
    Every step but the last can be skipped. The wizard stays under **Setup** in
    the admin part of the sidebar.

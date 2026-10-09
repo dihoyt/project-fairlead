@@ -197,4 +197,17 @@ export const platformMigrations: readonly Migration[] = [
       CREATE INDEX gate_grants_session ON gate_grants(session_hash);
     `,
   },
+  {
+    version: 5,
+    name: "api token grants",
+    up: `
+      -- A token's areas and namespaces as JSON arrays; NULL is every one, so
+      -- tokens made before grants keep reaching everything.
+      ALTER TABLE api_tokens ADD COLUMN namespaces TEXT;
+      ALTER TABLE api_tokens ADD COLUMN areas TEXT;
+      -- The same limits chosen on the consent page, carried to the grant.
+      ALTER TABLE oauth_codes ADD COLUMN namespaces TEXT;
+      ALTER TABLE oauth_codes ADD COLUMN areas TEXT;
+    `,
+  },
 ];

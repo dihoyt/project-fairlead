@@ -1,14 +1,24 @@
+import type { Request } from "express";
 import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { z } from "zod";
-import type { BackupPosture, PostureRow, RestoreTestMark } from "../../contracts/backups.js";
+import type {
+  BackupPosture,
+  BackupSchedulesView,
+  BackupTargetView,
+  PostureRow,
+  RestoreTestMark,
+} from "../../contracts/backups.js";
+import type { DeployActionRequest } from "../../contracts/deploy.js";
 import type { CheckResult } from "../../contracts/health.js";
 import type { Module, ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
 import { listPvcs, type ClusterPvc, type SelfPod } from "./cluster.js";
+import { registerConsoleRoutes } from "./console.js";
+import { readSchedules, readTarget, readVolumes, restorePoints, type LonghornVolumes } from "./longhorn.js";
 import { postureCsv } from "./csv.js";
 import { migrations } from "./migrations.js";
-import { buildPosture, targetsOf, type SourceOutcome } from "./posture.js";
+import { buildPosture, setUpPosture, targetsOf, type SourceOutcome } from "./posture.js";
 import { declareSettings, readOptions, type BackupsSettings } from "./settings.js";
 import { createStore, type Store } from "./store.js";
 
@@ -114,7 +124,7 @@ export function createPostureService(
       })
     );
 
-    return buildPosture({
+    const posture = buildPosture({
       pvcs: clusterPvcs,
       sources,
       capacity,
@@ -122,6 +132,36 @@ export function createPostureService(
       now: now(),
       options: readOptions(settings),
     });
+    return setUpPosture(posture, await longhornSetUp());
+  }
+
+  // Longhorn's side of the set-up; best effort, the posture stands without it.
+  async function longhornSetUp(): Promise<{
+    target?: BackupTargetView;
+    schedules?: BackupSchedulesView;
+    volumes?: LonghornVolumes;
+  }> {
+    if (!ctx.services.has("k8s")) return {};
+    const k8s = ctx.services.get("k8s");
+    const targets = ctx.services.has("storage-targets") ? ctx.services.get("storage-targets") : undefined;
+    const settled = await Promise.allSettled([
+      withTimeout(readTarget(k8s, targets), "Longhorn's backup target"),
+      withTimeout(readSchedules(k8s), "Longhorn's recurring jobs"),
+      withTimeout(readVolumes(k8s), "Longhorn's volumes"),
+    ]);
+    for (const r of settled) {
+      if (r.status === "rejected") ctx.log.warn("Longhorn set-up read failed", { error: message(r.reason) });
+    }
+    const [target, schedules, volumes] = settled.map((r) => (r.status === "fulfilled" ? r.value : undefined)) as [
+      BackupTargetView | undefined,
+      BackupSchedulesView | undefined,
+      LonghornVolumes | "absent" | undefined,
+    ];
+    return {
+      ...(target && target.longhorn === "installed" ? { target } : {}),
+      ...(schedules && schedules.longhorn === "installed" ? { schedules } : {}),
+      ...(volumes && volumes !== "absent" ? { volumes } : {}),
+    };
   }
 
   let cached: { at: number; posture: BackupPosture } | undefined;
@@ -266,10 +306,18 @@ function register(ctx: ModuleContext): void {
     }
   };
 
-  ctx.route("GET /api/backups/posture", () => posture());
-
-  ctx.route("GET /api/backups/posture.csv", async (_req, res) => {
+  // A token limited to some namespaces sees only their volumes.
+  const visiblePosture = async (req: Request) => {
     const current = await posture();
+    const allowed = ctx.visibleNamespaces(req);
+    if (allowed === null) return current;
+    return { ...current, rows: current.rows.filter((row) => allowed.includes(row.pvc.namespace)) };
+  };
+
+  ctx.route("GET /api/backups/posture", (req) => visiblePosture(req));
+
+  ctx.route("GET /api/backups/posture.csv", async (req, res) => {
+    const current = await visiblePosture(req);
     const day = current.generatedAt.slice(0, 10);
     res
       .status(200)
@@ -278,6 +326,109 @@ function register(ctx: ModuleContext): void {
       .send(postureCsv(current));
     return undefined;
   });
+
+  const k8s = () => {
+    if (!ctx.services.has("k8s")) throw new HttpError(503, "The Kubernetes API is not available.");
+    return ctx.services.get("k8s");
+  };
+  const pvcByUid = async (uid: string): Promise<ClusterPvc> => {
+    let pvcs: ClusterPvc[];
+    try {
+      pvcs = await service.pvcs();
+    } catch (err) {
+      if (err instanceof PvcListError) throw new HttpError(err.status, err.message);
+      throw err;
+    }
+    const pvc = pvcs.find((p) => p.ref.uid === uid);
+    if (!pvc) throw new HttpError(404, "No such PVC.");
+    return pvc;
+  };
+  const longhornVolume = async (pvc: ClusterPvc) => {
+    const volumes = await readVolumes(k8s());
+    const found = volumes === "absent" ? undefined : volumes.byClaim.get(`${pvc.ref.namespace}/${pvc.ref.name}`);
+    if (!found) throw new HttpError(404, `${pvc.ref.namespace}/${pvc.ref.name} is not on Longhorn.`);
+    return found;
+  };
+  // Every set-up change is a deploy action started as the caller, so its
+  // permission, audit and job log are the deploy module's.
+  const runAction = async (req: Parameters<typeof ctx.call>[0], body: DeployActionRequest) => {
+    const job = await ctx.call(req, "POST /api/deploy/actions/run", { body });
+    service.invalidate();
+    return job;
+  };
+  const restoreRequest = async (body: unknown): Promise<DeployActionRequest> => {
+    const r = parse(restoreBody, body);
+    const pvc = await pvcByUid(r.uid);
+    return {
+      kind: "longhorn-restore",
+      namespace: pvc.ref.namespace,
+      claim: pvc.ref.name,
+      backup: r.backupId,
+      mode: r.mode,
+      ...(r.mode === "new-pvc" ? { newClaim: r.newClaim || defaultRestoreClaim(pvc.ref.name) } : {}),
+    };
+  };
+
+  ctx.route("GET /api/backups/target", () =>
+    readTarget(k8s(), ctx.services.has("storage-targets") ? ctx.services.get("storage-targets") : undefined)
+  );
+
+  ctx.route("PUT /api/backups/target", async (req, res) => {
+    if (!ctx.require(req, res, "write")) return undefined;
+    const { connectorId } = parse(targetBody, req.body);
+    if (connectorId !== null) {
+      if (!ctx.services.has("storage-targets")) throw new HttpError(503, "Storage targets are not available.");
+      if (!(await ctx.services.get("storage-targets").get(connectorId))) {
+        throw new HttpError(404, `No storage target "${connectorId}".`);
+      }
+    }
+    return runAction(req, { kind: "longhorn-target", connectorId });
+  });
+
+  ctx.route("GET /api/backups/schedules", () => readSchedules(k8s()));
+
+  ctx.route("PUT /api/backups/schedules", async (req, res) => {
+    if (!ctx.require(req, res, "write")) return undefined;
+    const { schedules } = parse(schedulesBody, req.body);
+    return runAction(req, { kind: "longhorn-recurring", schedules });
+  });
+
+  ctx.route("PUT /api/backups/volumes/:uid/groups", async (req, res) => {
+    if (!ctx.require(req, res, "write")) return undefined;
+    const { groups } = parse(pvcBody, req.body);
+    const pvc = await pvcByUid(req.params.uid);
+    await longhornVolume(pvc);
+    return runAction(req, {
+      kind: "longhorn-recurring",
+      volumes: [{ namespace: pvc.ref.namespace, claim: pvc.ref.name, groups: [...new Set(groups)] }],
+    });
+  });
+
+  ctx.route("POST /api/backups/volumes/:uid/backup-now", async (req, res) => {
+    if (!ctx.require(req, res, "write")) return undefined;
+    const pvc = await pvcByUid(req.params.uid);
+    await longhornVolume(pvc);
+    return runAction(req, { kind: "longhorn-backup-now", namespace: pvc.ref.namespace, claim: pvc.ref.name });
+  });
+
+  ctx.route("GET /api/backups/volumes/:uid/backups", async (req) => {
+    const pvc = await pvcByUid(req.params.uid);
+    const volumes = await readVolumes(k8s());
+    const found = volumes === "absent" ? undefined : volumes.byClaim.get(`${pvc.ref.namespace}/${pvc.ref.name}`);
+    return found ? restorePoints(k8s(), found.volume.metadata.name) : [];
+  });
+
+  ctx.route("POST /api/backups/restore/plan", async (req, res) => {
+    if (!ctx.require(req, res, "write")) return undefined;
+    return ctx.call(req, "POST /api/deploy/actions/plan", { body: await restoreRequest(req.body) });
+  });
+
+  ctx.route("POST /api/backups/restore", async (req, res) => {
+    if (!ctx.require(req, res, "write")) return undefined;
+    return runAction(req, await restoreRequest(req.body));
+  });
+
+  registerConsoleRoutes(ctx, { pvcs: () => service.pvcs(), runAction });
 
   ctx.route("POST /api/backups/volumes/:uid/restore-tests", async (req, res) => {
     const user = ctx.require(req, res, "write");
@@ -314,6 +465,48 @@ function register(ctx: ModuleContext): void {
     });
     return mark;
   });
+}
+
+// The deploy action checks these again; here they answer 400 before a job.
+const groupName = z
+  .string()
+  .regex(/^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$/, "must be lowercase letters, digits and dashes, at most 40");
+const cron = z
+  .string()
+  .trim()
+  .regex(/^[0-9*,/-]+( [0-9*,/-]+){4}$/, "must be a five-field cron such as 0 3 * * *");
+const scheduleSchema = z.object({
+  group: groupName,
+  snapshotCron: cron.optional(),
+  snapshotRetain: z.number().int().min(1).max(250).optional(),
+  backupCron: cron.optional(),
+  backupRetain: z.number().int().min(1).max(250).optional(),
+});
+
+export const defaultRestoreClaim = (claim: string, now = new Date()) =>
+  `${claim}-restored-${now.toISOString().slice(0, 10).replaceAll("-", "")}`.slice(0, 253).replace(/[-.]+$/, "");
+
+const pvcBody = z.object({ groups: z.array(groupName).max(10) });
+const targetBody = z.object({ connectorId: z.string().trim().min(1).max(100).nullable() });
+const schedulesBody = z.object({
+  schedules: z
+    .array(scheduleSchema)
+    .max(20)
+    .refine((list) => new Set(list.map((s) => s.group)).size === list.length, "each group may appear once"),
+});
+const restoreBody = z.object({
+  uid: z.string().min(1).max(100),
+  backupId: z.string().min(1).max(253),
+  mode: z.enum(["new-pvc", "in-place"]),
+  newClaim: z.string().trim().min(1).max(253).optional(),
+});
+
+function parse<T>(schema: z.ZodType<T>, body: unknown): T {
+  const parsed = schema.safeParse(body ?? {});
+  if (!parsed.success) {
+    throw new HttpError(400, parsed.error.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; "));
+  }
+  return parsed.data;
 }
 
 const mod: Module = {

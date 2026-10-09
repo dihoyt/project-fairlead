@@ -7,6 +7,7 @@
 import type {
   AccountView,
   AdminOverview,
+  ApiTokenChanges,
   ApiTokenView,
   AuditRow,
   AuthentikWirePlan,
@@ -20,8 +21,12 @@ import type {
   NewUserRequest,
   OAuthConsentRequest,
   OAuthConsentView,
+  PocketIdWirePlan,
+  PocketIdWireRequest,
+  PocketIdWireResult,
   PublicSignInRequest,
   PublicSignInResult,
+  RecoveryKitRequest,
   SessionView,
   SettingValue,
   TotpEnrollment,
@@ -30,7 +35,19 @@ import type {
   UserChangesRequest,
   UserView,
 } from "./auth.js";
-import type { BackupPosture, LonghornReplicaAdvice, RestoreTestMark } from "./backups.js";
+import type {
+  BackupPosture,
+  BackupSchedulesRequest,
+  BackupSchedulesView,
+  BackupTargetRequest,
+  BackupTargetView,
+  ConsoleBackupView,
+  LonghornReplicaAdvice,
+  RestoreTestMark,
+  VolumeBackupSettings,
+  VolumeRestorePoint,
+  VolumeRestoreRequest,
+} from "./backups.js";
 import type { CatalogAppView, CatalogBundleView, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
 import type {
@@ -51,8 +68,16 @@ import type {
   EntraGroup,
   EntraSignInRequest,
   EntraSignInView,
+  StorageTargetView,
 } from "./connectors.js";
 import type { JoinLink, JoinLinkRequest, JoinStatus } from "./cluster.js";
+import type {
+  PostgresBackupRequest,
+  PostgresBackupView,
+  PostgresClusterView,
+  PostgresDatabaseView,
+  PostgresRestoreRequest,
+} from "./postgres.js";
 import type {
   AccessRequest,
   AccessView,
@@ -62,6 +87,7 @@ import type {
   DeployActionPlan,
   DeployActionRequest,
   DeployJobRequest,
+  ConsoleNightlyView,
   DeployJobView,
   DeployPlan,
   DeployRequest,
@@ -85,8 +111,15 @@ import type { HostKeypair, HostRequest, HostTestResult, HostView } from "./hosts
 import type { CapabilityReport } from "./k8s.js";
 import type { JsonRpcMessage } from "./mcp.js";
 import type { NodeSummary, SeriesInfo, SeriesResult } from "./metrics.js";
-import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
-import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
+import type {
+  ChannelRequest,
+  ChannelView,
+  EmailOAuthCallbackQuery,
+  EmailOAuthStart,
+  EmailSetupView,
+  TestSendResult,
+} from "./notify.js";
+import type { InstallSeedView, OnboardingState, OnboardingStepId } from "./onboarding.js";
 import type { ResetRequest, ResetResult } from "./reset.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
 import type { TemplateDeployRequest, TemplateJobRequest, TemplatePlan, TemplatesView } from "./templates.js";
@@ -179,6 +212,14 @@ export interface ApiRoutes {
   // Authentik unreachable, refused the token, or answered unexpectedly, with
   // its status in the error.
   "POST /api/admin/oidc/authentik": Route<None, None, AuthentikWireRequest, AuthentikWireResult>;
+  // Admin. As GET /api/admin/oidc/authentik, for Pocket ID.
+  "GET /api/admin/oidc/pocket-id": Route<None, { url: string; apiUrl?: string }, None, PocketIdWirePlan>;
+  // Admin, audited (never with the API key or secret). Creates or reuses
+  // the OIDC client, adds a client secret, saves
+  // auth.oidc.{issuer,clientId,label,enabled} (and adminGroups and scopes
+  // when admin groups are given) and the secret. Errors as POST
+  // /api/admin/oidc/authentik.
+  "POST /api/admin/oidc/pocket-id": Route<None, None, PocketIdWireRequest, PocketIdWireResult>;
   // Admin, audited (never with the secret). Points OIDC sign-in at Google
   // or Microsoft's multi-tenant endpoint and saves the allow and admin email
   // lists, turning on account creation at first sign-in (only allowed
@@ -204,12 +245,17 @@ export interface ApiRoutes {
   // 400 for an empty name (over 80 characters) or an expiry outside 1-3650 days.
   "POST /api/admin/tokens": Route<None, None, NewApiTokenRequest, NewApiToken>;
   // Revokes at once: the next request with it is a 401. Unknown id: 404.
+  // Changes a token's name, scope or grant (OAuth grants too). 400 as POST
+  // for a bad name, scope or an empty list; unknown id: 404.
+  "PATCH /api/admin/tokens/:id": Route<{ id: string }, None, ApiTokenChanges, ApiTokenView>;
   "DELETE /api/admin/tokens/:id": Route<{ id: string }, None, None, Ok>;
   // The consent page of the MCP OAuth flow (see OAuthAuthorizeParams). Admin
   // with a signed-in session; approve and deny are audited. 400 with the
   // reason for an unknown client, an unregistered redirect URI or a request
   // that isn't code + PKCE S256.
   "POST /api/admin/oauth/consent": Route<None, None, OAuthConsentRequest, OAuthConsentView>;
+  // The install's SECRETS_KEY sealed with a passphrase (RecoveryKitRequest).
+  "POST /api/admin/recovery-kit": Route<None, None, RecoveryKitRequest, TextBody<"text/plain">>;
 
   // --- k8s (A1) -----------------------------------------------------------
   "GET /api/k8s/capabilities": Route<None, { refresh?: "1" }, None, CapabilityReport>;
@@ -260,6 +306,15 @@ export interface ApiRoutes {
   "PUT /api/notify/channels/:id": Route<{ id: string }, None, ChannelRequest, ChannelView>;
   "DELETE /api/notify/channels/:id": Route<{ id: string }, None, None, Ok>;
   "POST /api/notify/channels/:id/test": Route<{ id: string }, None, None, TestSendResult>;
+  "GET /api/notify/email/setup": Route<None, None, None, EmailSetupView>;
+  // Write. 400 unless the channel is an email channel with an "oauth"
+  // preset, a client id and a stored client secret; 409 when
+  // EmailSetupView.oauthBlocked.
+  "POST /api/notify/channels/:id/oauth": Route<{ id: string }, None, None, EmailOAuthStart>;
+  // A browser navigation back from Google or Microsoft, not JSON: exchanges
+  // the code, seals the refresh token, records the account, audits
+  // "notify.oauth", and redirects (EmailOAuthCallbackQuery).
+  "GET /api/notify/oauth/callback": Route<None, EmailOAuthCallbackQuery, None, TextBody<"text/html">>;
 
   // --- hosts (A9) ---------------------------------------------------------
   "GET /api/hosts": Route<None, None, None, HostView[]>;
@@ -301,6 +356,47 @@ export interface ApiRoutes {
     { at: string; note: string },
     RestoreTestMark
   >;
+  // Set-up (round 4). Reads are open to anyone signed in; the rest need
+  // "write" and answer with the deploy job they started (DeployActionRequest
+  // in ./deploy.ts), or its 400 when deploys are off or the plan is blocked.
+  "GET /api/backups/target": Route<None, None, None, BackupTargetView>;
+  // longhorn-target. 404 for a connectorId that is no storage target.
+  "PUT /api/backups/target": Route<None, None, BackupTargetRequest, DeployJobView>;
+  "GET /api/backups/schedules": Route<None, None, None, BackupSchedulesView>;
+  // longhorn-recurring with schedules. 400 for a bad group name or cron.
+  "PUT /api/backups/schedules": Route<None, None, BackupSchedulesRequest, DeployJobView>;
+  // longhorn-recurring with this volume. 404 for a PVC that is not on Longhorn.
+  "PUT /api/backups/volumes/:uid/groups": Route<{ uid: string }, None, VolumeBackupSettings, DeployJobView>;
+  // longhorn-backup-now.
+  "POST /api/backups/volumes/:uid/backup-now": Route<{ uid: string }, None, None, DeployJobView>;
+  // The volume's backups on the target, newest first; empty when none.
+  "GET /api/backups/volumes/:uid/backups": Route<{ uid: string }, None, None, VolumeRestorePoint[]>;
+  // longhorn-restore's preview (POST /api/deploy/actions/plan); runs nothing.
+  "POST /api/backups/restore/plan": Route<None, None, VolumeRestoreRequest, DeployActionPlan>;
+  // longhorn-restore.
+  "POST /api/backups/restore": Route<None, None, VolumeRestoreRequest, DeployJobView>;
+  // This console's own data: its volume, the nightly copy, the recovery kit.
+  "GET /api/backups/console": Route<None, None, None, ConsoleBackupView>;
+  // Runs a console-backup action now (admin).
+  "POST /api/backups/console/backup-now": Route<None, None, None, DeployJobView>;
+
+  // --- postgres (round 4): the shared Postgres -----------------------------
+  // Reads are open to anyone signed in; the rest need "write" and answer
+  // with the deploy job they started (PostgresActionRequest in ./deploy.ts),
+  // or its 400 when deploys are off or the plan is blocked.
+  "GET /api/postgres/cluster": Route<None, None, None, PostgresClusterView>;
+  // Every database on the cluster the apps use, by name; empty when none.
+  "GET /api/postgres/databases": Route<None, None, None, PostgresDatabaseView[]>;
+  "GET /api/postgres/backups": Route<None, None, None, PostgresBackupView>;
+  // pg-backups. 404 for a connectorId that is no storage target; 400 for a
+  // bad cron or retention.
+  "PUT /api/postgres/backups": Route<None, None, PostgresBackupRequest, DeployJobView>;
+  // pg-backup-now.
+  "POST /api/postgres/backups/now": Route<None, None, None, DeployJobView>;
+  // pg-restore's preview (POST /api/deploy/actions/plan); runs nothing.
+  "POST /api/postgres/restore/plan": Route<None, None, PostgresRestoreRequest, DeployActionPlan>;
+  // pg-restore.
+  "POST /api/postgres/restore": Route<None, None, PostgresRestoreRequest, DeployJobView>;
 
   // --- workloads (A13) ----------------------------------------------------
   "GET /api/workloads/links": Route<None, None, None, WorkloadLinks>;
@@ -358,6 +454,7 @@ export interface ApiRoutes {
   // 400 with the plan's blockedBy when the plan is not allowed.
   "POST /api/deploy/jobs": Route<None, None, DeployJobRequest, DeployJobView>;
   // Newest first.
+  "GET /api/deploy/console-backup": Route<None, None, None, ConsoleNightlyView>;
   "GET /api/deploy/jobs": Route<None, { appId?: string; limit?: string }, None, DeployJobView[]>;
   "GET /api/deploy/jobs/:id": Route<{ id: string }, None, None, DeployJobView>;
   // Redacted: secret input values never appear.
@@ -462,8 +559,14 @@ export interface ApiRoutes {
 
   // --- connector-entra (B3) ------------------------------------------------
   "GET /api/connector-entra/view": Route<None, None, None, EntraSignInView>;
+  // The certificate (PEM) the management app should carry, for the admin
+  // to upload under Certificates & secrets when the console cannot upload
+  // it itself (EntraManagementView.step says so). Admin; public material
+  // only. 409 without a connector.
+  "GET /api/connector-entra/certificate": Route<None, None, None, TextBody<"application/x-pem-file">>;
   // Creates the sign-in app registration (or reuses the one this install
-  // owns), makes a client secret and sets OIDC sign-in to it. Admin. 409
+  // owns), gives it a certificate credential (a client secret when the
+  // tenant refuses one) and sets OIDC sign-in to it. Admin. 409
   // without a connector; 400 when the public URL is unset or http (other
   // than localhost), or when sign-in settings are locked by the environment;
   // 502 when Graph refuses.
@@ -471,6 +574,12 @@ export interface ApiRoutes {
   // Security groups in the tenant, by display name prefix; at most 50. 409
   // without a connector; 502 when Graph refuses (it needs Group.Read.All).
   "GET /api/connector-entra/groups": Route<None, { search?: string }, None, EntraGroup[]>;
+
+  // --- connector-storage (round 4) -----------------------------------------
+  // The storage-target connectors as StorageTargetService sees them. Create,
+  // edit, test and remove go through /api/connectors (kind "storage-target").
+  "GET /api/connector-storage/targets": Route<None, None, None, StorageTargetView[]>;
+  "GET /api/connector-storage/targets/:id": Route<{ id: string }, None, None, StorageTargetView>;
 
   // --- onboarding (A14) ---------------------------------------------------
   "GET /api/onboarding/state": Route<None, None, None, OnboardingState>;
@@ -480,6 +589,15 @@ export interface ApiRoutes {
     { action: "done" | "skip" },
     OnboardingState
   >;
+  // The install seed (./onboarding.ts): what was set up from install.sh's
+  // env file and what still waits.
+  "GET /api/onboarding/seed": Route<None, None, None, InstallSeedView>;
+  // Write. Applies the pending items as the caller, one after another, and
+  // answers when each has run (the bundle item when its run has started).
+  // Items already run are left alone, so a second call changes nothing.
+  "POST /api/onboarding/seed/apply": Route<None, None, None, InstallSeedView>;
+  // Write. Hides the summary for everyone.
+  "POST /api/onboarding/seed/dismiss": Route<None, None, None, InstallSeedView>;
 }
 
 export type RouteKey = keyof ApiRoutes;

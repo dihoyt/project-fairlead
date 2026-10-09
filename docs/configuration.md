@@ -42,6 +42,9 @@ No variable carries a product prefix.
 | `PORT`, `HOST` | Listen address; the chart sets `PORT=8080`. |
 | `GIT_SHA` | The build, reported by `/healthz`; set in the image. |
 | `KUBECONFIG`, `KUBE_CONTEXT` | Outside a cluster: the kubeconfig and context to use. Empty in a pod: its ServiceAccount. |
+| `DEPLOY_IMAGE`, `DEPLOY_SERVICE_ACCOUNT`, `DEPLOY_CHART`, `HELM_RELEASE`, `POD_NAMESPACE` | Set by the chart for app deploys: the helm/kubectl image the Jobs run, the installer ServiceAccount, this install's chart and release, and the namespace Jobs run in. |
+| `CLOUDFLARE_API_BASE` | The Cloudflare API base URL (default `https://api.cloudflare.com/client/v4`); for tests. |
+| `PUBLIC_ADDRESS_LOOKUP` | Space-separated URLs that answer with the caller's IP, tried in order, for direct DNS records when the Cloudflare connector has no public address. Default: Cloudflare's trace, icanhazip, ipify. |
 | `HEALTH_DEMO` | `1` adds a provider that cycles through every status, for trying the board without a cluster. |
 | `DEV_AUTH` | Development only: signs every request in as an admin. Refused when `NODE_ENV=production`, which the image sets. |
 
@@ -74,8 +77,14 @@ the UI hasn't.
 | `auth.oidc.adminEmails` | `OIDC_ADMIN_EMAILS` | none | A verified OIDC sign-in with one of these addresses or domains makes the account an admin (never demoted automatically). |
 | `auth.oidc.networks` | `OIDC_NETWORKS` | none | CIDRs OIDC sign-in is allowed from. |
 | `auth.oidc.recheckHours` | `OIDC_RECHECK_HOURS` | `0` | Send OIDC sessions back through the provider this often. |
+| `auth.gate.allow` | `GATE_ALLOW` | `admins` | Who gets through the sign-in gate in front of the apps the console publishes: `admins` or `everyone` who can sign in. |
 | `auth.session.idleDays` | `SESSION_IDLE_DAYS` | `14` | Sign out after this much inactivity. |
 | `auth.session.maxDays` | `SESSION_MAX_DAYS` | `30` | Absolute session lifetime. |
+
+The OIDC client authenticates to the provider's token endpoint with the
+client secret (Admin > Settings), or, when a connector set sign-in up with a
+key pair (the Entra connector does), with a signed `private_key_jwt` client
+assertion and no secret at all. Saving a client secret replaces the key.
 
 #### Google and Microsoft accounts
 
@@ -97,6 +106,27 @@ whose verified email is on the allowed list can sign in with their own account.
 
 The preset saves the allowed and admin email lists and turns on account
 creation at first sign-in; it refuses an empty allowed list.
+
+#### Authentik and Pocket ID
+
+Once either is installed (from the bundle or the catalog), the Sign-in step
+offers to wire it up: the console creates its own client there through the
+app's API and fills in the settings above.
+
+- Authentik: paste the bootstrap token or an admin's API token. It creates an
+  OAuth2/OpenID provider and an application with the product's slug; members
+  of `authentik Admins` can be made admins here.
+- Pocket ID: register the first admin's passkey at `https://<host>/setup`,
+  then make an API key under Settings, Admin, API Keys and paste it. It
+  creates an OIDC client whose ID is the product's slug, with a new client
+  secret on every run (remove old ones in Pocket ID). The issuer is Pocket
+  ID's own address. Naming an admin group also adds the `groups` scope,
+  which Pocket ID needs to send group membership. Passkeys need https, so
+  Pocket ID must be reached through Cloudflare Tunnel, Tailscale, or Direct
+  with a certificate.
+
+Either way the token or key is used once unless you tick to keep it (sealed
+with `SECRETS_KEY`).
 
 #### Public URL
 
@@ -157,6 +187,25 @@ step is prefilled with the address you opened the page on.
 
 `RANCHER_URL` feeds both `workloads.rancherUrl` and `fleet.rancherUrl`.
 
+### Deploys and connectors
+
+These matter only with app deploys on.
+
+| Setting | Env | Default | Meaning |
+|---|---|---|---|
+| `deploy.baseDomain` | `DEPLOY_BASE_DOMAIN` | empty | New apps are offered `<app>.<base domain>`. Empty: the domain most Ingresses share. The Access step sets it. |
+| `deploy.ingressClass` | `DEPLOY_INGRESS_CLASS` | empty | Ingress class for new apps. Empty: the cluster's default class. |
+| `deploy.clusterIssuer` | `DEPLOY_CLUSTER_ISSUER` | empty | cert-manager ClusterIssuer for new apps. Empty: the one discovery found; with none, apps are served over plain HTTP. |
+| `deploy.storageClass` | `DEPLOY_STORAGE_CLASS` | empty | Storage class for new apps. Empty: the cluster's default. |
+| `deploy.consoleBackup` | | `30 3 * * *` | When the console copies its own database to the storage target: five-field cron in UTC. Empty: never. |
+| `deploy.consoleBackupKeep` | | `14` | Copies of the console's database kept on the storage target. |
+| `deploy.forwardedPorts` | `DEPLOY_FORWARDED_PORTS` | empty | Ports your router forwards to the cluster, for external services over TCP and UDP, e.g. `25565-25575,27015`. From 1024 up, at most 100 in all. |
+| `connector-cloudflare.accessApps` | `CLOUDFLARE_ACCESS_APPS` | `never` | Put Cloudflare Access in front of app hostnames: `never`, `always`, or `per-app` (chosen on the Cloudflare page). |
+| `mcp.requestsPerMinute` | `MCP_REQUESTS_PER_MINUTE` | `120` | Per API token on `/mcp`; over it, requests are answered 429 until the minute is up. |
+
+Connectors themselves (Cloudflare, Entra ID) are records, not settings: add
+them under Admin → Connectors.
+
 ### Hosts
 
 | Setting | Env | Default | Meaning |
@@ -207,15 +256,20 @@ actually has and what is missing. A group whose CRDs aren't installed shows as
 | TLS expiry from Secrets | `secrets` (`rbac.secrets.enabled`, default off; scope it with `rbac.secrets.namespaces`) | Only cert-manager certificates are checked. RBAC can't grant metadata only, so this reads Secret contents. |
 | Longhorn storage and backups | `longhorn.io` `volumes`, `nodes`, `replicas`, `snapshots`, `backups`, `backupvolumes`, `backuptargets`, `recurringjobs`, `settings` | Storage tile shows Longhorn as absent; Longhorn-protected PVCs read as unprotected. |
 | Velero backups | `velero.io` `backups`, `schedules`, `restores`, `backupstoragelocations` | Velero absent. |
+| Shared Postgres | `postgresql.cnpg.io` `clusters`, `backups`, `scheduledbackups`, `databases`, `databaseroles`; `barmancloud.cnpg.io` `objectstores` | Shared Postgres absent. |
+| Node drain preview | `policy` `poddisruptionbudgets` (`get`, `list`) | The preview has no "waits on a budget" rows; the drain itself still respects budgets. |
 | Backup posture | the Longhorn and Velero reads above, plus `persistentvolumeclaims`, `pods` (which workload mounts a PVC) | |
 | Fleet GitOps | `fleet.cattle.io` `gitrepos`, `bundles` | GitOps tile absent. |
 | Workload browser | `namespaces`, `deployments`, `statefulsets`, `daemonsets`, `replicasets`, `jobs`, `cronjobs`, `pods`, `events`, `pods/log`; `secrets` (`get`, only with the opt-in `rbac.secrets` grant) to mask the pod's own Secret values in its logs | Pages for the missing kinds are empty; logs unavailable without `pods/log`. |
 | Hosts, HTTP checks, notifications | nothing in the cluster; outbound SSH and HTTP(S) from the pod | |
+| App deploys, connectors that run something in the cluster, storage actions, Upgrade all | Nothing on the console's own account beyond a Role in its namespace (Jobs, and creating the Secrets that carry each Job's values). The changes run as `<release>-installer`, bound to `cluster-admin`, which exists only with `deploy.enabled`. | The pages show what is installed and the command that turns deploys on. |
 
 **`nodes/proxy`** is the one grant worth a decision: on some Kubernetes versions
 it also reaches the kubelet's exec endpoints. With `rbac.nodesProxy: false`
 the console still works and says which checks need it.
 
 Network: the pod needs to reach the API server, any host it checks over SSH
-(port 22 by default), the URLs of HTTP checks and notification channels, and
-the OIDC issuer. With `networkPolicy.enabled` only ingress is restricted.
+(port 22 by default), the URLs of HTTP checks and notification channels, the
+OIDC issuer, and, for connectors, `api.cloudflare.com` and Microsoft Graph
+(`login.microsoftonline.com`, `graph.microsoft.com`). Deploy Jobs pull charts
+and images from their registries. With `networkPolicy.enabled` only ingress is restricted.

@@ -65,11 +65,3 @@ export function nodeStatus(node: NodeSummary): Status {
   if (!node.ready) return "crit";
   return node.source === "none" ? "unknown" : "ok";
 }
-
-const pct = (value: number | undefined) => (value === undefined ? "–" : `${value.toFixed(0)}%`);
-
-export function nodeLine(node: NodeSummary): string {
-  if (!node.ready) return `Not Ready · ${node.pods} pods`;
-  if (node.source === "none") return `No usage data · ${node.pods} pods`;
-  return `CPU ${pct(node.cpuPercent)} · memory ${pct(node.memoryPercent)} · ${node.pods} pods`;
-}

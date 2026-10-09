@@ -1,6 +1,8 @@
 // HTTP shapes for the platform's routes (S2), carried over from
 // code-console's. Kept free of server-only imports so the client can use them.
 
+import type { TokenArea } from "./grants.js";
+
 export interface Me {
   id: string;
   name: string;
@@ -125,7 +127,9 @@ export interface AdminOverview {
   settings: SettingView[];
   environment: Array<{ name: string; help: string; value: string; set: boolean }>;
   publicUrl: PublicUrlView;
-  oidc: { redirectUri: string; hasSecret: boolean; unavailable: string | null };
+  // hasKey: sign-in authenticates with a private key (SignInClientKey), set
+  // by a connector; saving a client secret here replaces it.
+  oidc: { redirectUri: string; hasSecret: boolean; hasKey?: boolean; unavailable: string | null };
   secretKeyConfigured: boolean;
   you: { ip: string };
   version: string;
@@ -147,6 +151,8 @@ export interface AuditRow {
 // only read; "write" may do whatever that admin may. It is sent as
 // `Authorization: Bearer <secret>` to /api and /mcp, never to /api/admin or
 // /api/auth (managing accounts, sign-in and tokens takes a signed-in session).
+// Its grant (./grants.ts) can narrow it further to some product areas and
+// some namespaces; a token without one reaches everything its scope allows.
 // The secret is shown once at creation and only its hash is stored.
 
 export type ApiTokenScope = "read" | "write";
@@ -155,6 +161,9 @@ export interface ApiTokenView {
   id: string;
   name: string;
   scope: ApiTokenScope;
+  // The grant's limits (ApiTokenGrant); absent: every namespace, every area.
+  namespaces?: string[];
+  areas?: TokenArea[];
   // The secret's first characters, to tell tokens apart; useless on its own.
   prefix: string;
   // The username the token acts as.
@@ -176,8 +185,20 @@ export interface ApiTokenView {
 export interface NewApiTokenRequest {
   name: string;
   scope: ApiTokenScope;
+  // Omitted or null: every namespace / every area. A list must not be empty.
+  namespaces?: string[] | null;
+  areas?: TokenArea[] | null;
   // Whole days from now, 1 to 3650; omitted or null: never expires.
   expiresInDays?: number | null;
+}
+
+// PATCH /api/admin/tokens/:id, OAuth grants included. Omitted: unchanged;
+// null namespaces or areas: every one. Takes effect on the token's next request.
+export interface ApiTokenChanges {
+  name?: string;
+  scope?: ApiTokenScope;
+  namespaces?: string[] | null;
+  areas?: TokenArea[] | null;
 }
 
 export interface NewApiToken {
@@ -232,6 +253,9 @@ export interface OAuthConsentRequest {
   // browser. deny: say where to send the browser with access_denied.
   decision: "preview" | "approve" | "deny";
   scope?: ApiTokenScope;
+  // approve: limits for the grant, as NewApiTokenRequest. Omitted: none.
+  namespaces?: string[] | null;
+  areas?: TokenArea[] | null;
 }
 
 export interface OAuthConsentView {
@@ -307,6 +331,65 @@ export interface AuthentikWireResult {
   testSignIn: string;
 }
 
+// Wiring sign-in through a Pocket ID instance: an OIDC client made in
+// Pocket ID through its API (an admin's API key, sent as X-API-Key), with a
+// fresh client secret, and this install's OIDC settings filled in from it.
+// The client's ID is the product slug, so a re-run finds it again. Pocket
+// ID never shows a secret twice, so every run adds a new one to the client
+// and stores that; earlier secrets stay valid until removed in Pocket ID.
+
+export interface PocketIdWirePlan {
+  // The Pocket ID base URL the plan was made for, as given (trailing slash
+  // removed). It is also the issuer.
+  pocketIdUrl: string;
+  // Where the API is called, when not at pocketIdUrl.
+  apiUrl?: string;
+  clientName: string;
+  clientId: string;
+  // Registered on the client; "" while there is no public URL.
+  redirectUri: string;
+  issuer: string;
+  // A Pocket ID API key kept from an earlier run, so none need be pasted.
+  hasStoredKey: boolean;
+  // Why wiring can't run yet, or null (as AuthentikWirePlan.blocked).
+  blocked: string | null;
+}
+
+export interface PocketIdWireRequest {
+  // Pocket ID as browsers reach it (its APP_URL): the issuer and launch URL
+  // are built on it.
+  pocketIdUrl: string;
+  // Where this server calls Pocket ID's API, when not at pocketIdUrl; the
+  // same http rule as AuthentikWireRequest.apiUrl.
+  apiUrl?: string;
+  // An API key of a Pocket ID admin (Settings > Admin > API Keys). Omitted:
+  // the stored one is used. Never logged, never returned.
+  apiKey?: string;
+  // Store the key sealed for later runs. False or omitted: it is used for
+  // this request only, and a key stored earlier is deleted.
+  keepKey?: boolean;
+  // Saved as auth.oidc.adminGroups when given. Pocket ID sends groups only
+  // for the "groups" scope, so it is added to auth.oidc.scopes then.
+  adminGroups?: string[];
+}
+
+export interface PocketIdWireResult {
+  pocketIdUrl: string;
+  issuer: string;
+  clientId: string;
+  redirectUri: string;
+  // "updated": an existing client was missing the redirect URI and has had
+  // it added.
+  client: "created" | "updated" | "unchanged";
+  // Setting keys this run saved; the client secret is stored separately.
+  settings: string[];
+  keyKept: boolean;
+  // The issuer's discovery document as read back after wiring.
+  discovery: { ok: boolean; error?: string };
+  // As AuthentikWireResult.testSignIn.
+  testSignIn: string;
+}
+
 // Sign-in through a provider anyone can hold an account with: a personal
 // or work Google account, or any Microsoft account (personal or from any
 // Entra tenant, through the "common" endpoint). Nobody is invited to a
@@ -341,4 +424,22 @@ export interface PublicSignInResult {
   settings: string[];
   // The issuer's discovery document as read back after saving.
   discovery: { ok: boolean; error?: string };
+}
+
+// POST /api/admin/recovery-kit. Admin, session only, audited. Re-auth: a
+// local account gives its password (and a TOTP code when enrolled); an OIDC
+// account must have signed in within the last 15 minutes, else 401 with
+// "Sign in again to download the recovery kit". 409 without SECRETS_KEY.
+//
+// The response is a text file: "#" comment lines naming the product,
+// release, namespace, build and creation time, then one base64 line
+// that `openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -a -A`
+// opens with the passphrase. Inside are KEY=value lines: SECRETS_KEY,
+// RELEASE, NAMESPACE, VERSION (the build, as /healthz reports it),
+// CREATED_AT and KIT_VERSION=1.
+export interface RecoveryKitRequest {
+  // At least 12 characters; never stored or logged.
+  passphrase: string;
+  password?: string;
+  code?: string;
 }

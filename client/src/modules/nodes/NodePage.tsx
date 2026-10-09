@@ -5,7 +5,7 @@ import { Link, useParams } from "react-router";
 import type { SeriesResult } from "@contracts/metrics";
 import { PageHeader } from "../../shell/PageHeader";
 import { StatusBadge, TimeSeriesChart, formatValue, useApi, useSeries } from "../../ui";
-import { ChartCard, RangeControl, SOURCE_LABEL, nodeStatus, useRange } from "./shared";
+import { ChartCard, RangeControl, SOURCE_LABEL, nodeStatus, useRange, type NodeRange } from "./shared";
 
 interface ContainerRow {
   namespace: string;
@@ -116,12 +116,66 @@ function Containers({ node }: { node: string }) {
   );
 }
 
+// The node's own charts: CPU, memory, filesystem and network, plus its pod
+// count on the node page.
+export function NodeCharts({ node, range, pods = false }: { node: string; range: NodeRange; pods?: boolean }) {
+  const labels = { node };
+  return (
+    <SimpleGrid cols={{ base: 1, lg: 2 }}>
+      <ChartCard title="CPU">
+        <TimeSeriesChart
+          queries={[{ series: "node.cpu.percent", labels }]}
+          range={range}
+          unit="percent"
+          label={() => "CPU"}
+        />
+      </ChartCard>
+      <ChartCard title="Memory">
+        <TimeSeriesChart
+          queries={[{ series: "node.memory.bytes", labels }]}
+          range={range}
+          unit="bytes"
+          label={() => "working set"}
+        />
+      </ChartCard>
+      <ChartCard title="Filesystem">
+        <TimeSeriesChart
+          queries={[{ series: "node.fs.percent", labels }]}
+          range={range}
+          unit="percent"
+          label={() => "used"}
+        />
+      </ChartCard>
+      <ChartCard title="Network">
+        <TimeSeriesChart
+          queries={[
+            { series: "node.net.rx.bytesPerSec", labels },
+            { series: "node.net.tx.bytesPerSec", labels },
+          ]}
+          range={range}
+          unit="bytesPerSec"
+          label={direction}
+        />
+      </ChartCard>
+      {pods ? (
+        <ChartCard title="Pods">
+          <TimeSeriesChart
+            queries={[{ series: "node.pods.count", labels }]}
+            range={range}
+            unit="count"
+            label={() => "pods"}
+          />
+        </ChartCard>
+      ) : null}
+    </SimpleGrid>
+  );
+}
+
 export function NodePage() {
   const { name = "" } = useParams();
   const [range, setRange] = useRange();
   const nodes = useApi("GET /api/metrics-k8s/nodes", undefined, { pollMs: 30_000 });
   const summary = nodes.data?.find((n) => n.name === name);
-  const labels = { node: name };
 
   return (
     <Stack gap="md">
@@ -151,51 +205,7 @@ export function NodePage() {
       {nodes.data && !summary ? (
         <Alert color="yellow">The cluster does not list a node named {name}; showing what was recorded.</Alert>
       ) : null}
-      <SimpleGrid cols={{ base: 1, lg: 2 }}>
-        <ChartCard title="CPU">
-          <TimeSeriesChart
-            queries={[{ series: "node.cpu.percent", labels }]}
-            range={range}
-            unit="percent"
-            label={() => "CPU"}
-          />
-        </ChartCard>
-        <ChartCard title="Memory">
-          <TimeSeriesChart
-            queries={[{ series: "node.memory.bytes", labels }]}
-            range={range}
-            unit="bytes"
-            label={() => "working set"}
-          />
-        </ChartCard>
-        <ChartCard title="Filesystem">
-          <TimeSeriesChart
-            queries={[{ series: "node.fs.percent", labels }]}
-            range={range}
-            unit="percent"
-            label={() => "used"}
-          />
-        </ChartCard>
-        <ChartCard title="Network">
-          <TimeSeriesChart
-            queries={[
-              { series: "node.net.rx.bytesPerSec", labels },
-              { series: "node.net.tx.bytesPerSec", labels },
-            ]}
-            range={range}
-            unit="bytesPerSec"
-            label={direction}
-          />
-        </ChartCard>
-        <ChartCard title="Pods">
-          <TimeSeriesChart
-            queries={[{ series: "node.pods.count", labels }]}
-            range={range}
-            unit="count"
-            label={() => "pods"}
-          />
-        </ChartCard>
-      </SimpleGrid>
+      <NodeCharts node={name} range={range} pods />
       <Containers node={name} />
     </Stack>
   );

@@ -8,11 +8,13 @@ Every build thread follows these. They come before anything else in this file.
 4. **The product name lives only in `product.json`.** Never hardcode it. Environment variables carry no product prefix.
 5. **One branch and one PR per chunk.** Touch only the paths the chunk owns.
 
-The plan these chunks come from is `/mnt/project-files/product-plan/mvp-build-plan.md` in the project's shared files (not in this repo); the v0.1.x W chunks come from `/mnt/project-files/product-plan/v0.1.x-wizard-plan.md`.
+The plans these chunks come from are in the project's shared files (not in this repo), under `/mnt/project-files/product-plan/`: `mvp-build-plan.md` (S and A chunks; its milestone split is historical), `v0.1.x-wizard-plan.md` (W and M chunks), `round-3-plan.md` (R and C2/C3 chunks) and `round-4-plan.md` (F and C4–C9 chunks). The public order of work is `docs/roadmap.md`.
 
 # What this is
 
-A self-hosted Kubernetes console whose first job is answering "is everything healthy and recoverable?": one health board over cluster, storage, backups, GitOps, hosts and HTTP checks; a backup posture page per PVC; node, container and host metrics with history; a read-only workload browser; notifications. Milestone A is read-only in the cluster. Milestone B adds connectors (Cloudflare, Entra ID), templates and publishing.
+A self-hosted Kubernetes console whose first job is answering "is everything healthy and recoverable?", and whose second is setting up and running a small cluster so the answer stays yes. It watches: one health board over cluster, storage, backups, GitOps, hosts, HTTP checks and connectors; a backup posture page per PVC; a node list and node, container and host metrics with history; a workload browser; notifications (email, ntfy, Discord, webhooks). It acts, when app deploys are turned on: a catalog and default bundle (access tool, cert-manager, Authentik or Pocket ID, Gitea, Longhorn, shared Postgres on CloudNativePG), templates and custom apps, connectors (Cloudflare, Entra ID, storage targets), the sign-in gate in front of published apps, Longhorn backup set-up and restore, Postgres point-in-time restore, storage moves, node actions (cordon, drain, reboot), join links, Upgrade all, the console's own backup and recovery kit, unattended setup from an env file, and an MCP server with scoped API tokens. What has shipped and what is being built is in `docs/roadmap.md`.
+
+The console's own ServiceAccount stays read-only. Every change to the cluster is a deploy Job under the installer ServiceAccount, which exists only with `deploy.enabled`; the `K8sApi`'s only writes are `create`/`delete` for those Jobs and their values Secrets in the product's own namespace, and deleting the install seed Secret.
 
 It is installed by other people into their own clusters, so **nothing install-specific belongs in the app or the chart**: hostnames, identity providers, ingress, registries go in an install's values, never in defaults.
 
@@ -74,10 +76,36 @@ Each chunk may create or edit only its own paths. Everything else is read-only t
 | W7 host key pair | `src/modules/hosts/`, `client/src/modules/hosts/`, `client/src/modules/onboarding/steps/HostsStep.tsx` |
 | M1 tokens + MCP | `src/modules/mcp/`, `client/src/modules/mcp/`, API tokens and the MCP OAuth server in `src/platform/` (`auth/tokens.ts`, `auth/oauth.ts`, `routes/oauth.ts`, their admin routes and the bearer path in identity), `client/src/shell/oauth/`, custom links in `src/modules/health/`, `client/src/shell/admin/TokensPage.tsx`, `docs/mcp.md` |
 | B1 connectors | `src/modules/connectors/`, `client/src/modules/connectors/`, `src/contracts/connectors.ts`, `src/contracts/mocks/connectors/` |
-| Every module chunk (A1–A15, W1–W7, B1–B5) | also `test/modules/<id>/` for its module's tests |
+| R0 next channel | `.github/workflows/build.yml`, `test.yml` (push on `next`), `install-test.yml`, `install.sh`, `update.sh` (`--channel`), `docs/install.md` |
+| R1 Longhorn replicas | `src/modules/longhorn/`, `src/modules/deploy/actions/replicas.ts`, `src/modules/deploy/actions/index.ts`, `client/src/modules/backups/` replica card |
+| R2 convert to Longhorn | `src/modules/deploy/actions/migrate.ts`, `client/src/modules/apps/` migrate dialog |
+| R3 connector framework | `src/modules/connectors/`, `client/src/modules/connectors/` |
+| R4 Cloudflare connector | `src/modules/connector-cloudflare/`, `client/src/modules/connector-cloudflare/` |
+| R5 Entra connector | `src/modules/connector-entra/` |
+| R6 Templates | `src/modules/templates/`, `client/src/modules/templates/`, `chart/templates/guardrail-*.yaml` |
+| R7 Access step API token | `client/src/modules/onboarding/` Access step |
+| R8, R9, F15 follow-ups and dogfood fixes | per item: the paths named in that item's brief |
+| C4–C9 round-4 contracts (coordinator) | the `src/contracts/` files and mocks each names in `round-4-plan.md`; C4 adds the `connector-storage` stub to `src/modules/index.ts`; C8 `chart/templates/rbac.yaml` (the seed Secret); C9 `package.json` + lock (`nodemailer`) |
+| F0 round-4 reset | `chart/Chart.yaml` (version), the `next` reset |
+| F1 storage target connector | `src/modules/connector-storage/`, `client/src/modules/connectors/` storage form |
+| F2 SMB node packages | `install.sh`, `update.sh`, `add-node.sh`, `scripts/install/join-node.sh`, `docs/install.md` |
+| F3 backups set-up, headless Longhorn | `src/modules/backups/`, `src/modules/longhorn/`, `src/modules/deploy/actions/{longhorn-target,recurring,restore}.ts`, `src/modules/deploy/apps.ts` (longhorn and longhorn-backup-target recipes), `client/src/modules/backups/`, its MCP tools in `src/modules/mcp/tools.ts` |
+| F4 console backup | `src/modules/deploy/actions/console-backup.ts`, the secrets export route in `src/platform/`, `client/src/modules/backups/ConsoleBackup.tsx`, `install.sh --restore` |
+| F5 node list | `src/modules/metrics-k8s/`, `client/src/modules/nodes/` |
+| F6 node actions | `src/modules/deploy/actions/node.ts`, `actions/index.ts` (register), `client/src/modules/nodes/NodeActions.tsx`, its MCP tools |
+| F7 shared Postgres | `src/modules/catalog/entries.ts` (cnpg, postgres), `src/modules/deploy/apps.ts` (cnpg recipes, app values), `src/modules/deploy/actions/pg-*.ts`, `src/modules/postgres/` |
+| F8 Postgres PITR page | `client/src/modules/backups/Postgres*.tsx`, the backup source in `src/modules/postgres/` |
+| F9 scoped tokens | `src/platform/auth/{tokens,identity,oauth}.ts`, the token admin routes in `src/platform/routes/`, the guard hook in `src/runtime/` approved in C7, `client/src/shell/admin/TokensPage.tsx`, tool filtering in `src/modules/mcp/`, list filtering in each namespaced module |
+| F10 `install.sh --env` | `install.sh`, `update.sh`, `scripts/install/`, `docs/install.md`, `install-test.yml` |
+| F11 seed applied | `src/modules/onboarding/seed.ts`, `client/src/modules/onboarding/` seed summary |
+| F12 email channel | `src/modules/notify/`, `client/src/modules/notify/` |
+| F13 Entra certificates | `src/modules/connector-entra/`, `src/platform/auth/oidc.ts` (private_key_jwt) |
+| F14 Pocket ID | `src/modules/catalog/entries.ts` (entry), `src/modules/deploy/apps.ts` (recipe), `client/src/modules/onboarding/steps/PocketIdWire.tsx`, `src/platform/auth/pocketid.ts` |
+| F16 docs and roadmap | `README.md`, `CONTRIBUTING.md`, `docs/` except the sections a feature chunk owns, the "What this is" and ownership sections of this file |
+| Every module chunk (A1–A15, W1–W7, B1–B5, R1–R9, F1–F15) | also `test/modules/<id>/` for its module's tests, and the docs section for what it ships |
 | B2–B5 | their own `src/modules/<id>/` and `client/src/modules/<id>/`, plus the chart files the plan names |
 
-**Shared dependencies no worker mutates:** `package.json` and `package-lock.json` (both root and `client/`), `src/contracts/`, `src/runtime/`, `src/app.ts`, `src/modules/index.ts`, `client/src/ui/` (S3 aside), `chart/values.yaml` (S4 aside), `test/support/` (S5 aside). Every dependency Milestone A is known to need is already installed. Needing a new dependency, contract field, route, event, service or shared helper is a blocker for the coordinating session, which changes contracts in their own small PR.
+**Shared dependencies no worker mutates:** `package.json` and `package-lock.json` (both root and `client/`), `src/contracts/`, `src/runtime/`, `src/app.ts`, `src/modules/index.ts`, `client/src/ui/` (S3 aside), `chart/values.yaml` (S4 aside), `test/support/` (S5 aside). Every dependency a planned chunk is known to need is already installed, or is added by that round's contract PR. Needing a new dependency, contract field, route, event, service or shared helper is a blocker for the coordinating session, which changes contracts in their own small PR.
 
 # How a module plugs in
 
@@ -166,4 +194,4 @@ npm start                   # node dist/index.js, serving public/
 
 # Fixtures from a real cluster
 
-`scripts/capture-fixtures.sh` dumps the object kinds Milestone A reads, using only `kubectl get`, with Secrets and ConfigMaps never fetched and env values, command/args, non-ownership annotations, Fleet bundle contents and URL credentials stripped. It writes `fixtures-<timestamp>.tar.gz`. Hostnames, IPs and names remain, so the archive is reviewed before any of it is committed under `test/fixtures/`.
+`scripts/capture-fixtures.sh` dumps the object kinds the read-only modules read, using only `kubectl get`, with Secrets and ConfigMaps never fetched and env values, command/args, non-ownership annotations, Fleet bundle contents and URL credentials stripped. It writes `fixtures-<timestamp>.tar.gz`. Hostnames, IPs and names remain, so the archive is reviewed before any of it is committed under `test/fixtures/`.

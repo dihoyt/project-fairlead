@@ -22,8 +22,18 @@ import type { ModuleContext } from "../../contracts/module.js";
 import type { LogLines } from "../../contracts/workloads.js";
 import { HttpError } from "../../runtime/http.js";
 import { errorMessage } from "../../runtime/log.js";
+import { POSTGRES_APP, POSTGRES_NAMESPACE, pgClusterName, pgName } from "../../contracts/postgres.js";
+import { product } from "../../product.js";
 import { type GateActionContext } from "./actions/gate.js";
-import { actionRecipe, type ActionContext, type ActionRecipe, type ActionRendered } from "./actions/index.js";
+import { createConsoleDatabase } from "./actions/console-backup.js";
+import {
+  actionRecipe,
+  type ActionContext,
+  type ActionRecipe,
+  type ActionRendered,
+  type ConsoleDatabase,
+} from "./actions/index.js";
+import { currentCluster, type SharedPostgres } from "./actions/pg-objects.js";
 import type { Defaults, Step } from "./apps.js";
 import { accessView, AccessStore, resolves as lookupHost, type Resolver } from "./access.js";
 import { enableHint, type DeployConfig } from "./config.js";
@@ -40,7 +50,7 @@ import {
   MIDDLEWARE_FILE,
   type GateInput,
 } from "./gate.js";
-import { CONTAINER, DEADLINE_SECONDS, JOB_LABEL, jobManifest, valuesSecret } from "./job.js";
+import { CONTAINER, DEADLINE_SECONDS, JOB_LABEL, jobManifest, valuesSecret, type PodExtras } from "./job.js";
 import { jobName, render, valuesSecretName, type Rendered } from "./plan.js";
 import { createRedactor, type Redactor } from "./redact.js";
 import { isFinal, type JobRecord, type Store } from "./store.js";
@@ -147,6 +157,8 @@ export interface DeployerOptions {
   generate?: () => string;
   // Requests to a volume backup pod, for tests.
   fetch?: typeof fetch;
+  // Replaces the console's own database (a file on its volume), for tests.
+  consoleDatabase?: ConsoleDatabase;
 }
 
 export class Deployer {
@@ -162,6 +174,7 @@ export class Deployer {
   private readonly options: DeployerOptions;
   readonly access: AccessStore;
   readonly gates: GateStore;
+  private readonly consoleDatabase: ConsoleDatabase | undefined;
 
   constructor(ctx: ModuleContext, store: Store, config: DeployConfig, options: DeployerOptions = {}) {
     this.ctx = ctx;
@@ -171,6 +184,7 @@ export class Deployer {
     this.now = options.now ?? Date.now;
     this.access = new AccessStore(ctx.db, ctx.orgId);
     this.gates = new GateStore(ctx.db, ctx.orgId);
+    this.consoleDatabase = options.consoleDatabase ?? createConsoleDatabase(ctx.db, config);
   }
 
   private iso() {
@@ -312,6 +326,10 @@ export class Deployer {
         discovery: found.discovery,
         discoveryError: found.error,
         namespaceExists: await this.namespaceExists(namespace),
+        postgres:
+          entry.database === "postgres" || entry.id === POSTGRES_APP
+            ? await this.sharedPostgres(entry, found.discovery, context.installedBefore)
+            : undefined,
         jobNamespace: this.config.namespace(),
         jobName: jobName(entry.id, this.store.nextSeq()),
         valuesSecret: valuesSecretName(entry.id),
@@ -320,6 +338,50 @@ export class Deployer {
       mode,
       this.options.generate
     );
+  }
+
+  // The shared Postgres an app uses: the cluster the apps use now, or the
+  // one an earlier step of the same bundle makes. The shared cluster itself
+  // keeps the name it has. An app already installed with its own Postgres
+  // keeps it: moving its data over is not something a re-install does.
+  private async sharedPostgres(
+    entry: CatalogEntry,
+    discovery: DiscoveryReport | undefined,
+    installedBefore: readonly string[] | undefined
+  ): Promise<SharedPostgres | undefined> {
+    const self = discovery?.apps.find((app) => app.appId === entry.id);
+    if (entry.id !== POSTGRES_APP && self?.state === "installed" && !(await this.onSharedPostgres(entry))) {
+      return undefined;
+    }
+    const k8s = this.k8s();
+    let cluster: Awaited<ReturnType<typeof currentCluster>> | undefined;
+    try {
+      cluster = k8s ? await currentCluster(k8s) : undefined;
+    } catch (err) {
+      this.ctx.log.warn("Could not look for the shared Postgres", { error: errorMessage(err) });
+    }
+    if (cluster && cluster !== "absent") {
+      return { namespace: cluster.metadata.namespace ?? POSTGRES_NAMESPACE, cluster: cluster.metadata.name };
+    }
+    if (entry.id === POSTGRES_APP || installedBefore?.includes(POSTGRES_APP)) {
+      return { namespace: POSTGRES_NAMESPACE, cluster: pgClusterName(product.slug) };
+    }
+    return undefined;
+  }
+
+  // Whether an installed app already reads its connection from the shared
+  // Postgres (its connection Secret exists).
+  private async onSharedPostgres(entry: CatalogEntry): Promise<boolean> {
+    const k8s = this.k8s();
+    if (!k8s) return false;
+    try {
+      const listed = await k8s.list(RESOURCES.cnpgDatabases, { namespace: POSTGRES_NAMESPACE });
+      return (
+        listed !== "absent" && listed.some((db) => (db as { spec?: { name?: string } }).spec?.name === pgName(entry.id))
+      );
+    } catch {
+      return false;
+    }
   }
 
   // What the sign-in gate is applied with; undefined without the platform's
@@ -508,6 +570,8 @@ export class Deployer {
       releases: this.store.releases(),
       versions: this.store.installedVersions(),
       gate: await this.gateActionContext(),
+      ...(this.ctx.services.has("storage-targets") ? { storageTargets: this.ctx.services.get("storage-targets") } : {}),
+      ...(this.consoleDatabase ? { consoleDatabase: this.consoleDatabase } : {}),
     });
     if (!rendered.plan.allowed) return rendered;
     const namespace = this.config.namespace();
@@ -535,7 +599,12 @@ export class Deployer {
       Object.keys(rendered.files).length > 0 ? rendered.files : { "values.yaml": "{}\n" },
       rendered.steps,
       rendered.secrets ?? [],
-      { script: rendered.script, deadlineSeconds: rendered.deadlineSeconds }
+      {
+        script: rendered.script,
+        deadlineSeconds: rendered.deadlineSeconds,
+        avoidNode: rendered.avoidNode,
+        pod: rendered.pod,
+      }
     );
     try {
       await rendered.onStarted?.(view);
@@ -559,7 +628,7 @@ export class Deployer {
     files: Record<string, string>,
     steps: Step[],
     secrets: string[],
-    program: { script?: string; deadlineSeconds?: number } = {}
+    program: { script?: string; deadlineSeconds?: number; avoidNode?: string; pod?: PodExtras } = {}
   ): Promise<DeployJobView> {
     const k8s = this.k8s()!;
     const jobNamespace = this.config.namespace();

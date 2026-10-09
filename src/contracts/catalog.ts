@@ -80,7 +80,9 @@ export type InstallSource =
     }
   | {
       // A change to something already installed, from a fixed template:
-      // marking a storage class default, setting Longhorn's backup target.
+      // marking a storage class default, setting Longhorn's backup target,
+      // or an object an installed operator runs (the shared Postgres
+      // Cluster). Never upgraded from the Upgrades list.
       kind: "patch";
       target: string;
     };
@@ -132,6 +134,17 @@ export interface CatalogEntry {
   //   or its clients are never browsers (ntfy's phone apps, the console's
   //   own alerts).
   gate?: "credentials" | "public";
+  // Left out of the catalog picker while it is not installed: kept for
+  // clusters that want it and still deployable over the deploy API and
+  // MCP (Velero, while backups are Longhorn-first).
+  hidden?: boolean;
+  // Keeps its data in Postgres. "postgres": while the shared Postgres
+  // (./postgres.ts) is installed, or installed earlier in the same bundle,
+  // an install gives the app its own database and role there (the
+  // pg-database action's steps, before the chart) and turns the chart's
+  // bundled Postgres off; without it the app keeps its own. An app already
+  // installed keeps what it has.
+  database?: "postgres";
 }
 
 // Rough, in bytes, from the pinned version's defaults.

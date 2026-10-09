@@ -11,8 +11,19 @@ Clients authenticate with an API token you make, or, if they support it (claude.
 - **Read** tokens can only look. MCP clients using one see only the read tools.
 - **Read and write** tokens can do whatever you can: add, change and delete checks and links, preview and start deploys. Give one only to a client you trust to change things.
 - **Expiry** defaults to 90 days. Leave it empty for a token that never expires.
+- **Areas** and **Namespaces** default to all. Pick "Only some" to limit the token (see below).
 
 The token is shown once. It acts as the admin who made it: if that account is disabled the token stops working, and if it stops being an admin the token can only read. Tokens are never accepted on account, sign-in or token management (`/api/admin`, `/api/auth`), so a leaked token can't mint more tokens or change who can sign in. Revoke a token on the same page; it stops working on the next request.
+
+### Limit a token to some areas and namespaces
+
+A token can be limited further than read or write. The same limits apply on the REST API and to MCP tools, because every tool goes through the REST routes.
+
+- **Areas**: health board and links, HTTP checks, workloads (pods, events, logs, usage), backups and storage, nodes (node list, metrics, join links), apps (catalog, deploys, bundles, templates, deploy actions including node actions), notifications, connectors, hosts. A route outside the token's areas answers 403, and MCP clients don't see tools for those areas.
+- **Namespaces**: exact names. Routes that act on one namespace (a namespace's workloads, pods and logs; a deploy into a namespace) answer 403 outside them. Lists that span namespaces (namespaces, cluster usage, deploy jobs, backup posture) show only the token's namespaces. Anything cluster-wide (checks, links, bundles, node actions, connectors, hosts) can be read if the area allows but never changed, so a namespace-limited write token can deploy into its namespaces and nothing else.
+- Resetting the install and the setup wizard's steps need a token with no limits.
+
+Edit a token's name, scope and limits under Admin > API tokens; changes apply on its next request and the secret stays the same. The claude.ai consent page offers the same choices, and a connected app can be edited the same way afterwards. Tokens made before limits existed have none.
 
 The endpoint is rate-limited per token (120 requests a minute by default; the `mcp.requestsPerMinute` setting or `MCP_REQUESTS_PER_MINUTE` changes it). Tool calls are logged at info level with the tool name, user and token id, never their arguments.
 
@@ -58,10 +69,10 @@ claude.ai connects from Anthropic's servers, so the console must be reachable at
 
 1. In claude.ai, open **Settings > Connectors > Add custom connector**.
 2. Name it, and enter `https://console.example.com/mcp` as the URL. Leave the OAuth client ID and secret empty: claude.ai registers itself.
-3. Click **Connect**. claude.ai sends you to the console. Sign in as an admin if you aren't already, then choose **Read only** or **Read and write** and approve.
+3. Click **Connect**. claude.ai sends you to the console. Sign in as an admin if you aren't already, then choose **Read only** or **Read and write**, optionally limit it to some areas and namespaces, and approve.
 4. You're sent back to claude.ai with the connector working. Turn it on in a chat, or in a project, from the tools menu.
 
-The approval appears under Admin > API tokens as a "connected app" with the client's name. Revoking it there disconnects claude.ai at once. To change its scope, revoke it and connect again.
+The approval appears under Admin > API tokens as a "connected app" with the client's name. Revoking it there disconnects claude.ai at once. Edit it there to change its scope or limits.
 
 Under the hood this is the OAuth flow the MCP spec describes. The console publishes `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`, accepts dynamic client registration at `/oauth/register`, and issues one-hour access tokens with rotating refresh tokens through `/oauth/token`, using authorization code with PKCE (S256) only. Any MCP client that supports OAuth can connect the same way, Claude Code included (`claude mcp add --transport http fairlead https://console.example.com/mcp`, without a header, and then `/mcp` to sign in).
 
@@ -77,7 +88,7 @@ Read (any token):
 |---|---|
 | `get_health_board` | Overall status and a tile per category with its worst issue |
 | `get_health_category` | Every check in one category, with its links |
-| `list_nodes` | Nodes with readiness, CPU and memory |
+| `list_nodes` | One row per node: role, Ready/cordoned, pressure, version drift, uptime, pods, usage, Longhorn space left, 30-minute sparklines |
 | `list_namespaces` | Namespaces with workload and pod counts |
 | `list_workloads` | Workloads in one namespace or all; finished Jobs only with `includeFinished` |
 | `list_pods` | Pods in a namespace, optionally one workload's |
@@ -93,8 +104,15 @@ Read (any token):
 | `list_templates` | The template library and every app deployed from it |
 | `get_entra_signin` | Whether sign-in through Microsoft Entra ID is set up |
 | `list_entra_groups` | Entra security groups by name prefix, with their object ids |
+| `list_storage_targets` | Backup destinations (NFS, S3/MinIO, SMB) with reachability and what uses them |
+| `get_backup_schedules` | Recurring snapshot and backup schedules per volume group |
+| `list_volume_backups` | One volume's backups on the target: its restore points |
+| `list_databases` | Databases on the shared Postgres: role, app, connection Secret, size, connections |
+| `get_postgres_backups` | How the shared Postgres is backed up (point-in-time or dumps), the first recoverable moment and its restore points |
 
-Write (a read-and-write token): `create_check`, `update_check` (only the fields you give change), `delete_check`, `run_check`, `accept_check_status` (the Checks page's "Accept this status"), `create_link`, `update_link`, `delete_link`, `plan_app_deploy`, `deploy_app`, `plan_bundle`, `start_bundle`, `plan_template_deploy`, `deploy_template`, `plan_template_removal`, `remove_template_app` (keeps the app's namespace and volumes unless `deleteVolumes` is true), `setup_entra_signin` (`adminGroups` takes group object ids, not names).
+Write (a read-and-write token): `create_check`, `update_check` (only the fields you give change), `delete_check`, `run_check`, `accept_check_status` (the Checks page's "Accept this status"), `create_link`, `update_link`, `delete_link`, `plan_app_deploy`, `deploy_app`, `plan_bundle`, `start_bundle`, `plan_template_deploy`, `deploy_template`, `plan_template_removal`, `remove_template_app` (keeps the app's namespace and volumes unless `deleteVolumes` is true), `setup_entra_signin` (`adminGroups` takes group object ids, not names), `plan_node_action`, `cordon_node`, `uncordon_node`, `drain_node` (eviction API, so PodDisruptionBudgets are respected; DaemonSet pods stay by default; no force option), `reboot_node` (drains, reboots, waits for Ready, uncordons), `set_backup_target`, `set_backup_schedule` (one group at a time; the others stay), `backup_volume_now`, `plan_volume_restore`, `restore_volume` (`mode: "in-place"` stops the app and replaces the volume's data; the default `new-pvc` leaves it alone), `set_postgres_backups` (S3/MinIO: point-in-time; NFS or SMB: dumps through Longhorn's target), `backup_postgres_now`, `plan_postgres_restore`, `restore_postgres` (into a new cluster; the apps are re-pointed and restarted, the old cluster is kept stopped).
+
+Node actions run as deploy Jobs, so they need deploys turned on; see [Node actions](modules.md#node-actions-deploy).
 
 Template deploys go through the same guardrail as the Templates page: a template or custom app that asks for host paths, host networking, a privileged container, extra capabilities or an admin role binding is refused, over MCP as in the UI.
 

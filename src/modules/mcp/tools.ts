@@ -3,7 +3,7 @@ import type { ApiRoutes, RouteKey } from "../../contracts/api.js";
 import type { CheckRequest, CheckView } from "../../contracts/checks.js";
 import { CATEGORIES } from "../../contracts/health.js";
 import type { CatalogAppView, DiscoveryReport } from "../../contracts/catalog.js";
-import type { AccessView } from "../../contracts/deploy.js";
+import type { AccessView, NodeActionRequest } from "../../contracts/deploy.js";
 import type { CatalogAppSummary, McpToolName, McpTools } from "../../contracts/mcp.js";
 import type { CallInput } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
@@ -86,6 +86,76 @@ const removeRequest = {
     .boolean()
     .optional()
     .describe("Also delete its namespace and volumes, and with them its data. Default false."),
+};
+
+const uidArg = z.string().min(1).describe("The PVC's uid, from get_backup_posture (rows[].pvc.uid).");
+
+const scheduleFields = {
+  group: z
+    .string()
+    .regex(/^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$/)
+    .describe('Volume group: "default" covers every volume in no other group; "critical", or a name of yours.'),
+  snapshotCron: z.string().optional().describe('Five-field cron for snapshots, e.g. "0 * * * *". Left out: none.'),
+  snapshotRetain: z.number().int().min(1).max(250).optional().describe("Snapshots kept. Default 24."),
+  backupCron: z
+    .string()
+    .optional()
+    .describe('Five-field cron for backups to the target, e.g. "0 3 * * *". Left out: none.'),
+  backupRetain: z.number().int().min(1).max(250).optional().describe("Backups kept on the target. Default 14."),
+};
+
+const restoreRequest = {
+  uid: uidArg,
+  backupId: z.string().min(1).describe("A restore point's id, from list_volume_backups."),
+  mode: z
+    .enum(["new-pvc", "in-place"])
+    .describe(
+      "new-pvc: a new claim beside the old one, app untouched. in-place: stops the app and replaces the volume's data."
+    ),
+  newClaim: z.string().optional().describe('new-pvc only. Default "<claim>-restored-<yyyymmdd>".'),
+};
+
+const pgBackupRequest = {
+  connectorId: z
+    .string()
+    .min(1)
+    .nullable()
+    .describe(
+      "Storage target id from list_storage_targets: S3/MinIO for point-in-time restore, NFS or SMB (Longhorn's backup target) for dumps. null turns backups off."
+    ),
+  schedule: z.string().optional().describe('Five-field cron of base backups or dumps. Default "0 2 * * *".'),
+  retention: z
+    .number()
+    .int()
+    .min(1)
+    .max(365)
+    .optional()
+    .describe("Point-in-time: days kept (up to 365). Dumps: dumps kept (up to 60). Default 14."),
+};
+
+const pgRestoreRequest = {
+  at: z
+    .string()
+    .optional()
+    .describe("Point-in-time only: the moment to recover to, ISO-8601, after firstRecoverabilityPoint."),
+  dumpId: z.string().optional().describe("Dumps only: a restore point's id from get_postgres_backups."),
+};
+
+const nodeArg = z.string().min(1).describe("Node name, from list_nodes.");
+
+const drainOptions = {
+  ignoreDaemonSets: z.boolean().optional().describe("Leave DaemonSet pods in place. Default true."),
+  deleteEmptyDirData: z
+    .boolean()
+    .optional()
+    .describe("Evict pods that use emptyDir volumes, losing that data. Default false: such a pod blocks the drain."),
+  timeoutSeconds: z
+    .number()
+    .int()
+    .min(30)
+    .max(3600)
+    .optional()
+    .describe("How long evictions may wait on PodDisruptionBudgets before the drain fails. Default 300."),
 };
 
 const items = <T>(list: T[]) => ({ items: list });
@@ -245,6 +315,21 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
     run: async (call, { search }) =>
       items(await call("GET /api/connector-entra/groups", { query: search ? { search } : {} })),
   },
+  list_storage_targets: {
+    input: z.object({}),
+    run: async (call) => items(await call("GET /api/connector-storage/targets")),
+  },
+  get_backup_schedules: { input: z.object({}), run: (call) => call("GET /api/backups/schedules") },
+  list_volume_backups: {
+    input: z.object({ uid: uidArg }),
+    run: async (call, { uid }) => items(await call("GET /api/backups/volumes/:uid/backups", { params: { uid } })),
+  },
+
+  list_databases: {
+    input: z.object({}),
+    run: async (call) => items(await call("GET /api/postgres/databases")),
+  },
+  get_postgres_backups: { input: z.object({}), run: (call) => call("GET /api/postgres/backups") },
 
   create_check: { input: z.object(checkFields), run: (call, body) => call("POST /api/checks", { body }) },
   update_check: {
@@ -330,5 +415,72 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
       label: z.string().max(80).optional().describe('Sign-in button text. Default "Sign in with Microsoft".'),
     }),
     run: (call, body) => call("POST /api/connector-entra/signin", { body }),
+  },
+  set_backup_target: {
+    input: z.object({
+      connectorId: z
+        .string()
+        .min(1)
+        .nullable()
+        .describe("A storage target's id from list_storage_targets; null clears Longhorn's backup target."),
+    }),
+    run: (call, { connectorId }) => call("PUT /api/backups/target", { body: { connectorId } }),
+  },
+  set_backup_schedule: {
+    input: z.object(scheduleFields),
+    run: async (call, schedule) => {
+      const { schedules } = await call("GET /api/backups/schedules");
+      const rest = schedules.filter((s) => s.group !== schedule.group);
+      return call("PUT /api/backups/schedules", { body: { schedules: [...rest, schedule] } });
+    },
+  },
+  backup_volume_now: {
+    input: z.object({ uid: uidArg }),
+    run: (call, { uid }) => call("POST /api/backups/volumes/:uid/backup-now", { params: { uid } }),
+  },
+  plan_volume_restore: {
+    input: z.object(restoreRequest),
+    run: (call, body) => call("POST /api/backups/restore/plan", { body }),
+  },
+  restore_volume: {
+    input: z.object(restoreRequest),
+    run: (call, body) => call("POST /api/backups/restore", { body }),
+  },
+  set_postgres_backups: {
+    input: z.object(pgBackupRequest),
+    run: (call, body) => call("PUT /api/postgres/backups", { body }),
+  },
+  backup_postgres_now: { input: z.object({}), run: (call) => call("POST /api/postgres/backups/now") },
+  plan_postgres_restore: {
+    input: z.object(pgRestoreRequest),
+    run: (call, body) => call("POST /api/postgres/restore/plan", { body }),
+  },
+  restore_postgres: {
+    input: z.object(pgRestoreRequest),
+    run: (call, body) => call("POST /api/postgres/restore", { body }),
+  },
+  plan_node_action: {
+    input: z.object({
+      kind: z.enum(["node-cordon", "node-uncordon", "node-drain", "node-reboot"]),
+      node: nodeArg,
+      ...drainOptions,
+    }),
+    run: (call, body) => call("POST /api/deploy/actions/plan", { body: body as NodeActionRequest }),
+  },
+  cordon_node: {
+    input: z.object({ node: nodeArg }),
+    run: (call, { node }) => call("POST /api/deploy/actions/run", { body: { kind: "node-cordon", node } }),
+  },
+  uncordon_node: {
+    input: z.object({ node: nodeArg }),
+    run: (call, { node }) => call("POST /api/deploy/actions/run", { body: { kind: "node-uncordon", node } }),
+  },
+  drain_node: {
+    input: z.object({ node: nodeArg, ...drainOptions }),
+    run: (call, body) => call("POST /api/deploy/actions/run", { body: { ...body, kind: "node-drain" } }),
+  },
+  reboot_node: {
+    input: z.object({ node: nodeArg, ...drainOptions }),
+    run: (call, body) => call("POST /api/deploy/actions/run", { body: { ...body, kind: "node-reboot" } }),
   },
 };

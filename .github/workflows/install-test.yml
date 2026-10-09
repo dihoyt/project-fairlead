@@ -39,6 +39,17 @@ jobs:
         run: scripts/install/gen-scripts.sh --check
       - if: ${{ !cancelled() }}
         run: scripts/install/check-pins.sh install.sh
+      - name: An env file with an unknown key stops the installer before it looks for a cluster
+        if: ${{ !cancelled() }}
+        run: |
+          printf 'ADMIN_PASSWORD=never-printed-anywhere\nNOT_A_KEY=x\n' > "$RUNNER_TEMP/bad.env"
+          ! sh install.sh --env "$RUNNER_TEMP/bad.env" --no-k3s --yes 2> "$RUNNER_TEMP/bad.err"
+          cat "$RUNNER_TEMP/bad.err"
+          grep -q 'unknown key NOT_A_KEY on line 2' "$RUNNER_TEMP/bad.err"
+          ! grep -q never-printed-anywhere "$RUNNER_TEMP/bad.err"
+          [ -f "$RUNNER_TEMP/bad.env" ]
+          ! sh update.sh --env "$RUNNER_TEMP/bad.env" 2> "$RUNNER_TEMP/update.err"
+          grep -q 'use install.sh' "$RUNNER_TEMP/update.err"
 
   image:
     runs-on: ubuntu-latest
@@ -207,6 +218,35 @@ jobs:
           # A re-run without the flag keeps them on.
           ./install.sh --no-k3s --yes --chart ./chart > /dev/null
           [ "$(kubectl auth can-i create jobs -n "$NS" --as="$sa")" = yes ]
+      - name: A first install from an env file stores it for the console and shreds it
+        run: |
+          ./install.sh --no-k3s --yes --uninstall --purge > /dev/null
+          (umask 077; printf '%s\n' '# set up unattended' 'ADMIN_PASSWORD="from-the-env-file-1"' \
+            'export PUBLIC_URL=http://console.example.test' 'SMTP_TO=' > "$RUNNER_TEMP/install.env")
+          ./install.sh --no-k3s --yes --chart ./chart --image-tag ci --env "$RUNNER_TEMP/install.env" \
+            | tee "$RUNNER_TEMP/env.log"
+          grep -q '^Stored 2 settings from .* in Secret install-seed' "$RUNNER_TEMP/env.log"
+          grep -q '^Shredded ' "$RUNNER_TEMP/env.log"
+          grep -q '^Sign in as admin with the ADMIN_PASSWORD from the env file' "$RUNNER_TEMP/env.log"
+          ! grep -q '^Password:' "$RUNNER_TEMP/env.log"
+          ! grep -q from-the-env-file-1 "$RUNNER_TEMP/env.log"
+          [ ! -e "$RUNNER_TEMP/install.env" ]
+      - name: The console applies the file at first boot and deletes the Secret
+        run: |
+          for _ in $(seq 60); do kubectl -n "$NS" get secret install-seed > /dev/null 2>&1 || break; sleep 2; done
+          ! kubectl -n "$NS" get secret install-seed 2> /dev/null
+          scripts/install/assert-install.sh "$RUNNER_TEMP/env.log" from-the-env-file-1
+          url=$(sed -n 's/^URL: //p' "$RUNNER_TEMP/env.log" | tail -n 1)
+          curl -fsS -c "$RUNNER_TEMP/jar" -H 'content-type: application/json' \
+            --data '{"username":"admin","password":"from-the-env-file-1"}' "${url}api/auth/login" > /dev/null
+          # No forced password change: the API answers rather than 403.
+          curl -fsS -b "$RUNNER_TEMP/jar" "${url}api/onboarding/seed" | tee "$RUNNER_TEMP/seed.json"
+          jq -e '.items | map({(.id): .state}) | add == {"admin-password": "applied", "public-url": "applied"}' "$RUNNER_TEMP/seed.json"
+          # Installed and its seed used up, so another --env run is refused and its file kept.
+          printf 'ADMIN_PASSWORD=another-password-2\n' > "$RUNNER_TEMP/again.env"
+          ! ./install.sh --no-k3s --yes --chart ./chart --env "$RUNNER_TEMP/again.env" 2> "$RUNNER_TEMP/again.err"
+          grep -q 'is for a first install' "$RUNNER_TEMP/again.err"
+          [ -f "$RUNNER_TEMP/again.env" ]
       - name: Diagnostics
         if: failure()
         run: |

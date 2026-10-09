@@ -7,11 +7,12 @@ import { AppOffer, useDiscovery } from "../discovery";
 import { StepFrame, useAction, type StepProps } from "../shared";
 import { AuthentikWire, authentikAddresses } from "./AuthentikWire";
 import { EntraWire } from "./EntraWire";
+import { PocketIdWire } from "./PocketIdWire";
 import { PublicSignIn } from "./PublicSignIn";
 
-// Offered when there is no identity provider yet. Once Authentik is in the
-// cluster, wiring it creates the provider and application inside it through
-// its API.
+// Offered when there is no identity provider yet. Once Authentik or Pocket
+// ID is in the cluster, wiring it creates the console's client inside it
+// through its API.
 function SignInOffers({
   onDeployed,
   onWired,
@@ -50,6 +51,23 @@ function SignInOffers({
                 ) : (
                   <Text size="xs" c="dimmed">
                     Authentik has no address yet; give it a host on the Access step, then wire it up here.
+                  </Text>
+                );
+              })()
+            : null}
+          {app.id === "pocket-id" && app.detected.state === "installed"
+            ? (() => {
+                const at = authentikAddresses(app, discovery.report?.ingressHosts);
+                return at ? (
+                  <PocketIdWire
+                    publicUrl={at.publicUrl}
+                    apiUrl={at.apiUrl}
+                    onWired={(result) => onWired(result.issuer, result.discovery.ok)}
+                    onOpenAccess={onOpenAccess}
+                  />
+                ) : (
+                  <Text size="xs" c="dimmed">
+                    Pocket ID has no address yet; give it a host on the Access step, then wire it up here.
                   </Text>
                 );
               })()
@@ -116,7 +134,7 @@ export function OidcStep({ onFinish, onGoTo }: StepProps) {
     <StepFrame
       onFinish={onFinish}
       what="An identity provider is one place that holds everyone's login, so people sign in here with the same account they use elsewhere."
-      intro="Sign in through your identity provider (Entra ID, Authentik, Keycloak, …) or with Google and Microsoft accounts instead of local passwords. The local admin keeps working as a fallback. Skip this to stay on local accounts."
+      intro="Sign in through your identity provider (Entra ID, Authentik, Pocket ID, Keycloak, …) or with Google and Microsoft accounts instead of local passwords. The local admin keeps working as a fallback. Skip this to stay on local accounts."
       fullPage={{ to: "/admin/sign-in", label: "All sign-in settings" }}
       canFinish={result?.ok === true}
     >

@@ -11,23 +11,18 @@ pinned, checksum-verified Helm when Helm is missing.
 
 ## Fetching it
 
-While the repository is private, fetch it through the GitHub API with a token
-that can read the repository:
-
-```
-gh api -H 'Accept: application/vnd.github.raw' repos/dihoyt/project-fairlead/contents/install.sh > install.sh
-REGISTRY_USER=<github user> REGISTRY_TOKEN=<token with read:packages> sh install.sh
-```
-
-`REGISTRY_USER` / `REGISTRY_TOKEN` are only needed while the ghcr packages are
-private: the installer logs Helm in for the chart and creates a pull secret for
-the image.
-
-Once the repository and packages are public:
-
 ```
 curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install.sh | sh -
 curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install.sh | sh -s -- --host console.example.test
+```
+
+From a private fork, fetch it through the GitHub API with a token that can
+read the repository, and pass registry credentials so the installer logs Helm
+in for the chart and creates a pull secret for the image:
+
+```
+gh api -H 'Accept: application/vnd.github.raw' repos/<owner>/<repo>/contents/install.sh > install.sh
+REGISTRY_USER=<github user> REGISTRY_TOKEN=<token with read:packages> sh install.sh
 ```
 
 ## What it does
@@ -44,6 +39,12 @@ curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install
    (`--origin` overrides). Storage is the cluster's default class.
 4. Waits for the rollout, prints the URL and, on the first install only, the
    admin password with the command to read it again.
+
+With `--env <file>` (or `/etc/<slug>/install.env`), step 2 also stores the
+file's allow-listed keys in the Secret `install-seed`, which the console applies
+on first boot, and the file is shredded after a successful install unless
+`--keep-env`; see "Unattended setup from an env file" in
+[docs/install.md](../../docs/install.md).
 
 A re-run upgrades in place, keeping the release's earlier values
 (`--reset-then-reuse-values`) and applying only the flags given. `--values`

@@ -98,9 +98,8 @@ const entries: CatalogEntry[] = [
   {
     id: "longhorn",
     name: "Longhorn",
-    summary: "Replicated storage across your nodes, with snapshots and backups and a web UI.",
-    slots: ["links", "cluster-basics"],
-    linkKey: "longhorn",
+    summary: "Replicated storage across your nodes, with snapshots and backups set up from the Backups page.",
+    slots: ["cluster-basics"],
     homepage: "https://longhorn.io",
     install: helm("https://charts.longhorn.io", "longhorn", "1.13.0", {
       kubeVersion: ">=1.34.0-0",
@@ -108,13 +107,66 @@ const entries: CatalogEntry[] = [
     }),
     namespace: "longhorn-system",
     requires: [],
-    inputs: [host()],
-    exposesUi: true,
-    noLogin: true,
+    inputs: [],
+    exposesUi: false,
     prerequisites: [
       "Every node needs open-iscsi installed and running.",
       "Every node needs an NFSv4 client for volumes shared between pods.",
     ],
+  },
+  {
+    id: "cloudnative-pg",
+    name: "CloudNativePG",
+    summary: "Runs Postgres databases inside the cluster, with failover and backups handled for you.",
+    slots: ["cluster-basics"],
+    homepage: "https://cloudnative-pg.io",
+    install: helm("https://cloudnative-pg.github.io/charts", "cloudnative-pg", "0.29.1", {
+      kubeVersion: ">=1.29.0-0",
+    }),
+    namespace: "cnpg-system",
+    requires: [],
+    inputs: [],
+    exposesUi: false,
+    prerequisites: [],
+  },
+  {
+    id: "barman-cloud",
+    name: "Barman Cloud for CloudNativePG",
+    summary: "Lets Postgres back itself up continuously to S3 or MinIO, so it can be restored to any moment.",
+    slots: ["backups"],
+    homepage: "https://cloudnative-pg.io/plugin-barman-cloud/",
+    install: helm("https://cloudnative-pg.github.io/charts", "plugin-barman-cloud", "0.8.1", {
+      kubeVersion: ">=1.29.0-0",
+    }),
+    // The plugin must run beside the operator.
+    namespace: "cnpg-system",
+    requires: ["cloudnative-pg", "cert-manager"],
+    inputs: [],
+    exposesUi: false,
+    prerequisites: [],
+  },
+  {
+    id: "postgres",
+    name: "Shared Postgres",
+    summary: "One Postgres for your apps: each gets its own database and login, backed up from the Backups page.",
+    slots: ["cluster-basics"],
+    homepage: "https://cloudnative-pg.io/documentation/current/",
+    install: { kind: "patch", target: "postgresql.cnpg.io Cluster" },
+    namespace: "postgres",
+    requires: ["cloudnative-pg"],
+    inputs: [
+      {
+        key: "size",
+        label: "Volume size",
+        help: "Disk for each copy of the databases. It can grow later, never shrink.",
+        kind: "size",
+        required: true,
+        default: "10Gi",
+      },
+    ],
+    exposesUi: false,
+    storage: "10Gi",
+    prerequisites: [],
   },
   {
     id: "rancher",
@@ -193,6 +245,7 @@ const entries: CatalogEntry[] = [
     gate: "credentials",
     exposesUi: true,
     storage: "2Gi",
+    database: "postgres",
     prerequisites: [],
   },
   {
@@ -219,7 +272,27 @@ const entries: CatalogEntry[] = [
     gate: "public",
     exposesUi: true,
     storage: "4Gi",
+    database: "postgres",
     prerequisites: [],
+  },
+  {
+    id: "pocket-id",
+    name: "Pocket ID",
+    summary: "A lighter sign-in service: people sign in to your apps with a passkey, no passwords.",
+    slots: ["sign-in"],
+    homepage: "https://pocket-id.org",
+    // Community chart; Pocket ID publishes none of its own.
+    install: helm("https://anza-labs.github.io/charts", "pocket-id", "2.2.2"),
+    namespace: "pocket-id",
+    requires: [],
+    inputs: [host()],
+    // Sign-in gate: people sign in to the console through it.
+    gate: "public",
+    exposesUi: true,
+    storage: "1Gi",
+    prerequisites: [
+      "Passkeys work only over https: reach it through Cloudflare Tunnel, Tailscale, or Direct with a certificate.",
+    ],
   },
   {
     id: "velero",
@@ -239,6 +312,7 @@ const entries: CatalogEntry[] = [
     ],
     exposesUi: false,
     prerequisites: ["An S3-compatible bucket: AWS, Backblaze B2, MinIO or a NAS that speaks S3."],
+    hidden: true,
   },
   {
     id: "longhorn-backup-target",
@@ -335,6 +409,11 @@ const imageMiB: Record<string, number> = {
   grafana: 500,
   // The server image and Postgres.
   authentik: 1300,
+  "cloudnative-pg": 120,
+  "barman-cloud": 130,
+  // The Postgres image the operator runs.
+  postgres: 450,
+  "pocket-id": 60,
   // Velero, its AWS plugin and the node agent (same image).
   velero: 350,
   ntfy: 60,
@@ -353,6 +432,11 @@ const memoryMiB: Record<string, number> = {
   longhorn: 640,
   gitea: 160,
   authentik: 1056,
+  "cloudnative-pg": 64,
+  "barman-cloud": 32,
+  // Two instances at the requests ../deploy/apps.ts sets.
+  postgres: 512,
+  "pocket-id": 32,
   ntfy: 32,
   cloudflared: 64,
   "tailscale-operator": 64,
@@ -366,14 +450,17 @@ const quantity = (size: string | undefined): number => {
   return m ? Number(m[1]) * UNITS[m[2]!]! : 0;
 };
 
+// Each Postgres instance keeps a full copy of the data.
+const copies: Record<string, number> = { postgres: 2 };
+
 // Volumes are the app's `storage`: no default install here creates a second PVC.
 const footprint = (entry: CatalogEntry): DiskFootprint => ({
-  volumeBytes: quantity(entry.storage),
+  volumeBytes: quantity(entry.storage) * (copies[entry.id] ?? 1),
   imageBytes: (imageMiB[entry.id] ?? 0) * MiB,
 });
 
 export const catalog: readonly CatalogEntry[] = entries.map((entry) => {
-  if (entry.install.kind === "patch") return entry;
+  if (entry.install.kind === "patch" && !entry.storage) return entry;
   const memory = memoryMiB[entry.id];
   return { ...entry, disk: footprint(entry), ...(memory ? { memoryBytes: memory * MiB } : {}) };
 });

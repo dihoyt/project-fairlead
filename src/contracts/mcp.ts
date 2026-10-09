@@ -8,10 +8,16 @@
 // Server-free on purpose: the client and the docs list the tools from here.
 
 import type { ApiTokenScope } from "./auth.js";
-import type { BackupPosture } from "./backups.js";
+import type {
+  BackupPosture,
+  BackupSchedule,
+  BackupSchedulesView,
+  VolumeRestorePoint,
+  VolumeRestoreRequest,
+} from "./backups.js";
 import type { CatalogAppView, CatalogInput, CatalogSlot, DetectState, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
-import type { EntraGroup, EntraSignInRequest, EntraSignInView } from "./connectors.js";
+import type { EntraGroup, EntraSignInRequest, EntraSignInView, StorageTargetView } from "./connectors.js";
 import type {
   BundlePlan,
   BundleRequest,
@@ -21,6 +27,8 @@ import type {
   DeployJobView,
   DeployPlan,
   DeployRequest,
+  NodeActionRequest,
+  NodeDrainOptions,
 } from "./deploy.js";
 import type {
   Category,
@@ -32,6 +40,12 @@ import type {
 } from "./health.js";
 import type { HostView } from "./hosts.js";
 import type { NodeSummary } from "./metrics.js";
+import type {
+  PostgresBackupRequest,
+  PostgresBackupView,
+  PostgresDatabaseView,
+  PostgresRestoreRequest,
+} from "./postgres.js";
 import type { TemplateDeployRequest, TemplateJobRequest, TemplatePlan, TemplatesView } from "./templates.js";
 import type { LogLines, NamespaceView, PodView, WorkloadView } from "./workloads.js";
 
@@ -88,7 +102,8 @@ export interface McpTools {
   get_health_board: { input: None; result: HealthBoard };
   // GET /api/health/categories/:category
   get_health_category: { input: { category: Category }; result: CategoryDetail };
-  // GET /api/metrics-k8s/nodes
+  // GET /api/metrics-k8s/nodes: one row per node with its role, state,
+  // pressure, versions, uptime, pods and current usage, sparklines included.
   list_nodes: { input: None; result: Items<NodeSummary> };
   // GET /api/workloads/namespaces
   list_namespaces: { input: None; result: Items<NamespaceView> };
@@ -129,6 +144,16 @@ export interface McpTools {
   get_entra_signin: { input: None; result: EntraSignInView };
   // GET /api/connector-entra/groups, by display name prefix.
   list_entra_groups: { input: { search?: string }; result: Items<EntraGroup> };
+  // GET /api/connector-storage/targets. Never carries a credential.
+  list_storage_targets: { input: None; result: Items<StorageTargetView> };
+  // GET /api/backups/schedules
+  get_backup_schedules: { input: None; result: BackupSchedulesView };
+  // GET /api/backups/volumes/:uid/backups
+  list_volume_backups: { input: { uid: string }; result: Items<VolumeRestorePoint> };
+  // GET /api/postgres/databases
+  list_databases: { input: None; result: Items<PostgresDatabaseView> };
+  // GET /api/postgres/backups
+  get_postgres_backups: { input: None; result: PostgresBackupView };
 
   // --- write (a "write" token) ----------------------------------------------
   // POST /api/checks
@@ -169,6 +194,35 @@ export interface McpTools {
   remove_template_app: { input: RemoveTemplateAppInput; result: DeployJobView };
   // POST /api/connector-entra/signin
   setup_entra_signin: { input: EntraSignInRequest; result: EntraSignInView };
+  // PUT /api/backups/target
+  set_backup_target: { input: { connectorId: string | null }; result: DeployJobView };
+  // GET /api/backups/schedules, then PUT /api/backups/schedules with this
+  // group's schedule replaced (or added); the other groups stay.
+  set_backup_schedule: { input: BackupSchedule; result: DeployJobView };
+  // POST /api/backups/volumes/:uid/backup-now
+  backup_volume_now: { input: { uid: string }; result: DeployJobView };
+  // POST /api/backups/restore/plan; runs nothing.
+  plan_volume_restore: { input: VolumeRestoreRequest; result: DeployActionPlan };
+  // POST /api/backups/restore
+  restore_volume: { input: VolumeRestoreRequest; result: DeployJobView };
+  // PUT /api/postgres/backups
+  set_postgres_backups: { input: PostgresBackupRequest; result: DeployJobView };
+  // POST /api/postgres/backups/now
+  backup_postgres_now: { input: None; result: DeployJobView };
+  // POST /api/postgres/restore/plan; runs nothing.
+  plan_postgres_restore: { input: PostgresRestoreRequest; result: DeployActionPlan };
+  // POST /api/postgres/restore
+  restore_postgres: { input: PostgresRestoreRequest; result: DeployJobView };
+  // POST /api/deploy/actions/plan with a node action; runs nothing.
+  plan_node_action: { input: NodeActionRequest; result: DeployActionPlan };
+  // POST /api/deploy/actions/run with node-cordon.
+  cordon_node: { input: { node: string }; result: DeployJobView };
+  // POST /api/deploy/actions/run with node-uncordon.
+  uncordon_node: { input: { node: string }; result: DeployJobView };
+  // POST /api/deploy/actions/run with node-drain.
+  drain_node: { input: { node: string } & NodeDrainOptions; result: DeployJobView };
+  // POST /api/deploy/actions/run with node-reboot.
+  reboot_node: { input: { node: string } & NodeDrainOptions; result: DeployJobView };
 }
 
 export type McpToolName = keyof McpTools;
@@ -208,7 +262,8 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
   {
     name: "list_nodes",
     title: "Nodes",
-    description: "Kubernetes nodes with readiness, roles, CPU and memory use.",
+    description:
+      "Kubernetes nodes, one row each: role, Ready/cordoned, pressure, kubelet version drift, uptime, pods against capacity, CPU, memory, filesystem, network, load and Longhorn space left, with 30-minute sparklines.",
     scope: "read",
     readOnly: true,
     destructive: false,
@@ -334,6 +389,51 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
     title: "Entra groups",
     description:
       "Security groups in the Entra tenant by display name prefix, with the object ids setup_entra_signin takes as adminGroups.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_storage_targets",
+    title: "Storage targets",
+    description:
+      "Every backup destination (NFS export, S3/MinIO bucket, SMB share) with its reachability checks and what uses it, such as Longhorn's backup target. Never shows a credential.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "get_backup_schedules",
+    title: "Backup schedules",
+    description:
+      'Longhorn\'s recurring snapshot and backup schedule per volume group ("default" covers every volume in no other group), or the suggested ones while none is set.',
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_volume_backups",
+    title: "A volume's backups",
+    description:
+      "The backups of one volume on the backup target, newest first, by the PVC's uid from get_backup_posture: the restore points restore_volume takes.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_databases",
+    title: "Postgres databases",
+    description:
+      "Every database on the shared Postgres cluster with its role, the app it serves, its connection Secret, size and open connections.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "get_postgres_backups",
+    title: "Postgres backups",
+    description:
+      "How the shared Postgres is backed up: point-in-time (base backups and WAL archive on an S3/MinIO target) or nightly dumps (NFS/SMB through Longhorn), with the first recoverable moment, archive lag, last backup and restore points.",
     scope: "read",
     readOnly: true,
     destructive: false,
@@ -482,5 +582,127 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
     scope: "write",
     readOnly: false,
     destructive: false,
+  },
+  {
+    name: "set_backup_target",
+    title: "Set the backup target",
+    description:
+      "Points Longhorn's backup target at a storage target from list_storage_targets (with its credential Secret), or clears it with null. Starts a deploy job.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "set_backup_schedule",
+    title: "Set a backup schedule",
+    description:
+      "Sets one volume group's recurring snapshot and backup crons and how many of each to keep; other groups stay as they are. A cron left out turns that half off. Starts a deploy job.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "backup_volume_now",
+    title: "Back up a volume now",
+    description: "Snapshots one Longhorn volume (by PVC uid) and backs it up to the target now. Starts a deploy job.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "plan_volume_restore",
+    title: "Preview a volume restore",
+    description:
+      "What restoring a backup from list_volume_backups would do: to a new PVC beside the old one (default), or in place with the app scaled down meanwhile; runs nothing.",
+    scope: "write",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "restore_volume",
+    title: "Restore a volume",
+    description:
+      "Restores a backup to a new PVC, or in place (mode in-place), which stops the app and replaces the volume's current data with the backup's. Preview with plan_volume_restore first.",
+    scope: "write",
+    readOnly: false,
+    destructive: true,
+  },
+  {
+    name: "set_postgres_backups",
+    title: "Set up Postgres backups",
+    description:
+      "Backs the shared Postgres up to a storage target from list_storage_targets: S3/MinIO gets base backups plus continuous WAL archiving (point-in-time restore); NFS or SMB gets scheduled dumps, and must be Longhorn's backup target. null turns backups off. Starts a deploy job.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "backup_postgres_now",
+    title: "Back up Postgres now",
+    description: "Takes a base backup (point-in-time) or a dump of the shared Postgres now. Starts a deploy job.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "plan_postgres_restore",
+    title: "Preview a Postgres restore",
+    description:
+      "What restoring the shared Postgres would do, to a moment (`at`, point-in-time) or to a dump (`dumpId`) from get_postgres_backups; runs nothing.",
+    scope: "write",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "restore_postgres",
+    title: "Restore Postgres",
+    description:
+      "Restores the shared Postgres into a new cluster, to a moment (`at`) or a dump (`dumpId`), then points every app at it and restarts them; the old cluster is kept, stopped. Preview with plan_postgres_restore first.",
+    scope: "write",
+    readOnly: false,
+    destructive: true,
+  },
+  {
+    name: "plan_node_action",
+    title: "Preview a node action",
+    description:
+      "What cordoning, uncordoning, draining or rebooting a node would do, with each pod a drain would evict, skip or wait on (PodDisruptionBudgets); runs nothing.",
+    scope: "write",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "cordon_node",
+    title: "Cordon a node",
+    description: "Marks a node unschedulable; its running pods stay. uncordon_node undoes it.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "uncordon_node",
+    title: "Uncordon a node",
+    description: "Makes a cordoned node schedulable again.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "drain_node",
+    title: "Drain a node",
+    description:
+      "Cordons a node and evicts its pods through the eviction API, respecting PodDisruptionBudgets; DaemonSet pods stay by default. Preview with plan_node_action first.",
+    scope: "write",
+    readOnly: false,
+    destructive: true,
+  },
+  {
+    name: "reboot_node",
+    title: "Reboot a node",
+    description:
+      "Drains a node, reboots it, waits for it to come back Ready and uncordons it. Preview with plan_node_action first; it says when a node can't be rebooted from here.",
+    scope: "write",
+    readOnly: false,
+    destructive: true,
   },
 ];

@@ -12,9 +12,12 @@ import type {
   DiscoveryReport,
   IngressHost,
 } from "../catalog.js";
+import type { ConsoleBackupView } from "../backups.js";
 import {
+  CONSOLE_BACKUP_APP,
   UPGRADE_RUN,
   type AccessView,
+  type ConsoleNightlyView,
   type BundlePlan,
   type BundleRunView,
   type DeployActionPlan,
@@ -133,6 +136,46 @@ const catalogEntries: CatalogEntry[] = [
     prerequisites: ["Every node needs open-iscsi installed and running."],
   },
   {
+    id: "cloudnative-pg",
+    name: "CloudNativePG",
+    summary: "Runs Postgres databases inside the cluster, with failover and backups handled for you.",
+    slots: ["cluster-basics"],
+    homepage: "https://cloudnative-pg.io",
+    install: helm("https://cloudnative-pg.github.io/charts", "cloudnative-pg", "0.0.0-mock"),
+    namespace: "cnpg-system",
+    requires: [],
+    inputs: [],
+    exposesUi: false,
+    prerequisites: [],
+  },
+  {
+    id: "barman-cloud",
+    name: "Barman Cloud for CloudNativePG",
+    summary: "Lets Postgres back itself up continuously to S3 or MinIO, so it can be restored to any moment.",
+    slots: ["backups"],
+    homepage: "https://cloudnative-pg.io/plugin-barman-cloud/",
+    install: helm("https://cloudnative-pg.github.io/charts", "plugin-barman-cloud", "0.0.0-mock"),
+    namespace: "cnpg-system",
+    requires: ["cloudnative-pg", "cert-manager"],
+    inputs: [],
+    exposesUi: false,
+    prerequisites: [],
+  },
+  {
+    id: "postgres",
+    name: "Shared Postgres",
+    summary: "One Postgres for your apps: each gets its own database and login, backed up from the Backups page.",
+    slots: ["cluster-basics"],
+    homepage: "https://cloudnative-pg.io/documentation/current/",
+    install: { kind: "patch", target: "postgresql.cnpg.io Cluster" },
+    namespace: "postgres",
+    requires: ["cloudnative-pg"],
+    inputs: [{ key: "size", label: "Volume size", kind: "size", required: true, default: "10Gi" }],
+    exposesUi: false,
+    storage: "10Gi",
+    prerequisites: [],
+  },
+  {
     id: "rancher",
     name: "Rancher",
     summary: "A full web console for managing Kubernetes clusters.",
@@ -202,6 +245,7 @@ const catalogEntries: CatalogEntry[] = [
     inputs: [host(), { key: "adminPassword", label: "Admin password", kind: "secret", required: true }],
     exposesUi: true,
     storage: "5Gi",
+    database: "postgres",
     prerequisites: [],
   },
   {
@@ -216,6 +260,22 @@ const catalogEntries: CatalogEntry[] = [
     inputs: [host(), { key: "adminEmail", label: "Admin email", kind: "text", required: true }],
     exposesUi: true,
     storage: "8Gi",
+    database: "postgres",
+    prerequisites: [],
+  },
+  {
+    id: "pocket-id",
+    name: "Pocket ID",
+    summary: "A lighter sign-in service: people sign in to your apps with a passkey, no passwords.",
+    slots: ["sign-in"],
+    homepage: "https://pocket-id.org",
+    install: helm("https://anza-labs.github.io/charts", "pocket-id", "0.0.0-mock"),
+    namespace: "pocket-id",
+    requires: [],
+    inputs: [host()],
+    gate: "public",
+    exposesUi: true,
+    storage: "1Gi",
     prerequisites: [],
   },
   {
@@ -236,6 +296,7 @@ const catalogEntries: CatalogEntry[] = [
     ],
     exposesUi: false,
     prerequisites: ["An S3-compatible bucket: AWS, Backblaze B2, MinIO or a NAS that speaks S3."],
+    hidden: true,
   },
   {
     id: "longhorn-backup-target",
@@ -950,6 +1011,101 @@ export const mockReplicasJob: DeployJobView = {
   mode: "action",
   action: "longhorn-replicas",
   job: { namespace: "console", name: "deploy-longhorn-7" },
+};
+
+// The Backups page's set-up jobs: each a deploy action on release "longhorn".
+const backupActionJob = (id: string, action: NonNullable<DeployJobView["action"]>): DeployJobView => ({
+  ...mockReplicasJob,
+  id,
+  action,
+  job: { namespace: "console", name: `deploy-longhorn-${id.slice(3)}` },
+});
+
+export const mockBackupTargetJob = backupActionJob("dj_21", "longhorn-target");
+export const mockBackupRecurringJob = backupActionJob("dj_22", "longhorn-recurring");
+export const mockBackupNowJob = backupActionJob("dj_23", "longhorn-backup-now");
+export const mockRestoreJob = backupActionJob("dj_24", "longhorn-restore");
+
+// The console's nightly copy: last night's run, onto the NFS target.
+export const mockConsoleBackupJob: DeployJobView = {
+  ...mockReplicasJob,
+  id: "dj_25",
+  appId: CONSOLE_BACKUP_APP,
+  release: "console",
+  namespace: "console",
+  action: "console-backup",
+  state: "succeeded",
+  startedBy: "schedule",
+  createdAt: isoAgo(22 * HOUR),
+  startedAt: isoAgo(22 * HOUR),
+  finishedAt: isoAgo(22 * HOUR - 40_000),
+  message: "Copied console-20261008T033000Z.db (2.4 MB) to nfs://nas.example.test:/volume1/backups/cluster/",
+  job: { namespace: "console", name: "deploy-console-25" },
+};
+
+export const mockConsoleNightly: ConsoleNightlyView = {
+  schedule: "30 3 * * *",
+  keep: 14,
+  target: { connectorId: "cn_st1", name: "NAS", url: "nfs://nas.example.test:/volume1/backups/cluster/" },
+  last: mockConsoleBackupJob,
+  lastGood: { at: isoAgo(22 * HOUR), file: "console-20261008T033000Z.db", sizeBytes: 2_516_582 },
+  nextAt: isoAgo(-2 * HOUR),
+};
+
+// On local-path: the nightly copy is all there is.
+export const mockConsoleBackup: ConsoleBackupView = {
+  claim: { namespace: "console", name: "console", uid: "uid-console" },
+  storageClass: "local-path",
+  storage: "local-path",
+  nightly: mockConsoleNightly,
+  secretsKey: true,
+  restoreCommand:
+    "sudo ./install.sh --restore ./recovery-kit.txt --from ./console-20261008T033000Z.db --release console --namespace console",
+};
+
+// On Longhorn, in the critical group; the nightly copy still runs.
+export const mockConsoleBackupLonghorn: ConsoleBackupView = {
+  ...mockConsoleBackup,
+  storageClass: "longhorn",
+  storage: "longhorn",
+  groups: ["critical"],
+  lastVolumeBackupAt: isoAgo(5 * HOUR),
+};
+
+export const mockRecoveryKit = `# console recovery kit
+# release: console  namespace: console  build: 3f9c2e1  created: 2026-10-09T00:00:00Z
+# Open with: openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -a -A
+U2FsdGVkX19tb2NrbW9ja01PQ0tfTk9UX0FfUkVBTF9LSVQ=
+`;
+
+// Restore postgres-data's backup-6f1c2a to a new claim.
+export const mockRestorePlan: DeployActionPlan = {
+  kind: "longhorn-restore",
+  title: "Restore postgres-data to postgres-data-restored-20261009",
+  allowed: true,
+  steps: [
+    {
+      label: "Restore backup-6f1c2a into a new Longhorn volume",
+      commands: ["kubectl apply --namespace longhorn-system -f /values/volume.yaml"],
+    },
+    {
+      label: "Bind postgres-data-restored-20261009 to it",
+      commands: [
+        "kubectl apply --namespace apps -f /values/claim.yaml",
+        "kubectl wait --namespace apps --for=jsonpath={.status.phase}=Bound pvc/postgres-data-restored-20261009 --timeout=10m",
+      ],
+    },
+  ],
+  rollback: "The new volume and claim are deleted; postgres-data is never touched.",
+  changes: [],
+  creates: [
+    { kind: "Volume", name: "postgres-data-restored-20261009", namespace: "longhorn-system" },
+    { kind: "PersistentVolumeClaim", name: "postgres-data-restored-20261009", namespace: "apps" },
+    { kind: "Job", name: "deploy-longhorn-24", namespace: "console" },
+    { kind: "Secret", name: "deploy-longhorn-values", namespace: "console" },
+  ],
+  warnings: ["The app keeps using postgres-data; point it at the restored claim yourself, or restore in place."],
+  volumes: [{ namespace: "apps", claim: "postgres-data", storageClass: "longhorn", size: "50Gi" }],
 };
 
 export const mockMigratePlan: DeployActionPlan = {

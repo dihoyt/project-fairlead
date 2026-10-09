@@ -6,8 +6,10 @@
 //
 // Server-free on purpose: the client imports this file.
 
+import type { BackupSchedule, RestoreMode } from "./backups.js";
 import type { CatalogEntry } from "./catalog.js";
 import type { DiskCheck } from "./disk.js";
+import type { PostgresBackupRequest, PostgresRestoreRequest } from "./postgres.js";
 
 export type DeployValue = string | boolean;
 
@@ -249,7 +251,27 @@ export interface UpgradeRequest {
 // ends with deploy.finished. Needs deploy.enabled, like installs.
 
 export type DeployActionKind =
-  "longhorn-replicas" | "migrate-to-longhorn" | "backup-volumes" | "remove-app" | "app-gate" | "traefik-ports";
+  | "longhorn-replicas"
+  | "migrate-to-longhorn"
+  | "migrate-storage"
+  | "backup-volumes"
+  | "remove-app"
+  | "app-gate"
+  | "traefik-ports"
+  | "longhorn-target"
+  | "longhorn-recurring"
+  | "longhorn-backup-now"
+  | "longhorn-restore"
+  | "console-backup"
+  | "node-cordon"
+  | "node-uncordon"
+  | "node-drain"
+  | "node-reboot"
+  | "pg-database"
+  | "pg-backups"
+  | "pg-backup-now"
+  | "pg-restore"
+  | "pg-remove-cluster";
 
 // Raises Longhorn's default-replica-count Setting (what new volumes get),
 // the replica count pinned by a Longhorn StorageClass when it is lower, and,
@@ -322,13 +344,216 @@ export interface TraefikPortsAction {
   kind: "traefik-ports";
 }
 
+// migrate-to-longhorn in either direction, by the same claim swap:
+// to "longhorn" is migrate-to-longhorn (that kind stays as its alias);
+// to "local-path" moves every Longhorn volume the app mounts onto one
+// node's local-path volume, which the plan warns leaves Longhorn backups
+// and replicas behind. Refused when the app has no volume to move.
+export interface MigrateStorageAction {
+  kind: "migrate-storage";
+  appId: string;
+  to: "longhorn" | "local-path";
+}
+
+// --- Backup set-up actions (module "backups" starts them) ---
+// All run in longhorn-system and take the release "longhorn", so one runs at
+// a time; refused while Longhorn is not installed.
+
+// Points Longhorn's default BackupTarget at a storage-target connector
+// (spec.backupTargetURL from StorageTargetView.url) and, for s3 and smb,
+// applies the credential Secret from StorageTargetService.credentialsSecret()
+// in longhorn-system and sets spec.credentialSecret to it. connectorId null
+// clears the URL and the credential reference; the Secret this product made
+// is deleted.
+export interface LonghornTargetAction {
+  kind: "longhorn-target";
+  connectorId: string | null;
+}
+
+// Makes Longhorn's RecurringJobs match the schedules (one snapshot and one
+// backup job per group, named "<externalPrefix><group>-snapshot" and
+// "-backup", labelled managed-by; others are left alone), and/or sets
+// volumes' group labels (recurring-job-group.longhorn.io/<group>: enabled)
+// on their Longhorn Volume. At least one of the two is given; schedules is
+// the whole set, as BackupSchedulesRequest.
+export interface LonghornRecurringAction {
+  kind: "longhorn-recurring";
+  schedules?: BackupSchedule[];
+  volumes?: Array<{ namespace: string; claim: string; groups: string[] }>;
+}
+
+// Takes a snapshot of the claim's Longhorn volume and backs it up to the
+// target now. Refused without an available target.
+export interface LonghornBackupNowAction {
+  kind: "longhorn-backup-now";
+  namespace: string;
+  claim: string;
+}
+
+// Restores a Longhorn Backup (VolumeRestorePoint.id) of the claim's volume.
+// new-pvc: a new Longhorn volume from the backup and a claim `newClaim`
+// bound to it in the same namespace. in-place: scale the workloads that
+// mount the claim to zero, restore to a new volume, rebind the claim under
+// the same name to it (actions/migrate.ts's swap, old volume kept with
+// Retain until the app answers), scale back up, check.
+export interface LonghornRestoreAction {
+  kind: "longhorn-restore";
+  namespace: string;
+  claim: string;
+  backup: string;
+  mode: RestoreMode;
+  // new-pvc only; required there.
+  newClaim?: string;
+}
+
+// The console's own data, now: a consistent snapshot of its database
+// (SQLite's VACUUM INTO, so it is whole under WAL) copied to a storage
+// target as "<release>-<UTC timestamp>.db" under "<externalPrefix>console/",
+// keeping the newest `keep`. Runs in the console's namespace under the
+// installer ServiceAccount; the job row's appId is CONSOLE_BACKUP_APP.
+// Nightly runs are started by module "deploy" itself on the
+// deploy.consoleBackup schedule, as actor "schedule".
+export interface ConsoleBackupAction {
+  kind: "console-backup";
+  // Default: the storage target behind Longhorn's backup target, else the
+  // only storage target. The plan is refused when neither resolves.
+  connectorId?: string;
+  // 1 to 90, default the deploy.consoleBackupKeep setting (14).
+  keep?: number;
+}
+
+export const CONSOLE_BACKUP_APP = "console";
+
+// GET /api/deploy/console-backup: the nightly copy's schedule and last run.
+export interface ConsoleNightlyView {
+  // Five-field cron in UTC from deploy.consoleBackup; "" when off.
+  schedule: string;
+  keep: number;
+  // The target the next run would use, or why there is none.
+  target?: { connectorId: string; name: string; url: string };
+  blockedBy?: string;
+  // Newest console-backup job, scheduled or by hand.
+  last?: DeployJobView;
+  // Newest succeeded one: the copy install.sh --restore would take.
+  lastGood?: { at: string; file: string; sizeBytes?: number };
+  nextAt?: string;
+}
+// --- Node actions ---
+// Each runs as an action job like the rest, under the installer
+// ServiceAccount. The job row's appId and release are "node-<node>", so one
+// action per node runs at a time and list_deploy_jobs can filter by node.
+
+// Marks the node unschedulable (kubectl cordon); running pods stay.
+export interface NodeCordonAction {
+  kind: "node-cordon";
+  node: string;
+}
+
+// Makes the node schedulable again (kubectl uncordon).
+export interface NodeUncordonAction {
+  kind: "node-uncordon";
+  node: string;
+}
+
+export interface NodeDrainOptions {
+  // Leave DaemonSet pods in place (--ignore-daemonsets). Default true;
+  // false refuses the drain while the node runs one.
+  ignoreDaemonSets?: boolean;
+  // Evict pods that use emptyDir volumes, losing that data
+  // (--delete-emptydir-data). Default false: such a pod blocks the drain.
+  deleteEmptyDirData?: boolean;
+  // How long evictions may wait, PodDisruptionBudgets included, before the
+  // drain fails (--timeout). 30 to 3600, default 300. There is no force
+  // option: unmanaged pods and PDB-blocked evictions fail the drain.
+  timeoutSeconds?: number;
+}
+
+// Cordons, then evicts the node's pods through the eviction API, so
+// PodDisruptionBudgets are respected (kubectl drain). Refused for the last
+// schedulable control-plane node of a single-node cluster.
+export interface NodeDrainAction extends NodeDrainOptions {
+  kind: "node-drain";
+  node: string;
+}
+
+// Drains the node, reboots it, waits for it to go NotReady and come back
+// Ready, then uncordons it. How the reboot command reaches the node is the
+// recipe's choice; the plan's blockedBy says when a node can't be rebooted
+// from here.
+export interface NodeRebootAction extends NodeDrainOptions {
+  kind: "node-reboot";
+  node: string;
+}
+
+// --- Shared Postgres actions (./postgres.ts) ---
+// All run in the postgres namespace and take the release "postgres", so one
+// runs at a time; refused while the shared cluster is not installed.
+
+// A database and a login role on the shared cluster for an app, both named
+// pgName(appId): CloudNativePG Database and DatabaseRole objects (reclaim
+// policy retain, so removing them leaves the data), the role's password in
+// a Secret beside them, and the app's connection Secret pgSecretName(appId)
+// in `namespace`. Running it again keeps the database and sets a new
+// password in both Secrets. Installing an app whose CatalogEntry.database
+// is "postgres" runs the same steps before its chart.
+export interface PgDatabaseAction {
+  kind: "pg-database";
+  appId: string;
+  namespace: string;
+}
+
+// Sets up the shared cluster's backups (PostgresBackupRequest). pitr: an
+// ObjectStore for the target with its credential Secret
+// (StorageTargetService.credentialsSecret, by key reference), the Barman
+// Cloud plugin as the Cluster's WAL archiver, and a ScheduledBackup. dump: a
+// CronJob running pg_dumpall onto a Longhorn claim in the "critical" group;
+// refused unless the target is Longhorn's backup target. Switching method
+// removes the other one's objects; null removes both.
+export interface PgBackupsAction extends PostgresBackupRequest {
+  kind: "pg-backups";
+}
+
+// A base backup (pitr) or a dump (dump) now. Refused while backups are off.
+export interface PgBackupNowAction {
+  kind: "pg-backup-now";
+}
+
+// Never in place. A new Cluster from the backup (pitr: recovered to `at`;
+// dump: initialised, then loaded from the dump), its databases' objects
+// made for it, every app's connection Secret pointed at it and the app's
+// workloads restarted; backups move to it. The old Cluster is hibernated
+// and kept (PostgresClusterView.previous) until pg-remove-cluster.
+export interface PgRestoreAction extends PostgresRestoreRequest {
+  kind: "pg-restore";
+}
+
+// Deletes a cluster a restore replaced, with its volumes. Refused for the
+// cluster the apps use now.
+export interface PgRemoveClusterAction {
+  kind: "pg-remove-cluster";
+  name: string;
+}
+
+export type PostgresActionRequest =
+  PgDatabaseAction | PgBackupsAction | PgBackupNowAction | PgRestoreAction | PgRemoveClusterAction;
+
+export type NodeActionRequest = NodeCordonAction | NodeUncordonAction | NodeDrainAction | NodeRebootAction;
+
 export type DeployActionRequest =
   | LonghornReplicasAction
   | MigrateToLonghornAction
+  | MigrateStorageAction
   | BackupVolumesAction
   | RemoveAppAction
   | AppGateAction
-  | TraefikPortsAction;
+  | TraefikPortsAction
+  | LonghornTargetAction
+  | LonghornRecurringAction
+  | LonghornBackupNowAction
+  | LonghornRestoreAction
+  | ConsoleBackupAction
+  | NodeActionRequest
+  | PostgresActionRequest;
 
 export interface DeployActionStep {
   // "Raise the default replica count to 2".
@@ -364,6 +589,29 @@ export interface DeployActionPlan {
   // migrate-to-longhorn: Longhorn can place replicas on more than one node,
   // so raising replicas (longhorn-replicas) is offered once it is done.
   offerReplicas?: boolean;
+  // node-drain and node-reboot: the node's pods and what the drain does
+  // with each, as read when the plan was made.
+  pods?: DrainPod[];
+}
+
+// evict: evicted and rescheduled elsewhere by its controller.
+// skip: left in place (a DaemonSet pod with ignoreDaemonSets, a mirror pod).
+// block: stops the drain; reason says why (no controller, emptyDir without
+//   deleteEmptyDirData, a DaemonSet without ignoreDaemonSets).
+// wait: evictable, but a PodDisruptionBudget allows no disruption right now;
+//   the drain waits for it up to timeoutSeconds.
+export type DrainPodOutcome = "evict" | "skip" | "block" | "wait";
+
+export interface DrainPod {
+  namespace: string;
+  name: string;
+  // The controlling owner, "ReplicaSet/web-6d4f" or "DaemonSet/longhorn-manager".
+  owner?: string;
+  outcome: DrainPodOutcome;
+  // One sentence for skip, block and wait.
+  reason?: string;
+  // wait: the PodDisruptionBudget holding it.
+  pdb?: string;
 }
 
 export interface ActionVolume {

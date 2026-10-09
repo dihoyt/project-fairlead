@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { SettingsRegistry } from "../../contracts/platform.js";
 import { product } from "../../product.js";
 import type { Defaults } from "./apps.js";
+import { parseCron } from "./cron.js";
 
 const SA_NAMESPACE = "/var/run/secrets/kubernetes.io/serviceaccount/namespace";
 
@@ -25,6 +26,9 @@ export interface DeployConfig {
   namespace(): string;
   release(): string;
   chart(): string;
+  // The console's nightly database copy: a five-field cron in UTC, "" off.
+  consoleBackup(): string;
+  consoleBackupKeep(): number;
 }
 
 export function declareConfig(settings: SettingsRegistry): DeployConfig {
@@ -103,6 +107,24 @@ export function declareConfig(settings: SettingsRegistry): DeployConfig {
     envOnly: true,
   });
 
+  const consoleBackup = settings.declare({
+    key: "deploy.consoleBackup",
+    label: "Console backup schedule",
+    help: "When the console copies its own database to the storage target: five-field cron in UTC. Empty: never.",
+    schema: z
+      .string()
+      .trim()
+      .refine((v) => v === "" || parseCron(v) !== null, "Use a five-field cron such as 30 3 * * *, or leave it empty."),
+    default: "30 3 * * *",
+  });
+  const consoleBackupKeep = settings.declare({
+    key: "deploy.consoleBackupKeep",
+    label: "Console backups kept",
+    help: "How many copies of the console's database stay on the storage target.",
+    schema: z.number().int().min(1).max(90),
+    default: 14,
+  });
+
   return {
     defaults: () => ({
       baseDomain: baseDomain.get() || undefined,
@@ -115,6 +137,8 @@ export function declareConfig(settings: SettingsRegistry): DeployConfig {
     namespace: () => namespace.get(),
     release: () => release.get(),
     chart: () => chart.get(),
+    consoleBackup: () => consoleBackup.get(),
+    consoleBackupKeep: () => consoleBackupKeep.get(),
   };
 }
 

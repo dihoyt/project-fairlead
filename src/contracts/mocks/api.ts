@@ -7,15 +7,19 @@ import type { CheckView } from "../checks.js";
 import type { JoinLink, JoinStatus } from "../cluster.js";
 import type { CategoryDetail, CheckResult, HealthBoard, HealthLinkView, HealthTile } from "../health.js";
 import type { HostView } from "../hosts.js";
-import type { ChannelView } from "../notify.js";
+import type { ChannelView, EmailSetupView } from "../notify.js";
 import type { OnboardingState } from "../onboarding.js";
+import { mockSeedDone } from "./seed.js";
 import type { PodView, WorkloadLinks } from "../workloads.js";
 import {
   mockFailingVolume,
   mockNeverBackedUpVolume,
   mockProtectedVolume,
   mockPvcs,
+  mockBackupSchedules,
+  mockBackupTargetView,
   mockReplicaAdvice,
+  mockRestorePoints,
   mockStaleVolume,
   mockTargets,
 } from "./backups.js";
@@ -33,8 +37,17 @@ import {
   mockFailedJob,
   mockGateStatus,
   mockHostKeypair,
+  mockBackupNowJob,
+  mockBackupRecurringJob,
+  mockBackupTargetJob,
   mockReplicasJob,
   mockReplicasPlan,
+  mockRestoreJob,
+  mockConsoleBackup,
+  mockConsoleBackupJob,
+  mockConsoleNightly,
+  mockRecoveryKit,
+  mockRestorePlan,
   mockRunningJob,
   mockUpgradeReport,
   mockUpgradeRun,
@@ -48,11 +61,24 @@ import {
   mockConnectorKinds,
   mockConnectors,
   mockEntraGroups,
+  mockEntraCertificate,
   mockEntraSignIn,
+  mockNfsTarget,
+  mockStorageTargets,
 } from "./connectors/views.js";
 import { mockCheckResults } from "./health.js";
 import { mockPortsView, mockTemplateJob, mockTemplatePlan, mockTemplatesView } from "./templates.js";
 import { mockSeriesResults } from "./metrics.js";
+import { mockNodeSummaries } from "./nodes.js";
+import {
+  mockPgBackupNowJob,
+  mockPgBackupsJob,
+  mockPgRestoreJob,
+  mockPgRestorePlan,
+  mockPostgresBackups,
+  mockPostgresCluster,
+  mockPostgresDatabases,
+} from "./postgres.js";
 import { mockClusterUsage, mockSpaceUsage } from "./workloads.js";
 import { DAY, HOUR, MOCK_NOW, isoAgo } from "./time.js";
 
@@ -139,6 +165,8 @@ const postureRow = (
 
 export const mockPosture: BackupPosture = {
   generatedAt: now,
+  target: mockBackupTargetView,
+  schedules: mockBackupSchedules.schedules,
   sources: [
     { id: "longhorn", label: "Longhorn", state: "ok", volumes: 3 },
     { id: "velero", label: "Velero", state: "ok", volumes: 1 },
@@ -207,6 +235,52 @@ export const mockChannel: ChannelView = {
   config: { server: "https://ntfy.sh", topic: "cluster-alerts" },
   hasSecret: false,
   lastSentAt: isoAgo(2 * HOUR),
+};
+
+export const mockEmailChannel: ChannelView = {
+  id: "ch_email",
+  kind: "email",
+  label: "Ops mailbox",
+  enabled: true,
+  minSeverity: "crit",
+  config: {
+    email: {
+      preset: "gmail",
+      mode: "smtp",
+      host: "smtp.gmail.com",
+      port: 587,
+      security: "starttls",
+      username: "alerts@example.com",
+      from: "alerts@example.com",
+      to: ["ops@example.com"],
+    },
+  },
+  hasSecret: true,
+  lastSentAt: isoAgo(3 * HOUR),
+};
+
+export const mockEmailOAuthChannel: ChannelView = {
+  id: "ch_email_oauth",
+  kind: "email",
+  label: "Outlook",
+  enabled: true,
+  minSeverity: "warn",
+  config: {
+    email: {
+      preset: "microsoft-oauth",
+      mode: "oauth",
+      clientId: "00000000-0000-0000-0000-000000000001",
+      account: "someone@outlook.com",
+      to: ["someone@outlook.com"],
+    },
+  },
+  hasSecret: true,
+};
+
+export const mockEmailSetup: EmailSetupView = {
+  redirectUri: "https://console.example.com/api/notify/oauth/callback",
+  signInClient: { provider: "google", clientId: "1234-abc.apps.googleusercontent.com" },
+  entra: { ready: false, reason: "Add the Microsoft Entra ID connector first (Admin > Connectors)." },
 };
 
 export const mockHost: HostView = {
@@ -517,6 +591,26 @@ export const apiMocks: ApiMocks = {
     discovery: { ok: true },
     testSignIn: "auth/oidc/start?link=1",
   },
+  "GET /api/admin/oidc/pocket-id": {
+    pocketIdUrl: "https://id.example.test",
+    clientName: "Console",
+    clientId: "console",
+    redirectUri: "https://console.example.test/auth/oidc/callback",
+    issuer: "https://id.example.test",
+    hasStoredKey: false,
+    blocked: null,
+  },
+  "POST /api/admin/oidc/pocket-id": {
+    pocketIdUrl: "https://id.example.test",
+    issuer: "https://id.example.test",
+    clientId: "console",
+    redirectUri: "https://console.example.test/auth/oidc/callback",
+    client: "created",
+    settings: ["auth.oidc.issuer", "auth.oidc.clientId", "auth.oidc.label", "auth.oidc.enabled"],
+    keyKept: false,
+    discovery: { ok: true },
+    testSignIn: "auth/oidc/start?link=1",
+  },
   "POST /api/admin/oidc/public": {
     provider: "google",
     issuer: "https://accounts.google.com",
@@ -613,13 +707,24 @@ export const apiMocks: ApiMocks = {
       prefix: "api_Q7mz",
       expiresAt: null,
     },
+    {
+      ...mockApiToken,
+      id: "tok_3",
+      name: "Team apps CI",
+      prefix: "api_Rb2n",
+      namespaces: ["apps", "staging"],
+      areas: ["workloads", "deploy"],
+      lastUsedAt: null,
+    },
   ],
   "POST /api/admin/tokens": { token: mockApiToken, secret: "api_Xk3dMockSecretNotReal0000000000000000000" },
+  "PATCH /api/admin/tokens/:id": { ...mockApiToken, namespaces: ["apps"], areas: ["workloads"] },
   "DELETE /api/admin/tokens/:id": { ok: true },
   "POST /api/admin/oauth/consent": {
     client: { id: "cli_1", name: "Claude", redirectUri: "https://claude.ai/api/mcp/auth_callback" },
     requestedScope: "write",
   },
+  "POST /api/admin/recovery-kit": mockRecoveryKit,
 
   "GET /api/health/board": mockHealthBoard,
   "GET /api/health/categories/:category": mockCategoryDetail,
@@ -647,11 +752,16 @@ export const apiMocks: ApiMocks = {
     { series: "node.memory.percent", labelKeys: ["node"], firstTs: MOCK_NOW - 30 * DAY, lastTs: MOCK_NOW },
   ],
 
-  "GET /api/notify/channels": [mockChannel],
+  "GET /api/notify/channels": [mockChannel, mockEmailChannel, mockEmailOAuthChannel],
   "POST /api/notify/channels": mockChannel,
   "PUT /api/notify/channels/:id": mockChannel,
   "DELETE /api/notify/channels/:id": { ok: true },
-  "POST /api/notify/channels/:id/test": { ok: true, status: 200 },
+  "POST /api/notify/channels/:id/test": { ok: true, status: 250 },
+  "GET /api/notify/email/setup": mockEmailSetup,
+  "POST /api/notify/channels/:id/oauth": {
+    url: "https://accounts.google.com/o/oauth2/v2/auth?client_id=1234-abc.apps.googleusercontent.com&state=mock",
+  },
+  "GET /api/notify/oauth/callback": "",
 
   "GET /api/hosts": [mockHost],
   "POST /api/hosts": mockHost,
@@ -675,11 +785,7 @@ export const apiMocks: ApiMocks = {
   "DELETE /api/checks/:id": { ok: true },
   "POST /api/checks/:id/run": mockCheck.last!,
 
-  "GET /api/metrics-k8s/nodes": [
-    { name: "node-1", ready: true, cpuPercent: 41.5, memoryPercent: 63.2, pods: 34, source: "kubelet" },
-    { name: "node-2", ready: true, cpuPercent: 22.1, memoryPercent: 58.9, pods: 28, source: "kubelet" },
-    { name: "node-3", ready: false, pods: 0, source: "none" },
-  ],
+  "GET /api/metrics-k8s/nodes": mockNodeSummaries,
 
   "GET /api/longhorn/replicas": mockReplicaAdvice,
   "GET /api/backups/posture": mockPosture,
@@ -692,6 +798,24 @@ export const apiMocks: ApiMocks = {
     note: "Restored into scratch namespace, app started",
     by: "admin",
   },
+  "GET /api/backups/target": mockBackupTargetView,
+  "PUT /api/backups/target": mockBackupTargetJob,
+  "GET /api/backups/schedules": mockBackupSchedules,
+  "PUT /api/backups/schedules": mockBackupRecurringJob,
+  "PUT /api/backups/volumes/:uid/groups": mockBackupRecurringJob,
+  "POST /api/backups/volumes/:uid/backup-now": mockBackupNowJob,
+  "GET /api/backups/volumes/:uid/backups": mockRestorePoints,
+  "POST /api/backups/restore/plan": mockRestorePlan,
+  "POST /api/backups/restore": mockRestoreJob,
+  "GET /api/postgres/cluster": mockPostgresCluster,
+  "GET /api/postgres/databases": mockPostgresDatabases,
+  "GET /api/postgres/backups": mockPostgresBackups,
+  "PUT /api/postgres/backups": mockPgBackupsJob,
+  "POST /api/postgres/backups/now": mockPgBackupNowJob,
+  "POST /api/postgres/restore/plan": mockPgRestorePlan,
+  "POST /api/postgres/restore": mockPgRestoreJob,
+  "GET /api/backups/console": mockConsoleBackup,
+  "POST /api/backups/console/backup-now": { ...mockConsoleBackupJob, state: "running", startedBy: "admin" },
 
   "GET /api/workloads/links": mockWorkloadLinks,
   "GET /api/workloads/namespaces": [
@@ -765,6 +889,7 @@ export const apiMocks: ApiMocks = {
   "PUT /api/deploy/access": mockAccess,
   "POST /api/deploy/plan": mockDeployPlan,
   "POST /api/deploy/jobs": { ...mockRunningJob, appId: "headlamp", release: "headlamp", namespace: "headlamp" },
+  "GET /api/deploy/console-backup": mockConsoleNightly,
   "GET /api/deploy/jobs": [mockRunningJob, mockDeployJob, mockFailedJob],
   "GET /api/deploy/jobs/:id": mockDeployJob,
   "GET /api/deploy/jobs/:id/logs": { lines: mockDeployLog, redacted: 0, truncated: false },
@@ -815,8 +940,11 @@ export const apiMocks: ApiMocks = {
     namespace: "cloudflared",
   },
   "GET /api/connector-entra/view": mockEntraSignIn,
+  "GET /api/connector-entra/certificate": mockEntraCertificate,
   "POST /api/connector-entra/signin": mockEntraSignIn,
   "GET /api/connector-entra/groups": mockEntraGroups,
+  "GET /api/connector-storage/targets": mockStorageTargets,
+  "GET /api/connector-storage/targets/:id": mockNfsTarget,
   "POST /api/mcp": {
     jsonrpc: "2.0",
     id: 1,
@@ -827,4 +955,7 @@ export const apiMocks: ApiMocks = {
 
   "GET /api/onboarding/state": mockOnboarding,
   "POST /api/onboarding/steps/:step": mockOnboarding,
+  "GET /api/onboarding/seed": mockSeedDone,
+  "POST /api/onboarding/seed/apply": mockSeedDone,
+  "POST /api/onboarding/seed/dismiss": { ...mockSeedDone, dismissed: true },
 };

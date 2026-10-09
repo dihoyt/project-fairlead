@@ -2,6 +2,8 @@ import type { CatalogEntry, ClusterBasic, DetectedApp, DiscoveryReport, IngressH
 import type { DeployedRelease } from "../../contracts/deploy.js";
 import { isDeployedByUs } from "../../contracts/deployed.js";
 import { RESOURCES, type K8sApi, type KubeObject, type ResourceRef } from "../../contracts/k8s.js";
+import { POSTGRES_APP, POSTGRES_NAMESPACE, pgClusterLabel, pgClusterName } from "../../contracts/postgres.js";
+import { product } from "../../product.js";
 import { nodeDisks } from "./disks.js";
 import { chartName, chartVersion, parseImage, signatures, type Signature } from "./signatures.js";
 
@@ -239,6 +241,37 @@ async function detectBackupTarget(k8s: K8sApi, entry: CatalogEntry): Promise<Det
     evidence: `BackupTarget ${qualified(target)} (${redactUrl(target.spec!.backupTargetURL!)})`,
     managedBy: k8s.managedBy(target),
     ownedByUs: ours(k8s, target),
+  };
+}
+
+// The shared Postgres is a CloudNativePG Cluster, not a workload: it is
+// "installed" once the Cluster the apps use exists. version: its image tag.
+async function detectSharedPostgres(k8s: K8sApi, entry: CatalogEntry): Promise<DetectedApp> {
+  const base = { appId: entry.id, urls: [], managedBy: null, ownedByUs: false };
+  const listed = await listSafe<KubeObject & { spec?: { imageName?: string } }>(k8s, RESOURCES.cnpgClusters);
+  if (!listed.ok) {
+    return listed.absent
+      ? { ...base, state: "not-installed", evidence: "CloudNativePG is not installed (postgresql.cnpg.io not served)" }
+      : { ...base, state: "unknown", evidence: `Postgres clusters could not be listed: ${listed.error}` };
+  }
+  const label = pgClusterLabel(product.ownerMarker.labelDomain);
+  const cluster =
+    listed.items.find((c) => c.metadata.labels?.[label] === "current") ??
+    listed.items.find(
+      (c) => c.metadata.namespace === POSTGRES_NAMESPACE && c.metadata.name === pgClusterName(product.slug)
+    );
+  if (!cluster) {
+    return { ...base, state: "not-installed", evidence: `No shared Postgres cluster in ${POSTGRES_NAMESPACE}` };
+  }
+  const tag = /:([^:@/]+)(@.*)?$/.exec(cluster.spec?.imageName ?? "")?.[1];
+  return {
+    ...base,
+    state: "installed",
+    ...(cluster.metadata.namespace ? { namespace: cluster.metadata.namespace } : {}),
+    ...(tag ? { version: tag } : {}),
+    evidence: `Cluster ${qualified(cluster)} (postgresql.cnpg.io)`,
+    managedBy: k8s.managedBy(cluster),
+    ownedByUs: ours(k8s, cluster),
   };
 }
 
@@ -661,6 +694,7 @@ export async function discover(
         if (entry.install.kind === "patch" && entry.id === "longhorn-backup-target") {
           return detectBackupTarget(k8s, entry);
         }
+        if (entry.id === POSTGRES_APP) return detectSharedPostgres(k8s, entry);
         return {
           appId: entry.id,
           state: "unknown",

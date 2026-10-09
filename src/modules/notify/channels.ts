@@ -6,7 +6,7 @@ const TIMEOUT_MS = 10_000;
 export const DEFAULT_NTFY_SERVER = "https://ntfy.sh";
 
 export interface Delivery {
-  kind: ChannelKind;
+  kind: Exclude<ChannelKind, "email">;
   config: { server?: string; topic?: string };
   secret: string | null;
   payload: WebhookPayload;
@@ -16,11 +16,17 @@ export interface DeliveryResult {
   ok: boolean;
   status?: number;
   error?: string;
+  response?: string;
 }
 
 // Whether a kind cannot work without its secret: for these the secret is the
 // destination URL itself, which may embed a token.
-export const SECRET_REQUIRED: Record<ChannelKind, boolean> = { webhook: true, discord: true, ntfy: false };
+export const SECRET_REQUIRED: Record<ChannelKind, boolean> = {
+  webhook: true,
+  discord: true,
+  ntfy: false,
+  email: false,
+};
 
 const DISCORD_COLOR: Record<Status, number> = {
   crit: 0xe03131,

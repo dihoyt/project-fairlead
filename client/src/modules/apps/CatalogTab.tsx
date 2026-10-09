@@ -124,19 +124,21 @@ export function CatalogTab({ onDeployed }: { onDeployed: () => void }) {
           {apps.error}
         </Alert>
       ) : null}
-      {groupBySlot(apps.data ?? []).map(({ slot, apps: inSlot }) => (
-        <section key={slot} aria-label={SLOT_LABEL[slot].title}>
-          <Title order={4}>{SLOT_LABEL[slot].title}</Title>
-          <Text size="sm" c="dimmed" mb="sm">
-            {SLOT_LABEL[slot].about}
-          </Text>
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
-            {inSlot.map((app) => (
-              <AppCard key={app.id} app={app} names={names} onDeployed={deployed} />
-            ))}
-          </SimpleGrid>
-        </section>
-      ))}
+      {groupBySlot((apps.data ?? []).filter((app) => !app.hidden || app.detected.state !== "not-installed")).map(
+        ({ slot, apps: inSlot }) => (
+          <section key={slot} aria-label={SLOT_LABEL[slot].title}>
+            <Title order={4}>{SLOT_LABEL[slot].title}</Title>
+            <Text size="sm" c="dimmed" mb="sm">
+              {SLOT_LABEL[slot].about}
+            </Text>
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
+              {inSlot.map((app) => (
+                <AppCard key={app.id} app={app} names={names} onDeployed={deployed} />
+              ))}
+            </SimpleGrid>
+          </section>
+        )
+      )}
     </Stack>
   );
 }

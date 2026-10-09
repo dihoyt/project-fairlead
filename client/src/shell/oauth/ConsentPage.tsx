@@ -4,6 +4,7 @@ import { Alert, Button, Code, Group, Loader, Paper, SegmentedControl, Stack, Tex
 import type { ApiTokenScope, OAuthAuthorizeParams, OAuthConsentView } from "@contracts/auth";
 import { product } from "../../product";
 import { apiRequest } from "../../ui/api";
+import { GrantFields, NO_LIMITS, limitsBody, limitsProblem, type GrantLimits } from "../admin/GrantFields";
 
 // The query /oauth/authorize passed on, as the consent route takes it back.
 export function paramsOf(search: string): OAuthAuthorizeParams {
@@ -32,6 +33,8 @@ export function ConsentPage({
   const [params] = useState(() => paramsOf(search));
   const [view, setView] = useState<OAuthConsentView | null>(null);
   const [scope, setScope] = useState<ApiTokenScope>("read");
+  const [limits, setLimits] = useState<GrantLimits>(NO_LIMITS);
+  const problem = limitsProblem(limits);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -47,7 +50,9 @@ export function ConsentPage({
   async function decide(decision: "approve" | "deny") {
     setBusy(true);
     try {
-      const result = await apiRequest("POST /api/admin/oauth/consent", { body: { params, decision, scope } });
+      const result = await apiRequest("POST /api/admin/oauth/consent", {
+        body: { params, decision, scope, ...(decision === "approve" ? limitsBody(limits) : {}) },
+      });
       if (result.redirect) navigate(result.redirect);
     } catch (err) {
       setError((err as Error).message);
@@ -89,11 +94,17 @@ export function ConsentPage({
                 : "It can look at everything you can, and change nothing."}{" "}
               Revoke it any time under Admin &gt; API tokens.
             </Text>
+            <GrantFields value={limits} onChange={setLimits} />
+            {problem ? (
+              <Text size="xs" c="orange">
+                {problem}
+              </Text>
+            ) : null}
             <Group justify="flex-end">
               <Button variant="default" onClick={() => void decide("deny")} disabled={busy}>
                 Deny
               </Button>
-              <Button onClick={() => void decide("approve")} loading={busy}>
+              <Button onClick={() => void decide("approve")} loading={busy} disabled={problem !== null}>
                 Approve
               </Button>
             </Group>

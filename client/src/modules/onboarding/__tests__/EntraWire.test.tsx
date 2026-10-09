@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { mockEntraSignIn } from "@contracts/mocks/connectors/views";
+import {
+  mockEntraManagementPending,
+  mockEntraSignIn,
+  mockEntraSignInCertificate,
+} from "@contracts/mocks/connectors/views";
 import { stubApi } from "../../../ui/deploy/__tests__/stubApi";
 import { renderWithApp } from "../../../test-utils";
 import { EntraWire } from "../steps/EntraWire";
@@ -78,6 +82,23 @@ describe("EntraWire", () => {
     expect(await screen.findByText("Signing in through Microsoft Entra ID")).toBeInTheDocument();
     expect(screen.getByText(/its secret is valid until/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Test sign-in" })).toBeInTheDocument();
+  });
+
+  it("shows the certificate's expiry when sign-in uses one", async () => {
+    stubApi({ "GET /api/connector-entra/view": mockEntraSignInCertificate });
+    renderWithApp(<EntraWire onWired={() => {}} />);
+    expect(await screen.findByText(/signs in with a certificate valid until/)).toBeInTheDocument();
+    expect(screen.queryByText(/Download the certificate/)).not.toBeInTheDocument();
+  });
+
+  it("asks for the connector's certificate to be uploaded, with a download link", async () => {
+    stubApi({ "GET /api/connector-entra/view": mockEntraManagementPending });
+    renderWithApp(<EntraWire onWired={() => {}} />);
+    expect(await screen.findByText(mockEntraManagementPending.management!.step!)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download the certificate" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/api\/connector-entra\/certificate$/)
+    );
   });
 
   it("sits on the Sign-in step", async () => {
