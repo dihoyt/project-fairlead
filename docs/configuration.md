@@ -197,6 +197,8 @@ These matter only with app deploys on.
 | `deploy.ingressClass` | `DEPLOY_INGRESS_CLASS` | empty | Ingress class for new apps. Empty: the cluster's default class. |
 | `deploy.clusterIssuer` | `DEPLOY_CLUSTER_ISSUER` | empty | cert-manager ClusterIssuer for new apps. Empty: the one discovery found; with none, apps are served over plain HTTP. |
 | `deploy.storageClass` | `DEPLOY_STORAGE_CLASS` | empty | Storage class for new apps. Empty: the cluster's default. |
+| `deploy.consoleBackup` | | `30 3 * * *` | When the console copies its own database to the storage target: five-field cron in UTC. Empty: never. |
+| `deploy.consoleBackupKeep` | | `14` | Copies of the console's database kept on the storage target. |
 | `deploy.forwardedPorts` | `DEPLOY_FORWARDED_PORTS` | empty | Ports your router forwards to the cluster, for external services over TCP and UDP, e.g. `25565-25575,27015`. From 1024 up, at most 100 in all. |
 | `connector-cloudflare.accessApps` | `CLOUDFLARE_ACCESS_APPS` | `never` | Put Cloudflare Access in front of app hostnames: `never`, `always`, or `per-app` (chosen on the Cloudflare page). |
 | `mcp.requestsPerMinute` | `MCP_REQUESTS_PER_MINUTE` | `120` | Per API token on `/mcp`; over it, requests are answered 429 until the minute is up. |

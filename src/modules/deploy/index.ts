@@ -15,6 +15,7 @@ import { ACCESS_MODES } from "./access.js";
 import { registerBackupRoutes } from "./actions/backup.js";
 import { actionSchema } from "./actions/index.js";
 import { Bundles } from "./bundles.js";
+import { registerConsoleBackup } from "./consoleBackup.js";
 import { declareConfig } from "./config.js";
 import { registerGate } from "./gateHealth.js";
 import { migrations } from "./migrations.js";
@@ -73,7 +74,7 @@ function positive(value: string | undefined, fallback: number, max: number, name
 export function registerDeploy(
   ctx: ModuleContext,
   options: DeployerOptions = {}
-): { deployer: Deployer; bundles: Bundles } {
+): { deployer: Deployer; bundles: Bundles; consoleBackup: { tick(): Promise<void> } } {
   const config = declareConfig(ctx.settings);
   const forwardedPorts = declarePorts(ctx.settings);
   const deployer = new Deployer(ctx, new Store(ctx.db, ctx.orgId), config, options);
@@ -209,12 +210,14 @@ export function registerDeploy(
     return deployer.startAction(user.id, parse(actionSchema, req.body), caller(req));
   });
 
+  const consoleBackup = registerConsoleBackup(ctx, deployer, config, options.now);
+
   registerBackupRoutes(ctx, {
     jobs: { get: (id) => deployer.get(id) },
     now: options.now,
     fetch: options.fetch,
   });
-  return { deployer, bundles };
+  return { deployer, bundles, consoleBackup };
 }
 
 const mod: Module = {

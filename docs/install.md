@@ -125,6 +125,32 @@ installer prints no generated password.
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_LABEL`, `OIDC_ADMIN_GROUPS` | Sign-in through any OIDC provider, as in Admin > Sign-in. |
 | `BUNDLE`, `BUNDLE_ACCESS`, `BASE_DOMAIN`, `ADMIN_EMAIL`, `STORAGE_CLASS`, `AUTHENTIK_BOOTSTRAP_PASSWORD` | The Deploy bundle (needs `--enable-deploy`). `BUNDLE=default` takes the bundle's own ticks; a comma-separated list of optional apps (`longhorn`) ticks those instead. `BUNDLE_ACCESS`: `cloudflare-tunnel` (through the connector above; the default when a Cloudflare token is given), `local` (otherwise the default) or `direct`. `BASE_DOMAIN` defaults to `CLOUDFLARE_ZONE`. `ADMIN_EMAIL` is required. `AUTHENTIK_BOOTSTRAP_PASSWORD` is the apps' first admin password, `ADMIN_PASSWORD` when left out. |
 
+## Restoring the console
+
+What a lost console needs back is its database and the `SECRETS_KEY` that
+opens the secrets stored in it. Backups → This console keeps both: a nightly
+copy of the database on the storage target, and **Download recovery kit**,
+`SECRETS_KEY` sealed with a passphrase you choose. Keep the kit and its
+passphrase away from the cluster.
+
+On a fresh host or cluster, fetch the newest copy from the target
+(`<prefix>console/<release>-<UTC time>.db` on the NFS export or in the
+bucket), then:
+
+```sh
+sudo ./install.sh --restore ./recovery-kit.txt --from ./<release>-<UTC time>.db
+```
+
+It asks for the passphrase (or reads `KIT_PASSPHRASE`), takes the release
+name and namespace from the kit unless `--release` or `--namespace` say
+otherwise, stores the kit's key in the release's Secret, installs as usual,
+then stops the console, puts the copy in place of its database and starts it
+again. Sign in with an account from the copy; connectors, sign-in and
+notifications come back as they were. `--restore` without `--from` installs
+with the kit's key and an empty database, for a volume that survived. It
+refuses an existing release (`install.sh --uninstall` first) and a Secret
+holding another key.
+
 ## Updating
 
 `update.sh` upgrades an existing install in place to the newest published
