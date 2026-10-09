@@ -11,7 +11,7 @@ import type {
   WorkloadLinks,
   WorkloadView,
 } from "../../../src/contracts/workloads.js";
-import { createMockContext, type MockContext } from "../../../src/contracts/mocks/context.js";
+import { createMockContext, mockAdmin, mockTokenUser, type MockContext } from "../../../src/contracts/mocks/context.js";
 import { createFakeK8s } from "../../../src/contracts/mocks/k8s.js";
 import { createK8sService, type K8sService } from "../../../src/modules/k8s/api.js";
 import mod from "../../../src/modules/workloads/index.js";
@@ -89,6 +89,22 @@ test("namespaces carry workload and pod counts, with unhealthy pods counted", as
   // Five Deployments and one CronJob; the CronJob's Jobs are not counted beside it.
   assert.equal(def.workloads, 6);
   assert.equal(spaces.find((s) => s.name === "longhorn-system")!.workloads, 1);
+});
+
+test("a token limited to some namespaces lists only those", async () => {
+  mock.setUser(mockTokenUser({ scope: "read", namespaces: ["default"] }));
+  try {
+    const spaces = await get<NamespaceView[]>("/namespaces");
+    assert.deepEqual(
+      spaces.map((s) => s.name),
+      ["default"]
+    );
+    const usage = await get<{ namespaces: Array<{ namespace: string }> }>("/usage");
+    assert.ok(usage.namespaces.every((ns) => ns.namespace === "default"));
+    await get("/namespaces/longhorn-system/workloads", 403);
+  } finally {
+    mock.setUser(mockAdmin);
+  }
 });
 
 test("workloads list every kind, CronJob-owned Jobs folded into their CronJob", async () => {

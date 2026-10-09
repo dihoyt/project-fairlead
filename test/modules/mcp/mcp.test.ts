@@ -13,8 +13,8 @@ async function setup(env: Record<string, string> = {}) {
   const app = await boot({ modules: [health, mcp], env });
   await app.makeUser("root", "root password!!", { role: "admin" });
   const { cookie } = await app.login("root", "root password!!");
-  const mint = async (scope: "read" | "write") => {
-    const res = await app.send("POST", "/api/admin/tokens", { name: scope, scope }, cookie);
+  const mint = async (scope: "read" | "write", limits: Record<string, unknown> = {}) => {
+    const res = await app.send("POST", "/api/admin/tokens", { name: scope, scope, ...limits }, cookie);
     return ((await res.json()) as NewApiToken).secret;
   };
   const connect = async (secret: string) => {
@@ -68,6 +68,27 @@ test("a write token lists every tool and adds a link that shows on its category 
     assert.equal(bad.isError, true);
     await client.close();
     void cookie;
+  } finally {
+    await app.close();
+  }
+});
+
+test("a token limited to areas and namespaces lists only the tools it can reach", async () => {
+  const { app, mint, connect } = await setup();
+  try {
+    const client = await connect(await mint("write", { areas: ["health", "deploy"], namespaces: ["apps"] }));
+    const names = (await client.listTools()).tools.map((t) => t.name);
+    // Health reads; links are cluster-wide, so a namespace-limited token can't change them.
+    assert.ok(names.includes("get_health_board"));
+    assert.ok(names.includes("list_links"));
+    assert.ok(!names.includes("create_link"));
+    // Deploys that name a namespace stay; bundles and node actions don't.
+    assert.ok(names.includes("deploy_app"));
+    assert.ok(!names.includes("start_bundle"));
+    assert.ok(!names.includes("drain_node"));
+    assert.ok(!names.includes("list_checks"));
+    assert.ok(!names.includes("list_pods"));
+    await client.close();
   } finally {
     await app.close();
   }
