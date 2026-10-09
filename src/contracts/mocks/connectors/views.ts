@@ -206,6 +206,7 @@ export const mockEntraSignIn: EntraSignInView = {
     objectId: "22222222-0000-4000-8000-00000000a991",
     displayName: "Console sign-in",
     redirectUris: ["https://console.example.test/auth/oidc/callback"],
+    credential: "secret",
     secretExpiresAt: isoAgo(-150 * 24 * HOUR),
     state: "in-sync",
   },
@@ -223,6 +224,37 @@ export const mockEntraGroups: EntraGroup[] = [
   { id: "44444444-0000-4000-8000-0000000000a2", displayName: "Cluster operators" },
 ];
 
+// Both credentials are certificates the console rolls itself.
+export const mockEntraSignInCertificate: EntraSignInView = {
+  ...mockEntraSignIn,
+  app: {
+    ...mockEntraSignIn.app!,
+    credential: "certificate",
+    certificateExpiresAt: isoAgo(-300 * 24 * HOUR),
+  },
+  management: {
+    credential: "certificate",
+    certificateExpiresAt: isoAgo(-200 * 24 * HOUR),
+    secretStored: false,
+  },
+};
+delete mockEntraSignInCertificate.app!.secretExpiresAt;
+
+// The management app still signs in with its pasted secret: the console
+// could not upload its certificate, so the admin has one step left.
+export const mockEntraManagementPending: EntraSignInView = {
+  ...mockEntraSignInCertificate,
+  management: {
+    credential: "secret",
+    secretStored: true,
+    step: "Upload the console's certificate to the management app under Certificates & secrets, then delete its client secret.",
+  },
+};
+
+export const mockEntraCertificate = `-----BEGIN CERTIFICATE-----
+MIIBszCCAVmgAwIBAgIUQ2VydGlmaWNhdGVNb2NrT25seTAKBggqhkjOPQQDAjAa
+-----END CERTIFICATE-----
+`;
 // --- Storage targets ----------------------------------------------------------
 
 export const mockStorageTargetKind: ConnectorKindView = {

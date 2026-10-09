@@ -84,6 +84,10 @@ export function createMockConnectorRegistry(instances: ConnectorInstance[] = [])
       };
     },
     owned: ownedFor,
+    async clearSecret(instanceId, field) {
+      const found = stored.get(instanceId);
+      if (found) delete found.secrets[field];
+    },
     async reconcile(instanceId) {
       const instance = stored.get(instanceId);
       const kind = instance && kinds.get(instance.kind);

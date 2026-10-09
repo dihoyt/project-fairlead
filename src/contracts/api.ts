@@ -524,8 +524,14 @@ export interface ApiRoutes {
 
   // --- connector-entra (B3) ------------------------------------------------
   "GET /api/connector-entra/view": Route<None, None, None, EntraSignInView>;
+  // The certificate (PEM) the management app should carry, for the admin
+  // to upload under Certificates & secrets when the console cannot upload
+  // it itself (EntraManagementView.step says so). Admin; public material
+  // only. 409 without a connector.
+  "GET /api/connector-entra/certificate": Route<None, None, None, TextBody<"application/x-pem-file">>;
   // Creates the sign-in app registration (or reuses the one this install
-  // owns), makes a client secret and sets OIDC sign-in to it. Admin. 409
+  // owns), gives it a certificate credential (a client secret when the
+  // tenant refuses one) and sets OIDC sign-in to it. Admin. 409
   // without a connector; 400 when the public URL is unset or http (other
   // than localhost), or when sign-in settings are locked by the environment;
   // 502 when Graph refuses.

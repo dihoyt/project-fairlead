@@ -174,6 +174,11 @@ export interface ConnectorRegistry {
   // for a kind that reports its instances in a view of its own.
   view(id: string): Promise<ConnectorView | undefined>;
   owned(instanceId: string): OwnedStore;
+  // Deletes one stored secret field of an instance, for a kind that has
+  // replaced a pasted bootstrap credential with one it holds itself. The
+  // view then reports secrets[field] false; nothing else changes. A no-op
+  // for an unknown instance or field.
+  clearSecret(instanceId: string, field: string): Promise<void>;
   // Runs the kind's reconcile now (one at a time per instance), stores the
   // report on the instance and returns it. Undefined for an unknown instance
   // or a kind without reconcile.
@@ -386,16 +391,44 @@ export type CloudflareTunnelDeploy = DeployJobView;
 
 // --- Microsoft Entra ID (module "connector-entra") --------------------------
 //
-// One instance per install, kind "entra": a tenant id plus the client id and
-// secret of a management app registration holding Microsoft Graph's
-// Application.ReadWrite.OwnedBy application permission (admin consented). It
-// creates the app registration this install signs in through, owned by that
-// management app, with the console's redirect URI and the groups claim, and
-// hands its client id and a client secret to sign-in (services "signin").
-// Reconcile puts a changed redirect URI back and rotates the client secret
-// before it expires. Entra refuses http redirect URIs other than localhost.
-// Entra's groups claim carries group object ids, so auth.oidc.adminGroups
-// holds ids; GET /api/connector-entra/groups is how an admin picks them.
+// One instance per install, kind "entra": a tenant id plus the client id of
+// a management app registration holding Microsoft Graph's
+// Application.ReadWrite.OwnedBy application permission (admin consented),
+// and a client secret used only to bootstrap. It creates the app
+// registration this install signs in through, owned by that management app,
+// with the console's redirect URI and the groups claim, and hands sign-in
+// (services "signin") a certificate credential: a key pair the console
+// generates, the certificate uploaded to the app's keyCredentials, the
+// private key used for private_key_jwt. Reconcile puts a changed redirect
+// URI back and replaces the certificate 30 days before it expires.
+// Entra refuses http redirect URIs other than localhost. Entra's groups
+// claim carries group object ids, so auth.oidc.adminGroups holds ids;
+// GET /api/connector-entra/groups is how an admin picks them.
+//
+// The management app's own credential moves to a certificate too. Its first
+// certificate needs a write to the management app itself, which
+// Application.ReadWrite.OwnedBy does not allow unless the app owns itself:
+// with that (or Application.ReadWrite.All) the console uploads it and
+// removes the pasted secret; otherwise the admin uploads the certificate
+// from GET /api/connector-entra/certificate once and deletes the secret.
+// After that the console rolls its own certificate with Graph's
+// application addKey/removeKey (proof of possession, no permission needed),
+// which needs the management app's object id (the connector's objectId
+// field, or read from Graph when allowed). Tenants that keep a secret keep
+// working: the connector falls back to it while it is valid.
+
+export type EntraCredential = "certificate" | "secret";
+
+export interface EntraManagementView {
+  // What the connector signs in to Graph with now.
+  credential: EntraCredential;
+  certificateExpiresAt?: string;
+  // The pasted client secret is still stored (it is cleared once the
+  // certificate works and the secret is gone from Entra).
+  secretStored: boolean;
+  // The one step left for the admin, one sentence; unset when none.
+  step?: string;
+}
 
 export interface EntraSignInAppView {
   // The application (client) id.
@@ -403,7 +436,12 @@ export interface EntraSignInAppView {
   objectId: string;
   displayName: string;
   redirectUris: string[];
-  // Expiry of the newest client secret this install created.
+  // What sign-in authenticates with: "certificate" unless the tenant
+  // refused the key credential, or for an app set up before certificates.
+  credential?: EntraCredential;
+  // Expiry of the certificate sign-in uses.
+  certificateExpiresAt?: string;
+  // Expiry of the newest client secret this install created (credential "secret").
   secretExpiresAt?: string;
   // "pending": not created yet.
   state: DriftState | "pending";
@@ -421,6 +459,8 @@ export interface EntraSignInView {
   wired: boolean;
   // Where a tenant admin grants the management app its consent.
   consentUrl?: string;
+  // The connector's own Graph credential; unset without a connector.
+  management?: EntraManagementView;
   // One sentence when sign-in cannot be set up as things stand: an http
   // public URL, no public URL, a missing permission.
   warning?: string;

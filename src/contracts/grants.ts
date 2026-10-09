@@ -240,6 +240,7 @@ export const ROUTE_ACCESS: { [K in RouteKey]: RouteAccess } = {
   "POST /api/connector-cloudflare/tunnel": a("connectors"),
   "POST /api/connector-cloudflare/tunnel/deploy": a("connectors"),
   "GET /api/connector-entra/view": a("connectors"),
+  "GET /api/connector-entra/certificate": a("connectors"),
   "POST /api/connector-entra/signin": a("connectors"),
   "GET /api/connector-entra/groups": a("connectors"),
   "GET /api/connector-storage/targets": a("connectors"),

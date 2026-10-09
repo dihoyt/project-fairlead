@@ -8,7 +8,7 @@ import { SecretKeyError } from "../secretBox.js";
 //
 // The ID token's signature is not verified, deliberately: it is received
 // directly from the token endpoint over TLS in exchange for the client
-// secret, which OIDC Core 3.1.3.7 (6) allows in place of checking it. Its
+// credential (a secret, or a private_key_jwt assertion), which OIDC Core 3.1.3.7 (6) allows in place of checking it. Its
 // claims are still checked — issuer, audience, nonce, expiry — because
 // those say whether it was issued to this client for this sign-in.
 
@@ -39,10 +39,18 @@ const INTERACTION_ERRORS = new Set([
   "account_selection_required",
 ]);
 
+export interface OidcClientKey {
+  privateKey: string;
+  certificate?: string;
+  keyId?: string;
+}
+
 export interface OidcConfig {
   issuer: string;
   clientId: string;
+  // "" when clientKey is set.
   clientSecret: string;
+  clientKey?: OidcClientKey;
   scopes: string;
   usernameClaim: string;
   groupsClaim: string;
@@ -58,6 +66,11 @@ interface Discovery {
 }
 
 export const OIDC_SECRET = { scope: "auth", id: "oidc" } as const;
+// JSON of a SignInClientKey, written by services "signin" only. When present
+// it wins over a secret (the two are never stored together on purpose).
+export const OIDC_KEY = { scope: "auth", id: "oidc-key" } as const;
+const ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
+const ASSERTION_TTL_S = 300;
 
 export const GOOGLE_ISSUER = "https://accounts.google.com";
 export const MICROSOFT_COMMON_ISSUER = "https://login.microsoftonline.com/common/v2.0";
@@ -142,18 +155,71 @@ async function clientSecret(core: Core): Promise<string> {
   }
 }
 
+async function clientKey(core: Core): Promise<OidcClientKey | undefined> {
+  let raw: string | null;
+  try {
+    raw = await core.secrets.get(OIDC_KEY.scope, OIDC_KEY.id);
+  } catch (err) {
+    if (err instanceof SecretKeyError) throw new OidcError(err.message);
+    throw err;
+  }
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as Partial<OidcClientKey>;
+    if (typeof parsed.privateKey !== "string") throw new Error("no private key");
+    return {
+      privateKey: parsed.privateKey,
+      ...(typeof parsed.certificate === "string" ? { certificate: parsed.certificate } : {}),
+      ...(typeof parsed.keyId === "string" ? { keyId: parsed.keyId } : {}),
+    };
+  } catch {
+    throw new OidcError("The stored client key is unreadable; set sign-in up again.");
+  }
+}
+
+const b64url = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
+
+// RFC 7523 client authentication: a JWT the client signs for one request,
+// audience the token endpoint. Entra ID finds the key by the certificate's
+// thumbprint (x5t, or x5t#S256); other providers by kid or by trying the
+// keys they hold for the client.
+export function clientAssertion(key: OidcClientKey, clientId: string, audience: string, nowMs = Date.now()): string {
+  const header: Record<string, string> = { alg: "RS256", typ: "JWT" };
+  if (key.certificate) {
+    const der = new crypto.X509Certificate(key.certificate).raw;
+    header.x5t = crypto.createHash("sha1").update(der).digest("base64url");
+    header["x5t#S256"] = crypto.createHash("sha256").update(der).digest("base64url");
+  }
+  if (key.keyId) header.kid = key.keyId;
+  const now = Math.floor(nowMs / 1000);
+  const payload = {
+    iss: clientId,
+    sub: clientId,
+    aud: audience,
+    jti: crypto.randomUUID(),
+    iat: now,
+    nbf: now,
+    exp: now + ASSERTION_TTL_S,
+  };
+  const input = `${b64url(header)}.${b64url(payload)}`;
+  const signature = crypto.sign("sha256", Buffer.from(input), crypto.createPrivateKey(key.privateKey));
+  return `${input}.${signature.toString("base64url")}`;
+}
+
 export async function oidcConfig(core: Core): Promise<OidcConfig | null> {
   const s = core.settings;
   const issuer = s.string("auth.oidc.issuer");
   const clientId = s.string("auth.oidc.clientId");
   const origin = publicOrigin(core);
   if (!s.bool("auth.oidc.enabled") || !issuer || !clientId || !origin) return null;
-  const secret = await clientSecret(core);
-  if (!secret) return null;
+  const key = await clientKey(core);
+  const secret = key ? "" : await clientSecret(core);
+  if (!key && !secret) return null;
   return {
     issuer,
     clientId,
     clientSecret: secret,
+    ...(key ? { clientKey: key } : {}),
     scopes: s.string("auth.oidc.scopes"),
     usernameClaim: s.string("auth.oidc.usernameClaim") || "preferred_username",
     groupsClaim: s.string("auth.oidc.groupsClaim") || "groups",
@@ -170,9 +236,11 @@ export async function oidcUnavailableReason(core: Core): Promise<string | null> 
     return "No public URL is saved yet, so the redirect URI shown is a guess from this browser's address. Save the public URL under Settings, General.";
   if (!s.string("auth.oidc.issuer")) return "No issuer URL is set.";
   if (!s.string("auth.oidc.clientId")) return "No client ID is set.";
-  if (!(await core.secrets.has(OIDC_SECRET.scope, OIDC_SECRET.id))) return "No client secret is set.";
+  const hasKey = await core.secrets.has(OIDC_KEY.scope, OIDC_KEY.id);
+  if (!hasKey && !(await core.secrets.has(OIDC_SECRET.scope, OIDC_SECRET.id))) return "No client secret is set.";
   try {
-    await clientSecret(core);
+    if (hasKey) await clientKey(core);
+    else await clientSecret(core);
   } catch (err) {
     return (err as Error).message;
   }
@@ -424,8 +492,16 @@ export async function finishSignIn(core: Core, query: Record<string, unknown>): 
   };
   // client_secret_basic is the spec's default and what a provider that
   // lists nothing supports; post is used only when basic is not offered.
+  // A stored key always means private_key_jwt: falling back to a secret
+  // that is not there would only fail less clearly.
   const methods = meta.token_endpoint_auth_methods_supported ?? ["client_secret_basic"];
-  if (methods.includes("client_secret_basic")) {
+  if (cfg.clientKey) {
+    if (meta.token_endpoint_auth_methods_supported && !methods.includes("private_key_jwt"))
+      throw new OidcError("The provider does not accept private_key_jwt client authentication.");
+    form.set("client_id", cfg.clientId);
+    form.set("client_assertion_type", ASSERTION_TYPE);
+    form.set("client_assertion", clientAssertion(cfg.clientKey, cfg.clientId, meta.token_endpoint));
+  } else if (methods.includes("client_secret_basic")) {
     const user = encodeURIComponent(cfg.clientId);
     const pass = encodeURIComponent(cfg.clientSecret);
     headers.authorization = `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`;
