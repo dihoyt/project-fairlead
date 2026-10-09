@@ -1,5 +1,11 @@
 import type { Database } from "better-sqlite3";
-import type { DeployedRelease, DeployJobMode, DeployJobState, DeployJobView } from "../../contracts/deploy.js";
+import type {
+  DeployActionKind,
+  DeployedRelease,
+  DeployJobMode,
+  DeployJobState,
+  DeployJobView,
+} from "../../contracts/deploy.js";
 import type { LogLines } from "../../contracts/workloads.js";
 
 interface Row {
@@ -10,6 +16,7 @@ interface Row {
   namespace: string;
   version: string;
   mode: DeployJobMode;
+  action: DeployActionKind | null;
   state: DeployJobState;
   started_by: string;
   created_at: string;
@@ -40,6 +47,7 @@ export interface NewJob {
   namespace: string;
   version: string;
   mode: DeployJobMode;
+  action?: DeployActionKind;
   startedBy: string;
   url?: string;
   jobNamespace: string;
@@ -55,6 +63,7 @@ function toRecord(row: Row): JobRecord {
     namespace: row.namespace,
     version: row.version,
     mode: row.mode,
+    ...(row.action ? { action: row.action } : {}),
     state: row.state,
     startedBy: row.started_by,
     createdAt: row.created_at,
@@ -108,9 +117,9 @@ export class Store {
       const id = `dj_${seq}`;
       this.db
         .prepare(
-          `INSERT INTO deploy_jobs (seq, id, org_id, app_id, release, namespace, version, mode, state, started_by,
-             created_at, url, job_namespace, job_name, has_secrets)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO deploy_jobs (seq, id, org_id, app_id, release, namespace, version, mode, action, state,
+             started_by, created_at, url, job_namespace, job_name, has_secrets)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`
         )
         .run(
           seq,
@@ -121,6 +130,7 @@ export class Store {
           job.namespace,
           job.version,
           job.mode,
+          job.action ?? null,
           job.startedBy,
           now,
           job.url ?? null,
@@ -160,6 +170,10 @@ export class Store {
          WHERE org_id = ? AND mode IN ('install', 'upgrade') AND seq = (
            SELECT MAX(seq) FROM deploy_jobs
            WHERE org_id = j.org_id AND release = j.release AND mode IN ('install', 'upgrade')
+         ) AND NOT EXISTS (
+           SELECT 1 FROM deploy_jobs
+           WHERE org_id = j.org_id AND release = j.release AND seq > j.seq
+             AND action = 'remove-app' AND state = 'succeeded'
          )
          ORDER BY seq DESC`
       )

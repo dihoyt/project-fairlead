@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, Button, Group, PasswordInput, SegmentedControl, Select, Stack, Switch, TextInput } from "@mantine/core";
 import type { ChannelKind, ChannelRequest, ChannelView } from "@contracts/notify";
-
-const KIND_LABEL: Record<ChannelKind, string> = { webhook: "Webhook", ntfy: "ntfy", discord: "Discord" };
+import { CHANNEL_CHOICES, choiceKind, PUBLIC_NTFY, SelfHostedNtfy, type ChannelChoice } from "./ntfyChoice";
 
 const SECRET_FIELD: Record<ChannelKind, { label: string; placeholder: string; description: string }> = {
   webhook: {
@@ -22,6 +21,11 @@ const SECRET_FIELD: Record<ChannelKind, { label: string; placeholder: string; de
   },
 };
 
+function initialChoice(channel: ChannelView): ChannelChoice {
+  if (channel.kind !== "ntfy") return channel.kind;
+  return (channel.config.server ?? PUBLIC_NTFY) === PUBLIC_NTFY ? "ntfy-public" : "ntfy-self";
+}
+
 export function ChannelForm({
   channel,
   onSubmit,
@@ -31,16 +35,25 @@ export function ChannelForm({
   onSubmit: (req: ChannelRequest) => Promise<void>;
   onCancel: () => void;
 }) {
-  const [kind, setKind] = useState<ChannelKind>(channel?.kind ?? "ntfy");
+  const [choice, setChoice] = useState<ChannelChoice>(channel ? initialChoice(channel) : "ntfy-public");
+  const kind = choiceKind(choice);
   const [label, setLabel] = useState(channel?.label ?? "");
   const [enabled, setEnabled] = useState(channel?.enabled ?? true);
   const [minSeverity, setMinSeverity] = useState<"warn" | "crit">(channel?.minSeverity ?? "warn");
-  const [server, setServer] = useState(channel?.config.server ?? "https://ntfy.sh");
+  const [server, setServer] = useState(channel?.config.server ?? PUBLIC_NTFY);
   const [topic, setTopic] = useState(channel?.config.topic ?? "");
   const [secret, setSecret] = useState("");
   const [clearSecret, setClearSecret] = useState(false);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+
+  const takeServer = useCallback((url: string) => setServer(url), []);
+
+  function pick(next: ChannelChoice) {
+    setChoice(next);
+    if (next === "ntfy-public") setServer(PUBLIC_NTFY);
+    else if (next === "ntfy-self" && server === PUBLIC_NTFY) setServer("");
+  }
 
   const field = SECRET_FIELD[kind];
   const editing = channel !== undefined;
@@ -64,12 +77,9 @@ export function ChannelForm({
   return (
     <Stack>
       {!editing && (
-        <SegmentedControl
-          value={kind}
-          onChange={(value) => setKind(value as ChannelKind)}
-          data={(Object.keys(KIND_LABEL) as ChannelKind[]).map((k) => ({ value: k, label: KIND_LABEL[k] }))}
-        />
+        <SegmentedControl value={choice} onChange={(value) => pick(value as ChannelChoice)} data={CHANNEL_CHOICES} />
       )}
+      {!editing && choice === "ntfy-self" && <SelfHostedNtfy onServer={takeServer} />}
       <TextInput label="Name" required value={label} onChange={(e) => setLabel(e.currentTarget.value)} />
       {kind === "ntfy" && (
         <>

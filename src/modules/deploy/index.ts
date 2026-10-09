@@ -6,12 +6,17 @@ import type {
   DeployRequest,
   UpgradeRequest,
 } from "../../contracts/deploy.js";
-import type { Module, ModuleContext } from "../../contracts/module.js";
+import type { RouteKey } from "../../contracts/api.js";
+import type { CallInput, Module, ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
 import { ACCESS_MODES } from "./access.js";
+import { registerBackupRoutes } from "./actions/backup.js";
+import { actionSchema } from "./actions/index.js";
 import { Bundles } from "./bundles.js";
 import { declareConfig } from "./config.js";
+import { registerGate } from "./gateHealth.js";
 import { migrations } from "./migrations.js";
+import { declarePorts, portsView } from "./ports.js";
 import { Deployer, LOG_LINES, MAX_TAIL, type DeployerOptions } from "./runner.js";
 import { Store } from "./store.js";
 
@@ -23,6 +28,7 @@ const requestSchema = z.object({
   appId: z.string().min(1).max(100),
   namespace: z.string().max(63).optional(),
   inputs: z.record(z.string(), z.union([z.string(), z.boolean()])).default({}),
+  public: z.boolean().optional(),
 });
 const jobRequestSchema = requestSchema.extend({ mode: z.enum(["install", "dry-run"]) });
 const values = z.record(z.string(), z.union([z.string(), z.boolean()]));
@@ -41,6 +47,7 @@ const bundleSchema = z.object({
   inputs: values.default({}),
   apps: z.record(z.string(), values).optional(),
   include: z.array(z.string().max(100)).max(100).optional(),
+  public: z.array(z.string().max(100)).max(100).optional(),
 });
 
 const upgradeSchema = z.object({ appIds: z.array(z.string().min(1).max(100)).min(1).max(100).optional() });
@@ -66,9 +73,16 @@ export function registerDeploy(
   options: DeployerOptions = {}
 ): { deployer: Deployer; bundles: Bundles } {
   const config = declareConfig(ctx.settings);
+  const forwardedPorts = declarePorts(ctx.settings);
   const deployer = new Deployer(ctx, new Store(ctx.db, ctx.orgId), config, options);
   const bundles = new Bundles(ctx, deployer, options.now);
-  ctx.services.provide("deploy", { releases: async () => deployer.releases() });
+  ctx.services.provide("deploy", {
+    releases: async () => deployer.releases(),
+    access: () => deployer.accessView(),
+    gate: () => deployer.gateStatus(),
+    planEntry: (entry, request) => deployer.plan(request, entry),
+    startEntry: (actor, entry, request) => deployer.start(actor, request, {}, entry),
+  });
 
   ctx.scheduler.every("deploy.reconcile", RECONCILE_MS, async () => {
     await deployer.reconcile();
@@ -79,6 +93,9 @@ export function registerDeploy(
   ctx.route("GET /api/deploy/status", () => deployer.status());
 
   ctx.route("GET /api/deploy/access", () => deployer.accessView());
+
+  ctx.route("GET /api/deploy/gate", () => deployer.gateStatus());
+  registerGate(ctx, deployer);
 
   ctx.route("PUT /api/deploy/access", async (req, res) => {
     const user = ctx.require(req, res, "write");
@@ -139,12 +156,45 @@ export function registerDeploy(
     if (!user) return undefined;
     return bundles.cancel(user.id, req.params.id);
   });
+  ctx.route("GET /api/deploy/ports", () =>
+    portsView({
+      setting: forwardedPorts,
+      k8s: ctx.services.has("k8s") ? ctx.services.get("k8s") : undefined,
+      releases: deployer.releases(),
+      wanted: ctx.services.has("templates") ? ctx.services.get("templates").forwardedPorts() : [],
+    })
+  );
+
   ctx.route("GET /api/deploy/upgrades", (req) => deployer.upgradeReport(req.query.refresh === "1"));
 
   ctx.route("POST /api/deploy/upgrades", async (req, res) => {
     const user = ctx.require(req, res, "write");
     if (!user) return undefined;
     return bundles.startUpgrade(user.id, parse(upgradeSchema, req.body) as UpgradeRequest);
+  });
+
+  // The caller's own identity for the routes an action reads (the Longhorn
+  // advice), so they see what that user would.
+  const caller =
+    (req: Parameters<ModuleContext["call"]>[0]) =>
+    <K extends RouteKey>(key: K, input?: CallInput<K>) =>
+      ctx.call(req, key, input);
+
+  ctx.route("POST /api/deploy/actions/plan", async (req, res) => {
+    if (!ctx.require(req, res, "write")) return undefined;
+    return (await deployer.renderAction(parse(actionSchema, req.body), caller(req))).plan;
+  });
+
+  ctx.route("POST /api/deploy/actions/run", async (req, res) => {
+    const user = ctx.require(req, res, "write");
+    if (!user) return undefined;
+    return deployer.startAction(user.id, parse(actionSchema, req.body), caller(req));
+  });
+
+  registerBackupRoutes(ctx, {
+    jobs: { get: (id) => deployer.get(id) },
+    now: options.now,
+    fetch: options.fetch,
   });
   return { deployer, bundles };
 }

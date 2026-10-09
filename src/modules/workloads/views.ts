@@ -56,6 +56,7 @@ export interface Workload extends KubeObject {
     numberAvailable?: number;
     succeeded?: number;
     active?: number | unknown[];
+    conditions?: Array<{ type?: string; status?: string }>;
   };
 }
 
@@ -181,6 +182,7 @@ export function workloadView(obj: Workload, kind: WorkloadKind, managedBy: Manag
   let available: number;
   let ready: string;
   let template = spec.template;
+  let finished: WorkloadView["finished"];
   switch (kind) {
     case "Deployment":
     case "StatefulSet":
@@ -197,6 +199,11 @@ export function workloadView(obj: Workload, kind: WorkloadKind, managedBy: Manag
       desired = spec.completions ?? 1;
       available = status.succeeded ?? 0;
       ready = `${available}/${desired}`;
+      for (const c of status.conditions ?? []) {
+        if (c.status !== "True") continue;
+        if (c.type === "Complete") finished = "complete";
+        else if (c.type === "Failed") finished = "failed";
+      }
       break;
     case "CronJob": {
       template = spec.jobTemplate?.spec?.template;
@@ -217,6 +224,7 @@ export function workloadView(obj: Workload, kind: WorkloadKind, managedBy: Manag
     images: images(template),
     managedBy,
     createdAt: created(obj.metadata),
+    ...(finished ? { finished } : {}),
   };
 }
 

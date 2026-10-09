@@ -160,6 +160,22 @@ export function sessionStanding(core: Core, session: SessionRow, now = Date.now(
   return "ok";
 }
 
+// The id_hash of the session cookie the request carries, whether or not
+// such a session exists.
+export function requestSessionHash(req: Request): string | null {
+  const token = readCookie(req, cookieName());
+  return token ? hash(token) : null;
+}
+
+// A live session by its id_hash, judged as sessionFromRequest judges one,
+// without sliding it.
+export function liveSessionByHash(core: Core, idHash: string, now = Date.now()): SessionRow | null {
+  const raw = core.db.prepare("SELECT * FROM sessions WHERE id_hash = ?").get(idHash) as RawSession | undefined;
+  if (raw === undefined || raw.expires_at <= now) return null;
+  const session = fromRaw(raw);
+  return sessionStanding(core, session, now) === "ok" ? session : null;
+}
+
 function rawByToken(core: Core, token: string): RawSession | undefined {
   return core.db.prepare("SELECT * FROM sessions WHERE id_hash = ?").get(hash(token)) as RawSession | undefined;
 }

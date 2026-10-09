@@ -6,6 +6,7 @@
 //
 // Server-free on purpose: the client imports this file.
 
+import type { CatalogEntry } from "./catalog.js";
 import type { DiskCheck } from "./disk.js";
 
 export type DeployValue = string | boolean;
@@ -17,6 +18,10 @@ export interface DeployRequest {
   // By CatalogInput.key. Secret inputs are write-only: they go into the
   // Job's values Secret and are never returned or logged.
   inputs: Record<string, DeployValue>;
+  // Leave the app reachable without signing in to the console (see
+  // "Sign-in gate" below). Default false; ignored for an entry whose
+  // CatalogEntry.gate is "public", which always is.
+  public?: boolean;
 }
 
 export interface DeployStatus {
@@ -70,6 +75,8 @@ export interface DeployPlan {
   creates: PlannedObject[];
   // Where the UI will be once it is up.
   url?: string;
+  // How the sign-in gate will treat it; absent for an app with no UI.
+  gate?: { state: AppGateState; reason?: string };
   warnings: string[];
 }
 
@@ -77,8 +84,8 @@ export type DeployMode = "install" | "dry-run";
 
 // What a job did. "upgrade" jobs come only from POST /api/deploy/upgrades:
 // `helm upgrade` with --reuse-values (no --install), or the pinned manifest
-// applied again.
-export type DeployJobMode = DeployMode | "upgrade";
+// applied again. "action" jobs come only from POST /api/deploy/actions/run.
+export type DeployJobMode = DeployMode | "upgrade" | "action";
 
 export type DeployJobState = "pending" | "running" | "succeeded" | "failed" | "cancelled";
 
@@ -89,6 +96,8 @@ export interface DeployJobView {
   namespace: string;
   version: string;
   mode: DeployJobMode;
+  // Set for mode "action".
+  action?: DeployActionKind;
   state: DeployJobState;
   startedBy: string;
   createdAt: string;
@@ -116,6 +125,9 @@ export interface BundleRequest {
   apps?: Record<string, Record<string, DeployValue>>;
   // Optional items to roll out; omitted: the ones the bundle view marks selected.
   include?: string[];
+  // Apps to leave reachable without signing in to the console
+  // (DeployRequest.public for each).
+  public?: string[];
 }
 
 export interface BundlePlanStep {
@@ -125,6 +137,8 @@ export interface BundlePlanStep {
   reason?: string;
   // Absent when skipped.
   plan?: DeployPlan;
+  // The catalog's CatalogEntry.memoryBytes; absent when skipped or unknown.
+  memoryBytes?: number;
 }
 
 export interface BundlePlan {
@@ -137,6 +151,8 @@ export interface BundlePlan {
   // The steps that run, against the nodes' free disk: checkDisk() from
   // ./disk.ts over their catalog footprints and discovery's nodeDisks.
   disk?: DiskCheck;
+  // The steps that run, summed where known.
+  memoryBytes?: number;
 }
 
 export type BundleStepState = "pending" | "skipped" | "running" | "succeeded" | "failed" | "cancelled";
@@ -224,6 +240,170 @@ export interface UpgradeRequest {
   appIds?: string[];
 }
 
+// --- Deploy actions ----------------------------------------------------------
+// A change to something already in the cluster, made by the deploy runner the
+// same way as an install: a Job under the installer ServiceAccount running
+// fixed kubectl/helm commands, so this product's own ServiceAccount stays
+// read-only. Each run is a deploy job (mode "action"): progress, logs and
+// cancel go through /api/deploy/jobs, one job per release at a time, and it
+// ends with deploy.finished. Needs deploy.enabled, like installs.
+
+export type DeployActionKind =
+  "longhorn-replicas" | "migrate-to-longhorn" | "backup-volumes" | "remove-app" | "app-gate" | "traefik-ports";
+
+// Raises Longhorn's default-replica-count Setting (what new volumes get),
+// the replica count pinned by a Longhorn StorageClass when it is lower, and,
+// with existingVolumes, spec.numberOfReplicas on every volume below it.
+// Never lowers anything.
+export interface LonghornReplicasAction {
+  kind: "longhorn-replicas";
+  // 1 to 3. Default: LonghornReplicaAdvice.target.
+  replicas?: number;
+  existingVolumes: boolean;
+}
+
+// Moves every local-path volume an app we deployed mounts to Longhorn in one
+// stop: scale its workloads to zero, copy each volume into a new Longhorn
+// volume with a Job, rebind the claim under the same name to the copy, scale
+// back up, check the app answers, then delete the old volumes. Until that
+// last step any failure puts the claims back on their old volumes (kept by
+// setting them to Retain first) and starts the app again.
+export interface MigrateToLonghornAction {
+  kind: "migrate-to-longhorn";
+  appId: string;
+}
+
+// A tar.gz of each volume migrate-to-longhorn would move, for the user to
+// download first: a pod in the app's namespace mounts them read-only while
+// the app keeps running, and this product streams each one from it. The job
+// succeeds once the pod serves; downloads go through
+// /api/deploy/actions/backups/:id with the job's id. The pod stops after an
+// hour, at .../done, or when a conversion of the app starts.
+export interface BackupVolumesAction {
+  kind: "backup-volumes";
+  appId: string;
+}
+
+// Removes an app deployed from the Templates page (a namespace labelled
+// <labelDomain>/app-template; any other app is refused). Without
+// deleteVolumes (the default) everything in its namespace goes except the
+// namespace itself and its PersistentVolumeClaims, so deploying the same
+// name again picks the data back up; with it the namespace is deleted and
+// the volumes with it. The HTTP check watching its address is deleted when
+// the job starts. The deploy.finished that follows carries action
+// "remove-app", on which the templates module forgets the instance.
+export interface RemoveAppAction {
+  kind: "remove-app";
+  appId: string;
+  deleteVolumes?: boolean;
+}
+
+// Puts an app the deploy runner installed behind the sign-in gate, or makes
+// it public: saves the choice (what later installs and upgrades apply) and
+// sets or removes the gate middleware on each of its Ingresses in place,
+// keeping any other middleware they carry. Refused for an entry whose
+// CatalogEntry.gate is "public" and, to gate, when the gate can't work
+// (GateStatus.ready false).
+export interface AppGateAction {
+  kind: "app-gate";
+  appId: string;
+  public: boolean;
+}
+
+// Makes Traefik serve exactly the entrypoints external services ask for
+// (PortsView.wanted): adds the missing ones and removes the ones this
+// product added that nothing wants any more, leaving every other port and
+// value alone. Where Traefik's values live decides how (PortsView.traefik):
+// k3s's bundled Traefik through the HelmChartConfig kube-system/traefik
+// (created when absent, its valuesContent merged otherwise), a Traefik this
+// product installed through `helm upgrade --reuse-values`. Either way
+// Traefik restarts once. Refused when a wanted port is outside the range.
+export interface TraefikPortsAction {
+  kind: "traefik-ports";
+}
+
+export type DeployActionRequest =
+  | LonghornReplicasAction
+  | MigrateToLonghornAction
+  | BackupVolumesAction
+  | RemoveAppAction
+  | AppGateAction
+  | TraefikPortsAction;
+
+export interface DeployActionStep {
+  // "Raise the default replica count to 2".
+  label: string;
+  // The command lines the Job runs for it, display only, as DeployPlan.commands.
+  commands: string[];
+}
+
+// The preview shown before anything runs; built from reads only.
+export interface DeployActionPlan {
+  kind: DeployActionKind;
+  // The button and the job list's line: "Raise Longhorn replicas to 2".
+  title: string;
+  // false when deploys are off, there is nothing to do, or the request
+  // doesn't fit the cluster; blockedBy says which in one sentence.
+  allowed: boolean;
+  blockedBy?: string;
+  steps: DeployActionStep[];
+  // What stops while it runs, in one sentence; absent when nothing does.
+  downtime?: string;
+  // What happens if a step fails, in one sentence.
+  rollback?: string;
+  // Objects it changes in place.
+  changes: PlannedObject[];
+  // Objects it creates, the Job and its Secret included.
+  creates: PlannedObject[];
+  warnings: string[];
+  // Objects it deletes (remove-app); a namespace stands for everything in it.
+  deletes?: PlannedObject[];
+  // migrate-to-longhorn and backup-volumes: the volumes it moves or saves;
+  // remove-app: the volumes it keeps, or deletes with deleteVolumes.
+  volumes?: ActionVolume[];
+  // migrate-to-longhorn: Longhorn can place replicas on more than one node,
+  // so raising replicas (longhorn-replicas) is offered once it is done.
+  offerReplicas?: boolean;
+}
+
+export interface ActionVolume {
+  namespace: string;
+  // The PersistentVolumeClaim; its name stays the same.
+  claim: string;
+  storageClass: string;
+  // Requested size as written, "5Gi".
+  size: string;
+  // In use, from the kubelet, when a running pod mounts it.
+  usedBytes?: number;
+  // The node a local-path volume lives on.
+  node?: string;
+  // migrate-to-longhorn: the Longhorn storage class it moves to.
+  targetStorageClass?: string;
+}
+
+// preparing: the backup job is still starting the pod. ready: downloads
+// work. failed: the job failed; message says why. gone: the pod has
+// stopped (an hour passed, done was called, or a conversion started).
+export type VolumeBackupState = "preparing" | "ready" | "failed" | "gone";
+
+export interface VolumeBackupView {
+  // The backup-volumes job's id.
+  id: string;
+  appId: string;
+  namespace: string;
+  state: VolumeBackupState;
+  message?: string;
+  // When the pod stops by itself.
+  expiresAt?: string;
+  files: Array<{
+    claim: string;
+    // Relative to the API base: "api/deploy/actions/backups/dj_9/files/gitea-shared-storage".
+    path: string;
+    // "gitea-gitea-shared-storage-2026-10-08.tar.gz".
+    filename: string;
+  }>;
+}
+
 // --- Access: how people reach the deployed apps ----------------------------
 
 // Decides how every app's Ingress is written, so it is chosen before any app
@@ -277,6 +457,120 @@ export interface AccessView {
   hostsFile?: string;
 }
 
+// --- Sign-in gate -------------------------------------------------------------
+// Every app the deploy runner publishes sits behind the console's own
+// sign-in until it is made public. Its Ingresses carry a Traefik
+// forwardAuth middleware that asks the console about each request
+// (GATE_FORWARD_PATH in ./platform.ts); only people signed in to the
+// console get through, so once sign-in goes through Authentik or Entra the
+// gate does too. Works for every access mode whose Ingresses Traefik serves
+// (cloudflare-tunnel, direct, local). With tailscale the operator's own
+// proxy serves the app and the tailnet is the gate. Cloudflare Access, when
+// on, is a separate layer in front.
+
+// gated: every Ingress of the app carries the gate.
+// public: left reachable without the console's sign-in on purpose (the
+//   saved choice, or CatalogEntry.gate "public").
+// open: published with no gate although not made public; reason says why
+//   (the ingress class is not Traefik, the gate isn't ready, an Ingress lost
+//   the middleware). Anyone with the URL reaches it.
+// tailnet: served by the Tailscale operator; only the tailnet reaches it.
+export type AppGateState = "gated" | "public" | "open" | "tailnet";
+
+export interface AppGateView {
+  appId: string;
+  name: string;
+  state: AppGateState;
+  // The saved choice: what the next install, upgrade or app-gate applies.
+  public: boolean;
+  // CatalogEntry.gate: "public" can't be gated; "credentials" lets requests
+  // carrying their own Authorization header through to the app.
+  mode?: "credentials" | "public";
+  // Its Ingress hosts (discovery), sorted.
+  hosts: string[];
+  // One sentence, for "open" always, otherwise when there is more to say.
+  reason?: string;
+}
+
+export interface GateStatus {
+  // The gate can be applied: the access mode isn't tailscale, the ingress
+  // class is Traefik's and the console has a public URL to send people to.
+  ready: boolean;
+  // Why not, one sentence.
+  reason?: string;
+  // The console's public URL, where people are sent to sign in.
+  signInUrl?: string;
+  // The Middleware every gated Ingress references,
+  // "<namespace>-<name>@kubernetescrd".
+  middleware?: string;
+  // Every app the deploy runner installed that has an Ingress, by name.
+  apps: AppGateView[];
+}
+
+// --- Forwarded ports ----------------------------------------------------------
+// Ports the router forwards to the cluster, for external services over TCP
+// and UDP (EXTERNAL_TEMPLATE in ./templates.ts). The range is the
+// "deploy.forwardedPorts" setting: "25565-25575,27015", ports 1024-65535,
+// at most MAX_FORWARDED_PORTS in all, none of Traefik's own (RESERVED_PORTS).
+// Each public port in use becomes one Traefik entrypoint per protocol,
+// exposed on Traefik's Service at the same port, so its LoadBalancer
+// (k3s ServiceLB on the nodes, or MetalLB) answers there.
+
+export const MAX_FORWARDED_PORTS = 100;
+
+// Traefik's own entrypoints' container ports in its chart (web, websecure,
+// traefik, metrics), which an entrypoint can't reuse.
+export const RESERVED_PORTS: readonly number[] = [8000, 8080, 8443, 9000, 9100];
+
+export type ForwardedProtocol = "tcp" | "udp";
+
+export interface ForwardedPort {
+  port: number;
+  protocol: ForwardedProtocol;
+}
+
+// An external service's claim on a public port.
+export interface WantedPort extends ForwardedPort {
+  // The template instance's name.
+  appId: string;
+}
+
+// The entrypoint's name in Traefik's values and its Service port name,
+// "tcp-25565". At most 15 characters, as a Service port name must be.
+export function traefikEntrypoint(port: ForwardedPort): string {
+  return `${port.protocol}-${port.port}`;
+}
+
+export interface PortsView {
+  // The setting as written; "" when unset.
+  range: string;
+  // Parsed and merged, ascending; empty when unset.
+  ranges: Array<{ from: number; to: number }>;
+  // Why the setting can't be used, one sentence; ranges is then empty.
+  rangeError?: string;
+  // Where Traefik's values live, absent when no Traefik was found.
+  // k3s: k3s's bundled Traefik, whose values are the HelmChartConfig
+  // kube-system/traefik (the action creates it or merges into it).
+  // release: the catalog's Traefik that this product's deploy runner installed.
+  traefik?:
+    | { kind: "k3s"; namespace: string; service: string }
+    | { kind: "release"; namespace: string; service: string; release: string };
+  // One sentence when traefik is absent or can't be changed from here
+  // (another tool manages it).
+  traefikNote?: string;
+  // Entrypoints Traefik's Service exposes now that follow traefikEntrypoint().
+  open: ForwardedPort[];
+  // What external services ask for, by public port then protocol.
+  wanted: WantedPort[];
+  // Wanted ports outside the range; the action is refused while any is.
+  outOfRange: WantedPort[];
+  // open matches wanted (both as sets of entrypoint names).
+  inSync: boolean;
+  // Traefik Service's external address (LoadBalancer ingress), where the
+  // ports answer inside the network; absent when it has none.
+  address?: string;
+}
+
 // --- For other modules -------------------------------------------------------
 
 // A release the deploy runner installed (its latest install or upgrade job), so
@@ -291,6 +585,21 @@ export interface DeployedRelease {
 
 // Provided by module "deploy" as ctx.services.get("deploy").
 export interface DeployService {
-  // The latest install or upgrade job per release, newest first; dry runs excluded.
+  // The latest install or upgrade job per release, newest first; dry runs
+  // excluded, and so is a release a later remove-app action removed.
   releases(): Promise<DeployedRelease[]>;
+  // What GET /api/deploy/access answers, for work that runs without a request.
+  access(): Promise<AccessView>;
+  // What GET /api/deploy/gate answers: each published app's sign-in gate
+  // state by host, for work that runs without a request.
+  gate(): Promise<GateStatus>;
+  // A CatalogEntry another module built (a template instance: install kind
+  // "manifest", bundled), planned and run exactly as a catalog app with
+  // that id would be: same defaults, access-mode Ingress from its "host"
+  // input, jobs, audit and deploy.finished. request.appId must be entry.id.
+  // planEntry is POST /api/deploy/plan's result; startEntry answers as
+  // POST /api/deploy/jobs does (HttpError 400 when not allowed, 409 while
+  // the release has a job running).
+  planEntry(entry: CatalogEntry, request: DeployRequest): Promise<DeployPlan>;
+  startEntry(actor: string, entry: CatalogEntry, request: DeployJobRequest): Promise<DeployJobView>;
 }

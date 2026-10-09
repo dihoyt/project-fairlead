@@ -85,3 +85,38 @@ export interface BackupPosture {
   sources: Array<{ id: string; label: string; state: "ok" | "absent" | "error"; volumes: number; error?: string }>;
   generatedAt: string;
 }
+
+// --- Longhorn replica advice (module "longhorn") ----------------------------
+// Volumes keep the replica count they were created with, so a cluster that
+// grows from one node keeps single-replica volumes until someone raises them.
+// The target is min(2, schedulable nodes): a second copy on another node,
+// never more replicas than nodes to put them on. Raising is one click
+// (DeployActionRequest "longhorn-replicas"); nothing raises by itself.
+
+export interface LonghornReplicaVolume {
+  // The Longhorn Volume's name.
+  name: string;
+  replicas: number;
+  pvc?: { namespace: string; name: string };
+}
+
+export interface LonghornReplicaAdvice {
+  // absent: Longhorn is not installed. ok: nothing below target.
+  // raise: the Setting, a StorageClass or a volume is below target.
+  // unknown: Longhorn's objects could not be read; error says why.
+  state: "absent" | "ok" | "raise" | "unknown";
+  // Longhorn nodes that are Ready with scheduling allowed.
+  schedulableNodes: number;
+  target: number;
+  // The default-replica-count Setting.
+  defaultReplicaCount?: number;
+  // StorageClasses with Longhorn's provisioner that pin numberOfReplicas
+  // below target.
+  storageClasses: Array<{ name: string; replicas: number }>;
+  // Volumes below target, fewest replicas first.
+  volumes: LonghornReplicaVolume[];
+  // One sentence: "3 volumes have 1 replica; 2 nodes can hold 2."
+  detail: string;
+  error?: string;
+  checkedAt: string;
+}

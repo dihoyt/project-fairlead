@@ -210,9 +210,11 @@ test("plan: headlamp gets a host under the base domain, TLS from the issuer, and
   assert.deepEqual(plan.inputs, { host: "headlamp.example.test" });
   assert.equal(plan.url, "https://headlamp.example.test");
   assert.deepEqual(plan.commands, [
+    "kubectl apply -f /values/gate-middleware.yaml",
     "helm upgrade --install headlamp headlamp --repo https://kubernetes-sigs.github.io/headlamp " +
       "--version 0.0.0-mock --namespace headlamp --create-namespace --values /values/values.yaml --wait --timeout 10m",
   ]);
+  assert.deepEqual(plan.gate, { state: "gated" });
   assert.match(plan.values, /ingressClassName: traefik/);
   assert.match(plan.values, /cert-manager.io\/cluster-issuer: letsencrypt-prod/);
   assert.match(plan.values, /- host: headlamp.example.test/);
@@ -234,8 +236,9 @@ test("plan: secrets are masked in inputs and values; OCI charts use the oci ref"
   assert.deepEqual(plan.inputs, { host: "git.example.test", adminUser: "gitea-admin", adminPassword: "********" });
   assert.ok(!JSON.stringify(plan).includes(PASSWORD));
   assert.match(plan.values, /password: "\*\*\*\*\*\*\*\*"/);
-  assert.match(plan.commands[0]!, /^helm upgrade --install gitea oci:\/\/docker.gitea.com\/charts\/gitea --version /);
-  assert.ok(!plan.commands[0]!.includes("--repo"));
+  const helm = plan.commands.find((c) => c.startsWith("helm"))!;
+  assert.match(helm, /^helm upgrade --install gitea oci:\/\/docker.gitea.com\/charts\/gitea --version /);
+  assert.ok(!helm.includes("--repo"));
 });
 
 test("plan: field errors, missing requirements, already installed, deploys off, unknown app", async () => {
@@ -637,7 +640,12 @@ test("a bundled manifest is applied from the values Secret with an Ingress for i
   const plan = await call<DeployPlan>(e, "POST", "/plan", { appId: "ntfy", inputs: {} });
   assert.equal(plan.allowed, true, plan.blockedBy);
   assert.equal(plan.url, "https://ntfy.example.test");
-  assert.deepEqual(plan.commands, ["kubectl apply -f /values/manifest.yaml", "kubectl apply -f /values/ingress.yaml"]);
+  assert.deepEqual(plan.commands, [
+    "kubectl apply -f /values/gate-middleware.yaml",
+    "kubectl apply -f /values/manifest.yaml",
+    "kubectl apply -f /values/ingress.yaml",
+    "kubectl rollout status deployment/ntfy --namespace ntfy --timeout=5m",
+  ]);
   assert.match(plan.values, /kind: Ingress/);
   assert.match(plan.values, /name: ntfy-web\n\s+port:\n\s+number: 8080/);
   assert.deepEqual(
@@ -660,6 +668,7 @@ test("a bundled manifest is applied from the values Secret with an Ingress for i
   const script = job.spec.template.spec.containers[0]!.command[2]!;
   assert.match(script, /'kubectl' 'apply' '-f' '\/values\/manifest.yaml' '--dry-run=client'/);
   assert.match(script, /'kubectl' 'apply' '-f' '\/values\/ingress.yaml' '--dry-run=client'/);
+  assert.doesNotMatch(script, /rollout/);
 });
 
 test("a bundled manifest with no Service for its host is blocked; a URL manifest applies the URL", async () => {
@@ -711,7 +720,10 @@ test("plan: a chart's kubeVersion picks the newest pin the cluster fits, or bloc
   let plan = await call<DeployPlan>(e, "POST", "/plan", request);
   assert.equal(plan.allowed, true, plan.blockedBy);
   assert.equal(plan.version, "1.98.0-mock");
-  assert.match(plan.commands[0]!, / --version 1\.98\.0-mock /);
+  assert.match(
+    plan.commands.find((c) => c.startsWith("helm"))!,
+    / --version 1\.98\.0-mock /
+  );
   assert.ok(
     plan.warnings.includes(
       "Installs Longhorn 1.98.0-mock, the newest version that supports Kubernetes v1.31.4+k3s1; 1.99.0-mock needs >=1.99.0-0."
@@ -761,6 +773,25 @@ test("plan: Longhorn's replica count follows the schedulable node count", async 
     assert.match(plan.values, new RegExp(`defaultReplicaCount: ${replicas}\\n`));
     assert.match(plan.values, new RegExp(`defaultClassReplicaCount: ${replicas}\\n`));
     assert.equal(plan.warnings.includes(single), replicas === 1, JSON.stringify(plan.warnings));
+    await env!.server.close();
+    env!.deployer.stop();
+    await env!.mock.close();
+    env = undefined;
+  }
+});
+
+test("plan: cloudflared runs one replica on a single node, two otherwise", async () => {
+  const GiB = 1024 ** 3;
+  const request = { appId: "cloudflared", inputs: { tunnelToken: "token" } };
+  const cases: Array<[DiscoveryReport, number]> = [
+    [{ ...mockDiscovery, nodeDisks: [{ node: "n1", availableBytes: 20 * GiB, capacityBytes: 30 * GiB }] }, 1],
+    [{ ...mockDiscovery, nodeDisks: ["a", "b", "c"].map((node) => ({ node, error: "timed out" })) }, 2],
+    [{ ...mockDiscovery, nodeDisks: undefined }, 2],
+  ];
+  for (const [discovery, replicas] of cases) {
+    const e = await setup({ catalog: createMockCatalogService({ discovery }) });
+    const plan = await call<DeployPlan>(e, "POST", "/plan", request);
+    assert.match(plan.values, new RegExp(`^replicaCount: ${replicas}$`, "m"));
     await env!.server.close();
     env!.deployer.stop();
     await env!.mock.close();
@@ -839,4 +870,103 @@ test("access: Ingresses and URLs follow the mode", async () => {
   p = await plan();
   assert.equal(p.url, "https://headlamp.example.test");
   assert.match(p.values, /cert-manager.io\/cluster-issuer: letsencrypt-prod/);
+});
+
+const withAuthentikPassword = (): CatalogEntry[] =>
+  mockCatalog.map((entry) =>
+    entry.id === "authentik"
+      ? {
+          ...entry,
+          inputs: [
+            ...entry.inputs,
+            { key: "adminPassword", label: "Admin password", kind: "secret" as const, required: false },
+          ],
+          // As the real catalog has it: never behind the console's sign-in.
+          gate: "public" as const,
+        }
+      : entry
+  );
+
+test("authentik: bootstrap credentials in its values, https restored behind a tunnel", async () => {
+  const e = await setup({ catalog: createMockCatalogService({ entries: withAuthentikPassword() }) });
+  const inputs = { host: "auth.example.test", adminEmail: "ops@example.test", adminPassword: "s3cret-Authentik" };
+
+  await call(e, "PUT", "/access", { mode: "cloudflare-tunnel", baseDomain: "example.test" });
+  let p = await call<DeployPlan>(e, "POST", "/plan", { appId: "authentik", inputs });
+  assert.equal(p.allowed, true, p.blockedBy);
+  assert.match(p.values, /bootstrap_email: ops@example.test/);
+  assert.match(p.values, /bootstrap_password: /);
+  assert.doesNotMatch(p.values, /s3cret-Authentik/);
+  assert.match(
+    p.values,
+    /traefik.ingress.kubernetes.io\/router.middlewares: authentik-authentik-forwarded-https@kubernetescrd/
+  );
+  assert.match(p.values, /kind: Middleware/);
+  assert.match(p.values, /X-Forwarded-Proto: https/);
+  assert.ok(p.warnings.some((w) => w.includes("as akadmin")));
+
+  await call(e, "PUT", "/access", { mode: "direct", baseDomain: "example.test" });
+  p = await call<DeployPlan>(e, "POST", "/plan", { appId: "authentik", inputs: { ...inputs, adminPassword: "" } });
+  assert.doesNotMatch(p.values, /Middleware|router.middlewares|bootstrap_password/);
+  assert.ok(p.warnings.some((w) => w.includes("/if/flow/initial-setup/")));
+
+  await call(e, "POST", "/jobs", { appId: "authentik", mode: "dry-run", inputs });
+  const secret = (await e.k8s.get(RESOURCES.secrets, "deploy-authentik-values", NS)) as KubeObject & {
+    stringData: Record<string, string>;
+  };
+  assert.match(secret.stringData["values.yaml"]!, /bootstrap_password: s3cret-Authentik/);
+});
+
+test("the bundle's apps ask for what they use idle and are capped in memory", async () => {
+  const e = await setup({ catalog: createMockCatalogService({ entries: withAuthentikPassword() }) });
+  const plans: Array<[string, Record<string, unknown>, RegExp[]]> = [
+    [
+      "authentik",
+      { host: "auth.example.test", adminEmail: "ops@example.test" },
+      [/worker:\n\s+resources:\n\s+requests:\n\s+cpu: "50m"\n\s+memory: "448Mi"\n\s+limits:\n\s+memory: "1Gi"/],
+    ],
+    ["cert-manager", {}, [/webhook:\n\s+resources:/, /cainjector:\n\s+resources:/]],
+    [
+      "cloudflared",
+      { tunnelToken: "tok" },
+      [/resources:\n\s+requests:\n\s+cpu: "10m"\n\s+memory: "32Mi"/, /image:\n\s+tag: "?2026\.10\.0"?\n/],
+    ],
+  ];
+  for (const [appId, inputs, patterns] of plans) {
+    const p = await call<DeployPlan>(e, "POST", "/plan", { appId, inputs });
+    for (const pattern of patterns) assert.match(p.values, pattern, appId);
+    assert.doesNotMatch(p.values, /limits:\n\s+cpu/, `${appId}: no CPU limit`);
+  }
+});
+
+test("plan: Longhorn takes the default storage class over from k3s's local-path only", async () => {
+  const notInstalled = { ...mockDiscovery, apps: mockDiscovery.apps.filter((app) => app.appId !== "longhorn") };
+  const withDefaults = (found: string[]): DiscoveryReport => ({
+    ...notInstalled,
+    basics: notInstalled.basics.map((b) =>
+      b.id === "default-storage-class"
+        ? { ...b, status: found.length === 0 ? "crit" : found.length === 1 ? "ok" : "warn", found }
+        : b
+    ),
+  });
+  const request = { appId: "longhorn", inputs: { host: "longhorn.example.test" } };
+  const unset = `kubectl patch storageclass local-path --type merge -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'`;
+  const cases: Array<[string[], boolean, boolean]> = [
+    [["local-path"], true, true],
+    [["local-path", "longhorn"], true, true],
+    [[], true, false],
+    [["ceph-rbd"], false, false],
+  ];
+  for (const [found, takes, unsets] of cases) {
+    const e = await setup({ catalog: createMockCatalogService({ discovery: withDefaults(found) }) });
+    const plan = await call<DeployPlan>(e, "POST", "/plan", request);
+    assert.match(plan.values, new RegExp(`defaultClass: ${takes}\\n`), found.join());
+    assert.equal(plan.commands.includes(unset), unsets, JSON.stringify(plan.commands));
+    if (found[0] === "ceph-rbd") assert.ok(plan.warnings.some((w) => w.startsWith("ceph-rbd stays the default")));
+    if (unsets) assert.ok(plan.warnings.some((w) => w.includes("in place of local-path")));
+    await env!.server.close();
+    env!.deployer.stop();
+    await env!.mock.close();
+    env = undefined;
+  }
 });

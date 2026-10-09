@@ -1,6 +1,7 @@
 import type { CatalogEntry, DiscoveryReport } from "../../contracts/catalog.js";
 import type { AccessMode, DeployValue } from "../../contracts/deploy.js";
 import { deployedLabel } from "../../contracts/deployed.js";
+import { MIDDLEWARES_ANNOTATION } from "./gate.js";
 import type { YamlValue } from "./yaml.js";
 
 export interface Defaults {
@@ -29,6 +30,9 @@ export interface RecipeInput {
   // false with Tailscale: the deploy module writes the app's Ingress itself
   // from `service`, so the chart's own stays off.
   chartIngress: boolean;
+  // Traefik middlewares every Ingress of the app carries: the sign-in gate
+  // (./gate.ts) when it is gated.
+  middlewares?: string[];
   defaults: Defaults;
   discovery?: DiscoveryReport;
   // A random value generated per run (database passwords, signing keys).
@@ -63,12 +67,15 @@ export interface Recipe {
 }
 
 export const VALUES_DIR = "/values";
+const DNS_NAME = /^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$/;
 // Backup targets Longhorn accepts.
 export const BACKUP_TARGET = /^(nfs|s3|cifs|azblob):\/\/\S+$/;
 const str = (value: DeployValue | undefined) => (typeof value === "string" ? value : "");
 
-const issuerAnnotations = (r: RecipeInput): Record<string, string> =>
-  r.tls && r.defaults.clusterIssuer ? { "cert-manager.io/cluster-issuer": r.defaults.clusterIssuer } : {};
+export const ingressAnnotations = (r: RecipeInput): Record<string, string> => ({
+  ...(r.tls && r.defaults.clusterIssuer ? { "cert-manager.io/cluster-issuer": r.defaults.clusterIssuer } : {}),
+  ...(r.middlewares?.length ? { [MIDDLEWARES_ANNOTATION]: r.middlewares.join(",") } : {}),
+});
 
 const tlsSecret = (r: RecipeInput) => `${r.release}-tls`;
 
@@ -77,18 +84,75 @@ const tlsSecret = (r: RecipeInput) => `${r.release}-tls`;
 // module's releases().
 const labels = () => deployedLabel();
 
-// Two replicas, or one on a single node: more replicas than nodes leaves
-// every volume degraded. Users raise it in Longhorn as they add nodes.
-const LONGHORN_REPLICAS = 2;
-const longhornReplicas = (r: RecipeInput) => {
+// The chart runs cloudflare/cloudflared:latest unless given a tag.
+export const CLOUDFLARED_TAG = "2026.10.0";
+
+// Two replicas, or one on a single node, where a second copy on the same
+// host buys nothing. Unknown node count keeps two.
+const upToNodes = (r: RecipeInput, wanted: number) => {
   const nodes = r.discovery?.nodeDisks?.length;
-  return nodes ? Math.min(LONGHORN_REPLICAS, nodes) : LONGHORN_REPLICAS;
+  return nodes ? Math.min(wanted, nodes) : wanted;
 };
+// More replicas than nodes leaves every volume degraded. Users raise it in
+// Longhorn as they add nodes.
+const LONGHORN_REPLICAS = 2;
+const longhornReplicas = (r: RecipeInput) => upToNodes(r, LONGHORN_REPLICAS);
 const storageClass = (r: RecipeInput) => r.defaults.storageClass || undefined;
 
 function hasDefaultStorageClass(r: RecipeInput): boolean {
   const basic = r.discovery?.basics.find((b) => b.id === "default-storage-class");
   return !basic || basic.status !== "crit";
+}
+
+// k3s ships local-path as the default class; replicated Longhorn takes the
+// default over from it. Any other default was someone's choice and stays.
+const NODE_LOCAL_CLASS = "local-path";
+const DEFAULT_CLASS_ANNOTATION = "storageclass.kubernetes.io/is-default-class";
+
+// The classes marked default now; undefined when discovery couldn't tell.
+function defaultStorageClasses(r: RecipeInput): string[] | undefined {
+  const basic = r.discovery?.basics.find((b) => b.id === "default-storage-class");
+  if (!basic || basic.status === "unknown") return undefined;
+  return basic.status === "crit" ? [] : basic.found;
+}
+
+function longhornTakesDefault(r: RecipeInput): boolean {
+  const defaults = defaultStorageClasses(r);
+  return defaults !== undefined && defaults.every((name) => name === NODE_LOCAL_CLASS || name === "longhorn");
+}
+
+const unsetDefault = (name: string): Step => ({
+  argv: [
+    "kubectl",
+    "patch",
+    "storageclass",
+    name,
+    "--type",
+    "merge",
+    "-p",
+    `{"metadata":{"annotations":{"${DEFAULT_CLASS_ANNOTATION}":"false"}}}`,
+  ],
+  dryRun: "--dry-run=server",
+});
+
+// Behind a tunnel the edge terminates TLS and the tunnel reaches Traefik over
+// plain http. Traefik trusts no X-Forwarded-* header by default, so it
+// forwards X-Forwarded-Proto: http, and apps that build absolute URLs from
+// the request (Authentik's API base) hand an https page http URLs the
+// browser blocks as mixed content. A headers Middleware on the app's own
+// router restores https without changing what the cluster's Traefik trusts.
+function forwardedHttps(r: RecipeInput): { name: string; middleware: YamlValue } | undefined {
+  if (!r.chartIngress || r.tls || r.scheme !== "https" || r.defaults.ingressClass !== "traefik") return undefined;
+  const name = `${r.release}-forwarded-https`;
+  return {
+    name,
+    middleware: {
+      apiVersion: "traefik.io/v1alpha1",
+      kind: "Middleware",
+      metadata: { name, namespace: r.namespace, labels: labels() },
+      spec: { headers: { customRequestHeaders: { "X-Forwarded-Proto": "https" } } },
+    },
+  };
 }
 
 function hasDefaultIngressClass(r: RecipeInput): boolean {
@@ -100,9 +164,23 @@ function hasDefaultIngressClass(r: RecipeInput): boolean {
 // (plugin 1.14 for Velero 1.18; see Velero's compatibility matrix).
 export const VELERO_AWS_PLUGIN = "velero/velero-plugin-for-aws:v1.14.4";
 
+// Requests close to what each app uses idle, so the scheduler sees a small
+// box filling up; memory limits with headroom, so one app can't take the
+// node. No CPU limits: throttling hurts more than it protects.
+const resources = (cpu: string, memory: string, limit: string) => ({
+  requests: { cpu, memory },
+  limits: { memory: limit },
+});
+
 export const recipes: Record<string, Recipe> = {
   "cert-manager": {
-    values: () => ({ crds: { enabled: true }, global: { commonLabels: labels() } }),
+    values: () => ({
+      crds: { enabled: true },
+      global: { commonLabels: labels() },
+      resources: resources("10m", "48Mi", "256Mi"),
+      webhook: { resources: resources("5m", "24Mi", "128Mi") },
+      cainjector: { resources: resources("5m", "48Mi", "256Mi") },
+    }),
     files: (r) => {
       const email = str(r.inputs.acmeEmail);
       if (!email) return {};
@@ -177,22 +255,36 @@ export const recipes: Record<string, Recipe> = {
     values: (r) => ({
       commonLabels: labels(),
       defaultSettings: { defaultReplicaCount: longhornReplicas(r) },
-      persistence: { defaultClass: !hasDefaultStorageClass(r), defaultClassReplicaCount: longhornReplicas(r) },
+      persistence: { defaultClass: longhornTakesDefault(r), defaultClassReplicaCount: longhornReplicas(r) },
       ingress: {
         enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
         host: r.host,
         tls: r.tls,
         tlsSecret: r.tls ? tlsSecret(r) : undefined,
-        annotations: issuerAnnotations(r),
+        annotations: ingressAnnotations(r),
       },
     }),
     service: () => ({ name: "longhorn-frontend", port: 80 }),
+    after: (r) =>
+      longhornTakesDefault(r) && defaultStorageClasses(r)!.includes(NODE_LOCAL_CLASS)
+        ? [unsetDefault(NODE_LOCAL_CLASS)]
+        : [],
     warnings: (r) => {
       const replicas = longhornReplicas(r);
+      const defaults = defaultStorageClasses(r) ?? [];
+      const others = defaults.filter((name) => name !== "longhorn");
       return [
         "Longhorn's UI has no sign-in of its own: anyone who can reach the hostname can use it.",
         ...(replicas === 1 ? ["1 replica on a single node; raise it in Longhorn when you add nodes."] : []),
+        ...(longhornTakesDefault(r) && others.length > 0
+          ? [
+              `Longhorn becomes the default storage class in place of ${others.join(", ")}; volumes that already exist stay where they are.`,
+            ]
+          : []),
+        ...(!longhornTakesDefault(r) && others.length > 0
+          ? [`${others.join(", ")} stays the default storage class; apps that should use Longhorn must name it.`]
+          : []),
       ];
     },
   },
@@ -205,7 +297,7 @@ export const recipes: Record<string, Recipe> = {
       ingress: {
         enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
-        extraAnnotations: issuerAnnotations(r),
+        extraAnnotations: ingressAnnotations(r),
         // "secret": the issuer annotation has cert-manager fill
         // tls-rancher-ingress. Without an issuer Rancher signs its own.
         tls: { source: r.tls ? "secret" : "rancher" },
@@ -219,7 +311,7 @@ export const recipes: Record<string, Recipe> = {
       ingress: {
         enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
-        annotations: issuerAnnotations(r),
+        annotations: ingressAnnotations(r),
         hosts: [{ host: r.host, paths: [{ path: "/", type: "Prefix" }] }],
         tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
       },
@@ -232,7 +324,7 @@ export const recipes: Record<string, Recipe> = {
       ingress: {
         enabled: r.chartIngress,
         className: r.defaults.ingressClass,
-        annotations: issuerAnnotations(r),
+        annotations: ingressAnnotations(r),
         hosts: [{ host: r.host, paths: [{ path: "/", pathType: "Prefix" }] }],
         tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
       },
@@ -249,6 +341,7 @@ export const recipes: Record<string, Recipe> = {
         },
       },
       persistence: { enabled: true, size: r.app.storage, storageClass: storageClass(r) },
+      resources: resources("25m", "160Mi", "512Mi"),
       "postgresql-ha": { enabled: false },
       postgresql: { enabled: false },
       "valkey-cluster": { enabled: false },
@@ -264,7 +357,7 @@ export const recipes: Record<string, Recipe> = {
       ingress: {
         enabled: r.chartIngress,
         ingressClassName: r.defaults.ingressClass,
-        annotations: issuerAnnotations(r),
+        annotations: ingressAnnotations(r),
         hosts: [r.host],
         tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
       },
@@ -276,29 +369,48 @@ export const recipes: Record<string, Recipe> = {
   authentik: {
     values: (r) => {
       const dbPassword = r.generated("postgresPassword");
+      const password = str(r.inputs.adminPassword);
+      const https = forwardedHttps(r);
       return {
-        global: { env: [{ name: "AUTHENTIK_BOOTSTRAP_EMAIL", value: str(r.inputs.adminEmail) }] },
-        authentik: { secret_key: r.generated("secretKey"), postgresql: { password: dbPassword } },
+        authentik: {
+          secret_key: r.generated("secretKey"),
+          postgresql: { password: dbPassword },
+          // Read once, on first start: the bootstrap blueprint creates akadmin
+          // with it and marks setup done, so /if/flow/initial-setup/ never shows.
+          bootstrap_email: str(r.inputs.adminEmail),
+          ...(password ? { bootstrap_password: password } : {}),
+        },
         postgresql: {
           enabled: true,
           auth: { password: dbPassword },
-          primary: { persistence: { size: r.app.storage, storageClass: storageClass(r) } },
+          primary: {
+            persistence: { size: r.app.storage, storageClass: storageClass(r) },
+            resources: resources("25m", "96Mi", "512Mi"),
+          },
         },
+        // Idle, the server and worker each hold about half a GiB.
+        worker: { resources: resources("50m", "448Mi", "1Gi") },
         server: {
+          resources: resources("50m", "512Mi", "1Gi"),
           ingress: {
             enabled: r.chartIngress,
             ingressClassName: r.defaults.ingressClass,
-            annotations: issuerAnnotations(r),
+            annotations: {
+              ...ingressAnnotations(r),
+              ...(https ? { [MIDDLEWARES_ANNOTATION]: `${r.namespace}-${https.name}@kubernetescrd` } : {}),
+            },
             hosts: [r.host],
             tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
           },
         },
+        additionalObjects: https ? [https.middleware] : [],
       };
     },
     service: (r) => ({ name: `${r.release}-server`, port: 80 }),
-    warnings: (r) => [
-      `Finish setup at ${r.scheme}://${r.host ?? "<host>"}/if/flow/initial-setup/ to set the admin password.`,
-    ],
+    warnings: (r) =>
+      str(r.inputs.adminPassword)
+        ? [`Sign in at ${r.scheme}://${r.host ?? "<host>"} as akadmin with the admin password.`]
+        : [`Finish setup at ${r.scheme}://${r.host ?? "<host>"}/if/flow/initial-setup/ to set the admin password.`],
   },
 
   velero: {
@@ -384,8 +496,76 @@ export const recipes: Record<string, Recipe> = {
         : [],
   },
 
+  // A TLS-only Ingress beside an app's own, for a host published straight to
+  // the public address (Cloudflare connector, Direct exposure): cert-manager
+  // issues its certificate and the controller serves it for the host. Kept
+  // apart from the app's Ingress so a chart upgrade never undoes it.
+  "direct-tls": {
+    files: (r) => ({
+      "ingress.yaml": {
+        apiVersion: "networking.k8s.io/v1",
+        kind: "Ingress",
+        metadata: {
+          name: str(r.inputs.name),
+          namespace: r.namespace,
+          labels: labels(),
+          annotations: {
+            "cert-manager.io/cluster-issuer": str(r.inputs.issuer),
+            ...(r.middlewares?.length ? { [MIDDLEWARES_ANNOTATION]: r.middlewares.join(",") } : {}),
+          },
+        },
+        spec: {
+          ...(str(r.inputs.ingressClass) ? { ingressClassName: str(r.inputs.ingressClass) } : {}),
+          tls: [{ hosts: [str(r.inputs.domain)], secretName: `${str(r.inputs.name)}-tls` }],
+          rules: [
+            {
+              host: str(r.inputs.domain),
+              http: {
+                paths: [
+                  {
+                    path: "/",
+                    pathType: "Prefix",
+                    backend: {
+                      service: {
+                        name: str(r.inputs.service),
+                        port: /^\d+$/.test(str(r.inputs.port))
+                          ? { number: Number(str(r.inputs.port)) }
+                          : { name: str(r.inputs.port) },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    }),
+    patch: (r) =>
+      r.inputs.remove === true
+        ? [{ argv: ["kubectl", "delete", "--ignore-not-found", "-f", `${VALUES_DIR}/ingress.yaml`] }]
+        : [{ argv: ["kubectl", "apply", "-f", `${VALUES_DIR}/ingress.yaml`], dryRun: "--dry-run=server" }],
+    validate: (inputs): Record<string, string> => {
+      const errors: Record<string, string> = {};
+      for (const key of ["name", "service", "issuer"]) {
+        if (!DNS_NAME.test(str(inputs[key]))) errors[key] = "must be a lowercase DNS name";
+      }
+      if (str(inputs.ingressClass) && !DNS_NAME.test(str(inputs.ingressClass))) {
+        errors.ingressClass = "must be a lowercase DNS name";
+      }
+      if (!/^(\d{1,5}|[a-z0-9-]{1,15})$/.test(str(inputs.port))) errors.port = "must be a port number or name";
+      return errors;
+    },
+  },
+
   cloudflared: {
-    values: (r) => ({ cloudflare: { tunnel_token: str(r.inputs.tunnelToken) } }),
+    // The chart runs two by default; each shows as a separate connector.
+    values: (r) => ({
+      cloudflare: { tunnel_token: str(r.inputs.tunnelToken) },
+      image: { tag: CLOUDFLARED_TAG },
+      replicaCount: upToNodes(r, 2),
+      resources: resources("10m", "32Mi", "128Mi"),
+    }),
   },
 
   "tailscale-operator": {

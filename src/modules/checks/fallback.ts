@@ -1,4 +1,5 @@
 import type { CatalogService, IngressHost } from "../../contracts/catalog.js";
+import type { DeployService } from "../../contracts/deploy.js";
 import type { CheckResult } from "../../contracts/health.js";
 import { judge, probe, type CheckSpec, type ProbeOptions, type ProbeOutcome } from "./probe.js";
 
@@ -98,5 +99,64 @@ export async function rateUnresolved(
       deepLink: ACCESS_LINK,
     },
     inside,
+  };
+}
+
+// The console's sign-in gate answers 401 to any request without its cookie,
+// before the app sees it, so a check without credentials always meets it.
+export function metGate(spec: CheckSpec, outcome: ProbeOutcome): boolean {
+  return spec.kind === "http" && !spec.authHeader && !spec.expectStatus?.length && outcome.httpStatus === 401;
+}
+
+export async function gatedHost(deploy: DeployService | undefined, target: string): Promise<boolean> {
+  if (!deploy) return false;
+  try {
+    const host = new URL(target).hostname.toLowerCase();
+    const status = await deploy.gate();
+    return status.apps.some((app) => app.state === "gated" && app.hosts.some((h) => h.toLowerCase() === host));
+  } catch {
+    return false;
+  }
+}
+
+// Rates a check stopped by the console's own sign-in: the gate answering
+// says the route works, and the app's Service says whether the app is up.
+export async function rateGated(
+  spec: CheckSpec,
+  outcome: ProbeOutcome,
+  ingress: IngressHost | undefined,
+  observedAt: string,
+  options: ProbeOptions = {}
+): Promise<CheckResult> {
+  const base = {
+    id: spec.id,
+    label: spec.label,
+    observedAt,
+    deepLink: spec.target,
+    ...(outcome.latencyMs !== undefined ? { value: outcome.latencyMs } : {}),
+  };
+  const gate = `the console's sign-in answered (HTTP 401 in ${outcome.latencyMs ?? 0} ms)`;
+  if (!ingress?.serviceUrl) {
+    return {
+      ...base,
+      status: "ok",
+      detail: `Behind the console's sign-in: ${gate}; the app itself isn't reachable to check`,
+    };
+  }
+  const insideSpec = serviceSpec(spec, ingress.serviceUrl);
+  const inside = await probe(insideSpec, options);
+  const judged = judge(insideSpec, inside, observedAt);
+  if (judged.status === "ok" || judged.status === "warn") {
+    return {
+      ...base,
+      status: "ok",
+      detail: `Behind the console's sign-in: ${gate}, and the app is up inside the cluster (${judged.detail})`,
+    };
+  }
+  return {
+    ...base,
+    status: "crit",
+    detail: `Behind the console's sign-in: ${gate}, but the app does not answer inside the cluster (${ingress.serviceUrl}): ${judged.detail}`,
+    raw: { target: spec.target, ...outcome, service: ingress.serviceUrl, inside },
   };
 }

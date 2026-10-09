@@ -1,5 +1,7 @@
 // ntfy publishes no manifest of its own. The deploy module adds the Ingress
-// for the chosen host in front of Service ntfy, port 80.
+// for the chosen host in front of Service ntfy, port 80. No
+// attachment-cache-dir: ntfy refuses to start with one unless base-url is
+// set, and the manifest is applied as is, without the host.
 export const NTFY_VERSION = "v2.29.0";
 
 export const ntfyManifest = `apiVersion: v1
@@ -27,7 +29,6 @@ data:
   server.yml: |
     listen-http: ":80"
     cache-file: /var/cache/ntfy/cache.db
-    attachment-cache-dir: /var/cache/ntfy/attachments
     behind-proxy: true
 ---
 apiVersion: apps/v1

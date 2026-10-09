@@ -1,5 +1,11 @@
 import type { Database } from "better-sqlite3";
-import type { CatalogBundle, CatalogEntry, DiscoveryReport, InputCondition } from "../../contracts/catalog.js";
+import type {
+  CatalogBundle,
+  CatalogEntry,
+  CatalogInput,
+  DiscoveryReport,
+  InputCondition,
+} from "../../contracts/catalog.js";
 import type {
   AccessMode,
   BundlePlan,
@@ -167,9 +173,19 @@ function mask(values: Record<string, DeployValue>, secret: Set<string>): Record<
   return Object.fromEntries(Object.entries(values).map(([k, v]) => [k, secret.has(k) && v !== "" ? MASK : v]));
 }
 
-export function holds(condition: InputCondition | undefined, values: Record<string, DeployValue> | undefined): boolean {
+// A condition on an input that itself doesn't apply never holds, so a stale
+// answer (a tunnel setup left from before access changed) asks for nothing.
+// An unanswered input counts as its default.
+export function holds(
+  condition: InputCondition | undefined,
+  values: Record<string, DeployValue> | undefined,
+  inputs: readonly CatalogInput[] = [],
+  depth = 0
+): boolean {
   if (!condition) return true;
-  const value = values?.[condition.input];
+  const input = inputs.find((i) => i.key === condition.input);
+  if (input?.when && (depth > 8 || !holds(input.when, values, inputs, depth + 1))) return false;
+  const value = values?.[condition.input] ?? input?.default;
   return typeof value === "string" && condition.in.includes(value);
 }
 
@@ -195,8 +211,15 @@ export function stepRequests(
   return bundle.items.map((item): StepRequest => {
     const entry = entries(item.appId);
     if (!entry) return { appId: item.appId, skip: true, reason: "Not in this catalog" };
-    if (!holds(item.when, shared)) {
-      return { appId: item.appId, skip: true, reason: "Not needed for how you reach the apps" };
+    if (!holds(item.when, shared, bundle.inputs)) {
+      // Through the Cloudflare connector, cloudflared is deployed from its
+      // panel before the rollout, not as a step.
+      const viaConnector = shared.access === "cloudflare-tunnel" && shared.cloudflareSetup === "api";
+      const reason =
+        item.appId === "cloudflared" && viaConnector
+          ? "Run by the Cloudflare connector"
+          : "Not needed for how you reach the apps";
+      return { appId: item.appId, skip: true, reason };
     }
     if (!item.required && !included.has(item.appId)) {
       return { appId: item.appId, skip: true, reason: item.note ?? "Left out" };
@@ -216,7 +239,8 @@ export function stepRequests(
         (input.key === "host" && baseDomain ? `${item.hostPrefix ?? item.appId}.${baseDomain}` : undefined);
       if (value !== undefined) inputs[input.key] = value;
     }
-    return { appId: item.appId, skip: false, request: { appId: item.appId, inputs } };
+    const made = request.public ? { public: request.public.includes(item.appId) } : {};
+    return { appId: item.appId, skip: false, request: { appId: item.appId, inputs, ...made } };
   });
 }
 
@@ -307,7 +331,8 @@ export class Bundles {
           .filter((s) => !s.skip)
           .map((s) => s.appId),
       });
-      out.push({ appId: step.appId, skip: false, plan });
+      const memoryBytes = this.entry(step.appId)?.memoryBytes;
+      out.push({ appId: step.appId, skip: false, plan, ...(memoryBytes ? { memoryBytes } : {}) });
     }
     const errors = this.sharedErrors(bundle, request);
     const disk = checkDisk(
@@ -315,18 +340,20 @@ export class Bundles {
       found.discovery?.nodeDisks
     );
     const noRoom = disk.status === "crit";
+    const memoryBytes = out.reduce((sum, step) => sum + (step.memoryBytes ?? 0), 0);
     return {
       bundleId: bundle.id,
       allowed: errors.length === 0 && !noRoom && out.every((step) => step.skip || step.plan?.allowed),
       ...(noRoom ? { blockedBy: disk.detail } : {}),
       steps: out,
       disk,
+      ...(memoryBytes ? { memoryBytes } : {}),
     };
   }
 
   private sharedErrors(bundle: CatalogBundle, request: BundleRequest): string[] {
     return bundle.inputs
-      .filter((input) => input.required && holds(input.when, request.inputs))
+      .filter((input) => input.required && holds(input.when, request.inputs, bundle.inputs))
       .filter((input) => {
         const value = request.inputs?.[input.key];
         return value === undefined || value === "";

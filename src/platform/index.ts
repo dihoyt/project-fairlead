@@ -18,13 +18,16 @@ import { updateUser, userByUsername } from "./auth/users.js";
 import { bootstrapAdmin } from "./bootstrap.js";
 import type { Core } from "./core.js";
 import { platformMigrations } from "./migrations.js";
+import { createGate } from "./gate.js";
 import { originGuard } from "./originGuard.js";
 import { mcpChallenge, oauthRouter } from "./routes/oauth.js";
 import { adminRouter } from "./routes/admin.js";
 import { authApiRouter, meRoute, oidcRouter } from "./routes/auth.js";
+import { gateForwardRouter, gateRouter } from "./routes/gate.js";
 import { totpRouter } from "./routes/totp.js";
 import { createSecrets } from "./secrets.js";
 import { createSettings } from "./settings.js";
+import { createSignIn } from "./signin.js";
 import { createDrain, drainDeadlineMs } from "./shutdown.js";
 
 // Modules see the contract's User and nothing of the account behind it.
@@ -58,6 +61,8 @@ export const createPlatform: CreatePlatform = (deps) => {
     log,
     limits: createLoginLimits(),
   };
+  const signIn = createSignIn(core);
+  const gate = createGate(core);
   const resolveSession = createResolver(core);
   const tickets = new Map<string, { auth: AuthResult; expires: number }>();
   const redeem = (ticket: string): AuthResult => {
@@ -89,6 +94,7 @@ export const createPlatform: CreatePlatform = (deps) => {
       // point, and nothing is served before it.
       if (!deps.identify) bootstrapAdmin(core);
 
+      app.use(gateForwardRouter(core, gate));
       app.use((req, res, next) => {
         try {
           setAuth(req, resolve(req, res));
@@ -117,10 +123,11 @@ export const createPlatform: CreatePlatform = (deps) => {
         next();
       });
       app.use(oidcRouter(core));
+      app.use(gateRouter(core, gate));
       app.get("/api/me", meRoute());
       app.use("/api/auth/totp", totpRouter(core));
       app.use("/api/auth", authApiRouter(core));
-      app.use("/api/admin", adminRouter(core));
+      app.use("/api/admin", adminRouter(core, signIn));
       // Everything after this (the system routes and every module router)
       // has an identity that is ready to act.
       app.use("/api", (req, res, next) => {
@@ -145,6 +152,8 @@ export const createPlatform: CreatePlatform = (deps) => {
     settings: core.settings,
     secrets: core.secrets,
     audit: core.audit,
+    signIn,
+    gate,
     clearSettings: ({ only, except = [], exceptPrefixes = [] }) =>
       core.settings.clearOverrides(only, except, exceptPrefixes),
     async resetAdminPassword() {

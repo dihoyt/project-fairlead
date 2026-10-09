@@ -37,12 +37,25 @@ export const bundles: readonly CatalogBundle[] = [
         required: true,
       },
       {
+        key: "cloudflareSetup",
+        label: "How the tunnel is set up",
+        help: "With an API token the Cloudflare connector creates the tunnel, runs cloudflared and adds every app's DNS record and route. With a tunnel token you add the routes yourself.",
+        kind: "select",
+        required: true,
+        default: "token",
+        options: [
+          { value: "api", label: "Connect with an API token" },
+          { value: "token", label: "Paste a tunnel token" },
+        ],
+        when: { input: "access", in: ["cloudflare-tunnel"] },
+      },
+      {
         key: "tunnelToken",
         label: "Cloudflare tunnel token",
         help: "In Cloudflare Zero Trust, Networks > Tunnels > Create a tunnel (Cloudflared), then copy the token from the install command.",
         kind: "secret",
         required: true,
-        when: { input: "access", in: ["cloudflare-tunnel"] },
+        when: { input: "cloudflareSetup", in: ["token"] },
       },
       {
         key: "tailscaleClientId",
@@ -82,7 +95,8 @@ export const bundles: readonly CatalogBundle[] = [
       },
     ],
     items: [
-      { appId: "cloudflared", required: true, when: { input: "access", in: ["cloudflare-tunnel"] } },
+      // With the connector, cloudflared is its to run: the tunnel token never leaves the server.
+      { appId: "cloudflared", required: true, when: { input: "cloudflareSetup", in: ["token"] } },
       {
         appId: "tailscale-operator",
         required: true,
@@ -100,7 +114,6 @@ export const bundles: readonly CatalogBundle[] = [
       },
       { appId: "authentik", required: true, hostPrefix: "auth" },
       { appId: "gitea", required: true, hostPrefix: "git", values: { adminUser: "gitea-admin" } },
-      { appId: "ntfy", required: true },
     ],
   },
 ];

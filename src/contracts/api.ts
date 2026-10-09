@@ -20,6 +20,8 @@ import type {
   NewUserRequest,
   OAuthConsentRequest,
   OAuthConsentView,
+  PublicSignInRequest,
+  PublicSignInResult,
   SessionView,
   SettingValue,
   TotpEnrollment,
@@ -28,9 +30,28 @@ import type {
   UserChangesRequest,
   UserView,
 } from "./auth.js";
-import type { BackupPosture, RestoreTestMark } from "./backups.js";
+import type { BackupPosture, LonghornReplicaAdvice, RestoreTestMark } from "./backups.js";
 import type { CatalogAppView, CatalogBundleView, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
+import type {
+  CloudflareDiscoverRequest,
+  CloudflareDiscovery,
+  CloudflareHostRequest,
+  CloudflareHostView,
+  CloudflareTunnelDeploy,
+  CloudflareTunnelRequest,
+  CloudflareView,
+  ConnectorKindView,
+  ConnectorRemoveResult,
+  ConnectorRequest,
+  ConnectorTestRequest,
+  ConnectorTestResult,
+  ConnectorUpdate,
+  ConnectorView,
+  EntraGroup,
+  EntraSignInRequest,
+  EntraSignInView,
+} from "./connectors.js";
 import type { JoinLink, JoinLinkRequest, JoinStatus } from "./cluster.js";
 import type {
   AccessRequest,
@@ -38,13 +59,18 @@ import type {
   BundlePlan,
   BundleRequest,
   BundleRunView,
+  DeployActionPlan,
+  DeployActionRequest,
   DeployJobRequest,
   DeployJobView,
   DeployPlan,
   DeployRequest,
   DeployStatus,
+  GateStatus,
+  PortsView,
   UpgradeReport,
   UpgradeRequest,
+  VolumeBackupView,
 } from "./deploy.js";
 import type {
   Category,
@@ -63,6 +89,7 @@ import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
 import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
 import type { ResetRequest, ResetResult } from "./reset.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
+import type { TemplateDeployRequest, TemplateJobRequest, TemplatePlan, TemplatesView } from "./templates.js";
 import type {
   ClusterUsageReport,
   EventView,
@@ -89,7 +116,7 @@ export interface EventStream<T> {
   readonly eventStream: T;
 }
 
-// A non-JSON body (CSV export).
+// A non-JSON body (CSV export, a file download).
 export interface TextBody<Type extends string> {
   readonly contentType: Type;
 }
@@ -152,6 +179,13 @@ export interface ApiRoutes {
   // Authentik unreachable, refused the token, or answered unexpectedly, with
   // its status in the error.
   "POST /api/admin/oidc/authentik": Route<None, None, AuthentikWireRequest, AuthentikWireResult>;
+  // Admin, audited (never with the secret). Points OIDC sign-in at Google
+  // or Microsoft's multi-tenant endpoint and saves the allow and admin email
+  // lists, turning on account creation at first sign-in (only allowed
+  // addresses get one). 400: empty or malformed allowedEmails, no secret
+  // given or reusable, no public URL, a setting locked by the environment;
+  // 409: SECRETS_KEY not set.
+  "POST /api/admin/oidc/public": Route<None, None, PublicSignInRequest, PublicSignInResult>;
   "GET /api/admin/users": Route<None, None, None, UserView[]>;
   "POST /api/admin/users": Route<None, None, NewUserRequest, { user: UserView; temporaryPassword: string | null }>;
   "PATCH /api/admin/users/:id": Route<{ id: string }, None, UserChangesRequest, UserView>;
@@ -252,6 +286,11 @@ export interface ApiRoutes {
   // --- metrics-k8s (A11) --------------------------------------------------
   "GET /api/metrics-k8s/nodes": Route<None, None, None, NodeSummary[]>;
 
+  // --- longhorn (A6) ------------------------------------------------------
+  // Volumes, StorageClasses and the default Setting against min(2,
+  // schedulable nodes). Reads only.
+  "GET /api/longhorn/replicas": Route<None, None, None, LonghornReplicaAdvice>;
+
   // --- backups (A12) ------------------------------------------------------
   "GET /api/backups/posture": Route<None, None, None, BackupPosture>;
   "GET /api/backups/posture.csv": Route<None, None, None, TextBody<"text/csv">>;
@@ -344,6 +383,43 @@ export interface ApiRoutes {
   // not ours or not upgradable, or when nothing is available; 409 while
   // another bundle or upgrade run is running.
   "POST /api/deploy/upgrades": Route<None, None, UpgradeRequest, BundleRunView>;
+  // Whether the sign-in gate can work and how each deployed app stands
+  // behind it. Public and Public off are changed with the "app-gate" action.
+  "GET /api/deploy/gate": Route<None, None, None, GateStatus>;
+  // The forwarded port range and the Traefik entrypoints external services need.
+  "GET /api/deploy/ports": Route<None, None, None, PortsView>;
+  // Admin. What the action would change, from reads only; runs nothing.
+  "POST /api/deploy/actions/plan": Route<None, None, DeployActionRequest, DeployActionPlan>;
+  // Admin, audited. Starts the action as a deploy job (mode "action"); 400
+  // with the plan's blockedBy when it is not allowed, 409 while another job
+  // for the same release is running.
+  "POST /api/deploy/actions/run": Route<None, None, DeployActionRequest, DeployJobView>;
+  // A backup-volumes job's downloads; 404 for any other job.
+  "GET /api/deploy/actions/backups/:id": Route<{ id: string }, None, None, VolumeBackupView>;
+  // Admin, audited. One volume as tar.gz, streamed from the backup pod as it
+  // is read (no Content-Length); 409 unless the backup is ready.
+  "GET /api/deploy/actions/backups/:id/files/:claim": Route<
+    { id: string; claim: string },
+    None,
+    None,
+    TextBody<"application/gzip">
+  >;
+  // Admin. Stops the backup pod; already stopped is not an error.
+  "POST /api/deploy/actions/backups/:id/done": Route<{ id: string }, None, None, VolumeBackupView>;
+
+  // --- templates ------------------------------------------------------------
+  // The library and every saved instance with its latest job.
+  "GET /api/templates": Route<None, None, None, TemplatesView>;
+  // Admin. Renders and checks the template and asks the deploy runner for
+  // its plan; runs nothing. 404 for an unknown template; field errors and
+  // guardrail findings come back in the plan, not as a 400.
+  "POST /api/templates/plan": Route<None, None, TemplateDeployRequest, TemplatePlan>;
+  // Admin, audited. Starts a deploy job for the instance (job views, logs
+  // and cancel are under /api/deploy/jobs); an install saves the instance,
+  // replacing one of the same name and template. 400 with the plan's
+  // blockedBy when the plan is not allowed; 409 for a name another template
+  // uses, or while the instance has a job running.
+  "POST /api/templates/jobs": Route<None, None, TemplateJobRequest, DeployJobView>;
 
   // --- mcp ------------------------------------------------------------------
   // The MCP streamable-HTTP endpoint, also served at MCP_PATH (/mcp).
@@ -355,6 +431,46 @@ export interface ApiRoutes {
   // 405: there is no stream to open and no session to end.
   "GET /api/mcp": Route<None, None, None, ApiError>;
   "DELETE /api/mcp": Route<None, None, None, ApiError>;
+
+  // --- connectors (B1) ----------------------------------------------------
+  // Reads are open to anyone signed in; everything else needs "admin".
+  "GET /api/connectors/kinds": Route<None, None, None, ConnectorKindView[]>;
+  "GET /api/connectors": Route<None, None, None, ConnectorView[]>;
+  // Verifies, then saves whatever the checks say; the view carries them.
+  // 409 for a second instance of a single kind.
+  "POST /api/connectors": Route<None, None, ConnectorRequest, ConnectorView>;
+  "POST /api/connectors/test": Route<None, None, ConnectorTestRequest, ConnectorTestResult>;
+  "GET /api/connectors/:id": Route<{ id: string }, None, None, ConnectorView>;
+  "PUT /api/connectors/:id": Route<{ id: string }, None, ConnectorUpdate, ConnectorView>;
+  // cleanup=1 first deletes what the instance created in the tool.
+  "DELETE /api/connectors/:id": Route<{ id: string }, { cleanup?: "1" }, None, ConnectorRemoveResult>;
+  // Re-runs verify (or health) and returns the updated view.
+  "POST /api/connectors/:id/test": Route<{ id: string }, None, None, ConnectorView>;
+  // 400 for a kind without reconcile.
+  "POST /api/connectors/:id/reconcile": Route<{ id: string }, None, None, ConnectorView>;
+
+  // --- connector-cloudflare (B2) -----------------------------------------
+  "GET /api/connector-cloudflare/view": Route<None, None, None, CloudflareView>;
+  // Reconciles now; 409 without a connector.
+  "POST /api/connector-cloudflare/sync": Route<None, None, None, CloudflareView>;
+  // 404 for a host the Access step doesn't list.
+  "PUT /api/connector-cloudflare/hosts/:host": Route<{ host: string }, None, CloudflareHostRequest, CloudflareHostView>;
+  "POST /api/connector-cloudflare/discover": Route<None, None, CloudflareDiscoverRequest, CloudflareDiscovery>;
+  "POST /api/connector-cloudflare/tunnel": Route<None, None, CloudflareTunnelRequest, CloudflareView>;
+  // 409 without a connector or a tunnel; the deploy's own 400 when deploys are off.
+  "POST /api/connector-cloudflare/tunnel/deploy": Route<None, None, None, CloudflareTunnelDeploy>;
+
+  // --- connector-entra (B3) ------------------------------------------------
+  "GET /api/connector-entra/view": Route<None, None, None, EntraSignInView>;
+  // Creates the sign-in app registration (or reuses the one this install
+  // owns), makes a client secret and sets OIDC sign-in to it. Admin. 409
+  // without a connector; 400 when the public URL is unset or http (other
+  // than localhost), or when sign-in settings are locked by the environment;
+  // 502 when Graph refuses.
+  "POST /api/connector-entra/signin": Route<None, None, EntraSignInRequest, EntraSignInView>;
+  // Security groups in the tenant, by display name prefix; at most 50. 409
+  // without a connector; 502 when Graph refuses (it needs Group.Read.All).
+  "GET /api/connector-entra/groups": Route<None, { search?: string }, None, EntraGroup[]>;
 
   // --- onboarding (A14) ---------------------------------------------------
   "GET /api/onboarding/state": Route<None, None, None, OnboardingState>;

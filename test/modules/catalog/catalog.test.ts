@@ -248,6 +248,8 @@ describe("catalog entries", () => {
     assert.equal(gitea.disk?.volumeBytes, 5 * GiB);
     assert.equal(catalog.find((e) => e.id === "ntfy")!.disk?.volumeBytes, GiB / 2);
     assert.match(ntfyManifest, /storage: 512Mi/);
+    // ntfy exits at start when attachment-cache-dir is set without base-url.
+    assert.doesNotMatch(ntfyManifest, /attachment-cache-dir/);
   });
 
   test("every installable app has a detection signature", () => {
@@ -725,13 +727,18 @@ describe("deploy bundles", () => {
     assert.deepEqual(
       view.items.filter((i) => i.when).map((i) => [i.appId, i.when!.in]),
       [
-        ["cloudflared", ["cloudflare-tunnel"]],
+        ["cloudflared", ["token"]],
         ["tailscale-operator", ["tailscale"]],
       ]
     );
     assert.deepEqual(
       view.items.filter((i) => i.selected && !i.when).map((i) => i.appId),
-      ["longhorn", "authentik", "gitea", "ntfy"]
+      ["longhorn", "authentik", "gitea"]
+    );
+    assert.equal(
+      view.items.find((i) => i.appId === "ntfy"),
+      undefined,
+      "ntfy is offered from Notifications"
     );
     assert.deepEqual(view.suggested, { baseDomain: "home.example.com", storageClass: "longhorn" });
   });
@@ -975,4 +982,25 @@ describe("catalog routes", () => {
     assert.equal(report.apps.length, catalog.length);
     assert.equal(report.suggested.baseDomain, "home.example.com");
   });
+});
+
+test("every app the default bundle can roll out says how much memory it asks for", () => {
+  for (const item of bundles[0]!.items) {
+    const entry = catalog.find((e) => e.id === item.appId)!;
+    assert.ok((entry.memoryBytes ?? 0) > 0, `${item.appId} has no memoryBytes`);
+  }
+});
+
+const cloudflared = (image: string) =>
+  workload("cloudflared", "cloudflared", {
+    labels: { "app.kubernetes.io/name": "cloudflared", "app.kubernetes.io/version": "latest" },
+    image,
+  });
+
+test("a floating version label gives way to the image tag", async () => {
+  const pinned = await run([{ ref: RESOURCES.deployments, items: [cloudflared("cloudflare/cloudflared:2026.10.0")] }]);
+  assert.equal(app(pinned, "cloudflared").version, "2026.10.0");
+  const floating = await run([{ ref: RESOURCES.deployments, items: [cloudflared("cloudflare/cloudflared:latest")] }]);
+  assert.equal(app(floating, "cloudflared").state, "installed");
+  assert.equal(app(floating, "cloudflared").version, undefined);
 });

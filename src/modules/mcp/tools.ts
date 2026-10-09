@@ -2,7 +2,9 @@ import { z } from "zod";
 import type { ApiRoutes, RouteKey } from "../../contracts/api.js";
 import type { CheckRequest, CheckView } from "../../contracts/checks.js";
 import { CATEGORIES } from "../../contracts/health.js";
-import type { McpToolName, McpTools } from "../../contracts/mcp.js";
+import type { CatalogAppView, DiscoveryReport } from "../../contracts/catalog.js";
+import type { AccessView } from "../../contracts/deploy.js";
+import type { CatalogAppSummary, McpToolName, McpTools } from "../../contracts/mcp.js";
 import type { CallInput } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
 
@@ -55,7 +57,69 @@ const bundleRequest = {
   include: z.array(z.string()).optional().describe("Optional items to roll out; default: the bundle's selected ones."),
 };
 
+const templateRequest = {
+  templateId: z.string().min(1).describe('Template id from list_templates, or "custom" for your own image.'),
+  name: z
+    .string()
+    .optional()
+    .describe("Instance name: its namespace and hostname label. Default: the template id; required for custom."),
+  host: z
+    .string()
+    .optional()
+    .describe('Hostname for its Ingress. Default: "<name>.<base domain>"; "" for inside the cluster only.'),
+  volumeSize: z.string().optional().describe('Volume size such as "5Gi", for a template that keeps data.'),
+  storageClass: z.string().optional().describe("Default: the cluster's default storage class."),
+  custom: z
+    .object({
+      image: z.string().min(1).describe('With a tag or digest, e.g. "ghcr.io/org/app:1.2.3".'),
+      port: z.number().int().describe("Container port of its web page or API."),
+      env: z.array(z.object({ name: z.string(), value: z.string() })).default([]),
+      volume: z.object({ size: z.string(), mountPath: z.string() }).optional(),
+    })
+    .optional()
+    .describe("Required for the custom template, refused for the others."),
+};
+
+const removeRequest = {
+  name: z.string().min(1).describe("The instance's name, from list_templates."),
+  deleteVolumes: z
+    .boolean()
+    .optional()
+    .describe("Also delete its namespace and volumes, and with them its data. Default false."),
+};
+
 const items = <T>(list: T[]) => ({ items: list });
+
+const httpsFirst = (a: string, b: string) => Number(b.startsWith("https:")) - Number(a.startsWith("https:"));
+
+// The scheme people reach each host with: behind the Cloudflare tunnel
+// the edge serves https whatever the Ingress has.
+function published(report: DiscoveryReport, access: AccessView): DiscoveryReport {
+  const edge = new Set(access.hosts.filter((h) => h.url.startsWith("https://")).map((h) => h.host.toLowerCase()));
+  const upgraded = new Map<string, string>();
+  const ingressHosts = report.ingressHosts.map((h) => {
+    if (h.tls || !edge.has(h.host.toLowerCase())) return h;
+    const url = `https://${h.host}`;
+    upgraded.set(h.url, url);
+    return { ...h, url, edgeTls: true };
+  });
+  const apps = report.apps.map((app) => ({
+    ...app,
+    urls: app.urls.map((u) => upgraded.get(u) ?? u).toSorted(httpsFirst),
+  }));
+  return { ...report, ingressHosts, apps };
+}
+
+const summaryOf = (app: CatalogAppView): CatalogAppSummary => ({
+  id: app.id,
+  name: app.name,
+  summary: app.summary,
+  slots: app.slots,
+  requires: app.requires,
+  installed: app.detected.state,
+  urls: app.detected.urls,
+  inputs: app.inputs,
+});
 
 // An empty expectStatus means any 2xx or 3xx; accepting one more code has to
 // spell those out, or the check would fail once the target answers 200 again.
@@ -104,9 +168,19 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
   list_nodes: { input: z.object({}), run: async (call) => items(await call("GET /api/metrics-k8s/nodes")) },
   list_namespaces: { input: z.object({}), run: async (call) => items(await call("GET /api/workloads/namespaces")) },
   list_workloads: {
-    input: z.object({ namespace: namespaceArg }),
-    run: async (call, { namespace }) =>
-      items(await call("GET /api/workloads/namespaces/:namespace/workloads", { params: { namespace } })),
+    input: z.object({
+      namespace: namespaceArg.optional().describe("Kubernetes namespace. Default: every namespace."),
+      includeFinished: z.boolean().optional().describe("Also list Jobs that finished successfully."),
+    }),
+    run: async (call, { namespace, includeFinished }) => {
+      const namespaces = namespace ? [namespace] : (await call("GET /api/workloads/namespaces")).map((n) => n.name);
+      const lists = await Promise.all(
+        namespaces.map((ns) =>
+          call("GET /api/workloads/namespaces/:namespace/workloads", { params: { namespace: ns } })
+        )
+      );
+      return items(lists.flat().filter((w) => includeFinished || w.finished !== "complete"));
+    },
   },
   list_pods: {
     input: z.object({
@@ -129,10 +203,25 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
   },
   get_backup_posture: { input: z.object({}), run: (call) => call("GET /api/backups/posture") },
   list_catalog_apps: {
-    input: z.object({ slot: z.string().optional().describe('Wizard slot, e.g. "links", "sign-in", "backups".') }),
-    run: async (call, { slot }) => items(await call("GET /api/catalog/apps", { query: slot ? { slot } : {} })),
+    input: z.object({
+      slot: z.string().optional().describe('Wizard slot, e.g. "links", "sign-in", "backups".'),
+      detail: z.boolean().optional().describe("Whole entries, install source and manifests included."),
+    }),
+    run: async (call, { slot, detail }) => {
+      const apps = await call("GET /api/catalog/apps", { query: slot ? { slot } : {} });
+      return detail ? items(apps) : items(apps.map(summaryOf));
+    },
   },
-  get_discovery: { input: z.object({}), run: (call) => call("GET /api/catalog/discovery") },
+  get_discovery: {
+    input: z.object({}),
+    run: async (call) => {
+      const [report, access] = await Promise.all([
+        call("GET /api/catalog/discovery"),
+        call("GET /api/deploy/access").catch(() => undefined),
+      ]);
+      return access ? published(report, access) : report;
+    },
+  },
   list_deploy_jobs: {
     input: z.object({ appId: z.string().optional(), limit: z.number().int().min(1).max(100).optional() }),
     run: async (call, { appId, limit }) =>
@@ -149,6 +238,13 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
   },
   list_bundle_runs: { input: z.object({}), run: async (call) => items(await call("GET /api/deploy/bundles")) },
   list_hosts: { input: z.object({}), run: async (call) => items(await call("GET /api/hosts")) },
+  list_templates: { input: z.object({}), run: (call) => call("GET /api/templates") },
+  get_entra_signin: { input: z.object({}), run: (call) => call("GET /api/connector-entra/view") },
+  list_entra_groups: {
+    input: z.object({ search: z.string().optional().describe("Display name prefix.") }),
+    run: async (call, { search }) =>
+      items(await call("GET /api/connector-entra/groups", { query: search ? { search } : {} })),
+  },
 
   create_check: { input: z.object(checkFields), run: (call, body) => call("POST /api/checks", { body }) },
   update_check: {
@@ -200,4 +296,39 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
   },
   plan_bundle: { input: z.object(bundleRequest), run: (call, body) => call("POST /api/deploy/bundles/plan", { body }) },
   start_bundle: { input: z.object(bundleRequest), run: (call, body) => call("POST /api/deploy/bundles", { body }) },
+  plan_template_deploy: {
+    input: z.object(templateRequest),
+    run: (call, body) => call("POST /api/templates/plan", { body }),
+  },
+  deploy_template: {
+    input: z.object({
+      ...templateRequest,
+      mode: z.enum(["install", "dry-run"]).describe("dry-run renders the manifests and changes nothing."),
+    }),
+    run: (call, body) => call("POST /api/templates/jobs", { body }),
+  },
+  plan_template_removal: {
+    input: z.object(removeRequest),
+    run: (call, { name, deleteVolumes }) =>
+      call("POST /api/deploy/actions/plan", {
+        body: { kind: "remove-app", appId: name, deleteVolumes: deleteVolumes ?? false },
+      }),
+  },
+  remove_template_app: {
+    input: z.object(removeRequest),
+    run: (call, { name, deleteVolumes }) =>
+      call("POST /api/deploy/actions/run", {
+        body: { kind: "remove-app", appId: name, deleteVolumes: deleteVolumes ?? false },
+      }),
+  },
+  setup_entra_signin: {
+    input: z.object({
+      adminGroups: z
+        .array(z.string().min(1))
+        .optional()
+        .describe("Entra group object ids (not names) whose members are admins; list_entra_groups finds them."),
+      label: z.string().max(80).optional().describe('Sign-in button text. Default "Sign in with Microsoft".'),
+    }),
+    run: (call, body) => call("POST /api/connector-entra/signin", { body }),
+  },
 };

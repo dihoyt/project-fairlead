@@ -110,6 +110,7 @@ const entries: CatalogEntry[] = [
     requires: [],
     inputs: [host()],
     exposesUi: true,
+    noLogin: true,
     prerequisites: [
       "Every node needs open-iscsi installed and running.",
       "Every node needs an NFSv4 client for volumes shared between pods.",
@@ -137,6 +138,8 @@ const entries: CatalogEntry[] = [
         required: true,
       },
     ],
+    // Sign-in gate: kubectl and the API through Rancher sign in with tokens of their own.
+    gate: "credentials",
     exposesUi: true,
     prerequisites: ["Rancher wants at least 4 GB of free memory in the cluster."],
   },
@@ -169,6 +172,8 @@ const entries: CatalogEntry[] = [
       { key: "adminUser", label: "Admin username", kind: "text", required: true, default: "gitea-admin" },
       { key: "adminPassword", label: "Admin password", kind: "secret", required: true },
     ],
+    // Sign-in gate: git over HTTPS and API clients sign in to Gitea themselves.
+    gate: "credentials",
     exposesUi: true,
     storage: "5Gi",
     prerequisites: [],
@@ -184,6 +189,8 @@ const entries: CatalogEntry[] = [
     namespace: "monitoring",
     requires: [],
     inputs: [host(), { key: "adminPassword", label: "Admin password", kind: "secret", required: true }],
+    // Sign-in gate: API clients sign in to Grafana with keys of their own.
+    gate: "credentials",
     exposesUi: true,
     storage: "2Gi",
     prerequisites: [],
@@ -197,7 +204,19 @@ const entries: CatalogEntry[] = [
     install: helm("https://charts.goauthentik.io", "authentik", "2026.8.3"),
     namespace: "authentik",
     requires: [],
-    inputs: [host(), { key: "adminEmail", label: "Admin email", kind: "text", required: true }],
+    inputs: [
+      host(),
+      { key: "adminEmail", label: "Admin email", kind: "text", required: true },
+      {
+        key: "adminPassword",
+        label: "Admin password",
+        help: "For the akadmin account. Leave empty to set it in Authentik's first-run page instead.",
+        kind: "secret",
+        required: false,
+      },
+    ],
+    // Sign-in gate: people sign in to the console through it.
+    gate: "public",
     exposesUi: true,
     storage: "4Gi",
     prerequisites: [],
@@ -252,6 +271,8 @@ const entries: CatalogEntry[] = [
     namespace: "ntfy",
     requires: [],
     inputs: [host()],
+    // Sign-in gate: phones and the console's own alerts reach it without a browser.
+    gate: "public",
     exposesUi: true,
     storage: "512Mi",
     prerequisites: [],
@@ -321,6 +342,22 @@ const imageMiB: Record<string, number> = {
   "tailscale-operator": 250,
 };
 
+// Memory each default install asks for, in MiB: the requests ../deploy/apps.ts
+// sets, or rough idle use where the chart sets none (Longhorn on one node,
+// Traefik, metrics-server). cloudflared counts its two replicas.
+const memoryMiB: Record<string, number> = {
+  "cert-manager": 120,
+  traefik: 64,
+  "metrics-server": 48,
+  "local-path-provisioner": 16,
+  longhorn: 640,
+  gitea: 160,
+  authentik: 1056,
+  ntfy: 32,
+  cloudflared: 64,
+  "tailscale-operator": 64,
+};
+
 const MiB = 1024 ** 2;
 const UNITS: Record<string, number> = { Mi: MiB, Gi: 1024 * MiB, Ti: 1024 * 1024 * MiB };
 
@@ -335,6 +372,8 @@ const footprint = (entry: CatalogEntry): DiskFootprint => ({
   imageBytes: (imageMiB[entry.id] ?? 0) * MiB,
 });
 
-export const catalog: readonly CatalogEntry[] = entries.map((entry) =>
-  entry.install.kind === "patch" ? entry : { ...entry, disk: footprint(entry) }
-);
+export const catalog: readonly CatalogEntry[] = entries.map((entry) => {
+  if (entry.install.kind === "patch") return entry;
+  const memory = memoryMiB[entry.id];
+  return { ...entry, disk: footprint(entry), ...(memory ? { memoryBytes: memory * MiB } : {}) };
+});

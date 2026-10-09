@@ -1,8 +1,10 @@
 import type { Response } from "express";
-import type { CatalogService, DiscoveryReport } from "../../contracts/catalog.js";
+import type { CatalogEntry, CatalogService, DiscoveryReport } from "../../contracts/catalog.js";
 import type {
   AccessRequest,
   AccessView,
+  DeployActionKind,
+  DeployActionRequest,
   DeployJobRequest,
   DeployJobState,
   DeployJobView,
@@ -13,20 +15,39 @@ import type {
   DeployRequest,
   DeployStatus,
   DeployedRelease,
+  GateStatus,
 } from "../../contracts/deploy.js";
 import { RESOURCES, type K8sApi, type KubeObject, type Watch } from "../../contracts/k8s.js";
 import type { ModuleContext } from "../../contracts/module.js";
 import type { LogLines } from "../../contracts/workloads.js";
 import { HttpError } from "../../runtime/http.js";
 import { errorMessage } from "../../runtime/log.js";
+import { type GateActionContext } from "./actions/gate.js";
+import { actionRecipe, type ActionContext, type ActionRecipe, type ActionRendered } from "./actions/index.js";
 import type { Defaults, Step } from "./apps.js";
-import { accessView, AccessStore, type Resolver } from "./access.js";
+import { accessView, AccessStore, resolves as lookupHost, type Resolver } from "./access.js";
 import { enableHint, type DeployConfig } from "./config.js";
+import {
+  annotateSteps,
+  appIngresses,
+  applyMiddlewareStep,
+  decide,
+  gateStatus,
+  GateStore,
+  gateManifests,
+  hostOf,
+  publishesConsole,
+  MIDDLEWARE_FILE,
+  type GateInput,
+} from "./gate.js";
 import { CONTAINER, DEADLINE_SECONDS, JOB_LABEL, jobManifest, valuesSecret } from "./job.js";
 import { jobName, render, valuesSecretName, type Rendered } from "./plan.js";
 import { createRedactor, type Redactor } from "./redact.js";
 import { isFinal, type JobRecord, type Store } from "./store.js";
 import { upgradeReport, upgradeSteps } from "./upgrades.js";
+
+// The recipe for a TLS-only Ingress beside an app's own (Direct exposure).
+const DIRECT_TLS = "direct-tls";
 
 export const LOG_LINES = 500;
 export const MAX_TAIL = 5000;
@@ -59,6 +80,11 @@ interface Observed {
   message?: string;
 }
 
+const deadlineOf = (job: KubeObject): number => {
+  const set = (job.spec as { activeDeadlineSeconds?: unknown } | undefined)?.activeDeadlineSeconds;
+  return typeof set === "number" && set > 0 ? set : DEADLINE_SECONDS;
+};
+
 export function observe(job: KubeObject): Observed {
   const status = (job.status ?? {}) as JobStatus;
   const condition = (type: string) => status.conditions?.find((c) => c.type === type && c.status === "True");
@@ -70,7 +96,7 @@ export function observe(job: KubeObject): Observed {
       startedAt: status.startTime,
       message:
         failed.reason === "DeadlineExceeded"
-          ? `Stopped after ${DEADLINE_SECONDS / 60} minutes without finishing.`
+          ? `Stopped after ${Math.round(deadlineOf(job) / 60)} minutes without finishing.`
           : failed.message || failed.reason || "The Job failed.",
     };
   }
@@ -83,6 +109,8 @@ export function summarize(lines: readonly string[], state: DeployJobState, mode:
   const text = lines.map((line) => line.trim()).filter(Boolean);
   if (state === "succeeded") {
     if (mode === "dry-run") return "Dry run passed: nothing was changed.";
+    // An action's script ends by echoing its result.
+    if (mode === "action") return text.at(-1);
     const status = text.findLast((line) => line.startsWith("STATUS:"));
     if (status) return `Release "${release}" ${status.slice("STATUS:".length).trim()}.`;
     return text.at(-1);
@@ -117,6 +145,8 @@ export interface DeployerOptions {
   now?: () => number;
   // Overrides the random secrets a run generates, for tests.
   generate?: () => string;
+  // Requests to a volume backup pod, for tests.
+  fetch?: typeof fetch;
 }
 
 export class Deployer {
@@ -131,6 +161,7 @@ export class Deployer {
   private readonly config: DeployConfig;
   private readonly options: DeployerOptions;
   readonly access: AccessStore;
+  readonly gates: GateStore;
 
   constructor(ctx: ModuleContext, store: Store, config: DeployConfig, options: DeployerOptions = {}) {
     this.ctx = ctx;
@@ -139,6 +170,7 @@ export class Deployer {
     this.options = options;
     this.now = options.now ?? Date.now;
     this.access = new AccessStore(ctx.db, ctx.orgId);
+    this.gates = new GateStore(ctx.db, ctx.orgId);
   }
 
   private iso() {
@@ -230,16 +262,43 @@ export class Deployer {
     }
   }
 
-  async rendered(request: DeployRequest, mode: DeployMode, context: RenderContext = {}): Promise<Rendered> {
-    const catalog = this.catalog();
-    const entry = catalog.get(request.appId);
+  // Template instances (Services.templates) after the catalog's own apps.
+  private entries(): CatalogEntry[] {
+    const templates = this.ctx.services.has("templates") ? this.ctx.services.get("templates").entries() : [];
+    return [...this.catalog().entries(), ...templates];
+  }
+
+  async rendered(
+    request: DeployRequest,
+    mode: DeployMode,
+    context: RenderContext = {},
+    given?: CatalogEntry
+  ): Promise<Rendered> {
+    const entry = given ?? this.catalog().get(request.appId);
     if (!entry) throw new HttpError(404, `No app "${request.appId}" in the catalog.`);
+    if (entry.id !== request.appId) throw new HttpError(400, `appId must be ${entry.id}.`);
     const [enabled, found] = await Promise.all([
       context.enabled ?? this.enabled(),
       context.found ?? this.discover(context.refresh),
     ]);
     const namespace = request.namespace?.trim() || entry.namespace;
     const defaults = this.effectiveDefaults(found.discovery);
+    const gateInput = await this.gateInput(found.discovery, defaults);
+    const ownerId =
+      entry.id === DIRECT_TLS
+        ? found.discovery?.ingressHosts.find((h) => h.host === request.inputs?.domain)?.appId
+        : undefined;
+    const owner = ownerId ? this.entries().find((e) => e.id === ownerId) : undefined;
+    const gate =
+      gateInput && (entry.id !== DIRECT_TLS || owner)
+        ? {
+            gate: {
+              ...gateInput,
+              isPublic: (owner ? undefined : request.public) ?? this.gates.isPublic((owner ?? entry).id),
+              ...(owner ? { owner } : {}),
+            },
+          }
+        : {};
     for (const [key, value] of Object.entries(context.defaults ?? {})) {
       if (value) defaults[key as keyof Defaults] = value;
     }
@@ -256,10 +315,91 @@ export class Deployer {
         jobNamespace: this.config.namespace(),
         jobName: jobName(entry.id, this.store.nextSeq()),
         valuesSecret: valuesSecretName(entry.id),
+        ...gate,
       },
       mode,
       this.options.generate
     );
+  }
+
+  // What the sign-in gate is applied with; undefined without the platform's
+  // gate service (nothing is gated then).
+  async gateInput(discovery: DiscoveryReport | undefined, defaults: Defaults): Promise<GateInput | undefined> {
+    if (!this.ctx.services.has("gate")) return undefined;
+    const ref = { namespace: this.config.namespace(), service: this.config.release() };
+    const readiness = this.ctx.services.get("gate").readiness();
+    const host = readiness.ready ? hostOf(readiness.signInUrl) : undefined;
+    if (!host) return { console: ref, readiness };
+    const publish = publishesConsole(host, defaults, ref, discovery?.ingressHosts ?? [], await this.ingressObjects());
+    // The pod isn't where hosts-file names resolve.
+    const resolves = defaults.access === "local" ? undefined : await (this.options.resolve ?? lookupHost)(host);
+    return { console: ref, readiness, consoleHost: { host, publish, ...(resolves === undefined ? {} : { resolves }) } };
+  }
+
+  async gateStatus(refresh = false): Promise<GateStatus> {
+    const { discovery } = await this.discover(refresh);
+    const defaults = this.effectiveDefaults(discovery);
+    const input = (await this.gateInput(discovery, defaults)) ?? {
+      console: { namespace: this.config.namespace(), service: this.config.release() },
+      readiness: { ready: false, reason: "The sign-in gate is not available in this build.", signInUrl: "" },
+    };
+    return gateStatus(
+      this.entries(),
+      this.store.releases(),
+      discovery,
+      defaults,
+      input,
+      (id) => this.gates.isPublic(id),
+      await this.ingressObjects()
+    );
+  }
+
+  // Every Ingress in the cluster, or undefined when they can't be listed.
+  async ingressObjects(): Promise<KubeObject[] | undefined> {
+    try {
+      const found = await this.k8s()?.list(RESOURCES.ingresses);
+      return Array.isArray(found) ? found : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async gateActionContext(): Promise<GateActionContext | undefined> {
+    const { discovery } = await this.discover();
+    const defaults = this.effectiveDefaults(discovery);
+    const input = await this.gateInput(discovery, defaults);
+    if (!input) return undefined;
+    return {
+      input,
+      defaults,
+      entry: (appId) => this.entries().find((e) => e.id === appId),
+      isPublic: (appId) => this.gates.isPublic(appId),
+      ingresses: () => this.ingressObjects(),
+      save: (appId, isPublic, by) => {
+        this.gates.set(appId, isPublic, by, this.iso());
+      },
+    };
+  }
+
+  // Puts the saved choice back on the app's Ingresses after a job that may
+  // have rewritten them (an upgrade from the values it was installed with).
+  async gateSteps(entry: CatalogEntry): Promise<{ steps: Step[]; files: Record<string, string> }> {
+    const { discovery } = await this.discover();
+    if (!entry.exposesUi || !discovery) return { steps: [], files: {} };
+    const defaults = this.effectiveDefaults(discovery);
+    const input = await this.gateInput(discovery, defaults);
+    if (!input) return { steps: [], files: {} };
+    const decision = decide(entry, defaults, this.gates.isPublic(entry.id), input);
+    if (decision.state === "tailnet" || decision.state === "open") return { steps: [], files: {} };
+    const steps = annotateSteps(
+      appIngresses(discovery.ingressHosts, entry.id, await this.ingressObjects()),
+      decision.middleware
+    );
+    if (!decision.middleware) return { steps, files: {} };
+    return {
+      steps: [applyMiddlewareStep(), ...steps],
+      files: { [MIDDLEWARE_FILE]: gateManifests(input, defaults, decision.credentials) },
+    };
   }
 
   async accessView(refresh = false): Promise<AccessView> {
@@ -277,28 +417,37 @@ export class Deployer {
     });
   }
 
-  async plan(request: DeployRequest): Promise<DeployPlan> {
-    return (await this.rendered(request, "install")).plan;
+  async plan(request: DeployRequest, entry?: CatalogEntry): Promise<DeployPlan> {
+    return (await this.rendered(request, "install", {}, entry)).plan;
   }
 
   // --- running -------------------------------------------------------------
 
-  async start(actor: string, request: DeployJobRequest, context: RenderContext = {}): Promise<DeployJobView> {
-    const { plan, files, steps, secrets } = await this.rendered(request, request.mode, context);
+  async start(
+    actor: string,
+    request: DeployJobRequest,
+    context: RenderContext = {},
+    entry?: CatalogEntry
+  ): Promise<DeployJobView> {
+    const { plan, files, steps, secrets } = await this.rendered(request, request.mode, context, entry);
     if (!plan.allowed) throw new HttpError(400, plan.blockedBy ?? "This deploy is not allowed.");
-    return this.launch(
+    const view = await this.launch(
       actor,
       { ...plan, mode: request.mode, url: request.mode === "install" ? plan.url : undefined },
       files,
       steps,
       secrets
     );
+    if (request.mode === "install" && request.public !== undefined) {
+      this.gates.set(plan.appId, request.public, actor, this.iso());
+    }
+    return view;
   }
 
   async upgradeReport(refresh = false): Promise<UpgradeReport> {
     const [enabled, found] = await Promise.all([this.enabled(), this.discover(refresh)]);
     return upgradeReport({
-      entries: this.catalog().entries(),
+      entries: this.entries(),
       discovery: found.discovery,
       enabled,
       releases: this.store.releases(),
@@ -316,12 +465,15 @@ export class Deployer {
     if ((app.state !== "available" && app.state !== "unknown") || !app.targetVersion) {
       throw new HttpError(400, `${appId}: ${app.reason ?? `nothing to upgrade (${app.state})`}`);
     }
-    const entry = this.catalog().get(appId)!;
+    const entry = this.entries().find((e) => e.id === appId)!;
     const { steps, files, error } = upgradeSteps(
       { entry, release: app.release, namespace: app.namespace },
       app.targetVersion
     );
     if (error) throw new HttpError(400, error);
+    const gate = await this.gateSteps(entry);
+    steps.push(...gate.steps);
+    Object.assign(files, gate.files);
     return this.launch(
       actor,
       {
@@ -338,12 +490,76 @@ export class Deployer {
     );
   }
 
+  // --- actions -------------------------------------------------------------
+
+  async renderAction(request: DeployActionRequest, call: ActionContext["call"], run = false): Promise<ActionRendered> {
+    const recipe = actionRecipe(request.kind) as ActionRecipe | undefined;
+    if (!recipe) throw new HttpError(400, `The ${request.kind} action is not available yet.`);
+    const enabled = await this.enabled();
+    const rendered = await recipe.render(request, {
+      run,
+      enabled,
+      image: this.config.image(),
+      ...(enabled ? {} : { enableHint: enableHint(this.config) }),
+      call,
+      k8s: this.k8s(),
+      catalog: this.ctx.services.has("catalog") ? this.catalog() : undefined,
+      discover: async () => (await this.discover()).discovery,
+      releases: this.store.releases(),
+      versions: this.store.installedVersions(),
+      gate: await this.gateActionContext(),
+    });
+    if (!rendered.plan.allowed) return rendered;
+    const namespace = this.config.namespace();
+    rendered.plan.creates = [
+      ...rendered.plan.creates,
+      { kind: "Job", name: jobName(rendered.release, this.store.nextSeq()), namespace },
+      { kind: "Secret", name: valuesSecretName(rendered.release), namespace },
+    ];
+    return rendered;
+  }
+
+  async startAction(actor: string, request: DeployActionRequest, call: ActionContext["call"]): Promise<DeployJobView> {
+    const rendered = await this.renderAction(request, call, true);
+    if (!rendered.plan.allowed) throw new HttpError(400, rendered.plan.blockedBy ?? "This action is not allowed.");
+    const view = await this.launch(
+      actor,
+      {
+        appId: rendered.appId,
+        release: rendered.release,
+        namespace: rendered.namespace,
+        version: rendered.version,
+        mode: "action",
+        action: request.kind,
+      },
+      Object.keys(rendered.files).length > 0 ? rendered.files : { "values.yaml": "{}\n" },
+      rendered.steps,
+      rendered.secrets ?? [],
+      { script: rendered.script, deadlineSeconds: rendered.deadlineSeconds }
+    );
+    try {
+      await rendered.onStarted?.(view);
+    } catch (err) {
+      this.ctx.log.warn("A deploy action's start hook failed", { job: view.id, error: errorMessage(err) });
+    }
+    return view;
+  }
+
   private async launch(
     actor: string,
-    plan: { appId: string; release: string; namespace: string; version: string; mode: DeployJobMode; url?: string },
+    plan: {
+      appId: string;
+      release: string;
+      namespace: string;
+      version: string;
+      mode: DeployJobMode;
+      action?: DeployActionKind;
+      url?: string;
+    },
     files: Record<string, string>,
     steps: Step[],
-    secrets: string[]
+    secrets: string[],
+    program: { script?: string; deadlineSeconds?: number } = {}
   ): Promise<DeployJobView> {
     const k8s = this.k8s()!;
     const jobNamespace = this.config.namespace();
@@ -355,6 +571,7 @@ export class Deployer {
         namespace: plan.namespace,
         version: plan.version,
         mode: plan.mode,
+        ...(plan.action ? { action: plan.action } : {}),
         startedBy: actor,
         url: plan.url,
         jobNamespace,
@@ -384,6 +601,7 @@ export class Deployer {
           serviceAccount: this.config.serviceAccount(),
           valuesSecret: secretName,
           steps,
+          ...program,
         })
       );
       await k8s.create!(
@@ -409,7 +627,9 @@ export class Deployer {
       actor,
       action: "deploy.start",
       target: view.id,
-      detail: `${plan.appId} ${plan.version} ${plan.mode} into ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`,
+      detail: plan.action
+        ? `${plan.action} on ${plan.appId} in ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`
+        : `${plan.appId} ${plan.version} ${plan.mode} into ${plan.namespace} (Job ${jobNamespace}/${view.job.name})`,
     });
     void this.ensureWatch();
     return this.store.get(view.id)!.view;
@@ -434,6 +654,10 @@ export class Deployer {
       detail: `${record.view.appId} ${record.view.mode} (Job ${record.view.job.namespace}/${record.view.job.name})`,
     });
     return this.mustGet(id).view;
+  }
+
+  get(id: string): DeployJobView | undefined {
+    return this.store.get(id)?.view;
   }
 
   mustGet(id: string): JobRecord {
@@ -547,6 +771,7 @@ export class Deployer {
       jobId: view.id,
       appId: view.appId,
       mode: view.mode,
+      ...(view.action ? { action: view.action } : {}),
       state: view.state,
       ...(state === "succeeded" && view.url ? { url: view.url } : {}),
     });

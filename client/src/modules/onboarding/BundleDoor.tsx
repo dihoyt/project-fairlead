@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Checkbox, Group, Loader, Paper, Stack, Text, Title } from "@mantine/core";
+import { Alert, Button, Checkbox, Group, Loader, Paper, SegmentedControl, Stack, Text, Title } from "@mantine/core";
 import type { CatalogBundleView } from "@contracts/catalog";
-import type { BundlePlan, BundleRunView, DeployValue } from "@contracts/deploy";
+import type { AccessView, BundlePlan, BundleRunView, DeployValue } from "@contracts/deploy";
 import { apiRequest, useApi } from "../../ui";
 import { BundlePlanView, DeployInputsForm, DeployRolloutProgress, DeploysOff, WhatIsThis } from "../../ui/deploy";
+import { CloudflarePanel } from "../connector-cloudflare/CloudflarePage";
 import { holds, landedSteps, runFailures, wireLanded } from "./bundle";
 import { AccessInstructions } from "./steps/AccessStep";
 import { useDiscovery } from "./discovery";
@@ -11,6 +12,13 @@ import { useAction } from "./shared";
 import { PublicUrlField } from "./steps/PublicUrlField";
 
 const RUN_POLL_MS = 3_000;
+const SAVE_ACCESS_MS = 800;
+const DOMAIN = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
+
+// The bundle input choosing how Cloudflare Tunnel is set up. Its catalog
+// default is the pasted token, for API callers that predate it; here it
+// starts on the connector.
+export const CLOUDFLARE_SETUP = "cloudflareSetup";
 
 // The bundle's shared answers, prefilled from discovery's suggestions.
 export function initialBundleValues(bundle: CatalogBundleView): Record<string, DeployValue> {
@@ -20,7 +28,53 @@ export function initialBundleValues(bundle: CatalogBundleView): Record<string, D
     const value = suggested ?? input.default;
     if (value !== undefined) values[input.key] = value;
   }
+  if (bundle.inputs.some((input) => input.key === CLOUDFLARE_SETUP)) values[CLOUDFLARE_SETUP] = "api";
   return values;
+}
+
+const STORAGE_CLASS = "storageClass";
+// The class Longhorn's chart creates.
+const LONGHORN_CLASS = "longhorn";
+
+// What the storage class field holds until the user types in it: Longhorn's
+// while Longhorn is in the rollout, else discovery's suggestion.
+export function defaultStorageClass(bundle: CatalogBundleView, include: string[]): string {
+  if (include.includes("longhorn")) return LONGHORN_CLASS;
+  const input = bundle.inputs.find((i) => i.key === STORAGE_CLASS);
+  const fallback = bundle.suggested.storageClass ?? input?.default;
+  return typeof fallback === "string" ? fallback : "";
+}
+
+// The form's answers survive leaving the page, for this browser session.
+// Secret inputs are never written.
+interface BundleDraft {
+  values: Record<string, DeployValue>;
+  include: string[];
+  storageTyped: boolean;
+}
+const draftKey = (bundle: CatalogBundleView) => `bundle-draft:${bundle.id}`;
+
+export function loadDraft(bundle: CatalogBundleView): BundleDraft | undefined {
+  try {
+    const raw = sessionStorage.getItem(draftKey(bundle));
+    return raw ? (JSON.parse(raw) as BundleDraft) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveDraft(bundle: CatalogBundleView, draft: BundleDraft | undefined) {
+  try {
+    if (!draft) {
+      sessionStorage.removeItem(draftKey(bundle));
+      return;
+    }
+    const secret = new Set(bundle.inputs.filter((i) => i.kind === "secret").map((i) => i.key));
+    const values = Object.fromEntries(Object.entries(draft.values).filter(([key]) => !secret.has(key)));
+    sessionStorage.setItem(draftKey(bundle), JSON.stringify({ ...draft, values }));
+  } catch {
+    // Storage blocked: the form still works, it just isn't kept.
+  }
 }
 
 // Optional items to roll out: the ones the bundle view starts ticked.
@@ -39,14 +93,32 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
   const [ready, setReady] = useState(false);
   const [plan, setPlan] = useState<BundlePlan>();
   const [runId, setRunId] = useState<string>();
+  const [tunnelReady, setTunnelReady] = useState(false);
+  const [storageTyped, setStorageTyped] = useState(false);
+  // Apps left reachable without signing in to this console.
+  const [publicIds, setPublicIds] = useState<string[]>([]);
   const action = useAction();
 
   useEffect(() => {
     if (!bundle || ready) return;
-    setValues(initialBundleValues(bundle));
-    setInclude(initialInclude(bundle));
+    const draft = loadDraft(bundle);
+    setValues({ ...initialBundleValues(bundle), ...draft?.values });
+    setInclude(draft?.include ?? initialInclude(bundle));
+    setStorageTyped(draft?.storageTyped ?? false);
     setReady(true);
   }, [bundle, ready]);
+
+  useEffect(() => {
+    if (bundle && ready) saveDraft(bundle, { values, include, storageTyped });
+  }, [bundle, ready, values, include, storageTyped]);
+
+  // Ticking or unticking Longhorn moves the storage class with it, unless
+  // the user typed their own.
+  useEffect(() => {
+    if (!bundle || !ready || storageTyped || !bundle.inputs.some((i) => i.key === STORAGE_CLASS)) return;
+    const next = defaultStorageClass(bundle, include);
+    setValues((prev) => (prev[STORAGE_CLASS] === next ? prev : { ...prev, [STORAGE_CLASS]: next }));
+  }, [bundle, ready, include, storageTyped]);
 
   // Reopening the page while a rollout runs goes straight back to it.
   const active = runs.data?.find((run) => run.state === "running");
@@ -59,21 +131,60 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
 
   if (shownRun) return <BundleRun runId={shownRun} names={names} onDone={onDone} />;
 
-  const request = () => ({ bundleId: bundle.id, inputs: values, include });
+  // Answers to inputs that don't apply (a tunnel token from before the
+  // connector was picked) stay out of the request.
+  const applies = (key: string) => {
+    const input = bundle.inputs.find((i) => i.key === key);
+    return !input || holds(input.when, values, bundle.inputs);
+  };
+  const answers = () => Object.fromEntries(Object.entries(values).filter(([key]) => applies(key)));
+  const request = () => ({
+    bundleId: bundle.id,
+    inputs: answers(),
+    include,
+    ...(publicIds.length ? { public: publicIds } : {}),
+  });
 
   async function preview() {
-    const next = await action.run(() => apiRequest("POST /api/deploy/bundles/plan", { body: request() }));
+    const next = await action.run(async () => {
+      // Through the connector the tunnel already exists: saving the access
+      // choice now lets the connector publish each app as it lands.
+      const baseDomain = typeof values.baseDomain === "string" ? values.baseDomain.trim() : "";
+      if (viaApi && values.access === "cloudflare-tunnel" && baseDomain) {
+        await apiRequest("PUT /api/deploy/access", { body: { mode: "cloudflare-tunnel", baseDomain } });
+        await apiRequest("POST /api/connector-cloudflare/sync").catch(() => undefined);
+      }
+      return apiRequest("POST /api/deploy/bundles/plan", { body: request() });
+    });
     if (next) setPlan(next);
   }
 
   async function start() {
     const run = await action.run(() => apiRequest("POST /api/deploy/bundles", { body: request() }));
-    if (run) setRunId(run.id);
+    if (run) {
+      saveDraft(bundle!, undefined);
+      setRunId(run.id);
+    }
   }
 
   const off = status.data ? !status.data.enabled : false;
-  const inputs = bundle.inputs.filter((input) => holds(input.when, values));
-  const items = bundle.items.filter((item) => holds(item.when, values));
+  const onLonghorn = include.includes("longhorn") && values[STORAGE_CLASS] === LONGHORN_CLASS;
+  const inputs = bundle.inputs
+    .filter((input) => holds(input.when, values, bundle.inputs))
+    .map((input) =>
+      input.key === STORAGE_CLASS && onLonghorn
+        ? { ...input, help: "Longhorn, which this rollout installs. Clear it for the cluster's default." }
+        : input
+    );
+  const items = bundle.items.filter((item) => holds(item.when, values, bundle.inputs));
+  const setupAt = inputs.findIndex((input) => input.key === CLOUDFLARE_SETUP);
+  const viaApi = setupAt !== -1 && values[CLOUDFLARE_SETUP] === "api";
+  const set = (key: string, value: DeployValue) => {
+    if (key === STORAGE_CLASS) setStorageTyped(true);
+    setValues((prev) => ({ ...prev, [key]: value }));
+  };
+  const form = (list: typeof inputs) =>
+    list.length ? <DeployInputsForm inputs={list} values={values} onChange={set} /> : null;
   const missingRequired = inputs.some(
     (input) => input.required && (values[input.key] === undefined || values[input.key] === "")
   );
@@ -105,36 +216,161 @@ export function BundleDoor({ onDone }: { onDone: () => void }) {
       <WhatIsThis>{bundle.summary}</WhatIsThis>
       {off ? <DeploysOff status={status.data!} /> : null}
       <PublicUrlField />
-      <DeployInputsForm
-        inputs={inputs}
-        values={values}
-        onChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
-      />
+      {setupAt === -1 ? (
+        form(inputs)
+      ) : (
+        <>
+          {form(inputs.slice(0, setupAt))}
+          <CloudflareChoice
+            how={viaApi ? "api" : "token"}
+            onChange={(how) => set(CLOUDFLARE_SETUP, how)}
+            baseDomain={typeof values.baseDomain === "string" ? values.baseDomain.trim() : undefined}
+            onReady={setTunnelReady}
+          />
+          {form(inputs.slice(setupAt + 1))}
+        </>
+      )}
       <Stack gap={6}>
         <Title order={5}>What it rolls out</Title>
         {items.map((item) => (
           <Paper key={item.appId} withBorder p="xs" data-item={item.appId}>
-            <Checkbox
-              label={name(item.appId)}
-              description={item.skip || !item.selected ? item.reason : item.note}
-              checked={!item.skip && (item.required || include.includes(item.appId))}
-              disabled={item.skip || item.required}
-              onChange={(e) => {
-                const on = e.currentTarget.checked;
-                setInclude((prev) => (on ? [...prev, item.appId] : prev.filter((id) => id !== item.appId)));
-              }}
-            />
+            <Group justify="space-between" wrap="nowrap" align="flex-start">
+              <Checkbox
+                label={name(item.appId)}
+                description={item.skip || !item.selected ? item.reason : item.note}
+                checked={!item.skip && (item.required || include.includes(item.appId))}
+                disabled={item.skip || item.required}
+                onChange={(e) => {
+                  const on = e.currentTarget.checked;
+                  setInclude((prev) => (on ? [...prev, item.appId] : prev.filter((id) => id !== item.appId)));
+                }}
+              />
+              {!item.skip && discovery.app(item.appId)?.exposesUi && values.access !== "tailscale" ? (
+                discovery.app(item.appId)?.gate === "public" ? (
+                  <Text size="xs" c="dimmed" data-public={item.appId}>
+                    Public: people sign in through it
+                  </Text>
+                ) : (
+                  <Checkbox
+                    size="xs"
+                    label="Public"
+                    data-public={item.appId}
+                    checked={publicIds.includes(item.appId)}
+                    onChange={(e) => {
+                      const on = e.currentTarget.checked;
+                      setPublicIds((prev) => (on ? [...prev, item.appId] : prev.filter((id) => id !== item.appId)));
+                    }}
+                  />
+                )
+              ) : null}
+            </Group>
           </Paper>
         ))}
       </Stack>
       {action.error ? <Alert color="red">{action.error}</Alert> : null}
       <Group justify="flex-end">
-        <Button loading={action.busy} disabled={missingRequired} onClick={() => void preview()}>
+        <Button
+          loading={action.busy}
+          disabled={missingRequired || (viaApi && !tunnelReady)}
+          onClick={() => void preview()}
+        >
           Preview
         </Button>
       </Group>
     </Stack>
   );
+}
+
+// Cloudflare Tunnel through the connector or with a pasted tunnel token,
+// as in the Access step. Through the connector, the tunnel has to exist
+// before the rollout, so each app's route is added as it lands.
+function CloudflareChoice({
+  how,
+  onChange,
+  baseDomain,
+  onReady,
+}: {
+  how: "api" | "token";
+  onChange: (how: "api" | "token") => void;
+  baseDomain?: string;
+  onReady: (ready: boolean) => void;
+}) {
+  return (
+    <Stack gap="sm" data-cloudflare-setup={how}>
+      <SegmentedControl
+        value={how}
+        onChange={(value) => onChange(value as "api" | "token")}
+        data={[
+          { value: "api", label: "Connect with an API token (recommended)" },
+          { value: "token", label: "Paste a tunnel token" },
+        ]}
+      />
+      {how === "api" ? <ConnectorSetup baseDomain={baseDomain} onReady={onReady} /> : null}
+    </Stack>
+  );
+}
+
+function ConnectorSetup({ baseDomain, onReady }: { baseDomain?: string; onReady: (ready: boolean) => void }) {
+  const [ready, setReady] = useState(false);
+  // The panel below keeps its own copy of the view; this one only watches
+  // for a cloudflared to connect to the tunnel, which the bundle doesn't
+  // deploy on this path.
+  const view = useApi("GET /api/connector-cloudflare/view", undefined, { pollMs: ready ? undefined : RUN_POLL_MS });
+  const tunnel = view.data?.tunnel;
+  const connected = tunnel?.status === "healthy" || tunnel?.status === "degraded";
+  useEffect(() => {
+    setReady(connected);
+    onReady(connected);
+  }, [connected, onReady]);
+  useEffect(() => () => onReady(false), [onReady]);
+
+  // The connector reads the access choice, which is otherwise saved only on
+  // Preview: until then its panel would ask for the Access step, the very
+  // choice being made here.
+  const access = useApi("GET /api/deploy/access");
+  const saved = access.data;
+  const reloadView = view.reload;
+  const reloadAccess = access.reload;
+  useEffect(() => {
+    if (!saved || !baseDomain || !DOMAIN.test(baseDomain)) return;
+    if (saved.mode === "cloudflare-tunnel" && saved.baseDomain === baseDomain) return;
+    const timer = setTimeout(() => {
+      void (async () => {
+        await apiRequest("PUT /api/deploy/access", { body: { mode: "cloudflare-tunnel", baseDomain } });
+        await apiRequest("POST /api/connector-cloudflare/sync").catch(() => undefined);
+        reloadAccess();
+        reloadView();
+      })().catch(() => undefined);
+    }, SAVE_ACCESS_MS);
+    return () => clearTimeout(timer);
+  }, [saved, baseDomain, reloadAccess, reloadView]);
+
+  return (
+    <Stack gap="sm">
+      <Text size="sm" c="dimmed">
+        Connect your Cloudflare account, create the tunnel and deploy cloudflared here. The rollout then adds a DNS
+        record and tunnel route for each app as it lands.
+      </Text>
+      <CloudflarePanel baseDomain={baseDomain} {...(ready ? {} : { pollMs: RUN_POLL_MS })} />
+      {view.data && !connected ? (
+        <Text size="sm" c="yellow">
+          {tunnel
+            ? "Preview opens once cloudflared is connected to the tunnel: deploy it above."
+            : "Preview opens once the tunnel exists and cloudflared is connected to it."}
+        </Text>
+      ) : null}
+    </Stack>
+  );
+}
+
+// With the connector set up, its panel shows each app's DNS record and
+// route; otherwise the steps to finish by hand.
+function AfterRollout({ access }: { access: AccessView }) {
+  const cloudflare = access.mode === "cloudflare-tunnel";
+  const view = useApi("GET /api/connector-cloudflare/view", undefined, { enabled: cloudflare });
+  if (cloudflare && !view.data && !view.error) return null;
+  if (cloudflare && view.data?.connectorId) return <CloudflarePanel baseDomain={access.baseDomain} />;
+  return <AccessInstructions view={access} />;
 }
 
 function BundleRun({ runId, names, onDone }: { runId: string; names: Record<string, string>; onDone: () => void }) {
@@ -175,7 +411,7 @@ function BundleRun({ runId, names, onDone }: { runId: string; names: Record<stri
           Links and HTTP checks are set up for each app with a web page. Carry on with the remaining setup steps.
         </Alert>
       ) : null}
-      {data.state !== "running" && access.data ? <AccessInstructions view={access.data} /> : null}
+      {data.state !== "running" && access.data ? <AfterRollout access={access.data} /> : null}
       {data.state === "failed" ? <RunFailed run={data} names={names} /> : null}
       <Group justify="flex-end">
         <Button disabled={data.state === "running"} onClick={onDone}>

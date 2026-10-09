@@ -2,7 +2,9 @@ import { Alert, Loader, SimpleGrid, Stack } from "@mantine/core";
 import type { SeriesResult } from "@contracts/metrics";
 import { PageHeader } from "../../shell/PageHeader";
 import { Tile, TimeSeriesChart, useApi, useSession } from "../../ui";
+import { RaiseReplicas } from "../../ui/deploy";
 import { AddNode } from "./AddNode";
+import { DefaultStorageClass } from "./StorageClass";
 import { ChartCard, RangeControl, nodeLine, nodeStatus, useRange } from "./shared";
 
 const byNode = (result: SeriesResult) => result.labels.node ?? result.series;
@@ -19,6 +21,8 @@ export function NodesPage() {
         description="Usage from each node's kubelet, read through the API server."
         actions={<RangeControl value={range} onChange={setRange} />}
       />
+      <DefaultStorageClass />
+      <RaiseReplicas />
       {error ? (
         <Alert color="red" title="Could not load nodes">
           {error}

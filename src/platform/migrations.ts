@@ -169,4 +169,32 @@ export const platformMigrations: readonly Migration[] = [
       CREATE UNIQUE INDEX api_tokens_refresh ON api_tokens(refresh_hash);
     `,
   },
+  {
+    version: 4,
+    name: "app sign-in gate",
+    up: `
+      -- The sign-in gate's round trip: a ticket the console hands a signed-in
+      -- browser for one app host, single use and short-lived, exchanged on
+      -- that host for a grant whose cookie the host keeps. Both hold only
+      -- hashes and die with the console session they came from.
+      CREATE TABLE gate_tickets (
+        ticket_hash TEXT PRIMARY KEY,
+        ${org},
+        session_hash TEXT NOT NULL REFERENCES sessions(id_hash) ON DELETE CASCADE,
+        host TEXT NOT NULL,
+        return_path TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE gate_grants (
+        grant_hash TEXT PRIMARY KEY,
+        ${org},
+        session_hash TEXT NOT NULL REFERENCES sessions(id_hash) ON DELETE CASCADE,
+        host TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL
+      );
+      CREATE INDEX gate_grants_session ON gate_grants(session_hash);
+    `,
+  },
 ];

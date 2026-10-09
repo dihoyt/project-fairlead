@@ -59,6 +59,80 @@ interface Discovery {
 
 export const OIDC_SECRET = { scope: "auth", id: "oidc" } as const;
 
+export const GOOGLE_ISSUER = "https://accounts.google.com";
+export const MICROSOFT_COMMON_ISSUER = "https://login.microsoftonline.com/common/v2.0";
+// The tenant Microsoft issues personal (consumer) account tokens from.
+const MICROSOFT_CONSUMER_TENANT = "9188040d-6c67-4c5b-b112-36a304b66dad";
+const MICROSOFT_HOST = "login.microsoftonline.com";
+const TENANT_PLACEHOLDER = "{tenantid}";
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function trimSlash(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
+// Microsoft's common, organizations and consumers endpoints sign people in
+// from any tenant: their discovery document names the issuer as
+// ".../{tenantid}/v2.0" and each token's iss carries the user's own tenant.
+export function microsoftMultiTenant(issuer: string): boolean {
+  try {
+    const url = new URL(issuer);
+    const [tenant, version] = url.pathname.split("/").filter(Boolean);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === MICROSOFT_HOST &&
+      version === "v2.0" &&
+      (tenant === "common" || tenant === "organizations" || tenant === "consumers")
+    );
+  } catch {
+    return false;
+  }
+}
+
+// Providers anyone can make an account with, where the provider itself
+// says nothing about who should get in here.
+export function publicIssuer(issuer: string): boolean {
+  return trimSlash(issuer) === GOOGLE_ISSUER || microsoftMultiTenant(issuer);
+}
+
+// The issuer a token from `tid` must carry, given the issuer discovery
+// named; anything without the placeholder is used as is.
+function issuerForTenant(issuer: string, tid: unknown): string | null {
+  if (!issuer.includes(TENANT_PLACEHOLDER)) return issuer;
+  if (typeof tid !== "string" || !GUID.test(tid)) return null;
+  return issuer.replace(TENANT_PLACEHOLDER, tid);
+}
+
+// Whether the provider vouches for the email claim. Microsoft's email claim
+// from an arbitrary tenant is whatever that tenant's admin typed, so it
+// counts only for personal accounts (whose address is the sign-in name
+// Microsoft verified) or with xms_edov, Microsoft's "the domain owner
+// verified this address" optional claim. Everyone else: unless the
+// provider says email_verified is false.
+export function emailVerified(issuer: string, claims: Record<string, unknown>): boolean {
+  if (microsoftMultiTenant(issuer) || issuer.includes(TENANT_PLACEHOLDER)) {
+    return claims.tid === MICROSOFT_CONSUMER_TENANT || claims.xms_edov === true || claims.xms_edov === "1";
+  }
+  if (publicIssuer(issuer)) return claims.email_verified === true || claims.email_verified === "true";
+  return claims.email_verified !== false;
+}
+
+// An entry is an address ("ann@example.com") or a domain ("@example.com"
+// or "example.com").
+export function emailListed(entries: readonly string[], email: string): boolean {
+  const address = email.trim().toLowerCase();
+  const at = address.lastIndexOf("@");
+  if (at <= 0) return false;
+  const domain = address.slice(at + 1);
+  return entries.some((raw) => {
+    const entry = raw.trim().toLowerCase();
+    if (!entry) return false;
+    if (entry.startsWith("@")) return entry.slice(1) === domain;
+    if (entry.includes("@")) return entry === address;
+    return entry === domain;
+  });
+}
+
 async function clientSecret(core: Core): Promise<string> {
   try {
     return (await core.secrets.get(OIDC_SECRET.scope, OIDC_SECRET.id)) ?? "";
@@ -146,6 +220,15 @@ async function fetchJson(url: string, init: RequestInit = {}): Promise<Record<st
   return body as Record<string, unknown>;
 }
 
+// Microsoft's multi-tenant endpoints answer with a templated issuer
+// (consumers with the consumer tenant's own), never the URL asked for.
+function discoveredIssuerMatches(configured: string, discovered: string): boolean {
+  if (trimSlash(discovered) === trimSlash(configured)) return true;
+  if (!microsoftMultiTenant(configured)) return false;
+  const match = /^https:\/\/login\.microsoftonline\.com\/([^/]+)\/v2\.0$/.exec(trimSlash(discovered));
+  return match !== null && (match[1] === TENANT_PLACEHOLDER || GUID.test(match[1]!));
+}
+
 const discoveryCache = new Map<string, { at: number; value: Discovery }>();
 
 export async function discover(issuer: string): Promise<Discovery> {
@@ -160,7 +243,7 @@ export async function discover(issuer: string): Promise<Discovery> {
   // A document claiming to be some other issuer is either a misconfigured
   // URL or a substitution; either way its tokens would fail the iss check,
   // so refusing here gives the admin the reason instead.
-  if (value.issuer.replace(/\/+$/, "") !== issuer.replace(/\/+$/, "")) {
+  if (!discoveredIssuerMatches(issuer, value.issuer)) {
     throw new OidcError(`The provider says its issuer is ${value.issuer}, not ${issuer}.`);
   }
   assertSecureUrl(value.authorization_endpoint, "authorization endpoint");
@@ -253,7 +336,8 @@ export function checkIdTokenClaims(
   nowMs = Date.now()
 ): void {
   const now = Math.floor(nowMs / 1000);
-  if (String(claims.iss ?? "").replace(/\/+$/, "") !== expected.issuer.replace(/\/+$/, ""))
+  const issuer = issuerForTenant(expected.issuer, claims.tid);
+  if (issuer === null || trimSlash(String(claims.iss ?? "")) !== trimSlash(issuer))
     throw new OidcError("ID token issuer mismatch.");
   const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
   if (!audiences.includes(expected.clientId)) throw new OidcError("ID token was issued to a different client.");
@@ -371,17 +455,26 @@ export async function finishSignIn(core: Core, query: Record<string, unknown>): 
     }
   }
 
-  const email = typeof merged.email === "string" ? merged.email.trim().toLowerCase() : "";
-  const username = String(merged[cfg.usernameClaim] ?? merged.preferred_username ?? email ?? "")
-    .trim()
-    .toLowerCase();
+  const rawEmail = typeof merged.email === "string" ? merged.email.trim().toLowerCase() : "";
+  const verified = rawEmail !== "" && emailVerified(meta.issuer, merged);
+  // With a public provider an unverified address is anyone's to claim, so
+  // it is not kept at all, and the verified address is the username.
+  const open = publicIssuer(cfg.issuer);
+  const email = open && !verified ? "" : rawEmail;
+  const username = open
+    ? email
+    : String(merged[cfg.usernameClaim] ?? merged.preferred_username ?? email ?? "")
+        .trim()
+        .toLowerCase();
   return {
     profile: {
-      provider: meta.issuer,
+      // Per tenant for Microsoft's multi-tenant endpoints, so one tenant's
+      // subject can never stand for another's.
+      provider: meta.issuer.includes(TENANT_PLACEHOLDER) ? String(claims.iss) : meta.issuer,
       subject: String(claims.sub),
       username,
       email,
-      emailVerified: merged.email_verified !== false,
+      emailVerified: verified,
       name: typeof merged.name === "string" ? merged.name : "",
       groups: claimList(merged[cfg.groupsClaim]),
     },
@@ -393,6 +486,17 @@ export async function finishSignIn(core: Core, query: Record<string, unknown>): 
 export function groupAllowed(core: Core, groups: string[]): boolean {
   const allowed = core.settings.list("auth.oidc.allowedGroups").map((g) => g.toLowerCase());
   return allowed.length === 0 || groups.some((g) => allowed.includes(g.toLowerCase()));
+}
+
+// Empty allows any address; with entries, only a verified one listed.
+export function emailAllowed(core: Core, profile: Pick<OidcProfile, "email" | "emailVerified">): boolean {
+  const allowed = core.settings.list("auth.oidc.allowedEmails");
+  return allowed.length === 0 || (profile.emailVerified && emailListed(allowed, profile.email));
+}
+
+export function emailIsAdmin(core: Core, profile: Pick<OidcProfile, "email" | "emailVerified">): boolean {
+  const admins = core.settings.list("auth.oidc.adminEmails");
+  return admins.length > 0 && profile.emailVerified && emailListed(admins, profile.email);
 }
 
 export function groupIsAdmin(core: Core, groups: string[]): boolean {

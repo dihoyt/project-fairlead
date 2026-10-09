@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   ActionIcon,
   AppShell,
@@ -87,10 +87,31 @@ function UserMenu() {
   );
 }
 
-function NavSection({ items, pathname, onNavigate }: { items: NavItem[]; pathname: string; onNavigate: () => void }) {
-  return items.map((item) => (
+type NavEntry = { item: NavItem } | { group: string; items: NavItem[] };
+
+// Sorted items, with each group's items gathered at its first item's place.
+export function navEntries(items: NavItem[]): NavEntry[] {
+  const entries: NavEntry[] = [];
+  const groups = new Map<string, NavItem[]>();
+  for (const item of items.toSorted(byOrder)) {
+    if (!item.group) {
+      entries.push({ item });
+      continue;
+    }
+    const members = groups.get(item.group);
+    if (members) members.push(item);
+    else {
+      const created = [item];
+      groups.set(item.group, created);
+      entries.push({ group: item.group, items: created });
+    }
+  }
+  return entries;
+}
+
+function ItemLink({ item, pathname, onNavigate }: { item: NavItem; pathname: string; onNavigate: () => void }) {
+  return (
     <NavLink
-      key={item.to}
       component={Link}
       to={item.to}
       label={item.label}
@@ -98,7 +119,62 @@ function NavSection({ items, pathname, onNavigate }: { items: NavItem[]; pathnam
       onClick={onNavigate}
       leftSection={item.icon ? <item.icon size={18} stroke={1.5} /> : null}
     />
-  ));
+  );
+}
+
+function NavGroup({
+  group,
+  items,
+  pathname,
+  onNavigate,
+}: {
+  group: string;
+  items: NavItem[];
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  const active = items.some((item) => isActive(pathname, item.to));
+  const [opened, setOpened] = useState(active);
+  useEffect(() => {
+    if (active) setOpened(true);
+  }, [active]);
+  const Icon = items[0]?.icon;
+  return (
+    <NavLink
+      label={group}
+      opened={opened}
+      onChange={setOpened}
+      leftSection={Icon ? <Icon size={18} stroke={1.5} /> : null}
+      childrenOffset={28}
+    >
+      {items.map((item) => (
+        <NavLink
+          key={item.to}
+          component={Link}
+          to={item.to}
+          label={item.label}
+          active={isActive(pathname, item.to)}
+          onClick={onNavigate}
+        />
+      ))}
+    </NavLink>
+  );
+}
+
+function NavSection({ items, pathname, onNavigate }: { items: NavItem[]; pathname: string; onNavigate: () => void }) {
+  return navEntries(items).map((entry) =>
+    "item" in entry ? (
+      <ItemLink key={entry.item.to} item={entry.item} pathname={pathname} onNavigate={onNavigate} />
+    ) : (
+      <NavGroup
+        key={`group:${entry.group}`}
+        group={entry.group}
+        items={entry.items}
+        pathname={pathname}
+        onNavigate={onNavigate}
+      />
+    )
+  );
 }
 
 export function Layout() {

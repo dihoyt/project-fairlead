@@ -1,17 +1,18 @@
 import { Accordion, Alert, Anchor, Badge, Group, Stack, Text } from "@mantine/core";
 import type { BundlePlan } from "@contracts/deploy";
+import { formatBytes } from "@contracts/disk";
 import { DeployPlanView } from "./DeployPlanView";
+import { SkippedSteps } from "./SkippedSteps";
 
-// The preview of a bundle rollout: every app in install order, what each
-// will run, and which are skipped and why.
+// The preview of a bundle rollout: the apps it installs in order and what
+// each will run; the ones it skips fold into one line.
 export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?: Record<string, string> }) {
   const running = plan.steps.filter((step) => !step.skip);
   const blocked = running.filter((step) => step.plan && !step.plan.allowed);
   return (
     <Stack gap="sm" data-plan-allowed={plan.allowed}>
       <Text size="sm">
-        Installs {running.length} {running.length === 1 ? "app" : "apps"} in this order
-        {plan.steps.length > running.length ? `, skipping ${plan.steps.length - running.length}` : ""}.
+        Installs {running.length} {running.length === 1 ? "app" : "apps"} in this order.
       </Text>
       {!plan.allowed ? (
         <Alert color="red" variant="light" title="Can't roll out yet">
@@ -31,10 +32,15 @@ export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?:
           {plan.disk.detail}
         </Text>
       ) : null}
+      {plan.memoryBytes ? (
+        <Text size="xs" c="dimmed" data-memory>
+          Once running, these apps ask for about {formatBytes(plan.memoryBytes)} of memory between them.
+        </Text>
+      ) : null}
       <Accordion variant="separated" chevronPosition="left" multiple>
-        {plan.steps.map((step, index) => (
+        {running.map((step, index) => (
           <Accordion.Item key={step.appId} value={step.appId} data-step={step.appId}>
-            <Accordion.Control disabled={step.skip || !step.plan}>
+            <Accordion.Control disabled={!step.plan}>
               <Group justify="space-between" wrap="nowrap" gap="xs">
                 <Group gap="xs" wrap="nowrap">
                   <Text size="sm" c="dimmed" w={20}>
@@ -43,11 +49,7 @@ export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?:
                   <Text size="sm" fw={500}>
                     {names[step.appId] ?? step.appId}
                   </Text>
-                  {step.skip ? (
-                    <Text size="xs" c="dimmed">
-                      {step.reason ?? "Skipped"}
-                    </Text>
-                  ) : step.plan?.url ? (
+                  {step.plan?.url ? (
                     <Anchor
                       size="xs"
                       href={step.plan.url}
@@ -59,19 +61,36 @@ export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?:
                     </Anchor>
                   ) : null}
                 </Group>
-                {step.skip ? (
-                  <Badge color="gray" variant="light" radius="xs">
-                    skipped
-                  </Badge>
-                ) : step.plan && !step.plan.allowed ? (
-                  <Badge color="red" variant="light" radius="xs">
-                    blocked
-                  </Badge>
-                ) : step.plan?.warnings.length ? (
-                  <Badge color="yellow" variant="light" radius="xs">
-                    {step.plan.warnings.length} {step.plan.warnings.length === 1 ? "warning" : "warnings"}
-                  </Badge>
-                ) : null}
+                <Group gap="xs" wrap="nowrap">
+                  {step.memoryBytes ? (
+                    <Text size="xs" c="dimmed" data-step-memory>
+                      {formatBytes(step.memoryBytes)}
+                    </Text>
+                  ) : null}
+                  {step.plan?.gate?.state === "gated" ? (
+                    <Badge color="green" variant="light" radius="xs" data-gate={step.appId}>
+                      behind sign-in
+                    </Badge>
+                  ) : step.plan?.gate?.state === "public" || step.plan?.gate?.state === "open" ? (
+                    <Badge
+                      color={step.plan.gate.state === "open" ? "red" : "gray"}
+                      variant="light"
+                      radius="xs"
+                      data-gate={step.appId}
+                    >
+                      public
+                    </Badge>
+                  ) : null}
+                  {step.plan && !step.plan.allowed ? (
+                    <Badge color="red" variant="light" radius="xs">
+                      blocked
+                    </Badge>
+                  ) : step.plan?.warnings.length ? (
+                    <Badge color="yellow" variant="light" radius="xs">
+                      {step.plan.warnings.length} {step.plan.warnings.length === 1 ? "warning" : "warnings"}
+                    </Badge>
+                  ) : null}
+                </Group>
               </Group>
             </Accordion.Control>
             {step.plan ? (
@@ -82,6 +101,15 @@ export function BundlePlanView({ plan, names = {} }: { plan: BundlePlan; names?:
           </Accordion.Item>
         ))}
       </Accordion>
+      <SkippedSteps
+        steps={plan.steps
+          .filter((step) => step.skip)
+          .map((step) => ({
+            appId: step.appId,
+            name: names[step.appId] ?? step.appId,
+            ...(step.reason ? { reason: step.reason } : {}),
+          }))}
+      />
     </Stack>
   );
 }

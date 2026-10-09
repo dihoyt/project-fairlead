@@ -17,10 +17,13 @@ import {
   type AccessView,
   type BundlePlan,
   type BundleRunView,
+  type DeployActionPlan,
   type DeployJobView,
   type DeployPlan,
   type DeployStatus,
+  type GateStatus,
   type UpgradeReport,
+  type VolumeBackupView,
 } from "../deploy.js";
 import type { HostKeypair } from "../hosts.js";
 import { checkDisk } from "../disk.js";
@@ -649,7 +652,35 @@ export const mockDeployPlan: DeployPlan = {
     { kind: "Job", name: "deploy-headlamp-1", namespace: "console" },
   ],
   url: "https://headlamp.example.test",
+  gate: { state: "gated" },
   warnings: [],
+};
+
+// One app in each state the gate can report.
+export const mockGateStatus: GateStatus = {
+  ready: true,
+  signInUrl: "https://console.example.test",
+  middleware: "console-console-gate@kubernetescrd",
+  apps: [
+    {
+      appId: "authentik",
+      name: "Authentik",
+      state: "public",
+      public: true,
+      mode: "public",
+      hosts: ["auth.example.test"],
+    },
+    { appId: "gitea", name: "Gitea", state: "gated", public: false, mode: "credentials", hosts: ["git.example.test"] },
+    { appId: "headlamp", name: "Headlamp", state: "public", public: true, hosts: ["headlamp.example.test"] },
+    {
+      appId: "longhorn",
+      name: "Longhorn",
+      state: "open",
+      public: false,
+      hosts: ["longhorn.example.test"],
+      reason: "Its Ingress longhorn-system/longhorn-ingress has no gate middleware.",
+    },
+  ],
 };
 
 export const mockBlockedPlan: DeployPlan = {
@@ -869,4 +900,127 @@ export const mockUpgradeRun: BundleRunView = {
   startedBy: "admin",
   createdAt: isoAgo(60_000),
   steps: [{ appId: "gitea", state: "running", jobId: "dj_4" }],
+};
+
+export const mockReplicasPlan: DeployActionPlan = {
+  kind: "longhorn-replicas",
+  title: "Raise Longhorn replicas to 2",
+  allowed: true,
+  steps: [
+    {
+      label: "Set Longhorn's StorageClass and default replica count to 2",
+      commands: [
+        "helm upgrade longhorn longhorn --repo https://charts.longhorn.io --version 0.0.0-mock " +
+          "--namespace longhorn-system --reuse-values --values /values/replicas.yaml --wait --timeout 10m",
+        "kubectl patch settings.longhorn.io default-replica-count --namespace longhorn-system --type merge " +
+          "--patch-file /values/setting.yaml",
+      ],
+    },
+    {
+      label: "Raise 2 existing volumes to 2 replicas",
+      commands: [
+        "kubectl patch volumes.longhorn.io pvc-0b7c --namespace longhorn-system --type merge " +
+          "--patch-file /values/volume.yaml",
+        "kubectl patch volumes.longhorn.io pvc-91ae --namespace longhorn-system --type merge " +
+          "--patch-file /values/volume.yaml",
+      ],
+    },
+  ],
+  rollback:
+    "Nothing is lowered: a failed step leaves the earlier ones raised, and running it again picks up where it stopped.",
+  changes: [
+    { kind: "Setting", name: "default-replica-count", namespace: "longhorn-system" },
+    { kind: "StorageClass", name: "longhorn" },
+    { kind: "Volume", name: "pvc-0b7c", namespace: "longhorn-system" },
+    { kind: "Volume", name: "pvc-91ae", namespace: "longhorn-system" },
+  ],
+  creates: [
+    { kind: "Job", name: "deploy-longhorn-7", namespace: "console" },
+    { kind: "Secret", name: "deploy-longhorn-values", namespace: "console" },
+  ],
+  warnings: ["Each raised volume copies its data to the new node; expect disk and network load while it rebuilds."],
+};
+
+export const mockReplicasJob: DeployJobView = {
+  ...mockRunningJob,
+  id: "dj_7",
+  appId: "longhorn",
+  release: "longhorn",
+  namespace: "longhorn-system",
+  mode: "action",
+  action: "longhorn-replicas",
+  job: { namespace: "console", name: "deploy-longhorn-7" },
+};
+
+export const mockMigratePlan: DeployActionPlan = {
+  kind: "migrate-to-longhorn",
+  title: "Convert Gitea to Longhorn",
+  allowed: true,
+  steps: [
+    { label: "Stop Gitea (Deployment gitea to 0)", commands: ["kubectl scale deployment/gitea --replicas=0 -n gitea"] },
+    {
+      label: "Copy gitea-shared-storage (5Gi) to Longhorn",
+      commands: [
+        "kubectl create -f /values/tmp-0.json",
+        "kubectl create -f /values/copy-0.json",
+        "kubectl delete pvc gitea-shared-storage -n gitea",
+        "kubectl create -f /values/new-0.json",
+      ],
+    },
+    { label: "Start Gitea and check it answers", commands: ["kubectl rollout status deployment/gitea -n gitea"] },
+    { label: "Delete the old local-path volume", commands: ["kubectl patch pv pvc-5d1e --patch-file ..."] },
+  ],
+  downtime: "Gitea is stopped for about 3 minutes while its data is copied.",
+  rollback:
+    "If any step before the old volume is deleted fails, the claim goes back to its old volume and Gitea starts again; nothing is deleted.",
+  changes: [
+    { kind: "Deployment", name: "gitea", namespace: "gitea" },
+    { kind: "PersistentVolumeClaim", name: "gitea-shared-storage", namespace: "gitea" },
+    { kind: "PersistentVolume", name: "pvc-5d1e" },
+  ],
+  creates: [
+    { kind: "Job", name: "deploy-gitea-9", namespace: "console" },
+    { kind: "Secret", name: "deploy-gitea-values", namespace: "console" },
+    { kind: "Job", name: "gitea-copy-9-0", namespace: "gitea" },
+    { kind: "PersistentVolumeClaim", name: "gitea-shared-storage-longhorn", namespace: "gitea" },
+  ],
+  warnings: [],
+  volumes: [
+    {
+      namespace: "gitea",
+      claim: "gitea-shared-storage",
+      storageClass: "local-path",
+      size: "5Gi",
+      usedBytes: 734_003_200,
+      node: "node-1",
+      targetStorageClass: "longhorn",
+    },
+  ],
+  offerReplicas: true,
+};
+
+export const mockMigrateJob: DeployJobView = {
+  ...mockRunningJob,
+  id: "dj_9",
+  appId: "gitea",
+  release: "gitea",
+  namespace: "gitea",
+  mode: "action",
+  action: "migrate-to-longhorn",
+  job: { namespace: "console", name: "deploy-gitea-9" },
+};
+
+export const mockVolumeBackup: VolumeBackupView = {
+  id: "dj_8",
+  appId: "gitea",
+  namespace: "gitea",
+  state: "ready",
+  expiresAt: new Date(MOCK_NOW + HOUR).toISOString(),
+  files: [
+    {
+      claim: "gitea-shared-storage",
+      path: "api/deploy/actions/backups/dj_8/files/gitea-shared-storage",
+      filename: "gitea-gitea-shared-storage-2026-10-07.tar.gz",
+    },
+  ],
 };

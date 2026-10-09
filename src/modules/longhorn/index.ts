@@ -1,9 +1,12 @@
 import { z } from "zod";
+import { RESOURCES } from "../../contracts/k8s.js";
 import type { Module } from "../../contracts/module.js";
 import { createBackupsProvider, createStorageProvider, type HealthOptions } from "./health.js";
 import { createCollector } from "./metrics.js";
 import { migrations } from "./migrations.js";
 import { createLoader } from "./model.js";
+import { errorMessage } from "../../runtime/log.js";
+import { readStorageClasses, replicaAdvice, unreadableAdvice, type StorageClassObject } from "./replicas.js";
 import { createBackupSource } from "./source.js";
 
 const mod: Module = {
@@ -35,17 +38,34 @@ const mod: Module = {
 
     const now = Date.now;
     const load = createLoader(() => ctx.services.get("k8s"), now);
+    const storageClasses = () =>
+      readStorageClasses(
+        () => ctx.services.get("k8s").list<StorageClassObject>(RESOURCES.storageClasses),
+        (message, meta) => ctx.log.warn(message, meta)
+      );
     const options: HealthOptions = {
       load,
       now,
       graceMs: () => graceMinutes.get() * 60_000,
       uiUrl: () => uiUrl.get(),
+      storageClasses,
     };
 
     ctx.health.addProvider(createStorageProvider(options));
     ctx.health.addProvider(createBackupsProvider(options));
     ctx.metrics.addCollector(createCollector(load));
     ctx.backups.addSource(createBackupSource(load, now));
+
+    ctx.route("GET /api/longhorn/replicas", async () => {
+      const at = new Date(now()).toISOString();
+      try {
+        const [snapshot, classes] = await Promise.all([load(), storageClasses()]);
+        return replicaAdvice(snapshot, classes, at);
+      } catch (err) {
+        const error = errorMessage(err);
+        return unreadableAdvice(error, at);
+      }
+    });
   },
 };
 

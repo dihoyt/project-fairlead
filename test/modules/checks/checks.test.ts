@@ -14,9 +14,25 @@ import type { CheckResult } from "../../../src/contracts/health.js";
 import { createMockContext, mockViewer } from "../../../src/contracts/mocks/context.js";
 import { applyMigrations } from "../../../src/runtime/migrations.js";
 import checks, { LATENCY_SERIES, createRunner } from "../../../src/modules/checks/index.js";
-import { MAX_BODY_BYTES, judge, parseHostPort, probe, type CheckSpec } from "../../../src/modules/checks/probe.js";
+import {
+  MAX_BODY_BYTES,
+  judge,
+  parseHostPort,
+  probe,
+  type CheckSpec,
+  type ProbeOutcome,
+} from "../../../src/modules/checks/probe.js";
 import { createStore } from "../../../src/modules/checks/store.js";
-import { ACCESS_LINK, ingressHostFor, rateUnresolved, unresolved } from "../../../src/modules/checks/fallback.js";
+import {
+  ACCESS_LINK,
+  gatedHost,
+  ingressHostFor,
+  metGate,
+  rateGated,
+  rateUnresolved,
+  unresolved,
+} from "../../../src/modules/checks/fallback.js";
+import { createMockDeployService } from "../../../src/contracts/mocks/deploy.js";
 import type { IngressHost } from "../../../src/contracts/catalog.js";
 import { createMockCatalogService, mockDiscovery } from "../../../src/contracts/mocks/catalog.js";
 import { migrations as healthMigrations } from "../../../src/modules/health/migrations.js";
@@ -702,4 +718,31 @@ test("no DNS on a Tailscale host: the Service is the whole answer", async () => 
   assert.equal(result.status, "ok");
   assert.match(result.detail, /answers on your tailnet only/);
   assert.equal(result.deepLink, "https://git.example.test/");
+});
+
+const gateWall: ProbeOutcome = { httpStatus: 401, latencyMs: 3, headers: { "content-type": "text/plain" } };
+
+test("sign-in gate: only a bare 401 on an http check counts as meeting it", () => {
+  assert.equal(metGate(gitCheck(), gateWall), true);
+  assert.equal(metGate(gitCheck(), { ...gateWall, httpStatus: 403 }), false);
+  assert.equal(metGate({ ...gitCheck(), authHeader: "Authorization" }, gateWall), false);
+  assert.equal(metGate({ ...gitCheck(), expectStatus: [401] }, gateWall), false);
+});
+
+test("sign-in gate: a host is gated when the deploy service says so", async () => {
+  const deploy = createMockDeployService();
+  assert.equal(await gatedHost(deploy, "https://GIT.example.test/x"), true);
+  assert.equal(await gatedHost(deploy, "https://longhorn.example.test/"), false);
+  assert.equal(await gatedHost(undefined, "https://git.example.test/"), false);
+});
+
+test("sign-in gate: up inside the cluster is ok, down is critical", async () => {
+  const up = await rateGated(gitCheck("/status/200"), gateWall, gitHost(httpUrl), "now");
+  assert.equal(up.status, "ok");
+  assert.match(up.detail, /^Behind the console's sign-in: .*HTTP 401 in 3 ms.*up inside the cluster \(200 in \d+ ms\)/);
+  const down = await rateGated(gitCheck("/status/500"), gateWall, gitHost(httpUrl), "now");
+  assert.equal(down.status, "crit");
+  assert.match(down.detail, /does not answer inside the cluster/);
+  const unknown = await rateGated(gitCheck(), gateWall, undefined, "now");
+  assert.equal(unknown.status, "ok");
 });

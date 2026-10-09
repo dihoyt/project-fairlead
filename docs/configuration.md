@@ -70,10 +70,33 @@ the UI hasn't.
 | `auth.oidc.autoProvision` | `OIDC_AUTO_PROVISION` | `false` | Create accounts at first OIDC sign-in. Off: an admin creates the account (no password) and the first matching sign-in links to it. |
 | `auth.oidc.allowedGroups` | `OIDC_ALLOWED_GROUPS` | none | Only these groups may sign in through OIDC. |
 | `auth.oidc.adminGroups` | `OIDC_ADMIN_GROUPS` | none | Members are admins while signed in through OIDC. |
+| `auth.oidc.allowedEmails` | `OIDC_ALLOWED_EMAILS` | none | Only these verified addresses (`ann@example.com`) or domains (`@example.com`) may sign in through OIDC. Google and Microsoft multi-tenant sign-in create no accounts while this and allowed groups are both empty. |
+| `auth.oidc.adminEmails` | `OIDC_ADMIN_EMAILS` | none | A verified OIDC sign-in with one of these addresses or domains makes the account an admin (never demoted automatically). |
 | `auth.oidc.networks` | `OIDC_NETWORKS` | none | CIDRs OIDC sign-in is allowed from. |
 | `auth.oidc.recheckHours` | `OIDC_RECHECK_HOURS` | `0` | Send OIDC sessions back through the provider this often. |
 | `auth.session.idleDays` | `SESSION_IDLE_DAYS` | `14` | Sign out after this much inactivity. |
 | `auth.session.maxDays` | `SESSION_MAX_DAYS` | `30` | Absolute session lifetime. |
+
+#### Google and Microsoft accounts
+
+The Sign-in step offers **Google** and **Microsoft** beside the generic form.
+Neither needs anyone invited to a tenant: you make one OAuth client, and anyone
+whose verified email is on the allowed list can sign in with their own account.
+
+- Google: in Google Cloud Console, APIs & Services, Credentials, create an
+  OAuth client ID of type Web application with the redirect URI
+  `<public URL>/auth/oidc/callback`. Issuer `https://accounts.google.com`.
+- Microsoft: in Entra, App registrations, New registration, pick "Accounts in
+  any organizational directory and personal Microsoft accounts", platform Web,
+  the same redirect URI, then add a client secret. Issuer
+  `https://login.microsoftonline.com/common/v2.0`; each token's issuer names
+  the user's own tenant and is checked against it. A work account's email
+  counts as verified only with the `xms_edov` optional claim (Token
+  configuration, Add optional claim, ID, `xms_edov`); personal accounts always
+  count.
+
+The preset saves the allowed and admin email lists and turns on account
+creation at first sign-in; it refuses an empty allowed list.
 
 #### Public URL
 

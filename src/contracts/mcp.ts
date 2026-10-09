@@ -9,13 +9,15 @@
 
 import type { ApiTokenScope } from "./auth.js";
 import type { BackupPosture } from "./backups.js";
-import type { CatalogAppView, CatalogSlot, DiscoveryReport } from "./catalog.js";
+import type { CatalogAppView, CatalogInput, CatalogSlot, DetectState, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
+import type { EntraGroup, EntraSignInRequest, EntraSignInView } from "./connectors.js";
 import type {
   BundlePlan,
   BundleRequest,
   BundleRunView,
   DeployJobRequest,
+  DeployActionPlan,
   DeployJobView,
   DeployPlan,
   DeployRequest,
@@ -30,6 +32,7 @@ import type {
 } from "./health.js";
 import type { HostView } from "./hosts.js";
 import type { NodeSummary } from "./metrics.js";
+import type { TemplateDeployRequest, TemplateJobRequest, TemplatePlan, TemplatesView } from "./templates.js";
 import type { LogLines, NamespaceView, PodView, WorkloadView } from "./workloads.js";
 
 // Where MCP clients connect, relative to the install's public URL. An alias
@@ -58,6 +61,27 @@ interface Items<T> {
 // CheckRequest: omitted keeps the stored one, "" removes it.
 export type UpdateCheckInput = { id: string } & Partial<CheckRequest>;
 
+// A template instance to remove, by its name (TemplateInstance.name).
+// list_catalog_apps without detail: enough to pick an app and fill its
+// inputs, without each entry's install source.
+export interface CatalogAppSummary {
+  id: string;
+  name: string;
+  summary: string;
+  slots: CatalogSlot[];
+  requires: string[];
+  // DetectedApp.state, and its URLs when installed.
+  installed: DetectState;
+  urls: string[];
+  inputs: CatalogInput[];
+}
+
+export interface RemoveTemplateAppInput {
+  name: string;
+  // Also delete its namespace and volumes. Default false: they stay.
+  deleteVolumes?: boolean;
+}
+
 export interface McpTools {
   // --- read ------------------------------------------------------------------
   // GET /api/health/board
@@ -68,8 +92,11 @@ export interface McpTools {
   list_nodes: { input: None; result: Items<NodeSummary> };
   // GET /api/workloads/namespaces
   list_namespaces: { input: None; result: Items<NamespaceView> };
-  // GET /api/workloads/namespaces/:namespace/workloads
-  list_workloads: { input: { namespace: string }; result: Items<WorkloadView> };
+  // GET /api/workloads/namespaces/:namespace/workloads; without namespace,
+  // every namespace from GET /api/workloads/namespaces. Jobs that finished
+  // successfully (WorkloadView.finished "complete") are left out unless
+  // includeFinished.
+  list_workloads: { input: { namespace?: string; includeFinished?: boolean }; result: Items<WorkloadView> };
   // GET /api/workloads/namespaces/:namespace/pods
   list_pods: { input: { namespace: string; workload?: string }; result: Items<PodView> };
   // GET /api/checks
@@ -78,9 +105,15 @@ export interface McpTools {
   list_links: { input: { category?: Category }; result: Items<HealthLinkView> };
   // GET /api/backups/posture
   get_backup_posture: { input: None; result: BackupPosture };
-  // GET /api/catalog/apps
-  list_catalog_apps: { input: { slot?: CatalogSlot }; result: Items<CatalogAppView> };
-  // GET /api/catalog/discovery
+  // GET /api/catalog/apps: CatalogAppSummary per app, the whole
+  // CatalogAppView (install source, manifest included) with detail.
+  list_catalog_apps: {
+    input: { slot?: CatalogSlot; detail?: boolean };
+    result: Items<CatalogAppSummary> | Items<CatalogAppView>;
+  };
+  // GET /api/catalog/discovery, with the published scheme from
+  // GET /api/deploy/access: hosts the access mode serves over https
+  // (AccessHost.url) get that url and edgeTls, and app URLs follow.
   get_discovery: { input: None; result: DiscoveryReport };
   // GET /api/deploy/jobs, newest first. limit: 1 to 100, default 20.
   list_deploy_jobs: { input: { appId?: string; limit?: number }; result: Items<DeployJobView> };
@@ -90,6 +123,12 @@ export interface McpTools {
   list_bundle_runs: { input: None; result: Items<BundleRunView> };
   // GET /api/hosts. Never carries a credential.
   list_hosts: { input: None; result: Items<HostView> };
+  // GET /api/templates: the library and every deployed instance.
+  list_templates: { input: None; result: TemplatesView };
+  // GET /api/connector-entra/view
+  get_entra_signin: { input: None; result: EntraSignInView };
+  // GET /api/connector-entra/groups, by display name prefix.
+  list_entra_groups: { input: { search?: string }; result: Items<EntraGroup> };
 
   // --- write (a "write" token) ----------------------------------------------
   // POST /api/checks
@@ -118,6 +157,18 @@ export interface McpTools {
   plan_bundle: { input: BundleRequest; result: BundlePlan };
   // POST /api/deploy/bundles
   start_bundle: { input: BundleRequest; result: BundleRunView };
+  // POST /api/templates/plan; runs nothing. The rendered manifests, guardrail
+  // findings and the deploy runner's plan, as the Templates page previews.
+  plan_template_deploy: { input: TemplateDeployRequest; result: TemplatePlan };
+  // POST /api/templates/jobs. The guardrail's refusals stand: a request the
+  // plan does not allow is a 400.
+  deploy_template: { input: TemplateJobRequest; result: DeployJobView };
+  // POST /api/deploy/actions/plan with a remove-app action; runs nothing.
+  plan_template_removal: { input: RemoveTemplateAppInput; result: DeployActionPlan };
+  // POST /api/deploy/actions/run with a remove-app action.
+  remove_template_app: { input: RemoveTemplateAppInput; result: DeployJobView };
+  // POST /api/connector-entra/signin
+  setup_entra_signin: { input: EntraSignInRequest; result: EntraSignInView };
 }
 
 export type McpToolName = keyof McpTools;
@@ -173,7 +224,8 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
   {
     name: "list_workloads",
     title: "Workloads",
-    description: "Deployments, StatefulSets, DaemonSets, Jobs and CronJobs in a namespace with readiness and images.",
+    description:
+      "Deployments, StatefulSets, DaemonSets, Jobs and CronJobs with readiness and images, in one namespace or all; finished Jobs only with includeFinished.",
     scope: "read",
     readOnly: true,
     destructive: false,
@@ -213,7 +265,8 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
   {
     name: "list_catalog_apps",
     title: "App catalog",
-    description: "Apps that can be deployed, their inputs, and whether discovery found each installed.",
+    description:
+      "Apps that can be deployed, their inputs, and whether discovery found each installed; detail for the install source.",
     scope: "read",
     readOnly: true,
     destructive: false,
@@ -254,6 +307,33 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
     name: "list_hosts",
     title: "Hosts",
     description: "SSH-monitored hosts (servers, NAS) with status and facts.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_templates",
+    title: "Templates",
+    description:
+      "The app template library (plus the Custom app template) and every app deployed from it, with its address and latest job.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "get_entra_signin",
+    title: "Entra sign-in",
+    description:
+      "Whether sign-in through Microsoft Entra ID is set up: the connector, the app registration this install owns, and what blocks setup.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_entra_groups",
+    title: "Entra groups",
+    description:
+      "Security groups in the Entra tenant by display name prefix, with the object ids setup_entra_signin takes as adminGroups.",
     scope: "read",
     readOnly: true,
     destructive: false,
@@ -354,6 +434,51 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
     title: "Roll out a bundle",
     description:
       "Starts a bundle rollout, one deploy job per app, stopping at the first failure. Preview with plan_bundle first.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "plan_template_deploy",
+    title: "Preview a template deploy",
+    description:
+      "Renders a template or custom app (image, port, env, volume) into manifests and checks them against the guardrail (no host paths, host networking, privileged containers, extra capabilities or admin role bindings); runs nothing.",
+    scope: "write",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "deploy_template",
+    title: "Deploy a template",
+    description:
+      "Starts a deploy job for a template or custom app in its own namespace (mode install, or dry-run). Refused when the guardrail or the plan blocks it. Preview with plan_template_deploy first.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "plan_template_removal",
+    title: "Preview removing a template app",
+    description:
+      "What removing an app deployed from a template would delete, and which volumes stay or go; runs nothing.",
+    scope: "write",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "remove_template_app",
+    title: "Remove a template app",
+    description:
+      "Deletes an app deployed from a template and its HTTP check. Its namespace and volumes stay unless deleteVolumes is true, which deletes its data for good. Preview with plan_template_removal first.",
+    scope: "write",
+    readOnly: false,
+    destructive: true,
+  },
+  {
+    name: "setup_entra_signin",
+    title: "Set up Entra sign-in",
+    description:
+      "Creates (or reuses) the Entra app registration this install signs in through and switches OIDC sign-in to it. adminGroups are group object ids from list_entra_groups. Needs an https public URL.",
     scope: "write",
     readOnly: false,
     destructive: false,

@@ -50,6 +50,7 @@ interface Service extends KubeObject {
 }
 
 const INGRESS_CLASS_ANNOTATION = "kubernetes.io/ingress.class";
+const MIDDLEWARES_ANNOTATION = "traefik.ingress.kubernetes.io/router.middlewares";
 // The Tailscale operator's class: the Ingress has no rule host, and the
 // MagicDNS name it got appears in its status.
 const TAILSCALE_CLASS = "tailscale";
@@ -106,8 +107,12 @@ function matchWorkload(workload: Workload, kind: string, signature: Signature): 
   const labels = workload.metadata.labels ?? {};
   const imageHit = images(workload).find((image) => signature.images.includes(parseImage(image).repo));
   const tag = imageHit ? parseImage(imageHit).tag : undefined;
+  // Charts that run a floating tag carry it in the version label too
+  // (cloudflared's says "latest"), which names no version.
+  const label = labels["app.kubernetes.io/version"];
   const version =
-    labels["app.kubernetes.io/version"] ?? (tag && tag !== "latest" && !tag.startsWith("sha") ? tag : undefined);
+    (label && label !== "latest" ? label : undefined) ??
+    (tag && tag !== "latest" && !tag.startsWith("sha") ? tag : undefined);
 
   const chart = labels["helm.sh/chart"];
   if (chart && signature.charts.includes(chartName(chart))) {
@@ -281,6 +286,10 @@ function ingressHosts(
     const namespace = ingress.metadata.namespace ?? "";
     const ingressClass =
       ingress.spec?.ingressClassName ?? ingress.metadata.annotations?.[INGRESS_CLASS_ANNOTATION] ?? undefined;
+    const middlewares = (ingress.metadata.annotations?.[MIDDLEWARES_ANNOTATION] ?? "")
+      .split(",")
+      .map((m) => m.trim())
+      .filter(Boolean);
     const rules: Array<{ host: string; backend?: Backend; tls: boolean }> = [];
     if (ingressClass === TAILSCALE_CLASS) {
       const host = ingress.status?.loadBalancer?.ingress?.find((i) => i.hostname)?.hostname;
@@ -332,6 +341,7 @@ function ingressHosts(
         ...(url ? { serviceUrl: url } : {}),
         ...(ingressClass ? { ingressClass } : {}),
         ...(appId ? { appId } : {}),
+        ...(middlewares.length > 0 ? { middlewares } : {}),
       };
       const existing = hosts.get(host);
       // One entry per host; an HTTPS one wins over a plain one.

@@ -230,6 +230,27 @@ function containers(pod: PodObject): ContainerStatus[] {
 
 const live = (pod: PodObject) => pod.status?.phase !== "Succeeded" && pod.status?.phase !== "Failed";
 
+// A Job's pod restarts in place (restartPolicy OnFailure) until the Job's
+// backoffLimit, 6 by default, and a pod that fails for good is Failed and no
+// longer live. Install Jobs (k3s's helm-install-*) routinely fail once or
+// twice while the API they install into comes up.
+const JOB_QUIET_RESTARTS = 2;
+const JOB_BACKOFF_LIMIT = 6;
+// A brand-new pod's first crashes are often a dependency still starting.
+const YOUNG_POD_MS = 5 * MIN;
+const YOUNG_RESTARTS = 2;
+
+const ownedByJob = (pod: PodObject) => (pod.metadata.ownerReferences ?? []).some((r) => r.kind === "Job");
+
+// undefined: not worth reporting yet.
+function crashStatus(pod: PodObject, restarts: number, now: number): "crit" | "warn" | undefined {
+  if (ownedByJob(pod)) {
+    if (restarts <= JOB_QUIET_RESTARTS) return undefined;
+    return restarts < JOB_BACKOFF_LIMIT ? "warn" : "crit";
+  }
+  return ageMs(pod, now) < YOUNG_POD_MS && restarts <= YOUNG_RESTARTS ? "warn" : "crit";
+}
+
 export function judgePods(pods: KubeObject[], o: JudgeOptions, observedAt: string): CheckResult[] {
   const crash: Offender[] = [];
   const image: Offender[] = [];
@@ -244,15 +265,18 @@ export function judgePods(pods: KubeObject[], o: JudgeOptions, observedAt: strin
       const reason = waiting?.reason ?? "";
       const raw = { container: c.name, reason, message: waiting?.message, restarts: c.restartCount ?? 0 };
       if (CRASH_REASONS.has(reason)) {
+        flagged = true;
+        const status = crashStatus(pod, c.restartCount ?? 0, o.now);
+        if (!status) break;
         const last = c.lastState?.terminated;
         const exit = last ? `; last exit ${last.exitCode ?? "?"}${last.reason ? ` (${last.reason})` : ""}` : "";
+        const retrying = ownedByJob(pod) && status === "warn" ? "; its Job is still retrying" : "";
         crash.push({
           object: pod,
-          status: "crit",
-          text: `${nsName(pod)} ${c.name}: ${reason}, ${plural(c.restartCount ?? 0, "restart")}${exit}`,
+          status,
+          text: `${nsName(pod)} ${c.name}: ${reason}, ${plural(c.restartCount ?? 0, "restart")}${exit}${retrying}`,
           raw: { ...raw, lastTerminated: last ?? null },
         });
-        flagged = true;
         break;
       }
       if (IMAGE_REASONS.has(reason)) {

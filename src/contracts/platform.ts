@@ -67,6 +67,76 @@ export interface SecretStore {
   delete(scope: string, id: string): Promise<void>;
 }
 
+// OIDC sign-in as a module sets it up: a connector that creates the app
+// registration this install signs in through. Provided by the platform as
+// ctx.services.get("signin"); the module never sees the settings or the
+// secret store behind it.
+export interface SignInOidcView {
+  enabled: boolean;
+  issuer: string;
+  clientId: string;
+  hasSecret: boolean;
+  // <public URL>/auth/oidc/callback; "" until site.publicUrl or PUBLIC_ORIGIN is set.
+  redirectUri: string;
+  // Why setOidcClient() would refuse now, one sentence; null when it would not.
+  blocked: string | null;
+}
+
+export interface SignInOidcClient {
+  issuer: string;
+  clientId: string;
+  clientSecret: string;
+  // Left out: unchanged.
+  label?: string;
+  adminGroups?: string[];
+  enabled?: boolean;
+}
+
+export interface SignInService {
+  oidc(): Promise<SignInOidcView>;
+  // The same writes as POST /api/admin/oidc/authentik: the client secret and
+  // the auth.oidc.* settings given, audited as "auth.oidc.wire" with `actor`
+  // (the username, or the module id for scheduled work). Throws with the
+  // reason, writing nothing, when no public URL is set, SECRETS_KEY is
+  // unset, or one of the settings is locked by the environment.
+  setOidcClient(client: SignInOidcClient, actor: string): Promise<void>;
+}
+
+// The sign-in gate in front of deployed apps (deploy.ts, "Sign-in gate").
+// Traefik's forwardAuth calls GATE_FORWARD_PATH on the console's Service for
+// every request to a gated app, with these query parameters:
+// - proto: "https" or "http", the scheme people use for the app's address,
+//   which behind a tunnel differs from what reaches Traefik. Default: the
+//   forwarded scheme.
+// - credentials: "1" lets a request carrying an Authorization header through
+//   to the app (CatalogEntry.gate "credentials").
+// The console answers 200 for a person signed in to it, sends a browser to
+// sign in at the console's public URL and back, and answers anything else 401.
+// Each app's host gets its own cookie through that round trip, tied to the
+// console session: signing out of the console signs out of every app.
+export const GATE_FORWARD_PATH = "/auth/forward";
+// Headers a 200 carries for the app: the username and email of the person
+// let through (the middleware's authResponseHeaders).
+export const GATE_USER_HEADER = "Remote-User";
+export const GATE_EMAIL_HEADER = "Remote-Email";
+
+export interface GateReadiness {
+  // A browser can be sent to sign in: a public URL is set.
+  ready: boolean;
+  // Why not, one sentence.
+  reason?: string;
+  // The console's public URL; "" until site.publicUrl or PUBLIC_ORIGIN is set.
+  signInUrl: string;
+}
+
+export interface GateService {
+  readiness(): GateReadiness;
+  // Hosts the gate may send a signed-in person back to, so the sign-in
+  // round trip can't be pointed at any other site. Checks from every caller
+  // are ORed; with none, no host is allowed.
+  allowHosts(check: (host: string) => boolean | Promise<boolean>): void;
+}
+
 export type AuditResult = "ok" | "denied" | "error";
 
 export interface AuditEntry {
@@ -105,6 +175,10 @@ export interface Platform {
   settings: SettingsRegistry;
   secrets: SecretStore;
   audit: AuditLog;
+  // Provided to modules as services "signin".
+  signIn: SignInService;
+  // Provided to modules as services "gate".
+  gate: GateService;
   // Removes UI overrides from the settings table so each falls back to its
   // environment value or default. Considers the keys in `only` (every
   // override when absent), then drops any key in `except` or starting with

@@ -129,4 +129,36 @@ describe("Settings page health editors", () => {
     expect(within(row).getByRole("switch")).toBeDisabled();
     expect(screen.getByText(/in the environment, which overrides this page/)).toBeInTheDocument();
   });
+
+  it("links to the page where a setting is edited instead of showing it twice", async () => {
+    serve([
+      setting("connector-cloudflare.accessApps", "never", {
+        group: "connector-cloudflare",
+        label: "Cloudflare Access apps",
+        type: "string",
+      }),
+    ]);
+    renderWithApp(<SettingsPage />);
+    const link = await screen.findByRole("link", { name: "Cloudflare" });
+    expect(link).toHaveAttribute("href", "#/admin/cloudflare");
+    expect(screen.queryByLabelText("Cloudflare Access apps")).not.toBeInTheDocument();
+  });
+
+  it("groups settings into sections and filters them", async () => {
+    serve([
+      setting("site.name", "Lab", { group: "General", label: "Site name", type: "string" }),
+      setting("notify.debounceSeconds", 30, { label: "Debounce", type: "number" }),
+      setting("hosts.diskWarnPercent", 80, { label: "Disk warning", type: "number" }),
+    ]);
+    renderWithApp(<SettingsPage />);
+    await screen.findByLabelText("Site name");
+    const sections = [...document.querySelectorAll("[data-settings-section]")].map((e) =>
+      e.getAttribute("data-settings-section")
+    );
+    expect(sections).toEqual(["general", "sign-in", "monitoring", "notifications", "advanced"]);
+    fireEvent.change(screen.getByLabelText("Filter settings"), { target: { value: "disk" } });
+    expect(screen.getByLabelText("Disk warning")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Site name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Debounce")).not.toBeInTheDocument();
+  });
 });

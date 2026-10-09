@@ -43,6 +43,11 @@ export interface JobSpecInput {
   serviceAccount: string;
   valuesSecret: string;
   steps: Step[];
+  // A whole program from code in place of steps, for an action that needs
+  // more than a straight list (a rollback trap); inputs still only as files.
+  script?: string;
+  // Default DEADLINE_SECONDS.
+  deadlineSeconds?: number;
 }
 
 export function jobManifest(input: JobSpecInput): KubeObject {
@@ -54,7 +59,7 @@ export function jobManifest(input: JobSpecInput): KubeObject {
     spec: {
       backoffLimit: 0,
       ttlSecondsAfterFinished: TTL_SECONDS,
-      activeDeadlineSeconds: DEADLINE_SECONDS,
+      activeDeadlineSeconds: input.deadlineSeconds ?? DEADLINE_SECONDS,
       template: {
         metadata: { labels },
         spec: {
@@ -70,7 +75,7 @@ export function jobManifest(input: JobSpecInput): KubeObject {
             {
               name: CONTAINER,
               image: input.image,
-              command: ["/bin/sh", "-c", script(input.steps)],
+              command: ["/bin/sh", "-c", input.script ?? script(input.steps)],
               env: [
                 { name: "HOME", value: "/tmp" },
                 { name: "HELM_CACHE_HOME", value: "/tmp/.cache/helm" },

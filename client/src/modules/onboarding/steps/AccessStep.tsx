@@ -8,8 +8,10 @@ import {
   Code,
   CopyButton,
   Group,
+  List,
   Loader,
   Radio,
+  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
@@ -20,6 +22,7 @@ import {
 import { IconCheck, IconCopy } from "@tabler/icons-react";
 import type { AccessMode, AccessView } from "@contracts/deploy";
 import { apiRequest, useApi } from "../../../ui";
+import { CloudflarePanel } from "../../connector-cloudflare/CloudflarePage";
 import { AppOffer, useDiscovery } from "../discovery";
 import { StepFrame, useAction, type StepProps } from "../shared";
 
@@ -102,20 +105,29 @@ export function AccessInstructions({ view }: { view: AccessView }) {
     case "cloudflare-tunnel":
       steps = (
         <>
-          <Text size="sm">
-            In Cloudflare Zero Trust, open Networks &gt; Tunnels, pick this cluster&apos;s tunnel and add one public
-            hostname: subdomain <b>*</b>, domain <b>{view.baseDomain}</b>, service type <b>HTTP</b>, URL:
-          </Text>
-          {view.ingressService ? (
-            <CopyBlock value={hostPort(view.ingressService)} label="Copy service URL" />
-          ) : (
-            <Text size="sm" c="yellow">
-              No ingress controller found yet; it appears here once one is installed.
-            </Text>
-          )}
-          <Text size="sm">
-            If Cloudflare does not add the DNS record itself, add a proxied CNAME named <b>*</b> in the{" "}
-            {view.baseDomain} zone pointing at <Code>&lt;tunnel id&gt;.cfargotunnel.com</Code>.
+          <List type="ordered" size="sm" spacing="xs" data-cloudflare-steps>
+            <List.Item>
+              In Cloudflare Zero Trust, open Networks &gt; Tunnels, pick this cluster&apos;s tunnel and add a{" "}
+              <b>published application route</b>: Subdomain <Code>*</Code>, Domain <b>{view.baseDomain}</b>, Path empty,
+              Service Type <b>HTTP</b>, URL:
+              {view.ingressService ? (
+                <CopyBlock value={hostPort(view.ingressService)} label="Copy service URL" />
+              ) : (
+                <Text size="sm" c="yellow">
+                  No ingress controller found yet; it appears here once one is installed.
+                </Text>
+              )}
+            </List.Item>
+            <List.Item>
+              Cloudflare adds no DNS record for a wildcard route, so add one in the {view.baseDomain} zone under DNS
+              &gt; Records: Type <b>CNAME</b>, Name <Code>*</Code>, Target{" "}
+              <Code>&lt;Tunnel ID&gt;.cfargotunnel.com</Code>, Proxied on. The Tunnel ID is on the tunnel&apos;s
+              overview page.
+            </List.Item>
+          </List>
+          <Text size="xs" c="dimmed">
+            Connecting with a Cloudflare API token instead of a tunnel token does both steps for you and adds a record
+            for each app.
           </Text>
         </>
       );
@@ -172,6 +184,35 @@ const DOMAIN_HELP: Record<AccessMode, string> = {
   direct: "Apps get names under it, like git.example.com.",
 };
 
+// Cloudflare Tunnel either through the connector (an API token: the tunnel,
+// routes and DNS records are made for you) or by hand (a tunnel token and
+// one wildcard route).
+function CloudflareSetup({ view, manual }: { view: AccessView; manual: ReactNode }) {
+  const [how, setHow] = useState<"api" | "manual">("api");
+  return (
+    <Stack gap="sm" data-cloudflare-setup={how}>
+      <SegmentedControl
+        value={how}
+        onChange={(value) => setHow(value as "api" | "manual")}
+        data={[
+          { value: "api", label: "Connect with an API token (recommended)" },
+          { value: "manual", label: "Paste a tunnel token" },
+        ]}
+      />
+      {how === "api" ? (
+        <>
+          <Text size="sm" c="dimmed">
+            The app creates the tunnel, runs cloudflared and adds a DNS record and route for every app it deploys.
+          </Text>
+          <CloudflarePanel baseDomain={view.baseDomain} />
+        </>
+      ) : (
+        manual
+      )}
+    </Stack>
+  );
+}
+
 export function AccessStep({ onFinish }: StepProps) {
   const access = useApi("GET /api/deploy/access");
   const discovery = useDiscovery();
@@ -206,6 +247,20 @@ export function AccessStep({ onFinish }: StepProps) {
 
   const current = saved?.mode === mode && saved?.baseDomain === domain.trim().toLowerCase() ? saved : undefined;
   const app = current?.appId ? discovery.app(current.appId) : undefined;
+  const manual = (
+    <>
+      {current && app ? (
+        <AppOffer
+          app={app}
+          onDeployed={() => {
+            discovery.refresh();
+            access.reload();
+          }}
+        />
+      ) : null}
+      {current ? <AccessInstructions view={current} /> : null}
+    </>
+  );
 
   return (
     <StepFrame
@@ -250,16 +305,7 @@ export function AccessStep({ onFinish }: StepProps) {
         </Group>
       ) : null}
       {action.error ? <Alert color="red">{action.error}</Alert> : null}
-      {current && app ? (
-        <AppOffer
-          app={app}
-          onDeployed={() => {
-            discovery.refresh();
-            access.reload();
-          }}
-        />
-      ) : null}
-      {current ? <AccessInstructions view={current} /> : null}
+      {current?.mode === "cloudflare-tunnel" ? <CloudflareSetup view={current} manual={manual} /> : manual}
     </StepFrame>
   );
 }

@@ -1,5 +1,12 @@
 import { Alert, Anchor, Code, List, Stack, Text, Title } from "@mantine/core";
-import type { DeployPlan } from "@contracts/deploy";
+import type { AppGateState, DeployPlan } from "@contracts/deploy";
+
+const GATE_LINE: Record<AppGateState, string> = {
+  gated: "Only people signed in to this console can open it.",
+  public: "Anyone with its address can open it.",
+  open: "Anyone with its address can open it; see the warning above.",
+  tailnet: "Only devices on your tailnet can reach it.",
+};
 
 // The preview of what a deploy will run, before anything does.
 export function DeployPlanView({ plan, names = {} }: { plan: DeployPlan; names?: Record<string, string> }) {
@@ -33,6 +40,12 @@ export function DeployPlanView({ plan, names = {} }: { plan: DeployPlan; names?:
           </>
         ) : null}
       </Text>
+      {plan.gate ? (
+        <Text size="sm" data-gate-state={plan.gate.state}>
+          {GATE_LINE[plan.gate.state]}
+          {plan.gate.reason && plan.gate.state !== "open" ? ` ${plan.gate.reason}` : ""}
+        </Text>
+      ) : null}
       <div>
         <Title order={6} mb={4}>
           Runs

@@ -109,12 +109,29 @@ export interface CatalogEntry {
   // Disk it takes once installed with these defaults, for the disk-space
   // preflight (./disk.ts). Absent for a patch, which installs nothing.
   disk?: DiskFootprint;
+  // Memory its pods ask for with these defaults (their requests, or rough
+  // idle use where the chart sets none), in bytes, for the bundle preview.
+  memoryBytes?: number;
   // Things the user must know or do outside the cluster first, one sentence
   // each: "Every node needs open-iscsi installed."
   prerequisites: string[];
   // What to know when an upgrade crosses a version, oldest first. Shown in
   // the upgrade preview (UpgradeCandidate.notes).
   upgradeNotes?: UpgradeNote[];
+  // Its web UI has no sign-in of its own: anyone who reaches the URL can
+  // use it (Longhorn).
+  noLogin?: boolean;
+  // How the console's sign-in gate treats it (deploy.ts, "Sign-in gate").
+  // Absent: gated; only people signed in to the console reach it.
+  // "credentials": gated for browsers, but a request carrying its own
+  //   Authorization header goes straight to the app, which checks it (git
+  //   over HTTPS, API and phone clients). Only for apps with a login of
+  //   their own, never with noLogin.
+  // "public": never gated: people sign in through it (an identity
+  //   provider, where a gate would lock everyone out of the console too),
+  //   or its clients are never browsers (ntfy's phone apps, the console's
+  //   own alerts).
+  gate?: "credentials" | "public";
 }
 
 // Rough, in bytes, from the pinned version's defaults.
@@ -137,7 +154,8 @@ export interface DetectedApp {
   // The chart version from Helm's helm.sh/chart label ("gitea-12.7.0" ->
   // "12.7.0"), when its objects carry one.
   chartVersion?: string;
-  // URLs from its Ingresses, https first.
+  // URLs from its Ingresses, https first (the MCP get_discovery tool:
+  // with the scheme IngressHost.url gives there).
   urls: string[];
   // What the judgement was made on: "Deployment longhorn-system/longhorn-ui
   // (app.kubernetes.io/name=longhorn-ui)", or why it is unknown.
@@ -153,9 +171,15 @@ export interface CatalogAppView extends CatalogEntry {
 
 export interface IngressHost {
   host: string;
-  // https:// when the Ingress has a TLS entry for the host, else http://.
+  // https:// when the Ingress has a TLS entry for the host, else http://
+  // (the MCP get_discovery tool: https:// with edgeTls too).
   url: string;
+  // The Ingress has a TLS entry for the host.
   tls: boolean;
+  // TLS ends in front of the cluster, at Cloudflare's edge for a host the
+  // access mode routes through the tunnel, though the Ingress serves http.
+  // Set only by the MCP get_discovery tool, from GET /api/deploy/access.
+  edgeTls?: boolean;
   namespace: string;
   ingress: string;
   // The backend Service of the first rule for this host.
@@ -169,6 +193,10 @@ export interface IngressHost {
   ingressClass?: string;
   // The catalog app this host belongs to, when discovery matched one.
   appId?: string;
+  // Traefik middlewares from the Ingress's
+  // traefik.ingress.kubernetes.io/router.middlewares annotation, as written
+  // ("<namespace>-<name>@kubernetescrd"); absent when it has none.
+  middlewares?: string[];
 }
 
 export type ClusterBasicId = "default-storage-class" | "ingress-controller" | "cert-manager" | "metrics-server";

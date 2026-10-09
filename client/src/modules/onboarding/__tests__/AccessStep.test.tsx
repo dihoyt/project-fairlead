@@ -11,15 +11,37 @@ import { holds } from "../bundle";
 describe("Access step", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("shows the saved choice, its app and what to set up in Cloudflare", async () => {
+  it("offers the Cloudflare connector first and shows what it published", async () => {
+    stubApi();
+    const { container } = renderWithApp(<AccessStep onFinish={async () => {}} />);
+    expect(await screen.findByText("Connect with an API token (recommended)")).toBeInTheDocument();
+    expect(await screen.findByText("longhorn.example.test")).toBeInTheDocument();
+    expect(container.querySelector("[data-cloudflare-panel]")).not.toBeNull();
+    expect(container.querySelector("[data-access-instructions]")).toBeNull();
+  });
+
+  it("asks for a Cloudflare API token when no connector is saved", async () => {
+    stubApi({ "GET /api/connector-cloudflare/view": { accessPolicy: "never", hosts: [] } });
+    renderWithApp(<AccessStep onFinish={async () => {}} />);
+    expect(await screen.findByLabelText("API token")).toBeInTheDocument();
+    expect(screen.getByText("Check token")).toBeInTheDocument();
+  });
+
+  it("shows the saved choice, its app and what to set up in Cloudflare by hand", async () => {
     stubApi();
     renderWithApp(<AccessStep onFinish={async () => {}} />);
+    fireEvent.click(await screen.findByText("Paste a tunnel token"));
     expect(await screen.findByText("traefik.kube-system.svc.cluster.local:80")).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Cloudflare Tunnel/ })).toBeChecked();
     expect(screen.getByRole("button", { name: "Deploy Cloudflare Tunnel" })).toBeInTheDocument();
     expect(screen.getByText("no DNS yet")).toBeInTheDocument();
     expect(screen.getByText("DNS set up")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+    const steps = document.querySelectorAll("[data-cloudflare-steps] li");
+    expect(steps).toHaveLength(2);
+    expect(steps[0]).toHaveTextContent(/published application route: Subdomain \*, Domain example\.test, Path empty/);
+    expect(steps[1]).toHaveTextContent(/Type CNAME, Name \*, Target <Tunnel ID>\.cfargotunnel\.com, Proxied on/);
+    expect(screen.getByRole("button", { name: "Copy service URL" })).toBeInTheDocument();
   });
 
   it("saves a new choice and shows the hosts block for a local network", async () => {

@@ -33,9 +33,14 @@ const SERVICE = [
   "",
 ].join("\n");
 
-const entries: CatalogEntry[] = mockCatalog.map((entry) =>
-  entry.id === "ntfy" ? { ...entry, install: { kind: "manifest", bundled: SERVICE, version: "v0.0.0-mock" } } : entry
-);
+const MiB = 1024 ** 2;
+const memory: Record<string, number> = { gitea: 160 * MiB, authentik: 1056 * MiB };
+const entries: CatalogEntry[] = mockCatalog.map((entry) => {
+  const withMemory = memory[entry.id] ? { ...entry, memoryBytes: memory[entry.id] } : entry;
+  return entry.id === "ntfy"
+    ? { ...withMemory, install: { kind: "manifest", bundled: SERVICE, version: "v0.0.0-mock" } }
+    : withMemory;
+});
 
 interface Env {
   mock: MockContext;
@@ -98,8 +103,22 @@ const settle = async () => {
 
 const answers = { baseDomain: "example.test", adminEmail: "ops@example.test", adminPassword: PASSWORD };
 
+// The runner starts the next item after the previous job's watch fires,
+// which a loaded test run can take longer than settle() to deliver.
+async function jobView(e: Env, jobId: string): Promise<DeployJobView> {
+  for (let i = 0; i < 100; i++) {
+    const res = await fetch(`${e.server.url}/api/deploy/jobs/${jobId}`);
+    if (res.status !== 404) {
+      assert.equal(res.status, 200);
+      return (await res.json()) as DeployJobView;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  return call<DeployJobView>(e, "GET", `/jobs/${jobId}`);
+}
+
 async function finishJob(e: Env, jobId: string, ok: boolean) {
-  const view = await call<DeployJobView>(e, "GET", `/jobs/${jobId}`);
+  const view = await jobView(e, jobId);
   const job = (await e.k8s.get(RESOURCES.jobs, view.job.name, NS)) as KubeObject;
   e.k8s.upsert(RESOURCES.jobs, {
     ...job,
@@ -262,6 +281,11 @@ test("bundle plan: checks the disk the rollout needs against the nodes' free spa
   assert.equal(plan.disk?.nodesRead, 2);
   assert.ok(plan.disk!.volumeBytes > 0 && plan.disk!.imageBytes > 0);
   assert.equal(plan.allowed, true);
+  const stepOf = (appId: string) => plan.steps.find((s) => s.appId === appId)!;
+  assert.equal(stepOf("gitea").memoryBytes, 160 * MiB);
+  assert.equal(stepOf("metrics-server").memoryBytes, undefined, "unknown is left out, not zero");
+  const running = plan.steps.filter((s) => !s.skip).reduce((sum, s) => sum + (s.memoryBytes ?? 0), 0);
+  assert.equal(plan.memoryBytes, running);
   roomy.deployer.stop();
   await roomy.server.close();
   await roomy.mock.close();
@@ -349,4 +373,68 @@ test("bundle access: mode items and inputs apply only to their mode; starting sa
   assert.equal(access.mode, "cloudflare-tunnel");
   assert.equal(access.baseDomain, "example.test");
   assert.ok(e.mock.audit.some((entry) => entry.action === "deploy.set-access"));
+});
+
+test("bundle access: the tunnel token applies only to a pasted-token setup, which an unanswered setup defaults to", async () => {
+  const bundle: CatalogBundle = {
+    ...mockBundle,
+    inputs: [
+      {
+        key: "access",
+        label: "Access",
+        kind: "select",
+        required: true,
+        options: [
+          { value: "cloudflare-tunnel", label: "Cloudflare" },
+          { value: "local", label: "Local" },
+        ],
+      },
+      ...mockBundle.inputs,
+      {
+        key: "cloudflareSetup",
+        label: "Setup",
+        kind: "select",
+        required: true,
+        default: "token",
+        options: [
+          { value: "api", label: "API token" },
+          { value: "token", label: "Tunnel token" },
+        ],
+        when: { input: "access", in: ["cloudflare-tunnel"] },
+      },
+      {
+        key: "tunnelToken",
+        label: "Tunnel token",
+        kind: "secret",
+        required: true,
+        when: { input: "cloudflareSetup", in: ["token"] },
+      },
+    ],
+    items: [
+      { appId: "cloudflared", required: true, when: { input: "cloudflareSetup", in: ["token"] } },
+      { appId: "headlamp", required: true },
+    ],
+  };
+  const e = await setup([bundle]);
+  const plan = (inputs: Record<string, string>) =>
+    call<BundlePlan>(e, "POST", "/bundles/plan", { bundleId: bundle.id, inputs: { ...answers, ...inputs } });
+
+  const api = await plan({ access: "cloudflare-tunnel", cloudflareSetup: "api" });
+  assert.equal(api.allowed, true);
+  assert.deepEqual(
+    api.steps.map((s) => [s.appId, s.skip]),
+    [
+      ["cloudflared", true],
+      ["headlamp", false],
+    ]
+  );
+  assert.equal(api.steps[0]!.reason, "Run by the Cloudflare connector");
+
+  const unanswered = await plan({ access: "cloudflare-tunnel" });
+  assert.equal(unanswered.allowed, false);
+
+  const stale = await plan({ access: "local", cloudflareSetup: "token" });
+  assert.equal(stale.allowed, true);
+  assert.equal(stale.steps[0]!.skip, true);
+  assert.equal(stale.steps[0]!.reason, "Not needed for how you reach the apps");
 });

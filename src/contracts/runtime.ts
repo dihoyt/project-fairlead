@@ -1,10 +1,13 @@
 import type { Database } from "better-sqlite3";
 import type { CatalogService } from "./catalog.js";
+import type { ConnectorRegistry } from "./connectors.js";
 import type { DeployService } from "./deploy.js";
 import type { K8sApi } from "./k8s.js";
 import type { SeriesQuery, SeriesResult } from "./metrics.js";
+import type { GateService, SignInService } from "./platform.js";
 import type { ResetScope } from "./reset.js";
 import type { JobStatus } from "./system.js";
+import type { TemplatesService } from "./templates.js";
 
 export type { JobStatus };
 
@@ -52,8 +55,15 @@ export interface Services {
   catalog: CatalogService;
   // Provided by module "deploy".
   deploy: DeployService;
+  // Provided by module "templates".
+  templates: TemplatesService;
   // Provided by module "metrics" (A3).
   metrics: MetricsQuery;
+  // Provided by module "connectors" (B1).
+  connectors: ConnectorRegistry;
+  // Provided by the platform before any module registers.
+  signin: SignInService;
+  gate: GateService;
 }
 
 // The store behind GET /api/metrics/query, for modules that summarise
