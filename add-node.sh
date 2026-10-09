@@ -1,6 +1,6 @@
 #!/bin/sh
 # Joins more machines to this host's k3s cluster over SSH: installs Longhorn's
-# node prerequisites (open-iscsi, NFS client) on each, then k3s at this
+# node prerequisites (open-iscsi, NFS client, cifs-utils) on each, then k3s at this
 # server's version, as an agent or (--server) another server, and waits until
 # the node is Ready. Run on a k3s server node, as root or with sudo.
 #
@@ -125,21 +125,22 @@ write_join_script() {
       printf 'export K3S_URL K3S_TOKEN INSTALL_K3S_VERSION\nROLE=%s\n' "$role"
       cat <<'REMOTE'
 has() { command -v "$1" >/dev/null 2>&1; }
-if has iscsiadm && { has mount.nfs || [ -x /sbin/mount.nfs ] || [ -x /usr/sbin/mount.nfs ]; }; then
-  echo "open-iscsi and the NFS client are already installed."
+if has iscsiadm && { has mount.nfs || [ -x /sbin/mount.nfs ] || [ -x /usr/sbin/mount.nfs ]; } &&
+  { has mount.cifs || [ -x /sbin/mount.cifs ] || [ -x /usr/sbin/mount.cifs ]; }; then
+  echo "open-iscsi, the NFS client and cifs-utils are already installed."
 elif has apt-get; then
   DEBIAN_FRONTEND=noninteractive apt-get update -qq >/dev/null
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq open-iscsi nfs-common >/dev/null
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq open-iscsi nfs-common cifs-utils >/dev/null
 elif has dnf; then
-  dnf install -y -q iscsi-initiator-utils nfs-utils >/dev/null
+  dnf install -y -q iscsi-initiator-utils nfs-utils cifs-utils >/dev/null
 elif has yum; then
-  yum install -y -q iscsi-initiator-utils nfs-utils >/dev/null
+  yum install -y -q iscsi-initiator-utils nfs-utils cifs-utils >/dev/null
 elif has zypper; then
-  zypper --non-interactive --quiet install open-iscsi nfs-client >/dev/null
+  zypper --non-interactive --quiet install open-iscsi nfs-client cifs-utils >/dev/null
 elif has apk; then
-  apk add --quiet open-iscsi nfs-utils >/dev/null
+  apk add --quiet open-iscsi nfs-utils cifs-utils >/dev/null
 else
-  echo "warning: no known package manager; install open-iscsi and an NFS client yourself" >&2
+  echo "warning: no known package manager; install open-iscsi, an NFS client and cifs-utils yourself" >&2
 fi
 if has systemctl; then
   systemctl enable --now iscsid >/dev/null 2>&1 || echo "warning: could not start iscsid" >&2
