@@ -10,6 +10,8 @@
 //   POST /applications/{objectId}/addPassword        { keyId, secretText, endDateTime }
 //   POST /applications/{objectId}/removePassword     204
 //   GET  /groups?$filter=…&$top=&$select=            needs Group.Read.All (or Directory.Read.All)
+//   POST /users/{address}/sendMail                    202; needs Mail.Send for that mailbox (Exchange
+//                                                    RBAC for Applications, or the Graph permission)
 // Nothing here logs or returns the management secret or a created client secret
 // except addPassword's result to its caller.
 
@@ -123,6 +125,13 @@ export interface GraphClient {
   addPassword(objectId: string, displayName: string, endDateTime: string, signal?: AbortSignal): Promise<GraphPassword>;
   removePassword(objectId: string, keyId: string, signal?: AbortSignal): Promise<void>;
   groups(search: string, signal?: AbortSignal): Promise<Array<{ id: string; displayName: string }>>;
+  sendMail(from: string, message: GraphMail, signal?: AbortSignal): Promise<void>;
+}
+
+export interface GraphMail {
+  to: string[];
+  subject: string;
+  html: string;
 }
 
 const withTimeout = (signal?: AbortSignal) =>
@@ -231,6 +240,22 @@ export function createGraphClient(creds: GraphCredentials, endpoints: GraphEndpo
         value?: Array<{ id: string; displayName: string }>;
       };
       return (body.value ?? []).map((g) => ({ id: g.id, displayName: g.displayName }));
+    },
+    async sendMail(from, message, signal) {
+      await call(
+        "POST",
+        `/users/${encodeURIComponent(from)}/sendMail`,
+        "Sending mail",
+        {
+          message: {
+            subject: message.subject,
+            body: { contentType: "HTML", content: message.html },
+            toRecipients: message.to.map((address) => ({ emailAddress: { address } })),
+          },
+          saveToSentItems: false,
+        },
+        signal
+      );
     },
   };
 }

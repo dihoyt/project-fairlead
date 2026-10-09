@@ -5,6 +5,7 @@ import type { ChannelKind, WebhookPayload } from "../../contracts/notify.js";
 import type { Logger, SecretStore } from "../../contracts/index.js";
 import { product } from "../../product.js";
 import { deliver, type DeliveryResult } from "./channels.js";
+import type { Mailer } from "./mailer.js";
 import { getChannelRow, listChannelRows, markResult, parseConfig, type ChannelRow } from "./store.js";
 
 export const MAX_ATTEMPTS = 3;
@@ -53,6 +54,7 @@ export function createEngine(deps: {
   secrets: SecretStore;
   log: Logger;
   timing: () => Timing;
+  mailer?: Mailer;
   now?: () => number;
 }) {
   const { db, orgId, secrets, log } = deps;
@@ -107,11 +109,14 @@ export function createEngine(deps: {
   }
 
   async function send(channel: ChannelRow, payload: WebhookPayload, signal?: AbortSignal): Promise<DeliveryResult> {
-    const secret = await secrets.get("notify", channel.id);
-    const result = await deliver(
-      { kind: channel.kind as ChannelKind, config: parseConfig(channel.config), secret, payload },
-      signal
-    );
+    const config = parseConfig(channel.config);
+    const kind = channel.kind as ChannelKind;
+    const result =
+      kind === "email"
+        ? deps.mailer
+          ? await deps.mailer.send(channel.id, config.email, payload, signal)
+          : { ok: false, error: "Email is not set up in this process." }
+        : await deliver({ kind, config, secret: await secrets.get("notify", channel.id), payload }, signal);
     markResult(db, orgId, channel.id, result, new Date(now()).toISOString());
     return result;
   }

@@ -433,3 +433,31 @@ test("groups lists security groups by name prefix", async () => {
   assert.equal(denied.status, 502);
   assert.match(denied.body.error ?? "", /Insufficient privileges/);
 });
+
+test("entraMail sends as a mailbox in the app's scope and reports Graph's refusal", async () => {
+  const s = await setup();
+  const mail = s.m.ctx.services.get("entraMail");
+  assert.deepEqual(await mail.status(), { ready: true, tenantId: TENANT });
+  s.graph.mailboxes = ["alerts@example.com"];
+  const message = { to: ["ops@example.com"], subject: "[CRIT] x", text: "x", html: "<p>x</p>" };
+  await mail.sendMail("alerts@example.com", message);
+  assert.equal(s.graph.mail.length, 1);
+  assert.deepEqual(s.graph.mail[0]!.body, {
+    message: {
+      subject: "[CRIT] x",
+      body: { contentType: "HTML", content: "<p>x</p>" },
+      toRecipients: [{ emailAddress: { address: "ops@example.com" } }],
+    },
+    saveToSentItems: false,
+  });
+  await assert.rejects(mail.sendMail("ceo@example.com", message), (err: Error & { status?: number }) => {
+    assert.equal(err.status, 403);
+    assert.match(err.message, /Access is denied/);
+    return true;
+  });
+
+  const none = await setup({ connector: false });
+  const status = await none.m.ctx.services.get("entraMail").status();
+  assert.equal(status.ready, false);
+  assert.match(status.reason ?? "", /Entra ID connector/);
+});

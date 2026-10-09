@@ -49,4 +49,20 @@ export const migrations: readonly Migration[] = [
       );
     `,
   },
+  {
+    version: 2,
+    name: "email sign-in states",
+    up: `
+      -- One row per "sign in to send" in flight; single use, 10 minutes.
+      CREATE TABLE notify_oauth_states (
+        org_id TEXT NOT NULL DEFAULT 'default' REFERENCES orgs(id),
+        state TEXT NOT NULL,
+        channel_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        verifier TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (org_id, state)
+      );
+    `,
+  },
 ];

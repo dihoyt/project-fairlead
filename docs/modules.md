@@ -53,7 +53,8 @@ scraped from Prometheus.
 
 ## Notifications (`notify`)
 
-Sends health changes to **ntfy**, **Discord** or a **webhook** (a JSON POST).
+Sends health changes to **email**, **ntfy**, **Discord** or a **webhook** (a
+JSON POST).
 
 - **Page**: Admin → Notifications. Each channel has a minimum severity (warn
   or crit) and a test button. A recovery is sent only to channels that were
@@ -61,7 +62,54 @@ Sends health changes to **ntfy**, **Discord** or a **webhook** (a JSON POST).
 - A change is held for `notify.debounceSeconds` (90) and dropped if it flaps
   back; a check that keeps flapping is sent with its current status after
   `notify.maxHoldSeconds` (900). Failed deliveries retry three times.
-- Channel URLs and tokens are stored encrypted and never shown again.
+- Channel URLs, tokens, passwords and sign-ins are stored encrypted and never
+  shown again.
+
+### Email
+
+One mail per status change, HTML with a plain-text part, to up to 20
+addresses. Pick how it is sent with **Send with**:
+
+- **App password (SMTP)**: Gmail / Google Workspace, Yahoo, iCloud, Fastmail,
+  or a sending service (SendGrid, Mailgun, Amazon SES) or any other SMTP
+  server. Gmail needs 2-Step Verification on the account and an app
+  password from myaccount.google.com/apppasswords; Workspace admins can turn
+  app passwords off. There is no Microsoft SMTP preset: Outlook.com takes no
+  passwords over SMTP, and Exchange Online turns basic SMTP sign-in off by
+  default from the end of December 2026.
+- **Sign in to send**: a Google account (Gmail) or a Microsoft account
+  (Outlook.com, Hotmail, Microsoft 365) signs in once and mail goes out as
+  that account, through the Gmail API (`gmail.send` scope) or Microsoft Graph
+  (delegated `Mail.Send`). It needs an OAuth client of your own, the same
+  kind the Google and Microsoft sign-in presets use (you can use that same
+  client; its id is filled in). Add the redirect URI the form shows,
+  `<public URL>/api/notify/oauth/callback`, to the client, and sign in from
+  the console's public address.
+  - Google: a Web application client in Google Cloud Console with the Gmail
+    API enabled. Set the OAuth consent screen to **In production** (or
+    **Internal** on Workspace): in Testing, Google ends the sign-in after 7
+    days. An unverified production app shows a warning screen to whoever
+    signs in, which is expected for your own client.
+  - Microsoft: an Entra app registration for "any organizational directory
+    and personal Microsoft accounts", a Web redirect URI, a client secret,
+    and the delegated Microsoft Graph permission `Mail.Send`.
+- **Microsoft 365 through the Entra connector**: no sign-in. Mail is sent with
+  the connector's management app (Admin > Connectors) as the From mailbox. A
+  tenant admin lets that app send as that one mailbox with Exchange Online's
+  RBAC for Applications, in Exchange Online PowerShell:
+
+  ```powershell
+  New-ServicePrincipal -AppId <management app client id> -ObjectId <its enterprise app object id> -DisplayName "Console mail"
+  New-ManagementScope -Name "Console mailbox" -RecipientRestrictionFilter "PrimarySmtpAddress -eq 'alerts@example.com'"
+  New-ManagementRoleAssignment -App <management app client id> -Role "Application Mail.Send" -CustomResourceScope "Console mailbox"
+  ```
+
+  Don't grant the Graph application permission `Mail.Send` instead: that
+  lets the app send as every mailbox in the tenant.
+
+**Send a test** shows the server's own reply when it fails (the SMTP reply
+line, or the provider's error). A sign-in that was revoked or expired shows
+as a failing channel; sign in again from its row.
 
 ## Cluster (`cluster`)
 

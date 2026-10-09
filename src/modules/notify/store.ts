@@ -1,5 +1,5 @@
 import type { Database } from "better-sqlite3";
-import type { ChannelKind, ChannelView } from "../../contracts/notify.js";
+import { EMAIL_PRESETS, type ChannelKind, type ChannelView, type EmailConfigView } from "../../contracts/notify.js";
 
 export interface ChannelRow {
   id: string;
@@ -20,10 +20,30 @@ export function parseConfig(raw: string): ChannelView["config"] {
     const config: ChannelView["config"] = {};
     if (typeof parsed.server === "string") config.server = parsed.server;
     if (typeof parsed.topic === "string") config.topic = parsed.topic;
+    const email = parseEmail(parsed.email);
+    if (email) config.email = email;
     return config;
   } catch {
     return {};
   }
+}
+
+function parseEmail(raw: unknown): EmailConfigView | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const e = raw as Record<string, unknown>;
+  const preset = e.preset as keyof typeof EMAIL_PRESETS;
+  if (typeof preset !== "string" || !(preset in EMAIL_PRESETS)) return undefined;
+  const view: EmailConfigView = {
+    preset,
+    mode: EMAIL_PRESETS[preset].mode,
+    to: Array.isArray(e.to) ? e.to.filter((t): t is string => typeof t === "string") : [],
+  };
+  for (const key of ["host", "username", "clientId", "from", "account"] as const) {
+    if (typeof e[key] === "string" && e[key]) view[key] = e[key];
+  }
+  if (typeof e.port === "number") view.port = e.port;
+  if (e.security === "starttls" || e.security === "tls" || e.security === "none") view.security = e.security;
+  return view;
 }
 
 export function listChannelRows(db: Database, orgId: string): ChannelRow[] {
