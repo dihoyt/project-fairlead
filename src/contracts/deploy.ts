@@ -249,7 +249,16 @@ export interface UpgradeRequest {
 // ends with deploy.finished. Needs deploy.enabled, like installs.
 
 export type DeployActionKind =
-  "longhorn-replicas" | "migrate-to-longhorn" | "backup-volumes" | "remove-app" | "app-gate" | "traefik-ports";
+  | "longhorn-replicas"
+  | "migrate-to-longhorn"
+  | "backup-volumes"
+  | "remove-app"
+  | "app-gate"
+  | "traefik-ports"
+  | "node-cordon"
+  | "node-uncordon"
+  | "node-drain"
+  | "node-reboot";
 
 // Raises Longhorn's default-replica-count Setting (what new volumes get),
 // the replica count pinned by a Longhorn StorageClass when it is lower, and,
@@ -322,13 +331,63 @@ export interface TraefikPortsAction {
   kind: "traefik-ports";
 }
 
+// --- Node actions ---
+// Each runs as an action job like the rest, under the installer
+// ServiceAccount. The job row's appId and release are "node-<node>", so one
+// action per node runs at a time and list_deploy_jobs can filter by node.
+
+// Marks the node unschedulable (kubectl cordon); running pods stay.
+export interface NodeCordonAction {
+  kind: "node-cordon";
+  node: string;
+}
+
+// Makes the node schedulable again (kubectl uncordon).
+export interface NodeUncordonAction {
+  kind: "node-uncordon";
+  node: string;
+}
+
+export interface NodeDrainOptions {
+  // Leave DaemonSet pods in place (--ignore-daemonsets). Default true;
+  // false refuses the drain while the node runs one.
+  ignoreDaemonSets?: boolean;
+  // Evict pods that use emptyDir volumes, losing that data
+  // (--delete-emptydir-data). Default false: such a pod blocks the drain.
+  deleteEmptyDirData?: boolean;
+  // How long evictions may wait, PodDisruptionBudgets included, before the
+  // drain fails (--timeout). 30 to 3600, default 300. There is no force
+  // option: unmanaged pods and PDB-blocked evictions fail the drain.
+  timeoutSeconds?: number;
+}
+
+// Cordons, then evicts the node's pods through the eviction API, so
+// PodDisruptionBudgets are respected (kubectl drain). Refused for the last
+// schedulable control-plane node of a single-node cluster.
+export interface NodeDrainAction extends NodeDrainOptions {
+  kind: "node-drain";
+  node: string;
+}
+
+// Drains the node, reboots it, waits for it to go NotReady and come back
+// Ready, then uncordons it. How the reboot command reaches the node is the
+// recipe's choice; the plan's blockedBy says when a node can't be rebooted
+// from here.
+export interface NodeRebootAction extends NodeDrainOptions {
+  kind: "node-reboot";
+  node: string;
+}
+
+export type NodeActionRequest = NodeCordonAction | NodeUncordonAction | NodeDrainAction | NodeRebootAction;
+
 export type DeployActionRequest =
   | LonghornReplicasAction
   | MigrateToLonghornAction
   | BackupVolumesAction
   | RemoveAppAction
   | AppGateAction
-  | TraefikPortsAction;
+  | TraefikPortsAction
+  | NodeActionRequest;
 
 export interface DeployActionStep {
   // "Raise the default replica count to 2".
@@ -364,6 +423,29 @@ export interface DeployActionPlan {
   // migrate-to-longhorn: Longhorn can place replicas on more than one node,
   // so raising replicas (longhorn-replicas) is offered once it is done.
   offerReplicas?: boolean;
+  // node-drain and node-reboot: the node's pods and what the drain does
+  // with each, as read when the plan was made.
+  pods?: DrainPod[];
+}
+
+// evict: evicted and rescheduled elsewhere by its controller.
+// skip: left in place (a DaemonSet pod with ignoreDaemonSets, a mirror pod).
+// block: stops the drain; reason says why (no controller, emptyDir without
+//   deleteEmptyDirData, a DaemonSet without ignoreDaemonSets).
+// wait: evictable, but a PodDisruptionBudget allows no disruption right now;
+//   the drain waits for it up to timeoutSeconds.
+export type DrainPodOutcome = "evict" | "skip" | "block" | "wait";
+
+export interface DrainPod {
+  namespace: string;
+  name: string;
+  // The controlling owner, "ReplicaSet/web-6d4f" or "DaemonSet/longhorn-manager".
+  owner?: string;
+  outcome: DrainPodOutcome;
+  // One sentence for skip, block and wait.
+  reason?: string;
+  // wait: the PodDisruptionBudget holding it.
+  pdb?: string;
 }
 
 export interface ActionVolume {

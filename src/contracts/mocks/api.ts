@@ -53,6 +53,7 @@ import {
 import { mockCheckResults } from "./health.js";
 import { mockPortsView, mockTemplateJob, mockTemplatePlan, mockTemplatesView } from "./templates.js";
 import { mockSeriesResults } from "./metrics.js";
+import { mockNodeSummaries } from "./nodes.js";
 import { mockClusterUsage, mockSpaceUsage } from "./workloads.js";
 import { DAY, HOUR, MOCK_NOW, isoAgo } from "./time.js";
 
@@ -675,11 +676,7 @@ export const apiMocks: ApiMocks = {
   "DELETE /api/checks/:id": { ok: true },
   "POST /api/checks/:id/run": mockCheck.last!,
 
-  "GET /api/metrics-k8s/nodes": [
-    { name: "node-1", ready: true, cpuPercent: 41.5, memoryPercent: 63.2, pods: 34, source: "kubelet" },
-    { name: "node-2", ready: true, cpuPercent: 22.1, memoryPercent: 58.9, pods: 28, source: "kubelet" },
-    { name: "node-3", ready: false, pods: 0, source: "none" },
-  ],
+  "GET /api/metrics-k8s/nodes": mockNodeSummaries,
 
   "GET /api/longhorn/replicas": mockReplicaAdvice,
   "GET /api/backups/posture": mockPosture,
