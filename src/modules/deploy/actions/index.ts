@@ -20,6 +20,7 @@ import { consoleBackupAction } from "./console-backup.js";
 import { longhornTargetAction } from "./longhorn-target.js";
 import { migrateAction, migrateStorageAction } from "./migrate.js";
 import { NODE_NAME, nodeActions } from "./node.js";
+import { pgDatabaseAction } from "./pg-database.js";
 import { recurringAction } from "./recurring.js";
 import { restoreAction } from "./restore.js";
 import { removeAction } from "./remove.js";
@@ -130,6 +131,7 @@ const recipes: { [K in DeployActionKind]?: ActionRecipe<Extract<DeployActionRequ
   "longhorn-backup-now": backupNowAction,
   "longhorn-restore": restoreAction,
   "console-backup": consoleBackupAction,
+  "pg-database": pgDatabaseAction,
 };
 
 export function actionRecipe<K extends DeployActionKind>(
@@ -175,6 +177,11 @@ export const actionSchema = z.discriminatedUnion("kind", [
       .optional(),
   }),
   z.object({ kind: z.literal("longhorn-backup-now"), namespace: k8sName, claim: k8sName }),
+  z.object({
+    kind: z.literal("pg-database"),
+    appId: z.string().min(1).max(40),
+    namespace: z.string().min(1).max(63),
+  }),
   z.object({
     kind: z.literal("longhorn-restore"),
     namespace: k8sName,

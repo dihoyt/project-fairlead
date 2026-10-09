@@ -167,14 +167,14 @@ export const mockPgRestorePlan: DeployActionPlan = {
     {
       label: "Recover console-postgres-r202610061042 from the archive to 10:42",
       commands: [
-        "kubectl apply -f /values/cluster.json",
+        "kubectl apply -f /values/cluster.yaml",
         "kubectl wait clusters.postgresql.cnpg.io/console-postgres-r202610061042 --namespace postgres --for=condition=Ready --timeout=60m",
       ],
     },
     {
       label: "Point authentik and grafana at it and restart them",
       commands: [
-        "kubectl apply -f /values/secrets.json",
+        "kubectl apply -f /values/secrets.yaml",
         "kubectl rollout restart deployment --namespace authentik --selector app.kubernetes.io/instance=authentik",
         "kubectl rollout restart deployment --namespace monitoring --selector app.kubernetes.io/instance=grafana",
       ],

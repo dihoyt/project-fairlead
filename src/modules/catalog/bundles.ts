@@ -124,6 +124,15 @@ export const bundles: readonly CatalogBundle[] = [
         required: false,
         note: "Every node needs open-iscsi installed; untick it if yours don't have it.",
       },
+      // Authentik keeps its data in the shared Postgres, not a Postgres of its own.
+      { appId: "cloudnative-pg", required: true, when: { input: "signIn", in: ["authentik"] } },
+      {
+        appId: "barman-cloud",
+        required: false,
+        note: "Needed for point-in-time Postgres backups to S3 or MinIO; NFS and SMB targets get nightly dumps without it.",
+        when: { input: "signIn", in: ["authentik"] },
+      },
+      { appId: "postgres", required: true, when: { input: "signIn", in: ["authentik"] } },
       { appId: "authentik", required: true, hostPrefix: "auth", when: { input: "signIn", in: ["authentik"] } },
       { appId: "pocket-id", required: true, hostPrefix: "auth", when: { input: "signIn", in: ["pocket-id"] } },
       { appId: "gitea", required: true, hostPrefix: "git", values: { adminUser: "gitea-admin" } },

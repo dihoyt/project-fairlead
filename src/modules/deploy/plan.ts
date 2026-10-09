@@ -2,6 +2,8 @@ import { randomBytes } from "node:crypto";
 import type { CatalogEntry, CatalogInput, DiscoveryReport } from "../../contracts/catalog.js";
 import type { DeployMode, DeployPlan, DeployRequest, DeployValue, PlannedObject } from "../../contracts/deploy.js";
 import { pickVersion } from "../../contracts/kubeversion.js";
+import { POSTGRES_APP } from "../../contracts/postgres.js";
+import type { SharedPostgres } from "./actions/pg-objects.js";
 import { recipes, VALUES_DIR, type Defaults, type RecipeInput, type Step } from "./apps.js";
 import {
   applyMiddlewareStep,
@@ -40,6 +42,8 @@ export interface PlanInput {
   jobNamespace: string;
   jobName: string;
   valuesSecret: string;
+  // The shared Postgres an app with CatalogEntry.database uses.
+  postgres?: SharedPostgres;
   // The sign-in gate; without it nothing is gated. owner: the app a
   // direct-tls Ingress serves, whose choice it follows.
   gate?: GateInput & { isPublic: boolean; owner?: CatalogEntry };
@@ -209,6 +213,9 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
     ...(middlewares?.length ? { middlewares } : {}),
     defaults: input.defaults,
     discovery: input.discovery,
+    ...((entry.database === "postgres" || entry.id === POSTGRES_APP) && input.postgres
+      ? { postgres: input.postgres }
+      : {}),
     generated: (name) => {
       if (!real) return MASK;
       if (!generatedReal.has(name)) generatedReal.set(name, generate());
@@ -277,6 +284,7 @@ export function render(input: PlanInput, mode: DeployMode, generate: () => strin
   const all = supported
     ? [
         ...(gate?.middleware ? [applyMiddlewareStep()] : []),
+        ...(recipe?.before?.(shown) ?? []),
         ...(entry.install.kind === "patch"
           ? recipe!.patch!(shown)
           : manifest
