@@ -10,6 +10,7 @@ export * from "./gate.js";
 export * from "./health.js";
 export * from "./k8s.js";
 export * from "./metrics.js";
+export * from "./nodes.js";
 export * from "./signin.js";
 export * from "./templates.js";
 export * from "./time.js";
