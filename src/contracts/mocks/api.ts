@@ -9,6 +9,7 @@ import type { CategoryDetail, CheckResult, HealthBoard, HealthLinkView, HealthTi
 import type { HostView } from "../hosts.js";
 import type { ChannelView, EmailSetupView } from "../notify.js";
 import type { OnboardingState } from "../onboarding.js";
+import { mockSeedDone } from "./seed.js";
 import type { PodView, WorkloadLinks } from "../workloads.js";
 import {
   mockFailingVolume,
@@ -908,4 +909,7 @@ export const apiMocks: ApiMocks = {
 
   "GET /api/onboarding/state": mockOnboarding,
   "POST /api/onboarding/steps/:step": mockOnboarding,
+  "GET /api/onboarding/seed": mockSeedDone,
+  "POST /api/onboarding/seed/apply": mockSeedDone,
+  "POST /api/onboarding/seed/dismiss": { ...mockSeedDone, dismissed: true },
 };

@@ -106,7 +106,7 @@ import type {
   EmailSetupView,
   TestSendResult,
 } from "./notify.js";
-import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
+import type { InstallSeedView, OnboardingState, OnboardingStepId } from "./onboarding.js";
 import type { ResetRequest, ResetResult } from "./reset.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
 import type { TemplateDeployRequest, TemplateJobRequest, TemplatePlan, TemplatesView } from "./templates.js";
@@ -537,6 +537,15 @@ export interface ApiRoutes {
     { action: "done" | "skip" },
     OnboardingState
   >;
+  // The install seed (./onboarding.ts): what was set up from install.sh's
+  // env file and what still waits.
+  "GET /api/onboarding/seed": Route<None, None, None, InstallSeedView>;
+  // Write. Applies the pending items as the caller, one after another, and
+  // answers when each has run (the bundle item when its run has started).
+  // Items already run are left alone, so a second call changes nothing.
+  "POST /api/onboarding/seed/apply": Route<None, None, None, InstallSeedView>;
+  // Write. Hides the summary for everyone.
+  "POST /api/onboarding/seed/dismiss": Route<None, None, None, InstallSeedView>;
 }
 
 export type RouteKey = keyof ApiRoutes;

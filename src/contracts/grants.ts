@@ -245,6 +245,9 @@ export const ROUTE_ACCESS: { [K in RouteKey]: RouteAccess } = {
 
   "GET /api/onboarding/state": "open",
   "POST /api/onboarding/steps/:step": "full",
+  "GET /api/onboarding/seed": "open",
+  "POST /api/onboarding/seed/apply": "session",
+  "POST /api/onboarding/seed/dismiss": "session",
 };
 
 // The route each MCP tool is listed by: tools/list shows a tool only when
