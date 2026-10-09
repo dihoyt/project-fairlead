@@ -6,6 +6,13 @@ export interface MockSignIn extends SignInService {
   // The last secret set, which oidc() only reports as hasSecret.
   secret?: string;
   writes: Array<{ client: SignInOidcClient; actor: string }>;
+  // seedAdminPassword() refuses (resolves false) once this is true.
+  adminSignedIn: boolean;
+  // The last password seedAdminPassword() set.
+  adminPassword?: string;
+  // setPublicUrl() refuses with this when set, as PUBLIC_ORIGIN makes the platform.
+  publicUrlLocked?: string;
+  publicUrl?: string;
 }
 
 // Services "signin" for module tests. Set state.blocked to make
@@ -23,6 +30,7 @@ export function createMockSignIn(state: Partial<SignInOidcView> = {}): MockSignI
       ...state,
     },
     writes: [],
+    adminSignedIn: false,
     oidc: async () => structuredClone(mock.state),
     async setOidcClient(client, actor) {
       if (mock.state.blocked !== null) throw new Error(mock.state.blocked);
@@ -32,6 +40,18 @@ export function createMockSignIn(state: Partial<SignInOidcView> = {}): MockSignI
       mock.state.clientId = client.clientId;
       mock.state.hasSecret = true;
       if (client.enabled !== undefined) mock.state.enabled = client.enabled;
+    },
+    async seedAdminPassword(password) {
+      if (password.length < 10) throw new Error("Passwords must be at least 10 characters.");
+      if (mock.adminSignedIn) return false;
+      mock.adminPassword = password;
+      return true;
+    },
+    async setPublicUrl(url) {
+      if (mock.publicUrlLocked) throw new Error(mock.publicUrlLocked);
+      if (!/^https?:\/\/[^/]/.test(url)) throw new Error("Public URL: must be an http or https URL.");
+      mock.publicUrl = url.replace(/\/+$/, "");
+      mock.state.redirectUri = `${mock.publicUrl}/auth/oidc/callback`;
     },
   };
   return mock;

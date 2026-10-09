@@ -101,6 +101,17 @@ export interface SignInService {
   // reason, writing nothing, when no public URL is set, SECRETS_KEY is
   // unset, or one of the settings is locked by the environment.
   setOidcClient(client: SignInOidcClient, actor: string): Promise<void>;
+  // The install seed (./onboarding.ts) only. Gives the built-in "admin"
+  // account this password with no change asked at the next sign-in, while
+  // that account has never signed in; audited "auth.seed-password" with
+  // `actor`. Resolves false, changing nothing, once it has signed in or when
+  // there is no such account. Throws with the reason on a password the
+  // password policy refuses.
+  seedAdminPassword(password: string, actor: string): Promise<boolean>;
+  // Saves site.publicUrl as the admin settings page would, audited
+  // "admin.setting-change" with `actor`. Throws with the reason when PUBLIC_ORIGIN
+  // locks it or the value is not an http(s) URL.
+  setPublicUrl(url: string, actor: string): Promise<void>;
 }
 
 // The sign-in gate in front of deployed apps (deploy.ts, "Sign-in gate").

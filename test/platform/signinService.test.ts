@@ -5,6 +5,8 @@ import { afterEach, beforeEach, test } from "node:test";
 import type { Database } from "better-sqlite3";
 import type { AuditRow } from "../../src/contracts/auth.js";
 import type { SignInService } from "../../src/contracts/platform.js";
+import { hashPasswordSync, verifyPassword } from "../../src/platform/auth/passwords.js";
+import { createUser, recordLogin, userByUsername } from "../../src/platform/auth/users.js";
 import { createPlatform } from "../../src/platform/index.js";
 import { createSecrets } from "../../src/platform/secrets.js";
 import { createSettings } from "../../src/platform/settings.js";
@@ -91,4 +93,54 @@ test("without a public URL or SECRETS_KEY nothing is written", async () => {
 
   assert.equal(await createSecrets(db, "default").has("auth", "oidc"), false);
   assert.equal(createSettings(db, "default").string("auth.oidc.clientId"), "");
+});
+
+const bootstrapped = () =>
+  createUser(db, {
+    orgId: "default",
+    username: "admin",
+    displayName: "Admin",
+    passwordHash: hashPasswordSync("bootstrap-password"),
+    role: "admin",
+    mustChangePassword: true,
+  });
+
+test("seedAdminPassword sets the admin's password with no forced change, audited without the value", async () => {
+  bootstrapped();
+  assert.equal(await signIn.seedAdminPassword("chosen-in-the-file", "onboarding"), true);
+  const admin = userByUsername(db, "admin")!;
+  assert.equal(admin.mustChangePassword, false);
+  assert.equal(await verifyPassword(admin.passwordHash, "chosen-in-the-file"), true);
+  const row = auditRows().find((r) => r.action === "auth.seed-password");
+  assert.ok(row);
+  assert.equal(row.username, "onboarding");
+  assert.doesNotMatch(JSON.stringify(auditRows()), /chosen-in-the-file/);
+});
+
+test("seedAdminPassword changes nothing once the admin has signed in, or with no admin", async () => {
+  assert.equal(await signIn.seedAdminPassword("chosen-in-the-file", "onboarding"), false);
+  const admin = bootstrapped();
+  recordLogin(db, admin.id);
+  assert.equal(await signIn.seedAdminPassword("chosen-in-the-file", "onboarding"), false);
+  const after = userByUsername(db, "admin")!;
+  assert.equal(after.mustChangePassword, true);
+  assert.equal(await verifyPassword(after.passwordHash, "bootstrap-password"), true);
+  assert.equal(auditRows().filter((r) => r.action === "auth.seed-password").length, 0);
+});
+
+test("seedAdminPassword refuses a password the policy refuses", async () => {
+  bootstrapped();
+  await assert.rejects(signIn.seedAdminPassword("short", "onboarding"), /at least 10/);
+  assert.equal(userByUsername(db, "admin")!.mustChangePassword, true);
+});
+
+test("setPublicUrl saves site.publicUrl unless PUBLIC_ORIGIN locks it", async () => {
+  await assert.rejects(signIn.setPublicUrl("https://console.example.com", "onboarding"), /PUBLIC_ORIGIN/);
+  delete process.env.PUBLIC_ORIGIN;
+  await assert.rejects(signIn.setPublicUrl("ftp://console.example.com", "onboarding"), /http or https/);
+  await signIn.setPublicUrl("https://console.example.com/", "onboarding");
+  assert.equal(createSettings(db, "default").string("site.publicUrl"), "https://console.example.com");
+  assert.equal((await signIn.oidc()).redirectUri, "https://console.example.com/auth/oidc/callback");
+  const row = auditRows().find((r) => r.action === "admin.setting-change" && r.target === "site.publicUrl");
+  assert.equal(row?.username, "onboarding");
 });

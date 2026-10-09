@@ -197,8 +197,9 @@ export interface K8sApi {
   // treat a missing method as "unknown", not as a failure.
   serverInfo?(): Promise<K8sServerInfo>;
   // Writes, used only by the deploy module for its Jobs and their values
-  // Secrets in this product's own namespace; the chart grants nothing wider
-  // to the product's ServiceAccount. create labels the object with
+  // Secrets in this product's own namespace, and by onboarding to delete the
+  // install seed Secret (./onboarding.ts); the chart grants nothing wider to
+  // the product's ServiceAccount. create labels the object with
   // ownedLabels() before sending it. Optional until the k8s module
   // implements them: the deploy module reports deploys as unavailable.
   create?<T extends KubeObject = KubeObject>(ref: ResourceRef, obj: T): Promise<T>;
