@@ -2,6 +2,7 @@ import { useCallback, useContext, useState } from "react";
 import { Alert, Anchor, Badge, Button, Group, Stack, Table, Text, Tooltip } from "@mantine/core";
 import { IconExternalLink, IconPlus } from "@tabler/icons-react";
 import { Link } from "react-router";
+import type { BackupPosture, LonghornReplicaAdvice } from "@contracts/backups";
 import type { CatalogAppView } from "@contracts/catalog";
 import type { ManagedBy } from "@contracts/k8s";
 import type { AppGateView, PortsView, UpgradeCandidate, UpgradeReport } from "@contracts/deploy";
@@ -50,6 +51,21 @@ const hostPort = (address: string, port: number) => `${address.includes(":") ? `
 
 function externalSource(spec: ExternalServiceSpec): string {
   return `External ${spec.protocol.toUpperCase()} ${hostPort(spec.address, spec.port)}`;
+}
+
+// Whether converting could find anything to move: false once every claim in
+// the namespace is already on a Longhorn class, or it has none. Undefined
+// (keep the button) while either answer is missing; the plan then says why.
+export function hasNonLonghornClaims(
+  namespace: string | undefined,
+  posture: BackupPosture | undefined,
+  longhorn: LonghornReplicaAdvice | undefined
+): boolean | undefined {
+  if (!namespace || !posture || !longhorn || longhorn.state === "absent") return undefined;
+  const longhornClasses = new Set(["longhorn", ...longhorn.storageClasses.map((c) => c.name)]);
+  return posture.rows.some(
+    (r) => r.pvc.namespace === namespace && !(r.pvc.storageClass && longhornClasses.has(r.pvc.storageClass))
+  );
 }
 
 const MANAGED_BY: Record<ManagedBy, string> = { fleet: "Fleet", helm: "Helm", argo: "Argo CD" };
@@ -202,6 +218,7 @@ function Row({
   admin,
   enabled,
   template,
+  convertible,
   onUpgrade,
   onRedeploy,
   onChanged,
@@ -209,6 +226,7 @@ function Row({
   row: InstalledRow;
   admin: boolean;
   enabled: boolean;
+  convertible?: boolean;
   template?: AppTemplate;
   onUpgrade: (app: UpgradeCandidate) => void;
   onRedeploy: () => void;
@@ -275,7 +293,7 @@ function Row({
               Upgrade
             </Button>
           ) : null}
-          {row.ownedByUs && row.keepsData && admin && !row.instance?.external ? (
+          {row.ownedByUs && row.keepsData && admin && !row.instance?.external && convertible !== false ? (
             <ConvertToLonghornButton appId={row.id} name={row.name} onFinished={onChanged} />
           ) : null}
           {row.instance && template ? (
@@ -300,9 +318,11 @@ export function InstalledPage() {
   const gate = useApi("GET /api/deploy/gate");
   const status = useApi("GET /api/deploy/status");
   const ports = useApi("GET /api/deploy/ports");
+  const posture = useApi("GET /api/backups/posture");
+  const longhorn = useApi("GET /api/longhorn/replicas");
   const [picked, setPicked] = useState<UpgradeCandidate[] | null>(null);
 
-  const reloads = [apps.reload, templates.reload, upgrades.reload, gate.reload, ports.reload];
+  const reloads = [apps.reload, templates.reload, upgrades.reload, gate.reload, ports.reload, posture.reload];
   const changed = useCallback(() => {
     setRefresh(true);
     for (const reload of reloads) reload();
@@ -387,6 +407,11 @@ export function InstalledPage() {
                       admin={admin}
                       enabled={enabled}
                       template={template}
+                      convertible={hasNonLonghornClaims(
+                        row.namespace,
+                        posture.data ?? undefined,
+                        longhorn.data ?? undefined
+                      )}
                       onUpgrade={(app) => setPicked([app])}
                       onRedeploy={() =>
                         template && row.instance && open(template, formFromInstance(template, row.instance))

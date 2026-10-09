@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { mockCatalogApps, mockMigrateJob, mockMigratePlan, mockVolumeBackup } from "@contracts/mocks/catalog";
+import { mockPosture } from "@contracts/mocks/api";
+import type { BackupPosture } from "@contracts/backups";
 import type { CatalogAppView } from "@contracts/catalog";
 import { renderWithApp } from "../../../test-utils";
 import { stubApi, stubEventSource } from "../../../ui/deploy/__tests__/stubApi";
@@ -14,28 +16,43 @@ function runs(url: URL, body: unknown) {
   return (body as { kind: string }).kind === "backup-volumes" ? backupJob : mockMigrateJob;
 }
 
+const apps: CatalogAppView[] = mockCatalogApps.map((app) =>
+  app.id === "gitea"
+    ? {
+        ...app,
+        detected: { ...app.detected, state: "installed", namespace: "gitea", ownedByUs: true, urls: [] },
+      }
+    : app
+);
+const giteaOn = (storageClass: string): BackupPosture => ({
+  ...mockPosture,
+  rows: mockPosture.rows.map((r) => (r.pvc.namespace === "gitea" ? { ...r, pvc: { ...r.pvc, storageClass } } : r)),
+});
+const giteaRow = () =>
+  waitFor(() => {
+    const el = document.querySelector<HTMLElement>('[data-installed="gitea"]');
+    expect(el).not.toBeNull();
+    return el!;
+  });
+
 describe("Convert to Longhorn", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("is offered on apps deployed from here that keep data", async () => {
-    const apps: CatalogAppView[] = mockCatalogApps.map((app) =>
-      app.id === "gitea"
-        ? {
-            ...app,
-            detected: { ...app.detected, state: "installed", namespace: "gitea", ownedByUs: true, urls: [] },
-          }
-        : app
-    );
-    stubApi({ "GET /api/catalog/apps": apps });
+  it("is offered on apps deployed from here that keep data on local-path", async () => {
+    stubApi({ "GET /api/catalog/apps": apps, "GET /api/backups/posture": giteaOn("local-path") });
     renderWithApp(<InstalledPage />);
-    const gitea = await waitFor(() => {
-      const el = document.querySelector<HTMLElement>('[data-installed="gitea"]');
-      expect(el).not.toBeNull();
-      return el!;
-    });
-    expect(within(gitea).getByRole("button", { name: "Convert to Longhorn" })).toBeInTheDocument();
+    const gitea = await giteaRow();
+    await waitFor(() => expect(within(gitea).getByRole("button", { name: "Convert to Longhorn" })).toBeInTheDocument());
     const longhorn = document.querySelector<HTMLElement>('[data-installed="longhorn"]')!;
     expect(within(longhorn).queryByRole("button", { name: "Convert to Longhorn" })).toBeNull();
+  });
+
+  it("is not offered once every volume of the app is on Longhorn", async () => {
+    const { calls } = stubApi({ "GET /api/catalog/apps": apps, "GET /api/backups/posture": giteaOn("longhorn") });
+    renderWithApp(<InstalledPage />);
+    const gitea = await giteaRow();
+    await waitFor(() => expect(calls.some((c) => c.key === "GET /api/longhorn/replicas")).toBe(true));
+    await waitFor(() => expect(within(gitea).queryByRole("button", { name: "Convert to Longhorn" })).toBeNull());
   });
 
   it("previews volumes and downtime, offers the backup download, then converts", async () => {
