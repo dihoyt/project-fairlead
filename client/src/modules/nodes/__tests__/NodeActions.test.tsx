@@ -14,6 +14,7 @@ import { SessionContext } from "../../../ui/session";
 import { stubApi, stubEventSource } from "../../../ui/deploy/__tests__/stubApi";
 import { renderWithApp } from "../../../test-utils";
 import { NodeActions } from "../NodeActions";
+import { NodeTable } from "../NodeTable";
 
 function asUser(ui: ReactElement, admin = true) {
   return renderWithApp(
@@ -104,5 +105,15 @@ describe("NodeActions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Actions" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Cordon" }));
     expect(await screen.findByText(/Deploying apps from here is turned off/)).toBeInTheDocument();
+  });
+
+  it("sits in each node table row without expanding the row", async () => {
+    stubApi();
+    asUser(<NodeTable nodes={mockNodeSummaries} range="1h" />);
+    const buttons = screen.getAllByRole("button", { name: "Actions" });
+    expect(buttons).toHaveLength(mockNodeSummaries.length);
+    fireEvent.click(buttons[0]!);
+    expect(await screen.findByRole("menuitem", { name: "Drain" })).toBeInTheDocument();
+    expect(screen.getByTestId("node-row-node-1")).toHaveAttribute("aria-expanded", "false");
   });
 });
