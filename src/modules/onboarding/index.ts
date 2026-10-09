@@ -1,10 +1,25 @@
+import { readFileSync } from "node:fs";
 import { z } from "zod";
 import type { Module, ModuleContext } from "../../contracts/module.js";
 import type { OnboardingState, OnboardingStep, OnboardingStepId } from "../../contracts/onboarding.js";
 import type { User } from "../../contracts/platform.js";
+import { product } from "../../product.js";
 import { HttpError } from "../../runtime/http.js";
 import { collectFindings } from "./findings.js";
 import { migrations } from "./migrations.js";
+import { applySeed, createSeedStore, importSeed, SEED_SCOPE, seedView } from "./seed.js";
+
+const SA_NAMESPACE = "/var/run/secrets/kubernetes.io/serviceaccount/namespace";
+const SEED_CHECK_MS = 5 * 60_000;
+
+function podNamespace(): string {
+  if (process.env.POD_NAMESPACE) return process.env.POD_NAMESPACE;
+  try {
+    return readFileSync(SA_NAMESPACE, "utf8").trim() || product.defaultNamespace;
+  } catch {
+    return product.defaultNamespace;
+  }
+}
 
 // Wizard order. "password" is never stored: it is done for anyone who can
 // reach this API at all, since the platform answers 403 everywhere but
@@ -60,10 +75,31 @@ const mod: Module = {
   register(ctx) {
     const store = createStepStore(ctx);
 
+    const seeds = createSeedStore(ctx);
+
     ctx.reset.add({
       scope: "onboarding",
-      clear: () => ctx.db.prepare("DELETE FROM onboarding_steps WHERE org_id = ?").run(ctx.orgId).changes,
+      clear: () =>
+        ctx.db.prepare("DELETE FROM onboarding_steps WHERE org_id = ?").run(ctx.orgId).changes + seeds.clear(),
+      clearAfter: async () => {
+        if (!(await ctx.secrets.has(SEED_SCOPE, "values"))) return 0;
+        await ctx.secrets.delete(SEED_SCOPE, "values");
+        return 1;
+      },
     });
+
+    // The installer writes the seed Secret before the first pod starts, so
+    // the first look finds it; once it is gone the job stops.
+    const seedJob = ctx.scheduler.every(
+      "onboarding.seed",
+      SEED_CHECK_MS,
+      async () => {
+        if (!ctx.services.has("k8s")) return;
+        const found = await importSeed(ctx, seeds, ctx.services.get("k8s"), ctx.services.get("signin"), podNamespace());
+        if (found === "absent") seedJob.stop();
+      },
+      { jitterMs: 1_000 }
+    );
 
     const state = async (user: User): Promise<OnboardingState> => {
       const list = steps(store.states(), user);
@@ -76,6 +112,24 @@ const mod: Module = {
     };
 
     ctx.route("GET /api/onboarding/state", (req) => state(ctx.identify(req)));
+
+    ctx.route("GET /api/onboarding/seed", () => seedView(seeds.row()));
+
+    ctx.route("POST /api/onboarding/seed/apply", async (req, res) => {
+      const user = ctx.require(req, res, "write");
+      if (!user) return undefined;
+      return applySeed(ctx, seeds, req, user.id);
+    });
+
+    ctx.route("POST /api/onboarding/seed/dismiss", (req, res) => {
+      const user = ctx.require(req, res, "write");
+      if (!user) return undefined;
+      if (seedView(seeds.row()).state === "pending")
+        throw new HttpError(409, "Some of the file's settings are still waiting to be applied.");
+      seeds.dismiss();
+      ctx.audit.record({ actor: user.id, action: "onboarding.seed-dismiss" });
+      return seedView(seeds.row());
+    });
 
     ctx.route("POST /api/onboarding/steps/:step", async (req, res) => {
       const user = ctx.require(req, res, "admin");
