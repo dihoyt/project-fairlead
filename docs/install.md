@@ -340,8 +340,8 @@ that adds a machine. Open **Nodes** (or the wizard's cluster step), choose
 curl -fsSL 'https://console.example.test/join/<token>' | sudo bash
 ```
 
-The script installs `open-iscsi` and the NFS client (what Longhorn and NFS
-volumes need), checks it can reach the API server, then installs k3s at the
+The script installs `open-iscsi`, the NFS client and `cifs-utils` (what Longhorn, NFS
+and SMB volumes need), checks it can reach the API server, then installs k3s at the
 same version as the cluster and joins it as an agent. A cluster running
 embedded etcd can also take a control-plane node: pick **Control plane**
 before making the link. The node shows up under Nodes once it is Ready.
