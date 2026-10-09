@@ -329,6 +329,65 @@ export interface AuthentikWireResult {
   testSignIn: string;
 }
 
+// Wiring sign-in through a Pocket ID instance: an OIDC client made in
+// Pocket ID through its API (an admin's API key, sent as X-API-Key), with a
+// fresh client secret, and this install's OIDC settings filled in from it.
+// The client's ID is the product slug, so a re-run finds it again. Pocket
+// ID never shows a secret twice, so every run adds a new one to the client
+// and stores that; earlier secrets stay valid until removed in Pocket ID.
+
+export interface PocketIdWirePlan {
+  // The Pocket ID base URL the plan was made for, as given (trailing slash
+  // removed). It is also the issuer.
+  pocketIdUrl: string;
+  // Where the API is called, when not at pocketIdUrl.
+  apiUrl?: string;
+  clientName: string;
+  clientId: string;
+  // Registered on the client; "" while there is no public URL.
+  redirectUri: string;
+  issuer: string;
+  // A Pocket ID API key kept from an earlier run, so none need be pasted.
+  hasStoredKey: boolean;
+  // Why wiring can't run yet, or null (as AuthentikWirePlan.blocked).
+  blocked: string | null;
+}
+
+export interface PocketIdWireRequest {
+  // Pocket ID as browsers reach it (its APP_URL): the issuer and launch URL
+  // are built on it.
+  pocketIdUrl: string;
+  // Where this server calls Pocket ID's API, when not at pocketIdUrl; the
+  // same http rule as AuthentikWireRequest.apiUrl.
+  apiUrl?: string;
+  // An API key of a Pocket ID admin (Settings > Admin > API Keys). Omitted:
+  // the stored one is used. Never logged, never returned.
+  apiKey?: string;
+  // Store the key sealed for later runs. False or omitted: it is used for
+  // this request only, and a key stored earlier is deleted.
+  keepKey?: boolean;
+  // Saved as auth.oidc.adminGroups when given. Pocket ID sends groups only
+  // for the "groups" scope, so it is added to auth.oidc.scopes then.
+  adminGroups?: string[];
+}
+
+export interface PocketIdWireResult {
+  pocketIdUrl: string;
+  issuer: string;
+  clientId: string;
+  redirectUri: string;
+  // "updated": an existing client was missing the redirect URI and has had
+  // it added.
+  client: "created" | "updated" | "unchanged";
+  // Setting keys this run saved; the client secret is stored separately.
+  settings: string[];
+  keyKept: boolean;
+  // The issuer's discovery document as read back after wiring.
+  discovery: { ok: boolean; error?: string };
+  // As AuthentikWireResult.testSignIn.
+  testSignIn: string;
+}
+
 // Sign-in through a provider anyone can hold an account with: a personal
 // or work Google account, or any Microsoft account (personal or from any
 // Entra tenant, through the "common" endpoint). Nobody is invited to a
