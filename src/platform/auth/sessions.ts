@@ -26,14 +26,20 @@ const DAY = 24 * HOUR;
 const TOUCH_EVERY = 60 * 1000;
 
 // Secure cookies (and the __Host- prefix that requires them) only when the
-// install is actually served over https; a plain-http local run would
-// otherwise set a cookie the browser then refuses to send back.
-function secure(): boolean {
-  return envPublicOrigin().startsWith("https://");
+// browser is on https; a plain-http local run would otherwise set a cookie
+// the browser then refuses to send back. PUBLIC_ORIGIN says so for the whole
+// install; otherwise the request does, through its TLS socket or the
+// X-Forwarded-Proto its proxy set. That header is believed from any peer,
+// unlike the rest of the forwarded headers (net.ts): it can only add Secure,
+// and a client that lies about it gets a cookie its own browser won't send
+// back over http.
+function secure(req: Request): boolean {
+  if (envPublicOrigin().startsWith("https://") || req.secure) return true;
+  return (req.get("x-forwarded-proto") ?? "").split(",")[0]!.trim().toLowerCase() === "https";
 }
 
-export function cookieName(): string {
-  return secure() ? `__Host-${sessionCookieName}` : sessionCookieName;
+export function cookieName(req: Request): string {
+  return secure(req) ? `__Host-${sessionCookieName}` : sessionCookieName;
 }
 
 export function readCookie(req: Request, name: string): string {
@@ -66,9 +72,9 @@ function idleMs(core: Core): number {
   return core.settings.number("auth.session.idleDays") * DAY;
 }
 
-function setCookie(res: Response, value: string, maxAgeMs: number): void {
+function setCookie(req: Request, res: Response, value: string, maxAgeMs: number): void {
   const attributes = [
-    `${cookieName()}=${encodeURIComponent(value)}`,
+    `${cookieName(req)}=${encodeURIComponent(value)}`,
     "Path=/",
     "HttpOnly",
     // Lax, not Strict: the OIDC callback arrives as a top-level navigation
@@ -77,7 +83,7 @@ function setCookie(res: Response, value: string, maxAgeMs: number): void {
     "SameSite=Lax",
     `Max-Age=${Math.max(0, Math.floor(maxAgeMs / 1000))}`,
   ];
-  if (secure()) attributes.push("Secure");
+  if (secure(req)) attributes.push("Secure");
   res.append("Set-Cookie", attributes.join("; "));
 }
 
@@ -105,7 +111,7 @@ export function createSession(
       input.method === "oidc" ? now : null,
       input.userId
     );
-  setCookie(res, token, idleMs(core));
+  setCookie(res.req, res, token, idleMs(core));
 }
 
 interface RawSession {
@@ -163,7 +169,7 @@ export function sessionStanding(core: Core, session: SessionRow, now = Date.now(
 // The id_hash of the session cookie the request carries, whether or not
 // such a session exists.
 export function requestSessionHash(req: Request): string | null {
-  const token = readCookie(req, cookieName());
+  const token = readCookie(req, cookieName(req));
   return token ? hash(token) : null;
 }
 
@@ -185,7 +191,7 @@ function rawByToken(core: Core, token: string): RawSession | undefined {
 // place that would ever read it. With no response (an identify() outside
 // the request pipeline) nothing is written.
 export function sessionFromRequest(core: Core, req: Request, res: Response | null, ip: string): SessionRow | null {
-  const token = readCookie(req, cookieName());
+  const token = readCookie(req, cookieName(req));
   if (!token) return null;
   const raw = rawByToken(core, token);
   if (raw === undefined) return null;
@@ -203,7 +209,7 @@ export function sessionFromRequest(core: Core, req: Request, res: Response | nul
     core.db
       .prepare("UPDATE sessions SET last_seen_at = ?, expires_at = ?, ip = ? WHERE id_hash = ?")
       .run(now, expiresAt, ip, raw.id_hash);
-    setCookie(res, token, idleMs(core));
+    setCookie(req, res, token, idleMs(core));
     return fromRaw({ ...raw, last_seen_at: now, expires_at: expiresAt, ip });
   }
   return fromRaw(raw);
@@ -213,7 +219,7 @@ export function sessionFromRequest(core: Core, req: Request, res: Response | nul
 // OIDC re-check: what lets a 401 say "go back through the provider"
 // rather than "sign in".
 export function sessionDueRecheck(core: Core, req: Request, now = Date.now()): SessionRow | null {
-  const token = readCookie(req, cookieName());
+  const token = readCookie(req, cookieName(req));
   if (!token) return null;
   const raw = rawByToken(core, token);
   if (raw === undefined || raw.expires_at <= now) return null;
@@ -224,13 +230,13 @@ export function sessionDueRecheck(core: Core, req: Request, now = Date.now()): S
 // Deletes the request's session row and leaves its cookie alone, for a
 // response that sets a new cookie of its own.
 export function dropRequestSession(core: Core, req: Request): void {
-  const token = readCookie(req, cookieName());
+  const token = readCookie(req, cookieName(req));
   if (token) core.db.prepare("DELETE FROM sessions WHERE id_hash = ?").run(hash(token));
 }
 
 export function endSession(core: Core, req: Request, res: Response): void {
   dropRequestSession(core, req);
-  setCookie(res, "", 0);
+  setCookie(req, res, "", 0);
 }
 
 export function sessionsOf(core: Core, userId: number): SessionRow[] {

@@ -1,6 +1,6 @@
 // The public URL: PUBLIC_ORIGIN beats a saved value, a saved value beats
-// the request's own address, and only the environment turns on Secure
-// cookies.
+// the request's own address, and Secure cookies follow PUBLIC_ORIGIN or the
+// scheme the browser used, never a saved value.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import type { AdminOverview } from "../../src/contracts/auth.js";
@@ -62,9 +62,15 @@ test("with nothing configured the redirect URI comes from the request's address"
 test("forwarded scheme and host are believed only from a trusted proxy", async () => {
   delete process.env.PUBLIC_ORIGIN;
   const forwarded = { "x-forwarded-proto": "https", "x-forwarded-host": "console.example.com" };
-  assert.equal((await overview(forwarded)).publicUrl.value, app.url);
+  const signedIn = (await app.login("root", "root password!!", forwarded)).res.headers
+    .getSetCookie()
+    .find((line) => line.startsWith("__Host-"))!
+    .split(";")[0]!;
+  const view = async () =>
+    ((await (await app.get("/api/admin/overview", signedIn, forwarded)).json()) as AdminOverview).publicUrl.value;
+  assert.equal(await view(), app.url);
   process.env.TRUSTED_PROXIES = "127.0.0.1";
-  assert.equal((await overview(forwarded)).publicUrl.value, "https://console.example.com");
+  assert.equal(await view(), "https://console.example.com");
 });
 
 test("a saved https URL does not make the session cookie Secure", async () => {
@@ -74,6 +80,20 @@ test("a saved https URL does not make the session cookie Secure", async () => {
   assert.equal(res.status, 200);
   assert.ok(fresh && !fresh.startsWith("__Host-"));
   assert.ok(!res.headers.getSetCookie().some((line) => /;\s*Secure/i.test(line)));
+});
+
+test("a request that arrived over https gets a Secure __Host- cookie without PUBLIC_ORIGIN", async () => {
+  delete process.env.PUBLIC_ORIGIN;
+  const https = { "x-forwarded-proto": "https" };
+  const { res } = await app.login("root", "root password!!", https);
+  assert.equal(res.status, 200);
+  const line = res.headers.getSetCookie().find((l) => l.startsWith("__Host-"));
+  assert.ok(line && /;\s*Secure/i.test(line), String(res.headers.getSetCookie()));
+  const secureCookie = line.split(";")[0]!;
+  assert.equal((await app.get("/api/me", secureCookie, https)).status, 200);
+
+  const plain = await app.login("root", "root password!!", { "x-forwarded-proto": "http" });
+  assert.ok(plain.cookie && !plain.res.headers.getSetCookie().some((l) => /;\s*Secure/i.test(l)));
 });
 
 test("mutations from the saved URL's origin or the request's own address pass; others are refused", async () => {

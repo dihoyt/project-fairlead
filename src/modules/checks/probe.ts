@@ -1,3 +1,4 @@
+import dns from "node:dns";
 import http from "node:http";
 import https from "node:https";
 import net from "node:net";
@@ -38,6 +39,49 @@ export function parseHostPort(target: string): { host: string; port: number } | 
   return { host: (match[1] ?? match[2])!, port };
 }
 
+// Link-local is where cloud metadata services answer (169.254.169.254, and
+// fd00:ec2::254 on AWS IPv6), handing out node credentials to anything in the
+// pod network that asks. No real health target lives there, and a failed
+// check's result shows part of the body to every reader, so no check may
+// reach it. Loopback stays reachable: it is only the console's own pod.
+const REFUSED = new net.BlockList();
+REFUSED.addSubnet("169.254.0.0", 16, "ipv4");
+REFUSED.addSubnet("fe80::", 10, "ipv6");
+REFUSED.addAddress("fd00:ec2::254", "ipv6");
+
+export function refusedAddress(address: string): boolean {
+  const family = net.isIP(address);
+  return family !== 0 && REFUSED.check(address, family === 4 ? "ipv4" : "ipv6");
+}
+
+function refusal(address: string): NodeJS.ErrnoException {
+  const err: NodeJS.ErrnoException = new Error(
+    `${address} is a link-local address (where cloud metadata services answer); checks never connect there`
+  );
+  err.code = "EREFUSEDTARGET";
+  return err;
+}
+
+// Checked on the resolved address at connect time, so a name that resolves
+// (or later re-resolves) to a refused address is caught as well. Node skips
+// lookup for an IP literal, which is why connect() checks those itself.
+export const guardedLookup = ((
+  hostname: string,
+  options: dns.LookupOptions,
+  callback: (...args: unknown[]) => void
+) => {
+  dns.lookup(hostname, options, (err, address, family) => {
+    if (err) {
+      callback(err, address, family);
+      return;
+    }
+    const all = Array.isArray(address) ? address : [{ address, family }];
+    const refused = all.find((entry) => refusedAddress(entry.address));
+    if (refused) callback(refusal(refused.address), address, family);
+    else callback(null, address, family);
+  });
+}) as net.LookupFunction;
+
 function describeError(err: unknown, timeoutMs: number): { message: string; code?: string } {
   const e = err as NodeJS.ErrnoException;
   if (e?.name === "AbortError" || e?.name === "TimeoutError" || e?.code === "ETIMEDOUT") {
@@ -73,6 +117,11 @@ const BODY_EXCERPT_CHARS = 500;
 function probeHttp(spec: CheckSpec, now: () => number, options: ProbeOptions): Promise<ProbeOutcome> {
   return new Promise((resolve) => {
     const url = new URL(spec.target);
+    const literal = url.hostname.replace(/^\[|\]$/g, "");
+    if (refusedAddress(literal)) {
+      resolve({ error: describeError(refusal(literal), spec.timeoutMs) });
+      return;
+    }
     const lib = url.protocol === "https:" ? https : http;
     const started = performance.now();
     let settled = false;
@@ -90,6 +139,7 @@ function probeHttp(spec: CheckSpec, now: () => number, options: ProbeOptions): P
       {
         method: "GET",
         agent: false,
+        lookup: guardedLookup,
         headers,
         signal: AbortSignal.timeout(spec.timeoutMs),
         rejectUnauthorized: !spec.insecureSkipVerify,
@@ -148,9 +198,11 @@ function probeHttp(spec: CheckSpec, now: () => number, options: ProbeOptions): P
 function probeTcp(spec: CheckSpec): Promise<ProbeOutcome> {
   const target = parseHostPort(spec.target);
   if (!target) return Promise.resolve({ error: { message: `"${spec.target}" is not host:port` } });
+  if (refusedAddress(target.host))
+    return Promise.resolve({ error: describeError(refusal(target.host), spec.timeoutMs) });
   return new Promise((resolve) => {
     const started = performance.now();
-    const socket = net.connect({ ...target, signal: AbortSignal.timeout(spec.timeoutMs) });
+    const socket = net.connect({ ...target, lookup: guardedLookup, signal: AbortSignal.timeout(spec.timeoutMs) });
     socket.once("connect", () => {
       const latencyMs = Math.round(performance.now() - started);
       socket.destroy();
