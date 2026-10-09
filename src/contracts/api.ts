@@ -26,6 +26,7 @@ import type {
   PocketIdWireResult,
   PublicSignInRequest,
   PublicSignInResult,
+  RecoveryKitRequest,
   SessionView,
   SettingValue,
   TotpEnrollment,
@@ -40,6 +41,7 @@ import type {
   BackupSchedulesView,
   BackupTargetRequest,
   BackupTargetView,
+  ConsoleBackupView,
   LonghornReplicaAdvice,
   RestoreTestMark,
   VolumeBackupSettings,
@@ -78,6 +80,7 @@ import type {
   DeployActionPlan,
   DeployActionRequest,
   DeployJobRequest,
+  ConsoleNightlyView,
   DeployJobView,
   DeployPlan,
   DeployRequest,
@@ -244,6 +247,8 @@ export interface ApiRoutes {
   // reason for an unknown client, an unregistered redirect URI or a request
   // that isn't code + PKCE S256.
   "POST /api/admin/oauth/consent": Route<None, None, OAuthConsentRequest, OAuthConsentView>;
+  // The install's SECRETS_KEY sealed with a passphrase (RecoveryKitRequest).
+  "POST /api/admin/recovery-kit": Route<None, None, RecoveryKitRequest, TextBody<"text/plain">>;
 
   // --- k8s (A1) -----------------------------------------------------------
   "GET /api/k8s/capabilities": Route<None, { refresh?: "1" }, None, CapabilityReport>;
@@ -363,6 +368,10 @@ export interface ApiRoutes {
   "POST /api/backups/restore/plan": Route<None, None, VolumeRestoreRequest, DeployActionPlan>;
   // longhorn-restore.
   "POST /api/backups/restore": Route<None, None, VolumeRestoreRequest, DeployJobView>;
+  // This console's own data: its volume, the nightly copy, the recovery kit.
+  "GET /api/backups/console": Route<None, None, None, ConsoleBackupView>;
+  // Runs a console-backup action now (admin).
+  "POST /api/backups/console/backup-now": Route<None, None, None, DeployJobView>;
 
   // --- workloads (A13) ----------------------------------------------------
   "GET /api/workloads/links": Route<None, None, None, WorkloadLinks>;
@@ -420,6 +429,7 @@ export interface ApiRoutes {
   // 400 with the plan's blockedBy when the plan is not allowed.
   "POST /api/deploy/jobs": Route<None, None, DeployJobRequest, DeployJobView>;
   // Newest first.
+  "GET /api/deploy/console-backup": Route<None, None, None, ConsoleNightlyView>;
   "GET /api/deploy/jobs": Route<None, { appId?: string; limit?: string }, None, DeployJobView[]>;
   "GET /api/deploy/jobs/:id": Route<{ id: string }, None, None, DeployJobView>;
   // Redacted: secret input values never appear.

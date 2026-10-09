@@ -1,4 +1,5 @@
 import type { StorageProtocol } from "./connectors.js";
+import type { ConsoleNightlyView } from "./deploy.js";
 import type { Status } from "./health.js";
 
 export interface PvcRef {
@@ -194,6 +195,35 @@ export interface VolumeRestoreRequest {
   mode: RestoreMode;
   // new-pvc only. Default "<claim>-restored-<yyyymmdd>".
   newClaim?: string;
+}
+
+// --- The console's own backup (module "backups") ----------------------------
+// Its data is one SQLite file on one PVC. On Longhorn the volume is backed up
+// like any other (the page offers the "critical" group). Whatever the storage
+// class, a nightly console-backup action (deploy.consoleBackup setting) copies
+// a consistent snapshot of the database to a storage target, which is the file
+// `install.sh --restore` takes. Sealed secrets in that file open only with the
+// install's SECRETS_KEY, which the recovery kit carries.
+
+export type ConsoleStorage = "longhorn" | "local-path" | "other" | "none";
+
+export interface ConsoleBackupView {
+  // The PVC the database lives on; absent outside a cluster or on emptyDir
+  // ("none").
+  claim?: PvcRef;
+  storageClass?: string;
+  storage: ConsoleStorage;
+  // Longhorn only: the volume's recurring-job groups, as on a posture row.
+  groups?: string[];
+  // Longhorn only: its newest completed backup on the target.
+  lastVolumeBackupAt?: string;
+  nightly: ConsoleNightlyView;
+  // SECRETS_KEY is set, so a recovery kit can be made. Without it nothing is
+  // sealed and a database copy restores on its own.
+  secretsKey: boolean;
+  // The line that reinstalls from a kit and a database copy, with this
+  // install's release and namespace filled in.
+  restoreCommand: string;
 }
 
 // --- Longhorn replica advice (module "longhorn") ----------------------------

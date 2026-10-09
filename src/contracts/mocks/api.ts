@@ -43,6 +43,10 @@ import {
   mockReplicasJob,
   mockReplicasPlan,
   mockRestoreJob,
+  mockConsoleBackup,
+  mockConsoleBackupJob,
+  mockConsoleNightly,
+  mockRecoveryKit,
   mockRestorePlan,
   mockRunningJob,
   mockUpgradeReport,
@@ -711,6 +715,7 @@ export const apiMocks: ApiMocks = {
     client: { id: "cli_1", name: "Claude", redirectUri: "https://claude.ai/api/mcp/auth_callback" },
     requestedScope: "write",
   },
+  "POST /api/admin/recovery-kit": mockRecoveryKit,
 
   "GET /api/health/board": mockHealthBoard,
   "GET /api/health/categories/:category": mockCategoryDetail,
@@ -793,6 +798,8 @@ export const apiMocks: ApiMocks = {
   "GET /api/backups/volumes/:uid/backups": mockRestorePoints,
   "POST /api/backups/restore/plan": mockRestorePlan,
   "POST /api/backups/restore": mockRestoreJob,
+  "GET /api/backups/console": mockConsoleBackup,
+  "POST /api/backups/console/backup-now": { ...mockConsoleBackupJob, state: "running", startedBy: "admin" },
 
   "GET /api/workloads/links": mockWorkloadLinks,
   "GET /api/workloads/namespaces": [
@@ -866,6 +873,7 @@ export const apiMocks: ApiMocks = {
   "PUT /api/deploy/access": mockAccess,
   "POST /api/deploy/plan": mockDeployPlan,
   "POST /api/deploy/jobs": { ...mockRunningJob, appId: "headlamp", release: "headlamp", namespace: "headlamp" },
+  "GET /api/deploy/console-backup": mockConsoleNightly,
   "GET /api/deploy/jobs": [mockRunningJob, mockDeployJob, mockFailedJob],
   "GET /api/deploy/jobs/:id": mockDeployJob,
   "GET /api/deploy/jobs/:id/logs": { lines: mockDeployLog, redacted: 0, truncated: false },
