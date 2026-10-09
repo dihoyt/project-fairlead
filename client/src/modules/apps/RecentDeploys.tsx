@@ -27,6 +27,11 @@ const MODE_LABEL: Record<DeployJobView["mode"] | DeployActionKind, string> = {
   "node-uncordon": "uncordon",
   "node-drain": "drain",
   "node-reboot": "reboot",
+  "pg-database": "database",
+  "pg-backups": "postgres backups",
+  "pg-backup-now": "postgres backup",
+  "pg-restore": "postgres restore",
+  "pg-remove-cluster": "remove cluster",
 };
 
 function JobsTable({

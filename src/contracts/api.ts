@@ -72,6 +72,13 @@ import type {
 } from "./connectors.js";
 import type { JoinLink, JoinLinkRequest, JoinStatus } from "./cluster.js";
 import type {
+  PostgresBackupRequest,
+  PostgresBackupView,
+  PostgresClusterView,
+  PostgresDatabaseView,
+  PostgresRestoreRequest,
+} from "./postgres.js";
+import type {
   AccessRequest,
   AccessView,
   BundlePlan,
@@ -372,6 +379,24 @@ export interface ApiRoutes {
   "GET /api/backups/console": Route<None, None, None, ConsoleBackupView>;
   // Runs a console-backup action now (admin).
   "POST /api/backups/console/backup-now": Route<None, None, None, DeployJobView>;
+
+  // --- postgres (round 4): the shared Postgres -----------------------------
+  // Reads are open to anyone signed in; the rest need "write" and answer
+  // with the deploy job they started (PostgresActionRequest in ./deploy.ts),
+  // or its 400 when deploys are off or the plan is blocked.
+  "GET /api/postgres/cluster": Route<None, None, None, PostgresClusterView>;
+  // Every database on the cluster the apps use, by name; empty when none.
+  "GET /api/postgres/databases": Route<None, None, None, PostgresDatabaseView[]>;
+  "GET /api/postgres/backups": Route<None, None, None, PostgresBackupView>;
+  // pg-backups. 404 for a connectorId that is no storage target; 400 for a
+  // bad cron or retention.
+  "PUT /api/postgres/backups": Route<None, None, PostgresBackupRequest, DeployJobView>;
+  // pg-backup-now.
+  "POST /api/postgres/backups/now": Route<None, None, None, DeployJobView>;
+  // pg-restore's preview (POST /api/deploy/actions/plan); runs nothing.
+  "POST /api/postgres/restore/plan": Route<None, None, PostgresRestoreRequest, DeployActionPlan>;
+  // pg-restore.
+  "POST /api/postgres/restore": Route<None, None, PostgresRestoreRequest, DeployJobView>;
 
   // --- workloads (A13) ----------------------------------------------------
   "GET /api/workloads/links": Route<None, None, None, WorkloadLinks>;

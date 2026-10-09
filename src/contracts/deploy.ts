@@ -9,6 +9,7 @@
 import type { BackupSchedule, RestoreMode } from "./backups.js";
 import type { CatalogEntry } from "./catalog.js";
 import type { DiskCheck } from "./disk.js";
+import type { PostgresBackupRequest, PostgresRestoreRequest } from "./postgres.js";
 
 export type DeployValue = string | boolean;
 
@@ -265,7 +266,12 @@ export type DeployActionKind =
   | "node-cordon"
   | "node-uncordon"
   | "node-drain"
-  | "node-reboot";
+  | "node-reboot"
+  | "pg-database"
+  | "pg-backups"
+  | "pg-backup-now"
+  | "pg-restore"
+  | "pg-remove-cluster";
 
 // Raises Longhorn's default-replica-count Setting (what new volumes get),
 // the replica count pinned by a Longhorn StorageClass when it is lower, and,
@@ -479,6 +485,58 @@ export interface NodeRebootAction extends NodeDrainOptions {
   node: string;
 }
 
+// --- Shared Postgres actions (./postgres.ts) ---
+// All run in the postgres namespace and take the release "postgres", so one
+// runs at a time; refused while the shared cluster is not installed.
+
+// A database and a login role on the shared cluster for an app, both named
+// pgName(appId): CloudNativePG Database and DatabaseRole objects (reclaim
+// policy retain, so removing them leaves the data), the role's password in
+// a Secret beside them, and the app's connection Secret pgSecretName(appId)
+// in `namespace`. Running it again keeps the database and sets a new
+// password in both Secrets. Installing an app whose CatalogEntry.database
+// is "postgres" runs the same steps before its chart.
+export interface PgDatabaseAction {
+  kind: "pg-database";
+  appId: string;
+  namespace: string;
+}
+
+// Sets up the shared cluster's backups (PostgresBackupRequest). pitr: an
+// ObjectStore for the target with its credential Secret
+// (StorageTargetService.credentialsSecret, by key reference), the Barman
+// Cloud plugin as the Cluster's WAL archiver, and a ScheduledBackup. dump: a
+// CronJob running pg_dumpall onto a Longhorn claim in the "critical" group;
+// refused unless the target is Longhorn's backup target. Switching method
+// removes the other one's objects; null removes both.
+export interface PgBackupsAction extends PostgresBackupRequest {
+  kind: "pg-backups";
+}
+
+// A base backup (pitr) or a dump (dump) now. Refused while backups are off.
+export interface PgBackupNowAction {
+  kind: "pg-backup-now";
+}
+
+// Never in place. A new Cluster from the backup (pitr: recovered to `at`;
+// dump: initialised, then loaded from the dump), its databases' objects
+// made for it, every app's connection Secret pointed at it and the app's
+// workloads restarted; backups move to it. The old Cluster is hibernated
+// and kept (PostgresClusterView.previous) until pg-remove-cluster.
+export interface PgRestoreAction extends PostgresRestoreRequest {
+  kind: "pg-restore";
+}
+
+// Deletes a cluster a restore replaced, with its volumes. Refused for the
+// cluster the apps use now.
+export interface PgRemoveClusterAction {
+  kind: "pg-remove-cluster";
+  name: string;
+}
+
+export type PostgresActionRequest =
+  PgDatabaseAction | PgBackupsAction | PgBackupNowAction | PgRestoreAction | PgRemoveClusterAction;
+
 export type NodeActionRequest = NodeCordonAction | NodeUncordonAction | NodeDrainAction | NodeRebootAction;
 
 export type DeployActionRequest =
@@ -494,7 +552,8 @@ export type DeployActionRequest =
   | LonghornBackupNowAction
   | LonghornRestoreAction
   | ConsoleBackupAction
-  | NodeActionRequest;
+  | NodeActionRequest
+  | PostgresActionRequest;
 
 export interface DeployActionStep {
   // "Raise the default replica count to 2".
