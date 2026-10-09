@@ -2,7 +2,9 @@
 
 The chart is `chart/` in this repository. It deploys one pod (SQLite on a
 ReadWriteOnce volume), a Service, an optional Ingress and NetworkPolicy, and a
-read-only ClusterRole. Nothing in the defaults is specific to an install.
+read-only ClusterRole. With app deploys turned on it adds an installer
+ServiceAccount that the console's Jobs run as (see "Deploying apps from the
+console"). Nothing in the defaults is specific to an install.
 
 There are three ways in, from quickest to most controlled:
 
@@ -59,9 +61,9 @@ or on Fedora, RHEL and their relatives
 sudo dnf install -y iscsi-initiator-utils nfs-utils && sudo systemctl enable --now iscsid
 ```
 
-While the repository and packages are private, fetch the script with a token
-and pass `REGISTRY_USER` / `REGISTRY_TOKEN`; the steps and every flag are in
-[scripts/install/README.md](../scripts/install/README.md).
+Every flag is in [scripts/install/README.md](../scripts/install/README.md).
+Installing from a private fork or mirror takes `REGISTRY_USER` /
+`REGISTRY_TOKEN`, described there too.
 
 ## Updating
 
@@ -141,6 +143,9 @@ Running the same command without `--channel next` moves the install back to
 the newest edge build. Next builds can carry migrations that edge does not
 know, so treat going back as a reinstall.
 
+[testing-next.md](testing-next.md) walks through a test install, updates and
+rolling back.
+
 ## Install with Helm
 
 ```
@@ -157,8 +162,9 @@ Published artefacts (from `main`): the image at `ghcr.io/<owner>/<imageName>`
 tagged `:<sha>` and `:edge`, and the chart as an OCI artefact at
 `oci://ghcr.io/<owner>/charts/<chartName>` (`helm install <release> oci://... --version 0.1.1-edge.<n>`;
 its `appVersion` is the commit sha, which is the default image tag).
-`<imageName>` and `<chartName>` are in `product.json`. New ghcr packages are
-private until made public in the package settings.
+`<imageName>` and `<chartName>` are in `product.json`. The packages are
+public; in a fork, new ghcr packages stay private until made public in the
+package settings.
 
 `deploy/examples/values.yaml` is a starting values file.
 
@@ -294,8 +300,8 @@ One-time setup:
    only its namespace plus the one cluster role the chart creates; read the
    comments in that file for the trade-off.
 3. **Secrets for the install.** Create the `SECRETS_KEY` /
-   `BOOTSTRAP_ADMIN_PASSWORD` Secret as under Install. While the ghcr package is
-   private, add a pull secret
+   `BOOTSTRAP_ADMIN_PASSWORD` Secret as under Install. For images from a
+   private fork, add a pull secret
    (`kubectl -n <ns> create secret docker-registry ghcr-pull --docker-server=ghcr.io --docker-username=<user> --docker-password=<token with read:packages>`)
    and list it in `imagePullSecrets`.
 4. **Values.** Copy `deploy/examples/values.yaml` and set the ingress host,
@@ -303,15 +309,12 @@ One-time setup:
 5. **Workflow.** Copy `deploy/examples/gitea-deploy.yaml` and
    `wait-for-image.sh` into your homelab repository, and set the variables
    `MIRROR_URL`, `NAMESPACE`, `RELEASE`, `IMAGE` and the secrets `KUBECONFIG`,
-   `GHCR_USER`, `GHCR_TOKEN` (read:packages; unneeded once the package is
-   public) named in its header. It runs every ten minutes, deploys the
+   `GHCR_USER`, `GHCR_TOKEN` (read:packages; only for a private fork) named in
+   its header. It runs every ten minutes, deploys the
    mirror's HEAD once its image exists on ghcr, and does nothing when that
    commit is already deployed.
 6. **Sign-in.** Entra ID, or any OIDC provider, is configured in the setup
    wizard or under Admin → Sign-in after the first local sign-in.
-
-A worked example for one real cluster (Rancher, Longhorn, Fleet, Gitea, a NAS)
-is [dogfood.md](dogfood.md).
 
 Not covered by the chart: SSH users for host checks and `scripts/capture-fixtures.sh`
 are set up separately.
@@ -322,8 +325,13 @@ are set up separately.
    installer prints it; otherwise it is in the Secret you created). The
    password must be changed before anything else answers.
 2. The setup wizard opens on its own for an admin until it is finished:
+   - **Password**: the forced change, then the public URL people use to reach
+     the console.
    - **Cluster**: what the ServiceAccount can read, and the grant or CRD each
      missing item needs. Missing items show as gaps, not errors.
+   - **Access**: how you reach your apps (Cloudflare Tunnel, Tailscale, local
+     network or direct ports) and the base domain, or the whole default
+     bundle in one go. Needs deploys on to install anything.
    - **Sign-in**: issuer, client ID and secret for an OIDC provider, tested in
      place. Needs `SECRETS_KEY`. The redirect URI to register is shown.
    - **Links**: Rancher, Headlamp, Longhorn, Gitea and Grafana addresses, used
