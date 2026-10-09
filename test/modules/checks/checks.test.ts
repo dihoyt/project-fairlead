@@ -16,6 +16,7 @@ import { applyMigrations } from "../../../src/runtime/migrations.js";
 import checks, { LATENCY_SERIES, createRunner } from "../../../src/modules/checks/index.js";
 import {
   MAX_BODY_BYTES,
+  guardedLookup,
   judge,
   parseHostPort,
   probe,
@@ -223,6 +224,38 @@ test("http: expectStatus replaces the default set", async () => {
   const r = await check({ target: `${httpUrl}/`, expectStatus: [204, 401] });
   assert.equal(r.status, "crit");
   assert.match(r.detail, /expected 204, 401$/);
+});
+
+test("http and tcp: link-local targets (cloud metadata) are refused without connecting", async () => {
+  for (const target of [
+    "http://169.254.169.254/latest/meta-data/",
+    "http://[fe80::1]/",
+    "http://[::ffff:169.254.169.254]/",
+    "http://[fd00:ec2::254]/",
+  ]) {
+    const r = await check({ target, bodyMatch: "x" });
+    assert.equal(r.status, "crit", target);
+    assert.match(r.detail, /link-local address .*checks never connect there \(EREFUSEDTARGET\)$/, target);
+  }
+  const tcp = await check({ kind: "tcp", target: "169.254.169.254:80" });
+  assert.equal(tcp.status, "crit");
+  assert.match(tcp.detail, /EREFUSEDTARGET/);
+});
+
+const lookup = (host: string, all: boolean) =>
+  new Promise<{ err: NodeJS.ErrnoException | null; address: unknown }>((resolve) =>
+    guardedLookup(host, { all }, (err, address) => resolve({ err, address }))
+  );
+
+test("http: names go through the guarded lookup, which refuses link-local and passes the rest", async () => {
+  const ok = await check({ target: httpUrl.replace("127.0.0.1", "localhost") + "/" });
+  assert.equal(ok.status, "ok");
+  for (const all of [false, true]) {
+    const refused = await lookup("169.254.169.254", all);
+    assert.equal(refused.err?.code, "EREFUSEDTARGET");
+    const passed = await lookup("10.0.0.5", all);
+    assert.equal(passed.err, null);
+  }
 });
 
 test("http: a timeout is crit and says how long it waited", async () => {

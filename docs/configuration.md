@@ -138,9 +138,10 @@ step is prefilled with the address you opened the page on.
 - With neither set, the redirect URI is shown from the address of the current
   request (a forwarded scheme and host count only from a peer in
   `TRUSTED_PROXIES`), but OIDC sign-in stays off until a URL is saved.
-- Secure (`__Host-`) session cookies follow `PUBLIC_ORIGIN` only, so a wrong
-  value saved from the UI can't lock anyone out. Behind https, set
-  `PUBLIC_ORIGIN` as well to get them.
+- Session cookies are Secure (`__Host-`) when `PUBLIC_ORIGIN` is https or the
+  request itself arrived over https (`X-Forwarded-Proto: https` from the
+  proxy, believed from any peer since it can only add Secure). A value saved
+  from the UI never decides it, so a wrong one can't lock anyone out.
 
 ### Health board and notifications
 
@@ -272,4 +273,8 @@ Network: the pod needs to reach the API server, any host it checks over SSH
 (port 22 by default), the URLs of HTTP checks and notification channels, the
 OIDC issuer, and, for connectors, `api.cloudflare.com` and Microsoft Graph
 (`login.microsoftonline.com`, `graph.microsoft.com`). Deploy Jobs pull charts
-and images from their registries. With `networkPolicy.enabled` only ingress is restricted.
+and images from their registries. With `networkPolicy.enabled` only ingress is
+restricted: the targets above are the operator's own, so the chart can't
+list them. Add an egress policy of your own if you want one. HTTP and TCP
+checks never connect to link-local addresses (`169.254.0.0/16`, `fe80::/10`,
+`fd00:ec2::254`), where cloud metadata services answer.

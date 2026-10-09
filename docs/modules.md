@@ -302,6 +302,11 @@ User-defined probes. **Page**: `/checks`; **board**: Checks.
   substring, an optional auth header whose value is stored encrypted, and
   certificate expiry (warn below `tlsWarnDays`, crit below a third of it).
 - TCP: connects to `host:port`.
+- Neither connects to a link-local address (cloud metadata lives there),
+  whether the target names one or resolves to one. Loopback, private ranges
+  and in-cluster Services are allowed: they are what checks are for. A failed
+  body match shows the first 500 characters of the body to everyone who can
+  read the board, so point checks at health endpoints, not pages with data.
 - Each check has its own interval (15 s to a day) and timeout. The value is the
   latency in ms, so `health.rules` can put thresholds on it. Series:
   `check.latency.ms`.
@@ -375,8 +380,10 @@ Installed and Apps → Deploy; the wizard's Access step.
   Installed page. `auth.gate.allow` decides who gets through (admins, or
   everyone who can sign in). Authentik, Pocket ID and ntfy are never gated
   (people sign in through the first two, phones talk to the other); for
-  Gitea and Rancher a request carrying its own `Authorization` header goes
-  straight to the app, so git and API clients keep working. **Board**:
+  Gitea, Rancher and Grafana a request carrying its own `Authorization` header goes
+  straight to the app, so git and API clients keep working. The gate doesn't
+  check that header; the app's own login protects those requests, as it
+  would with no gate at all. **Board**:
   Access, one check per published app.
 - **Upgrade all**: every app the console installed, upgraded in dependency
   order with `helm upgrade --reset-then-reuse-values`, so its values are kept
