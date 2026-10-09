@@ -17,6 +17,7 @@ import {
 } from "../../../src/modules/deploy/actions/index.js";
 import { currentCluster, databaseObjects } from "../../../src/modules/deploy/actions/pg-objects.js";
 import { render, type PlanInput } from "../../../src/modules/deploy/plan.js";
+import { stepRequests } from "../../../src/modules/deploy/bundles.js";
 import { product } from "../../../src/product.js";
 
 const entry = (id: string) => catalog.find((e) => e.id === id)!;
@@ -255,4 +256,29 @@ test("pg-database uses the cluster labelled current and keeps the password out o
       "kubectl wait databases.postgresql.cnpg.io/x-r1-wiki",
     ]
   );
+});
+
+test("the bundle preview on a fresh cluster with Authentik ticked installs CloudNativePG and the cluster first", () => {
+  // Every basic in place, nothing installed: no basic asks for CloudNativePG.
+  const fresh: DiscoveryReport = {
+    ...mockDiscovery,
+    apps: mockDiscovery.apps.map((a) => ({ ...a, state: "not-installed" as const })),
+    basics: mockDiscovery.basics.map((b) => ({ ...b, status: "ok" as const, fixAppIds: [] })),
+  };
+  const steps = stepRequests(
+    bundles[0]!,
+    entry,
+    { bundleId: bundles[0]!.id, inputs: { signIn: "authentik" }, include: ["barman-cloud"] },
+    fresh
+  );
+  const installs = steps.filter((s) => !s.skip).map((s) => s.appId);
+  const at = (id: string) => installs.indexOf(id);
+  assert.ok(at("cloudnative-pg") >= 0, JSON.stringify(steps.filter((s) => s.skip)));
+  assert.ok(at("cloudnative-pg") < at("barman-cloud"));
+  assert.ok(at("barman-cloud") < at("postgres") && at("postgres") < at("authentik"));
+
+  // With Pocket ID instead, none of them.
+  const pocket = stepRequests(bundles[0]!, entry, { bundleId: bundles[0]!.id, inputs: { signIn: "pocket-id" } }, fresh);
+  const skipped = new Set(pocket.filter((s) => s.skip).map((s) => s.appId));
+  for (const id of ["cloudnative-pg", "barman-cloud", "postgres"]) assert.ok(skipped.has(id), id);
 });

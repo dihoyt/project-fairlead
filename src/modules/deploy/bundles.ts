@@ -208,6 +208,17 @@ export function stepRequests(
   const shared = request.inputs ?? {};
   const baseDomain = typeof shared.baseDomain === "string" ? shared.baseDomain.trim() : "";
   const included = new Set(request.include ?? []);
+  // What the other items this request installs need: an app offered only as
+  // a cluster basic (the operator, the shared database) is still wanted when
+  // one of them requires it, whatever the basics say.
+  const needed = new Set(
+    bundle.items
+      .filter((item) => holds(item.when, shared, bundle.inputs) && (item.required || included.has(item.appId)))
+      .flatMap((item) => {
+        const entry = entries(item.appId);
+        return [...(entry?.requires ?? []), ...(entry?.database ? [entry.database] : [])];
+      })
+  );
   return bundle.items.map((item): StepRequest => {
     const entry = entries(item.appId);
     if (!entry) return { appId: item.appId, skip: true, reason: "Not in this catalog" };
@@ -224,7 +235,7 @@ export function stepRequests(
     if (!item.required && !included.has(item.appId)) {
       return { appId: item.appId, skip: true, reason: item.note ?? "Left out" };
     }
-    const skip = alreadyDone(entry, discovery);
+    const skip = alreadyDone(entry, discovery, needed.has(item.appId));
     if (skip) return { appId: item.appId, skip: true, reason: skip };
 
     const own = request.apps?.[item.appId] ?? {};
@@ -245,7 +256,7 @@ export function stepRequests(
 }
 
 // Installed already, or a cluster basic it would fix is already in place.
-function alreadyDone(entry: CatalogEntry, discovery: DiscoveryReport | undefined): string | undefined {
+function alreadyDone(entry: CatalogEntry, discovery: DiscoveryReport | undefined, needed = false): string | undefined {
   const detected = discovery?.apps.find((app) => app.appId === entry.id);
   if (entry.install.kind !== "patch" && detected?.state === "installed") {
     return `Already installed (${detected.evidence})`;
@@ -254,7 +265,7 @@ function alreadyDone(entry: CatalogEntry, discovery: DiscoveryReport | undefined
   // basic asking for it, the cluster has what it does (a default storage
   // class, say).
   const onlyBasic = entry.slots.length === 1 && entry.slots[0] === "cluster-basics";
-  if (onlyBasic && discovery && detected?.state !== "unknown") {
+  if (onlyBasic && !needed && discovery && detected?.state !== "unknown") {
     const wanted = discovery.basics.some((basic) => basic.fixAppIds.includes(entry.id));
     if (!wanted && detected?.state === "not-installed") return "The cluster already has what it provides";
   }
