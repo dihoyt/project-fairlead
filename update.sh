@@ -56,6 +56,20 @@ NODE_PORT=""
 DEFAULT_NODE_PORT=32450
 UPGRADE_K3S=0
 PREREQS=0
+ENV_FILE=""
+ENV_FILE_GIVEN=0
+KEEP_ENV=0
+DEFAULT_ENV_FILE="/etc/$SLUG/install.env"
+SEED_SECRET_NAME="install-seed"
+# The env-file keys the console reads (INSTALL_SEED_KEYS in
+# src/contracts/onboarding.ts; a test keeps the two lists the same).
+SEED_KEYS="ADMIN_PASSWORD PUBLIC_URL
+CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_ZONE CLOUDFLARE_ACCESS_APPS
+ENTRA_TENANT_ID ENTRA_CLIENT_ID ENTRA_CLIENT_SECRET ENTRA_ADMIN_GROUPS
+STORAGE_URL STORAGE_PATH STORAGE_ENDPOINT STORAGE_USER STORAGE_SECRET
+SMTP_PRESET SMTP_HOST SMTP_PORT SMTP_SECURITY SMTP_USER SMTP_PASSWORD SMTP_FROM SMTP_TO
+OIDC_ISSUER OIDC_CLIENT_ID OIDC_CLIENT_SECRET OIDC_LABEL OIDC_ADMIN_GROUPS
+BUNDLE BUNDLE_ACCESS BASE_DOMAIN ADMIN_EMAIL STORAGE_CLASS AUTHENTIK_BOOTSTRAP_PASSWORD"
 
 usage() {
   if [ "$MODE" = update ]; then
@@ -94,6 +108,15 @@ EOF
   --values FILE         Extra Helm values file; repeatable, applied last
   --enable-deploy       Let the console deploy apps from its catalog. Creates an installer
                         ServiceAccount bound to cluster-admin; off unless given
+EOF
+  [ "$MODE" = update ] || cat <<EOF
+  --env FILE            First install only: set the console up from this env file (admin
+                        password, public URL, connectors, email, the deploy bundle; keys in
+                        docs/install.md). Default: $DEFAULT_ENV_FILE when it exists.
+                        Shredded once the install succeeds
+  --keep-env            Keep the env file instead of shredding it
+EOF
+  cat <<EOF
   --kubeconfig PATH     Use this kubeconfig instead of detecting a cluster
   --no-k3s              Never install k3s; fail if no cluster is found
   --no-node-packages    Don't install open-iscsi and the NFS client on this host's k3s node
@@ -152,6 +175,8 @@ while [ "$#" -gt 0 ]; do
     --kubeconfig) need_arg "$@"; KUBECONFIG_PATH="$2"; shift 2 ;;
     --timeout) need_arg "$@"; TIMEOUT="$2"; shift 2 ;;
     --enable-deploy) ENABLE_DEPLOY=1; shift ;;
+    --env) need_arg "$@"; ENV_FILE="$2"; ENV_FILE_GIVEN=1; shift 2 ;;
+    --keep-env) KEEP_ENV=1; shift ;;
     --no-k3s) NO_K3S=1; shift ;;
     --no-node-packages) NODE_PACKAGES=0; shift ;;
     --k3s) UPGRADE_K3S=1; shift ;;
@@ -192,9 +217,13 @@ esac
 [ "$PURGE" = 0 ] || [ "$UNINSTALL" = 1 ] || die "--purge only goes with --uninstall"
 if [ "$MODE" = update ]; then
   [ "$UNINSTALL" = 0 ] || die "update.sh does not uninstall; use install.sh --uninstall"
+  if [ "$ENV_FILE_GIVEN" = 1 ] || [ "$KEEP_ENV" = 1 ]; then die "--env and --keep-env set up a first install; use install.sh"; fi
   NO_K3S=1
 else
   if [ "$UPGRADE_K3S" = 1 ] || [ "$PREREQS" = 1 ]; then die "--k3s and --prereqs are update.sh flags"; fi
+  if [ "$UNINSTALL" = 1 ] && { [ "$ENV_FILE_GIVEN" = 1 ] || [ "$KEEP_ENV" = 1 ]; }; then die "--env does not go with --uninstall"; fi
+  if [ "$ENV_FILE_GIVEN" = 0 ] && [ "$UNINSTALL" = 0 ] && [ -e "$DEFAULT_ENV_FILE" ]; then ENV_FILE="$DEFAULT_ENV_FILE"; fi
+  [ "$KEEP_ENV" = 0 ] || [ -n "$ENV_FILE" ] || die "--keep-env goes with --env"
 fi
 [ "$ENABLE_DEPLOY" = 0 ] || [ "$UNINSTALL" = 0 ] || die "--enable-deploy does not go with --uninstall"
 [ -n "$ORIGIN" ] || [ -z "$HOST" ] || ORIGIN="http://$HOST"
@@ -214,6 +243,110 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 tty_ok() { (exec </dev/tty) 2>/dev/null; }
+
+# Checks the env file before anything is changed and writes its values,
+# unquoted, to $TMP/seed.env. Errors name the line and the key, never a
+# value: the file holds passwords and tokens.
+SEED_COUNT=0
+SEED_ADMIN_PASSWORD=0
+read_env_file() {
+  reader=""
+  if [ ! -r "$ENV_FILE" ]; then
+    { [ -e "$ENV_FILE" ] && [ -n "$SUDO" ]; } || die "cannot read env file $ENV_FILE"
+    reader="$SUDO"
+  fi
+  # shellcheck disable=SC2086
+  case "$($reader ls -ln "$ENV_FILE" | cut -c5-10)" in
+    *[rwx]*) warn "other users on this host can read $ENV_FILE (chmod 600 it)" ;;
+  esac
+  (
+    umask 077
+    # shellcheck disable=SC2086
+    $reader cat "$ENV_FILE" >"$TMP/env.raw"
+    : >"$TMP/seed.env"
+  ) || die "cannot read env file $ENV_FILE"
+  keys=" $(printf '%s' "$SEED_KEYS" | tr '\n' ' ') "
+  bundle=0
+  n=0
+  seen=" "
+  while IFS= read -r line || [ -n "$line" ]; do
+    n=$((n + 1))
+    line=$(printf '%s' "$line" | sed 's/\r$//; s/^[[:space:]]*//; s/^export[[:space:]][[:space:]]*//')
+    case "$line" in "" | "#"*) continue ;; esac
+    key=${line%%=*}
+    case "$line" in *=*) ;; *) key="" ;; esac
+    case "$key" in "" | [!A-Z]* | *[!A-Z0-9_]*) die "line $n of $ENV_FILE is not KEY=value" ;; esac
+    case "$keys" in *" $key "*) ;; *) die "unknown key $key on line $n of $ENV_FILE (docs/install.md lists the keys)" ;; esac
+    case "$seen" in *" $key "*) die "$key is set twice in $ENV_FILE (line $n)" ;; esac
+    seen="$seen$key "
+    value=${line#*=}
+    case "$value" in
+      \"*\") value=${value#\"}; value=${value%\"} ;;
+      \'*\') value=${value#\'}; value=${value%\'} ;;
+    esac
+    [ -n "$value" ] || continue
+    printf '%s=%s\n' "$key" "$value" >>"$TMP/seed.env"
+    SEED_COUNT=$((SEED_COUNT + 1))
+    case "$key" in
+      ADMIN_PASSWORD)
+        [ "${#value}" -ge 10 ] || die "ADMIN_PASSWORD in $ENV_FILE is shorter than 10 characters"
+        SEED_ADMIN_PASSWORD=1
+        ;;
+      BUNDLE) bundle=1 ;;
+    esac
+  done <"$TMP/env.raw"
+  rm -f "$TMP/env.raw"
+  [ "$SEED_COUNT" -gt 0 ] || die "$ENV_FILE sets none of the keys docs/install.md lists"
+  if [ "$bundle" = 1 ] && [ "$ENABLE_DEPLOY" = 0 ]; then
+    warn "BUNDLE needs --enable-deploy; without it the console reports the bundle as failed"
+  fi
+}
+
+# The Secret the console reads once at first boot and then deletes. Values
+# reach kubectl base64 in a 0600 file, never as an argument.
+write_seed_secret() {
+  (
+    umask 077
+    {
+      say "apiVersion: v1"
+      say "kind: Secret"
+      say "metadata:"
+      say "  name: $SEED_SECRET_NAME"
+      say "  namespace: $NAMESPACE"
+      say "  labels:"
+      say "    app.kubernetes.io/managed-by: $OWNER_LABEL"
+      say "type: Opaque"
+      say "data:"
+      while IFS= read -r line; do
+        printf '  %s: %s\n' "${line%%=*}" "$(printf '%s' "${line#*=}" | base64 | tr -d '\n')"
+      done <"$TMP/seed.env"
+    } >"$TMP/seed-secret.yaml"
+  )
+  run kube apply -f "$TMP/seed-secret.yaml" >/dev/null
+  rm -f "$TMP/seed-secret.yaml" "$TMP/seed.env"
+  say "Stored $SEED_COUNT settings from $ENV_FILE in Secret $SEED_SECRET_NAME; the console applies them at first boot."
+}
+
+# shred overwrites the file in place; without it, zeros its own size do.
+remove_env_file() {
+  if [ "$KEEP_ENV" = 1 ]; then
+    say "Kept $ENV_FILE (--keep-env). It holds passwords and tokens: delete it when you are done."
+    return 0
+  fi
+  if [ -w "$ENV_FILE" ] && [ -w "$(dirname "$ENV_FILE")" ]; then as=""; else as="$SUDO"; fi
+  # shellcheck disable=SC2086
+  if has shred; then
+    run $as shred -u "$ENV_FILE"
+  else
+    size=$($as wc -c <"$ENV_FILE" | tr -d ' ')
+    run $as dd if=/dev/zero of="$ENV_FILE" bs=1 count="$size" conv=notrunc 2>/dev/null \
+      && run $as rm -f "$ENV_FILE"
+  fi || {
+    warn "could not delete $ENV_FILE; it holds passwords and tokens, so delete it yourself"
+    return 0
+  }
+  say "Shredded $ENV_FILE (--keep-env keeps it)."
+}
 
 confirm() {
   [ "$YES" = 1 ] && return 0
@@ -760,9 +893,14 @@ do_install() {
       NODE_PORT=$(kube -n "$NAMESPACE" get svc "$RELEASE" -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || true)
     fi
   fi
+  # A Secret still there is a first install that didn't finish: run it again.
+  if [ -n "$ENV_FILE" ] && [ "$existing" = 1 ] && ! kube -n "$NAMESPACE" get secret "$SEED_SECRET_NAME" >/dev/null 2>&1; then
+    die "--env is for a first install, and $RELEASE is already installed in $NAMESPACE (move $ENV_FILE away to upgrade)"
+  fi
   check_webhooks
   ensure_namespace
   ensure_secret
+  [ -z "$ENV_FILE" ] || write_seed_secret
   ensure_join_secret
   registry_auth
   [ -z "$HOST" ] || default_ingress_class
@@ -845,6 +983,12 @@ do_install() {
     say "Reach it with: $(kubectl_hint) -n $NAMESPACE port-forward svc/$RELEASE 8080:80"
   fi
   [ "$MODE" = install ] || return 0
+  [ -z "$ENV_FILE" ] || remove_env_file
+  if [ "$SEED_ADMIN_PASSWORD" = 1 ]; then
+    say ""
+    say "Sign in as admin with the ADMIN_PASSWORD from the env file."
+    return 0
+  fi
   if [ -n "$PASSWORD" ]; then
     say ""
     say "Sign in as admin with this password. It is shown once, and you will be asked to change it:"
@@ -860,5 +1004,6 @@ do_install() {
 if [ "$UNINSTALL" = 1 ]; then
   do_uninstall
 else
+  [ -z "$ENV_FILE" ] || read_env_file
   do_install
 fi
