@@ -375,6 +375,29 @@ with an API token".
 - Lists security groups by name for `auth.oidc.adminGroups` (needs
   `Group.Read.All`).
 
+## Storage targets (`connector-storage`)
+
+**Page**: Admin → Connectors → Storage target. Any number of them.
+
+- A place backups go: an NFS export (`nfs://server:/export`), an S3 or
+  MinIO bucket (`s3://bucket@region/`, with an endpoint for MinIO and an
+  access key) or an SMB/CIFS share (`cifs://server/share`, with a user and
+  password). An optional path prefix puts this cluster's backups in a folder
+  under it. "Pick a host" fills the server in from a machine under Hosts.
+- Test and the scheduled health check run from the console's pod: a TCP
+  connection to port 2049 (NFS), 445 (SMB) or the S3 endpoint, and for S3 a
+  signed bucket listing that proves the keys can read it. Mounting needs
+  privileges the console doesn't have, so for NFS and SMB the proof is
+  Longhorn's own: once Longhorn's backup target points at the storage
+  target, its availability (and Longhorn's error, verbatim, when it can't
+  mount) shows as a "Longhorn" check on the connector.
+- Credentials stay sealed in the console. The Backups page's set-up hands
+  Longhorn a Secret with them (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`
+  / `AWS_ENDPOINTS`, or `CIFS_USERNAME` / `CIFS_PASSWORD`) in
+  `longhorn-system`; no route ever returns them.
+- Longhorn mounts the target from each node: the installer puts the NFS
+  client there, and SMB targets also need `cifs-utils` on every node.
+
 ## MCP server (`mcp`)
 
 Serves `/mcp` for Claude and other MCP clients, with API tokens or OAuth.
