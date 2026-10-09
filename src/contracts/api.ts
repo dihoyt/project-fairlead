@@ -7,6 +7,7 @@
 import type {
   AccountView,
   AdminOverview,
+  ApiTokenChanges,
   ApiTokenView,
   AuditRow,
   AuthentikWirePlan,
@@ -204,6 +205,9 @@ export interface ApiRoutes {
   // 400 for an empty name (over 80 characters) or an expiry outside 1-3650 days.
   "POST /api/admin/tokens": Route<None, None, NewApiTokenRequest, NewApiToken>;
   // Revokes at once: the next request with it is a 401. Unknown id: 404.
+  // Changes a token's name, scope or grant (OAuth grants too). 400 as POST
+  // for a bad name, scope or an empty list; unknown id: 404.
+  "PATCH /api/admin/tokens/:id": Route<{ id: string }, None, ApiTokenChanges, ApiTokenView>;
   "DELETE /api/admin/tokens/:id": Route<{ id: string }, None, None, Ok>;
   // The consent page of the MCP OAuth flow (see OAuthAuthorizeParams). Admin
   // with a signed-in session; approve and deny are audited. 400 with the

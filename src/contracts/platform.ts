@@ -2,7 +2,7 @@ import type { Request, Express } from "express";
 import type { Server } from "node:http";
 import type { ZodType } from "zod";
 import type { Database } from "better-sqlite3";
-import type { ApiTokenScope } from "./auth.js";
+import type { ApiTokenGrant } from "./grants.js";
 import type { Migration } from "./runtime.js";
 
 // Everything in this file is implemented by the platform (S2, src/platform/).
@@ -24,8 +24,9 @@ export interface User {
   mustEnrollTotp?: boolean;
   orgId: string;
   // Set when the request carried an API token (source "token"): which one,
-  // and the scope that caps what can() allows.
-  token?: { id: string; scope: ApiTokenScope };
+  // the scope that caps what can() allows, and the grant's areas and
+  // namespaces that the runtime checks each route against (./grants.ts).
+  token?: { id: string } & ApiTokenGrant;
 }
 
 // Tenancy A: "read" is any signed-in user; "write" and "admin" are admins.
