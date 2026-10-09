@@ -30,6 +30,12 @@ export const pgClusterName = (slug: string): string => `${slug}-postgres`;
 // replaced. Readers find the cluster by it, never by name.
 export const pgClusterLabel = (labelDomain: string): string => `${labelDomain}/postgres`;
 
+// On each Database and DatabaseRole object this product makes for an app:
+// the app's catalog id (label) and its connection Secret as
+// "<namespace>/<name>" (annotation), so readers can tell whose it is.
+export const pgAppLabel = (labelDomain: string): string => `${labelDomain}/postgres-app`;
+export const pgSecretAnnotation = (labelDomain: string): string => `${labelDomain}/postgres-secret`;
+
 // The database and role an app gets: its catalog id with dashes as
 // underscores ("pocket-id" -> "pocket_id").
 export const pgName = (appId: string): string => appId.replace(/-/g, "_");
