@@ -15,7 +15,7 @@ import {
   Text,
 } from "@mantine/core";
 import { IconDownload } from "@tabler/icons-react";
-import type { DeployActionPlan, DeployJobView, VolumeBackupView } from "@contracts/deploy";
+import type { DeployActionPlan, DeployActionRequest, DeployJobView, VolumeBackupView } from "@contracts/deploy";
 import { formatBytes } from "@contracts/disk";
 import { apiRequest, pageUrl, useApi } from "../../ui/api";
 import { DeployJobProgress, DeploysOff, RaiseReplicas } from "../../ui/deploy";
@@ -26,35 +26,64 @@ const BACKUP_POLL_MS = 3_000;
 type Phase =
   { at: "plan" } | { at: "backup"; jobId: string } | { at: "convert"; jobId: string; result?: DeployJobView };
 
-// The Apps page's way off local-path: preview, an optional download of each
-// volume, then the conversion as one deploy job.
+export type StorageSide = "longhorn" | "local-path";
+
+const SIDE: Record<StorageSide, string> = { longhorn: "Longhorn", "local-path": "local-path" };
+
+// Moving to Longhorn keeps its older action kind; the other way is
+// migrate-storage.
+const moveRequest = (appId: string, to: StorageSide): DeployActionRequest =>
+  to === "longhorn" ? { kind: "migrate-to-longhorn", appId } : { kind: "migrate-storage", appId, to };
+
+// The Apps page's way between local-path and Longhorn: preview, an optional
+// download of each local-path volume, then the move as one deploy job.
 export function ConvertToLonghornButton({
   appId,
   name,
+  to = "longhorn",
   onFinished,
 }: {
   appId: string;
   name: string;
+  to?: StorageSide;
   onFinished: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const label = to === "longhorn" ? "Convert to Longhorn" : "Move to local-path";
   return (
     <>
       <Button size="xs" variant="default" onClick={() => setOpen(true)}>
-        Convert to Longhorn
+        {label}
       </Button>
-      <Modal opened={open} onClose={() => setOpen(false)} title={`Convert ${name} to Longhorn`} size="xl">
-        {open ? <ConvertDialog appId={appId} name={name} onFinished={onFinished} /> : null}
+      <Modal
+        opened={open}
+        onClose={() => setOpen(false)}
+        title={`${label.split(" ")[0]} ${name} to ${SIDE[to]}`}
+        size="xl"
+      >
+        {open ? <ConvertDialog appId={appId} name={name} to={to} onFinished={onFinished} /> : null}
       </Modal>
     </>
   );
 }
 
-export function ConvertDialog({ appId, name, onFinished }: { appId: string; name: string; onFinished: () => void }) {
+export function ConvertDialog({
+  appId,
+  name,
+  to = "longhorn",
+  onFinished,
+}: {
+  appId: string;
+  name: string;
+  to?: StorageSide;
+  onFinished: () => void;
+}) {
   const status = useApi("GET /api/deploy/status");
   const [plan, setPlan] = useState<DeployActionPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [backupFirst, setBackupFirst] = useState(true);
+  // The download reads local-path volumes only; Longhorn's own backups
+  // cover the other way.
+  const [backupFirst, setBackupFirst] = useState(to === "longhorn");
   const [starting, setStarting] = useState(false);
   const [phase, setPhase] = useState<Phase>({ at: "plan" });
   const enabled = status.data?.enabled === true;
@@ -62,21 +91,23 @@ export function ConvertDialog({ appId, name, onFinished }: { appId: string; name
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    apiRequest("POST /api/deploy/actions/plan", { body: { kind: "migrate-to-longhorn", appId } }).then(
+    apiRequest("POST /api/deploy/actions/plan", { body: moveRequest(appId, to) }).then(
       (next) => !cancelled && setPlan(next),
       (err: Error) => !cancelled && setError(err.message)
     );
     return () => {
       cancelled = true;
     };
-  }, [enabled, appId]);
+  }, [enabled, appId, to]);
 
-  const run = async (kind: "migrate-to-longhorn" | "backup-volumes") => {
+  const run = async (what: "move" | "backup-volumes") => {
     setStarting(true);
     setError(null);
     try {
-      const job = await apiRequest("POST /api/deploy/actions/run", { body: { kind, appId } });
-      setPhase(kind === "backup-volumes" ? { at: "backup", jobId: job.id } : { at: "convert", jobId: job.id });
+      const body: DeployActionRequest =
+        what === "backup-volumes" ? { kind: "backup-volumes", appId } : moveRequest(appId, to);
+      const job = await apiRequest("POST /api/deploy/actions/run", { body });
+      setPhase(what === "backup-volumes" ? { at: "backup", jobId: job.id } : { at: "convert", jobId: job.id });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -102,13 +133,14 @@ export function ConvertDialog({ appId, name, onFinished }: { appId: string; name
         <DeployJobProgress jobId={phase.jobId} onFinished={converted} />
         {phase.result?.state === "failed" || phase.result?.state === "cancelled" ? (
           <Alert color="red" variant="light" title="Not converted">
-            The log above shows where it stopped. Unless it says otherwise, {name} is back on its old local-path volumes
-            and nothing was deleted.
+            The log above shows where it stopped. Unless it says otherwise, {name} is back on its old{" "}
+            {SIDE[to === "longhorn" ? "local-path" : "longhorn"]} volumes and nothing was deleted.
           </Alert>
         ) : null}
         {phase.result?.state === "succeeded" ? (
-          <Alert color="green" variant="light" title={`${name} is on Longhorn`}>
-            Its volumes keep their names; the old local-path volumes were deleted after {name} answered.
+          <Alert color="green" variant="light" title={`${name} is on ${SIDE[to]}`}>
+            Its volumes keep their names; the old {SIDE[to === "longhorn" ? "local-path" : "longhorn"]} volumes were
+            deleted after {name} answered.
           </Alert>
         ) : null}
         {phase.result?.state === "succeeded" && plan?.offerReplicas ? <RaiseReplicas /> : null}
@@ -123,7 +155,7 @@ export function ConvertDialog({ appId, name, onFinished }: { appId: string; name
       {plan ? <ConvertPlanView plan={plan} /> : null}
       {phase.at === "backup" ? (
         <BackupDownloads jobId={phase.jobId} name={name} />
-      ) : plan?.allowed ? (
+      ) : plan?.allowed && to === "longhorn" ? (
         <Checkbox
           checked={backupFirst}
           onChange={(event) => setBackupFirst(event.currentTarget.checked)}
@@ -139,7 +171,7 @@ export function ConvertDialog({ appId, name, onFinished }: { appId: string; name
         ) : (
           <Button
             color={phase.at === "backup" ? undefined : "orange"}
-            onClick={() => void run("migrate-to-longhorn")}
+            onClick={() => void run("move")}
             loading={starting}
             disabled={!plan?.allowed}
           >

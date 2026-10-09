@@ -84,14 +84,23 @@ def main(argv):
             if claim not in state["pvcs"]:
                 fail(f"pod can't start: claim {claim} not found")
     elif verb == "rollout":
-        pass
+        if state.get("failRollout"):
+            fail("rollout did not finish")
     elif verb == "logs":
         print("Copied 3 files and directories (12K).")
     elif verb == "create":
         with open(flags["-f"]) as f:
             obj = json.load(f)
         name = obj["metadata"]["name"]
-        if obj["kind"] == "PersistentVolumeClaim":
+        if obj["kind"] == "Volume":
+            ok = not state.get("failRestore")
+            state.setdefault("lhvolumes", {})[name] = {
+                "restoreInitiated": True, "restoreRequired": not ok, "state": "detached" if ok else "faulted"}
+        elif obj["kind"] == "PersistentVolume":
+            spec = obj["spec"]
+            state["pvs"][name] = {"policy": spec["persistentVolumeReclaimPolicy"], "class": spec["storageClassName"],
+                                  "phase": "Available"}
+        elif obj["kind"] == "PersistentVolumeClaim":
             if name in state["pvcs"]:
                 fail(f"persistentvolumeclaims {name} already exists")
             bind(state, name, obj)
@@ -105,7 +114,11 @@ def main(argv):
                 state["data"][state["pvcs"][to]["volumeName"]] = state["data"].get(state["pvcs"][frm]["volumeName"])
     elif verb == "delete":
         kind = words[1]
-        if kind == "job":
+        if kind == "pv":
+            state["pvs"].pop(words[2], None)
+        elif kind == "volumes.longhorn.io":
+            state.get("lhvolumes", {}).pop(words[2], None)
+        elif kind == "job":
             if "-l" not in flags:
                 state["jobs"].pop(words[2], None)
         elif kind == "pvc":
@@ -124,6 +137,8 @@ def main(argv):
         out = flags.get("-o", "")
         if kind == "pods":
             print(json.dumps({"items": pods(state)}))
+        elif kind == "volumes.longhorn.io":
+            print(json.dumps({"status": state.get("lhvolumes", {})[name]}))
         elif kind == "job":
             print(state["jobs"][name]["status"])
         elif kind == "pvc":

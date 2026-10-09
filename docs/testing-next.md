@@ -51,6 +51,17 @@ is in `/healthz` (`{"status":"ok","version":"<commit>"}`) and in
 Apps the console installed are upgraded separately, from **Apps → Installed →
 Upgrade all**, when a build changes their pinned versions.
 
+### Changes to notice on upgrade
+
+- **Longhorn's web UI is no longer published.** Its recipe now turns the
+  chart's Ingress off and adds no Cloudflare route, so on the next **Upgrade
+  all** an install that published `longhorn-frontend` loses that address. The
+  Service stays, so `kubectl -n longhorn-system port-forward
+  svc/longhorn-frontend 8000:80` still reaches it. Backup target, schedules,
+  backup now and restore are on the **Backups** page instead.
+- **Velero is hidden from the catalog picker.** An install that has it keeps
+  it on the Installed page, and it can still be deployed over the API and MCP.
+
 ## Roll back
 
 - **To an earlier next build**: `update.sh --channel next --version <older

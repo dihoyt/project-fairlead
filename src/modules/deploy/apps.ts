@@ -256,16 +256,11 @@ export const recipes: Record<string, Recipe> = {
       commonLabels: labels(),
       defaultSettings: { defaultReplicaCount: longhornReplicas(r) },
       persistence: { defaultClass: longhornTakesDefault(r), defaultClassReplicaCount: longhornReplicas(r) },
-      ingress: {
-        enabled: r.chartIngress,
-        ingressClassName: r.defaults.ingressClass,
-        host: r.host,
-        tls: r.tls,
-        tlsSecret: r.tls ? tlsSecret(r) : undefined,
-        annotations: ingressAnnotations(r),
-      },
+      // Headless: the console sets Longhorn up, so its UI (no sign-in of its
+      // own) is never published. An upgrade removes an Ingress an earlier
+      // install made; the longhorn-frontend Service stays for port-forward.
+      ingress: { enabled: false },
     }),
-    service: () => ({ name: "longhorn-frontend", port: 80 }),
     after: (r) =>
       longhornTakesDefault(r) && defaultStorageClasses(r)!.includes(NODE_LOCAL_CLASS)
         ? [unsetDefault(NODE_LOCAL_CLASS)]
@@ -275,7 +270,7 @@ export const recipes: Record<string, Recipe> = {
       const defaults = defaultStorageClasses(r) ?? [];
       const others = defaults.filter((name) => name !== "longhorn");
       return [
-        "Longhorn's UI has no sign-in of its own: anyone who can reach the hostname can use it.",
+        "Longhorn's own web UI is not published; set backups up on the Backups page.",
         ...(replicas === 1 ? ["1 replica on a single node; raise it in Longhorn when you add nodes."] : []),
         ...(longhornTakesDefault(r) && others.length > 0
           ? [

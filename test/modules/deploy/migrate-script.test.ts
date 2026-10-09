@@ -39,6 +39,7 @@ const volume = (name: string, pv: string, n: number) => ({
 
 function inspection(checkUrl?: string): MigrateInspection {
   return {
+    to: "longhorn",
     appId: "gitea",
     release: "gitea",
     namespace: "gitea",

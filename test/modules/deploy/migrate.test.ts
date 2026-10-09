@@ -212,7 +212,7 @@ test("plan: volumes, downtime, the check URL and the Helm value, from reads only
   const e = await setup();
   const plan = await api<DeployActionPlan>(e, "POST", "/actions/plan", convert);
   assert.equal(plan.allowed, true, plan.blockedBy);
-  assert.equal(plan.title, "Convert Gitea to Longhorn");
+  assert.equal(plan.title, "Move Gitea to Longhorn");
   assert.deepEqual(plan.volumes, [
     {
       namespace: "gitea",
