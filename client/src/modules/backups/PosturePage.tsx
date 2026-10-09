@@ -23,6 +23,7 @@ import type { BackupPosture, PostureRow } from "@contracts/backups";
 import type { Status } from "@contracts/health";
 import { PageHeader } from "../../shell/PageHeader";
 import { BackupTargetCard } from "./BackupTarget";
+import { ConsoleBackupCard } from "./ConsoleBackup";
 import { SchedulesCard } from "./Schedules";
 import { VolumeActions } from "./VolumeActions";
 import {
@@ -300,6 +301,7 @@ export function PosturePage() {
           <SchedulesCard canEdit={me.admin} onChanged={reload} />
         </SimpleGrid>
       ) : null}
+      {data ? <ConsoleBackupCard me={me} onChanged={reload} /> : null}
 
       {data ? (
         <>

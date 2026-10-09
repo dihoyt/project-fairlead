@@ -30,11 +30,18 @@ import {
   discover,
   oidcUnavailableReason,
 } from "../auth/oidc.js";
-import { generateTempPassword, hashPassword, passwordProblem } from "../auth/passwords.js";
-import { revokeAllSessions, revokeSession, sessionHandle, sessionsOf } from "../auth/sessions.js";
+import { generateTempPassword, hashPassword, passwordProblem, verifyPassword } from "../auth/passwords.js";
+import {
+  liveSessionByHash,
+  requestSessionHash,
+  revokeAllSessions,
+  revokeSession,
+  sessionHandle,
+  sessionsOf,
+} from "../auth/sessions.js";
 import { OAuthError, checkAuthorizeRequest, issueCode, redirectWith, scopeOf } from "../auth/oauth.js";
 import { createToken, limitsOf, listTokens, revokeToken, tokenView, updateToken } from "../auth/tokens.js";
-import { clearTotp, totpEnabledFor } from "../auth/totp.js";
+import { clearTotp, totpEnabledFor, verifyTotp } from "../auth/totp.js";
 import {
   countActiveAdmins,
   createUser,
@@ -51,7 +58,8 @@ import {
 } from "../auth/users.js";
 import { effectivePublicUrl, iso, isoOrNull, publicOrigin, type Core } from "../core.js";
 import { clientIp, parseCidrList } from "../net.js";
-import { secretKeyConfigured } from "../secretBox.js";
+import { MIN_PASSPHRASE, sealKit } from "../recoveryKit.js";
+import { rawSecretKey, secretKeyConfigured } from "../secretBox.js";
 import { SettingError } from "../settings.js";
 import { SignInError, createSignIn } from "../signin.js";
 import { mcpResource, oauthBase } from "./oauth.js";
@@ -60,6 +68,9 @@ import { mcpResource, oauthBase } from "./oauth.js";
 // may sign in and from where, and the record of what happened. Every change
 // is audited, and every change that could lock the acting admin (or every
 // admin) out is refused before it is made. Mounted at /api/admin.
+
+// How recent an OIDC sign-in must be to stand in for a password.
+const REAUTH_MS = 15 * 60_000;
 
 class AdminError extends Error {
   readonly status: number;
@@ -154,6 +165,34 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
         res.status(500).json({ error: "Internal error." });
       }
     };
+
+  const reauthenticate = async (req: Request, admin: PlatformUser, body: Record<string, unknown>) => {
+    if (admin.source === "dev-bypass") return;
+    if (admin.userId === undefined || admin.source === "token") {
+      throw new AdminError(403, "Sign in with an account to download the recovery kit.");
+    }
+    const account = userById(core.db, admin.userId);
+    if (account === null) throw new AdminError(403, "Sign in with an account to download the recovery kit.");
+    if (admin.source === "oidc") {
+      const hash = requestSessionHash(req);
+      const session = hash === null ? null : liveSessionByHash(core, hash);
+      const signedInAt = session?.oidcCheckedAt ?? session?.createdAt ?? 0;
+      if (Date.now() - signedInAt > REAUTH_MS) {
+        throw new AdminError(401, "Sign in again to download the recovery kit.");
+      }
+      return;
+    }
+    const password = typeof body.password === "string" ? body.password : "";
+    if (!(await verifyPassword(account.passwordHash, password))) {
+      throw new AdminError(401, "That password is not right.");
+    }
+    if (totpEnabledFor(core, account.id)) {
+      const code = typeof body.code === "string" ? body.code.trim() : "";
+      if (!code || !verifyTotp(core, account.id, code)) {
+        throw new AdminError(401, "Enter the current code from your authenticator.");
+      }
+    }
+  };
 
   const record = (req: Request, admin: PlatformUser, action: string, target: string, detail = "") => {
     core.audit.record({ actor: admin.id, ip: clientIp(req), action: `admin.${action}`, target, detail, result: "ok" });
@@ -935,6 +974,44 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
       });
       record(req, admin, "oauth-approve", client.clientId, `${client.name} (${grantSummary(grant)})`);
       return { ...view, redirect: redirectWith(redirectUri, { code, state: params.state }) };
+    })
+  );
+
+  // --- Recovery kit -------------------------------------------------------
+
+  // SECRETS_KEY leaves the process only here, so the admin proves who they
+  // are again first: a password account by its password (and authenticator
+  // when enrolled), an OIDC account by a sign-in this recent.
+  router.post(
+    "/recovery-kit",
+    route(async (req, res, admin) => {
+      if (!secretKeyConfigured()) {
+        throw new AdminError(409, "SECRETS_KEY is not set, so nothing is sealed and there is no key to keep.");
+      }
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const passphrase = typeof body.passphrase === "string" ? body.passphrase : "";
+      if (passphrase.length < MIN_PASSPHRASE) {
+        throw new AdminError(400, `Choose a passphrase of at least ${MIN_PASSPHRASE} characters.`);
+      }
+      await reauthenticate(req, admin, body);
+      const kit = sealKit(
+        {
+          secretsKey: rawSecretKey(),
+          release: process.env.HELM_RELEASE || product.slug,
+          namespace: process.env.POD_NAMESPACE || product.defaultNamespace,
+          version: process.env.GIT_SHA || "dev",
+          createdAt: new Date().toISOString(),
+        },
+        passphrase
+      );
+      record(req, admin, "recovery-kit", "SECRETS_KEY", "downloaded");
+      res
+        .status(200)
+        .type("text/plain")
+        .set("Cache-Control", "no-store")
+        .set("Content-Disposition", `attachment; filename="${product.slug}-recovery-kit.txt"`)
+        .send(kit);
+      return undefined;
     })
   );
 

@@ -244,6 +244,24 @@ Backups (*Backup posture*).
     mount it scale to zero, the claim is rebound under its own name to the
     restored volume, they scale back up; the old volume is kept until they
     are back and put back if anything fails). Both preview first.
+- **This console**: the console's own database volume.
+  - On Longhorn it is backed up like any other volume; *Add to the critical
+    group* puts it on the 6-hourly schedule.
+  - Whatever the storage class, a nightly copy (`deploy.consoleBackup`,
+    default `30 3 * * *` UTC, 14 kept) goes to a storage target: the one
+    Longhorn backs up to, else the only one. The console writes a consistent
+    copy (`VACUUM INTO`) beside its database, and a Job on the same node mounts
+    the volume and copies it to `<prefix>console/<release>-<UTC time>.db` on an
+    NFS export (mounted by the kubelet) or an S3/MinIO bucket (SigV4 with
+    curl). SMB shares need a privileged mount and are refused for this copy.
+    *Back up now* runs the same copy at once.
+  - *Download recovery kit* (admins; password and authenticator again, or an
+    OIDC sign-in from the last 15 minutes; audited) gives `SECRETS_KEY` sealed
+    with a passphrase, in a file `openssl enc -d -aes-256-cbc -pbkdf2 -iter
+    600000 -md sha256 -a -A` opens. A copy of the database restores without
+    it, but every stored secret then reads as missing.
+  - The page shows the `install.sh --restore` line for the newest copy
+    ([Restoring the console](install.md#restoring-the-console)).
 
 ## Fleet (`fleet`)
 

@@ -12,9 +12,11 @@ import type { StorageTargetService } from "../../../contracts/connectors.js";
 import type { K8sApi } from "../../../contracts/k8s.js";
 import type { CallInput } from "../../../contracts/module.js";
 import type { Step } from "../apps.js";
+import type { PodExtras } from "../job.js";
 import { backupAction } from "./backup.js";
 import { gateAction, type GateActionContext } from "./gate.js";
 import { backupNowAction } from "./backup-now.js";
+import { consoleBackupAction } from "./console-backup.js";
 import { longhornTargetAction } from "./longhorn-target.js";
 import { migrateAction, migrateStorageAction } from "./migrate.js";
 import { NODE_NAME, nodeActions } from "./node.js";
@@ -48,6 +50,10 @@ export interface ActionContext {
   gate?: GateActionContext;
   // For the backup target; undefined without module connector-storage.
   storageTargets?: StorageTargetService;
+  // This console's own database: a consistent copy written beside it on its
+  // volume (VACUUM INTO), for the console-backup action. Absent where the
+  // database is not a file.
+  consoleDatabase?: ConsoleDatabase;
 }
 
 export interface ActionRendered {
@@ -69,11 +75,23 @@ export interface ActionRendered {
   files: Record<string, string>;
   // A node the Job's pod must not run on: the one an action drains or reboots.
   avoidNode?: string;
+  pod?: PodExtras;
   // Values the run carries that its log must never show.
   secrets?: string[];
   // Called once the Job is created, e.g. to keep a per-run token under the
   // job's id. A throw is logged; the job keeps running.
   onStarted?(job: DeployJobView): Promise<void> | void;
+}
+
+export interface ConsoleDatabase {
+  // This console's pod, to find its node and volume; absent outside a cluster.
+  pod?: { name: string; namespace: string };
+  release: string;
+  // deploy.consoleBackupKeep.
+  keep(): number;
+  // Writes the copy and returns its path relative to the volume's root,
+  // which is the database's own directory.
+  snapshot(name: string): { path: string; bytes: number };
 }
 
 export interface ActionRecipe<R extends DeployActionRequest = DeployActionRequest> {
@@ -111,6 +129,7 @@ const recipes: { [K in DeployActionKind]?: ActionRecipe<Extract<DeployActionRequ
   "longhorn-recurring": recurringAction,
   "longhorn-backup-now": backupNowAction,
   "longhorn-restore": restoreAction,
+  "console-backup": consoleBackupAction,
 };
 
 export function actionRecipe<K extends DeployActionKind>(
@@ -163,5 +182,10 @@ export const actionSchema = z.discriminatedUnion("kind", [
     backup: z.string().min(1).max(253),
     mode: z.enum(["new-pvc", "in-place"]),
     newClaim: k8sName.optional(),
+  }),
+  z.object({
+    kind: z.literal("console-backup"),
+    connectorId: z.string().min(1).max(100).optional(),
+    keep: z.number().int().min(1).max(90).optional(),
   }),
 ]);

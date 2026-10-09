@@ -14,6 +14,7 @@ import type { CheckResult } from "../../contracts/health.js";
 import type { Module, ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
 import { listPvcs, type ClusterPvc, type SelfPod } from "./cluster.js";
+import { registerConsoleRoutes } from "./console.js";
 import { readSchedules, readTarget, readVolumes, restorePoints, type LonghornVolumes } from "./longhorn.js";
 import { postureCsv } from "./csv.js";
 import { migrations } from "./migrations.js";
@@ -426,6 +427,8 @@ function register(ctx: ModuleContext): void {
     if (!ctx.require(req, res, "write")) return undefined;
     return runAction(req, await restoreRequest(req.body));
   });
+
+  registerConsoleRoutes(ctx, { pvcs: () => service.pvcs(), runAction });
 
   ctx.route("POST /api/backups/volumes/:uid/restore-tests", async (req, res) => {
     const user = ctx.require(req, res, "write");
