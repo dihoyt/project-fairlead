@@ -236,6 +236,7 @@ const catalogEntries: CatalogEntry[] = [
     ],
     exposesUi: false,
     prerequisites: ["An S3-compatible bucket: AWS, Backblaze B2, MinIO or a NAS that speaks S3."],
+    hidden: true,
   },
   {
     id: "longhorn-backup-target",
