@@ -10,7 +10,7 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
-import type { ChannelKind, ChannelRequest, TestSendResult } from "@contracts/notify";
+import type { ChannelRequest, TestSendResult } from "@contracts/notify";
 import { apiRequest, useApi } from "../../../ui";
 import {
   CHANNEL_CHOICES,
@@ -19,10 +19,11 @@ import {
   SelfHostedNtfy,
   useOwnNtfy,
   type ChannelChoice,
+  type WebhookKind,
 } from "../../notify/ntfyChoice";
 import { StepFrame, useAction, type StepProps } from "../shared";
 
-const SECRET: Record<ChannelKind, { label: string; placeholder: string; required: boolean }> = {
+const SECRET: Record<WebhookKind, { label: string; placeholder: string; required: boolean }> = {
   ntfy: { label: "Access token (protected topics only)", placeholder: "tk_…", required: false },
   discord: { label: "Discord webhook URL", placeholder: "https://discord.com/api/webhooks/…", required: true },
   webhook: { label: "Webhook URL", placeholder: "https://example.com/hooks/health", required: true },

@@ -7,7 +7,7 @@ import type { CheckView } from "../checks.js";
 import type { JoinLink, JoinStatus } from "../cluster.js";
 import type { CategoryDetail, CheckResult, HealthBoard, HealthLinkView, HealthTile } from "../health.js";
 import type { HostView } from "../hosts.js";
-import type { ChannelView } from "../notify.js";
+import type { ChannelView, EmailSetupView } from "../notify.js";
 import type { OnboardingState } from "../onboarding.js";
 import type { PodView, WorkloadLinks } from "../workloads.js";
 import {
@@ -208,6 +208,52 @@ export const mockChannel: ChannelView = {
   config: { server: "https://ntfy.sh", topic: "cluster-alerts" },
   hasSecret: false,
   lastSentAt: isoAgo(2 * HOUR),
+};
+
+export const mockEmailChannel: ChannelView = {
+  id: "ch_email",
+  kind: "email",
+  label: "Ops mailbox",
+  enabled: true,
+  minSeverity: "crit",
+  config: {
+    email: {
+      preset: "gmail",
+      mode: "smtp",
+      host: "smtp.gmail.com",
+      port: 587,
+      security: "starttls",
+      username: "alerts@example.com",
+      from: "alerts@example.com",
+      to: ["ops@example.com"],
+    },
+  },
+  hasSecret: true,
+  lastSentAt: isoAgo(3 * HOUR),
+};
+
+export const mockEmailOAuthChannel: ChannelView = {
+  id: "ch_email_oauth",
+  kind: "email",
+  label: "Outlook",
+  enabled: true,
+  minSeverity: "warn",
+  config: {
+    email: {
+      preset: "microsoft-oauth",
+      mode: "oauth",
+      clientId: "00000000-0000-0000-0000-000000000001",
+      account: "someone@outlook.com",
+      to: ["someone@outlook.com"],
+    },
+  },
+  hasSecret: true,
+};
+
+export const mockEmailSetup: EmailSetupView = {
+  redirectUri: "https://console.example.com/api/notify/oauth/callback",
+  signInClient: { provider: "google", clientId: "1234-abc.apps.googleusercontent.com" },
+  entra: { ready: false, reason: "Add the Microsoft Entra ID connector first (Admin > Connectors)." },
 };
 
 export const mockHost: HostView = {
@@ -658,11 +704,16 @@ export const apiMocks: ApiMocks = {
     { series: "node.memory.percent", labelKeys: ["node"], firstTs: MOCK_NOW - 30 * DAY, lastTs: MOCK_NOW },
   ],
 
-  "GET /api/notify/channels": [mockChannel],
+  "GET /api/notify/channels": [mockChannel, mockEmailChannel, mockEmailOAuthChannel],
   "POST /api/notify/channels": mockChannel,
   "PUT /api/notify/channels/:id": mockChannel,
   "DELETE /api/notify/channels/:id": { ok: true },
-  "POST /api/notify/channels/:id/test": { ok: true, status: 200 },
+  "POST /api/notify/channels/:id/test": { ok: true, status: 250 },
+  "GET /api/notify/email/setup": mockEmailSetup,
+  "POST /api/notify/channels/:id/oauth": {
+    url: "https://accounts.google.com/o/oauth2/v2/auth?client_id=1234-abc.apps.googleusercontent.com&state=mock",
+  },
+  "GET /api/notify/oauth/callback": "",
 
   "GET /api/hosts": [mockHost],
   "POST /api/hosts": mockHost,
