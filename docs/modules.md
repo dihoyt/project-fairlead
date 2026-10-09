@@ -226,6 +226,24 @@ Backups (*Backup posture*).
   volume restored from backup) or from a manual mark on the row.
 - Target free space comes from a host whose backup folders match the target.
 - CSV export: `/api/backups/posture.csv`.
+- **Set-up** (admins, deploys on), so Longhorn is driven from here and its own
+  web UI is never published:
+  - *Backup target*: pick a storage-target connector (NFS export, S3/MinIO
+    bucket or SMB share); its credential Secret is written into
+    `longhorn-system` from the connector, and Longhorn's own reachability
+    verdict and message are shown. While Longhorn can't reach the target,
+    every volume it backs up is critical on the posture.
+  - *Schedules* per volume group, as Longhorn RecurringJobs: suggested
+    `default` (every volume in no other group, including ones created later)
+    snapshot hourly keep 24 and back up daily at 03:00 keep 14, and
+    `critical` back up every 6 hours keep 28. Each volume's groups can be
+    changed from its row.
+  - *Back up now* on a volume (a snapshot, then a backup of it).
+  - *Restore* from a volume's restore points: to a new claim beside the old
+    one (default; the app is untouched), or in place (the workloads that
+    mount it scale to zero, the claim is rebound under its own name to the
+    restored volume, they scale back up; the old volume is kept until they
+    are back and put back if anything fails). Both preview first.
 
 ## Fleet (`fleet`)
 
@@ -297,9 +315,12 @@ The apps the console knows how to install, and what is already in the
 cluster. **Page**: Apps → Deploy, Catalog tab.
 
 - Entries: cert-manager, Traefik, metrics-server, Local Path Provisioner,
-  Longhorn, Longhorn backups (the backup target), Rancher, Headlamp, Gitea,
-  Grafana, Authentik, Pocket ID, Velero, ntfy, Cloudflare Tunnel, Tailscale. Each pins a
-  chart version per Kubernetes version range and refuses one it doesn't fit.
+  Longhorn (headless: no Ingress for its UI; the `longhorn-frontend` Service
+  stays for `kubectl port-forward`), Longhorn backups (the backup target),
+  Rancher, Headlamp, Gitea, Grafana, Authentik, Pocket ID, Velero, ntfy,
+  Cloudflare Tunnel, Tailscale. Each pins a chart version per Kubernetes
+  version range and refuses one it doesn't fit. Velero is hidden from the
+  picker until it is installed; it can still be deployed over the API and MCP.
 - **Discovery** recognises installs by their labels, or by image when the
   labels are missing, whoever installed them, and checks the cluster basics
   (an ingress controller, cert-manager, a default storage class,
@@ -340,9 +361,11 @@ Installed and Apps → Deploy; the wizard's Access step.
   order with `helm upgrade --reset-then-reuse-values`, so its values are kept
   and new chart defaults arrive; one app at a time from its row.
 - **Actions** on installed apps: raise Longhorn's replica count (Backups
-  page), convert an app's local-path volumes to Longhorn under the same claim
-  names (the old volume is kept until the app answers on the copy, with an
-  optional download first), remove a template app, publish a host directly
+  page), move an app's volumes between local-path and Longhorn under the same
+  claim names, whichever way applies (the old volume is kept until the app
+  answers on the copy; to Longhorn with an optional download first; to
+  local-path with a warning that the data then lives on one node's disk and
+  leaves Longhorn's backups), the Backups page's Longhorn set-up, remove a template app, publish a host directly
   with its own certificate, and open forwarded ports on k3s's Traefik
   (`deploy.forwardedPorts`).
 - Defaults for new apps (`deploy.baseDomain`, `deploy.ingressClass`,

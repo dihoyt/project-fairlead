@@ -1,7 +1,9 @@
 import { STATUS_SEVERITY, type Status } from "../../contracts/health.js";
 import type {
   BackupPosture,
+  BackupSchedulesView,
   BackupTarget,
+  BackupTargetView,
   PostureRow,
   ProtectedVolume,
   RestoreTestMark,
@@ -214,4 +216,36 @@ export function targetsOf(sources: SourceOutcome[]): BackupTarget[] {
     for (const v of s.result.volumes) if (!seen.has(v.target.id)) seen.set(v.target.id, v.target);
   }
   return [...seen.values()];
+}
+
+export interface SetUp {
+  target?: BackupTargetView;
+  schedules?: BackupSchedulesView;
+  volumes?: { byClaim: Map<string, { groups: string[]; lastBackupAt?: string }> };
+}
+
+// What the console set up in Longhorn, on the posture: the target and
+// schedules, each Longhorn volume's groups and newest backup, and a volume
+// Longhorn backs up is critical while Longhorn can't reach the target,
+// however recent its last backup.
+export function setUpPosture(posture: BackupPosture, setUp: SetUp): BackupPosture {
+  const { target } = setUp;
+  const unreachable = target?.url && target.available === false;
+  const rows = posture.rows.map((row): PostureRow => {
+    const lh = setUp.volumes?.byClaim.get(`${row.pvc.namespace}/${row.pvc.name}`);
+    let next: PostureRow = lh
+      ? { ...row, groups: lh.groups, ...(lh.lastBackupAt ? { lastBackupAt: lh.lastBackupAt } : {}) }
+      : row;
+    if (unreachable && row.coverage.some((c) => c.sourceId === "longhorn")) {
+      const why = `Longhorn can't reach its backup target${target.message ? `: ${target.message}` : ""}`;
+      next = { ...next, ageStatus: "crit", ageDetail: `${why}; ${row.ageDetail}`, status: "crit" };
+    }
+    return next;
+  });
+  return {
+    ...posture,
+    rows: rows.toSorted(compareRows),
+    ...(target ? { target } : {}),
+    ...(setUp.schedules ? { schedules: setUp.schedules.schedules } : {}),
+  };
 }

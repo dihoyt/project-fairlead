@@ -954,7 +954,7 @@ describe("catalog routes", () => {
 
   test("slot filters, and an unknown slot is a 400", async () => {
     const links = await get<CatalogAppView[]>("/apps?slot=links");
-    assert.deepEqual(links.map((a) => a.id).toSorted(), ["gitea", "grafana", "headlamp", "longhorn", "rancher"]);
+    assert.deepEqual(links.map((a) => a.id).toSorted(), ["gitea", "grafana", "headlamp", "rancher"]);
     await get("/apps?slot=nope", 400);
   });
 

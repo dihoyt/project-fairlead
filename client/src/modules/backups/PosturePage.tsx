@@ -22,7 +22,9 @@ import { IconDownload, IconRefresh, IconSearch, IconShieldCheck } from "@tabler/
 import type { BackupPosture, PostureRow } from "@contracts/backups";
 import type { Status } from "@contracts/health";
 import { PageHeader } from "../../shell/PageHeader";
-import { LonghornBackupTarget } from "./BackupTarget";
+import { BackupTargetCard } from "./BackupTarget";
+import { SchedulesCard } from "./Schedules";
+import { VolumeActions } from "./VolumeActions";
 import {
   StatusBadge,
   absoluteTime,
@@ -292,7 +294,12 @@ export function PosturePage() {
         </Alert>
       ) : null}
       {loading && !data ? <Loader size="sm" /> : null}
-      <LonghornBackupTarget onSet={reload} />
+      {data?.target ? (
+        <SimpleGrid cols={{ base: 1, md: 2 }}>
+          <BackupTargetCard target={data.target} canEdit={me.admin} onChanged={reload} />
+          <SchedulesCard canEdit={me.admin} onChanged={reload} />
+        </SimpleGrid>
+      ) : null}
 
       {data ? (
         <>
@@ -419,6 +426,7 @@ export function PosturePage() {
                   <Table.Th>Last good backup</Table.Th>
                   <Table.Th>Target</Table.Th>
                   <Table.Th>Restore tested</Table.Th>
+                  {me.admin ? <Table.Th /> : null}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -434,6 +442,7 @@ export function PosturePage() {
                       <Text size="xs" c="dimmed">
                         {row.app ?? "Not mounted"}
                         {row.pvc.storageClass ? ` · ${row.pvc.storageClass}` : ""}
+                        {row.groups ? ` · ${row.groups.join(", ")}` : ""}
                       </Text>
                     </Table.Td>
                     <Table.Td style={{ whiteSpace: "nowrap" }}>
@@ -468,6 +477,11 @@ export function PosturePage() {
                         onMark={() => setMarking(row)}
                       />
                     </Table.Td>
+                    {me.admin ? (
+                      <Table.Td>
+                        <VolumeActions row={row} schedules={data.schedules ?? []} onChanged={reload} />
+                      </Table.Td>
+                    ) : null}
                   </Table.Tr>
                 ))}
               </Table.Tbody>

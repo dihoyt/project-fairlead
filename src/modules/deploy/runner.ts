@@ -508,6 +508,7 @@ export class Deployer {
       releases: this.store.releases(),
       versions: this.store.installedVersions(),
       gate: await this.gateActionContext(),
+      ...(this.ctx.services.has("storage-targets") ? { storageTargets: this.ctx.services.get("storage-targets") } : {}),
     });
     if (!rendered.plan.allowed) return rendered;
     const namespace = this.config.namespace();

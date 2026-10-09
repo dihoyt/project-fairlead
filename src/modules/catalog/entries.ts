@@ -98,9 +98,8 @@ const entries: CatalogEntry[] = [
   {
     id: "longhorn",
     name: "Longhorn",
-    summary: "Replicated storage across your nodes, with snapshots and backups and a web UI.",
-    slots: ["links", "cluster-basics"],
-    linkKey: "longhorn",
+    summary: "Replicated storage across your nodes, with snapshots and backups set up from the Backups page.",
+    slots: ["cluster-basics"],
     homepage: "https://longhorn.io",
     install: helm("https://charts.longhorn.io", "longhorn", "1.13.0", {
       kubeVersion: ">=1.34.0-0",
@@ -108,9 +107,8 @@ const entries: CatalogEntry[] = [
     }),
     namespace: "longhorn-system",
     requires: [],
-    inputs: [host()],
-    exposesUi: true,
-    noLogin: true,
+    inputs: [],
+    exposesUi: false,
     prerequisites: [
       "Every node needs open-iscsi installed and running.",
       "Every node needs an NFSv4 client for volumes shared between pods.",
@@ -258,6 +256,7 @@ const entries: CatalogEntry[] = [
     ],
     exposesUi: false,
     prerequisites: ["An S3-compatible bucket: AWS, Backblaze B2, MinIO or a NAS that speaks S3."],
+    hidden: true,
   },
   {
     id: "longhorn-backup-target",

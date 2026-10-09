@@ -20,7 +20,8 @@ The product's working name is Fairlead; the name the code uses lives only in `pr
 - **A catalog and Templates**: more apps (Headlamp, Grafana, ntfy, Rancher, Velero, ...), small app templates, your own container image as a custom app, and external services published through Traefik. A guardrail refuses host paths, privileged containers, host networking and RBAC in templates.
 - **Connectors** that manage other services for you: Cloudflare (tunnel, DNS records, optional Access apps, direct records with your public IP) and Microsoft Entra ID (the sign-in app registration and its secret).
 - **The console's sign-in in front of every app** it publishes, through a Traefik forward-auth gate, with a per-app Public switch.
-- **Storage actions**: raise Longhorn's replica count, and move an app's volumes from local-path to Longhorn under the same claim names, with a download of the data first.
+- **Backups set up from the console**: point Longhorn at an NFS, S3/MinIO or SMB storage target, schedule snapshots and backups per volume group, back up now, and restore to a new claim or in place. Longhorn's own web UI is never published.
+- **Storage actions**: raise Longhorn's replica count, and move an app's volumes between local-path and Longhorn under the same claim names.
 - **Nodes**: a one-time join link (or `add-node.sh` over SSH) adds a machine to a k3s cluster.
 - **Upgrade all**: every app the console installed, upgraded in dependency order, keeping its values.
 - **An MCP server and API tokens**, so an assistant such as Claude can read the board and make the same changes you can, through the same permissions and audit log.

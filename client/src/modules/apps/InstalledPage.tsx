@@ -68,6 +68,21 @@ export function hasNonLonghornClaims(
   );
 }
 
+// Whether any claim in the namespace is on a Longhorn class, so moving it to
+// local-path has something to move. Undefined while either answer is missing.
+export function hasLonghornClaims(
+  namespace: string | undefined,
+  posture: BackupPosture | undefined,
+  longhorn: LonghornReplicaAdvice | undefined
+): boolean | undefined {
+  if (!namespace || !posture || !longhorn) return undefined;
+  if (longhorn.state === "absent") return false;
+  const longhornClasses = new Set(["longhorn", ...longhorn.storageClasses.map((c) => c.name)]);
+  return posture.rows.some(
+    (r) => r.pvc.namespace === namespace && !!r.pvc.storageClass && longhornClasses.has(r.pvc.storageClass)
+  );
+}
+
 const MANAGED_BY: Record<ManagedBy, string> = { fleet: "Fleet", helm: "Helm", argo: "Argo CD" };
 
 function managedBy(app: CatalogAppView): string | undefined {
@@ -219,6 +234,7 @@ function Row({
   enabled,
   template,
   convertible,
+  onLonghorn,
   onUpgrade,
   onRedeploy,
   onChanged,
@@ -227,6 +243,7 @@ function Row({
   admin: boolean;
   enabled: boolean;
   convertible?: boolean;
+  onLonghorn?: boolean;
   template?: AppTemplate;
   onUpgrade: (app: UpgradeCandidate) => void;
   onRedeploy: () => void;
@@ -295,6 +312,9 @@ function Row({
           ) : null}
           {row.ownedByUs && row.keepsData && admin && !row.instance?.external && convertible !== false ? (
             <ConvertToLonghornButton appId={row.id} name={row.name} onFinished={onChanged} />
+          ) : null}
+          {row.ownedByUs && row.keepsData && admin && !row.instance?.external && onLonghorn === true ? (
+            <ConvertToLonghornButton appId={row.id} name={row.name} to="local-path" onFinished={onChanged} />
           ) : null}
           {row.instance && template ? (
             <Button size="xs" variant="subtle" disabled={!allowed} onClick={onRedeploy}>
@@ -408,6 +428,11 @@ export function InstalledPage() {
                       enabled={enabled}
                       template={template}
                       convertible={hasNonLonghornClaims(
+                        row.namespace,
+                        posture.data ?? undefined,
+                        longhorn.data ?? undefined
+                      )}
+                      onLonghorn={hasLonghornClaims(
                         row.namespace,
                         posture.data ?? undefined,
                         longhorn.data ?? undefined

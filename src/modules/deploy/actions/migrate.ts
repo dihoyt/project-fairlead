@@ -4,6 +4,7 @@ import type {
   ActionVolume,
   DeployActionKind,
   DeployActionStep,
+  MigrateStorageAction,
   MigrateToLonghornAction,
   PlannedObject,
 } from "../../../contracts/deploy.js";
@@ -13,13 +14,24 @@ import { product } from "../../../product.js";
 import { display, HELM_TIMEOUT } from "../plan.js";
 import type { ActionContext, ActionRecipe, ActionRendered } from "./index.js";
 
-// Moving an app's local-path volumes to Longhorn under the same claim names,
-// so Helm releases and StatefulSets keep pointing at them with no values
-// change. The old PersistentVolume is set to Retain before its claim goes and
-// is deleted only after the app is back up on the copy and answers.
+// Moving an app's volumes between local-path and Longhorn, either way, under
+// the same claim names, so Helm releases and StatefulSets keep pointing at
+// them with no values change. The old PersistentVolume is set to Retain
+// before its claim goes and is deleted only after the app is back up on the
+// copy and answers.
 
 export const LOCAL_PATH_PROVISIONER = "rancher.io/local-path";
 export const LONGHORN_PROVISIONER = "driver.longhorn.io";
+
+// Where the volumes go; they come from the other one.
+export type StorageDirection = "longhorn" | "local-path";
+
+const PROVISIONER: Record<StorageDirection, string> = {
+  longhorn: LONGHORN_PROVISIONER,
+  "local-path": LOCAL_PATH_PROVISIONER,
+};
+const otherSide = (to: StorageDirection): StorageDirection => (to === "longhorn" ? "local-path" : "longhorn");
+export const storageLabel = (side: StorageDirection) => (side === "longhorn" ? "Longhorn" : "local-path");
 // Labels the copy and backup Jobs in the app's namespace carry, by job id.
 export const MIGRATE_LABEL = `${product.ownerMarker.labelDomain}/volume-migrate`;
 export const BACKUP_LABEL = `${product.ownerMarker.labelDomain}/volume-backup`;
@@ -81,15 +93,17 @@ export interface MigrateVolume {
   sizeBytes: number;
   // What the kubelet reports in use, when a running pod mounts it.
   usedBytes?: number;
-  // The node the local-path data lives on.
+  // The node the data lives on: a local-path volume's, or where a pod
+  // mounting a Longhorn volume runs.
   node?: string;
   reclaimPolicy: string;
-  // The temporary Longhorn claim the data is copied into first.
+  // The temporary claim on the target class the data is copied into first.
   tmpClaim: string;
   copyJob: string;
 }
 
 export interface MigrateInspection {
+  to: StorageDirection;
   appId: string;
   release: string;
   namespace: string;
@@ -235,13 +249,18 @@ export interface InspectInput {
   chartVersion?: string;
   // Unique per run, for the copy Jobs' names.
   runId: string;
+  // Default "longhorn".
+  to?: StorageDirection;
 }
 
 // Reads only. Everything the Job needs is captured here and handed to it as
 // files, so the plan the user saw is what runs.
 export async function inspectMigration(input: InspectInput): Promise<MigrateInspection> {
   const { k8s, appId, release, namespace } = input;
+  const to = input.to ?? "longhorn";
+  const from = otherSide(to);
   const result: MigrateInspection = {
+    to,
     appId,
     release,
     namespace,
@@ -267,8 +286,14 @@ export async function inspectMigration(input: InspectInput): Promise<MigrateInsp
     list(k8s, RESOURCES.longhornNodes),
   ]);
 
-  const target = pickLonghornClass(classes);
-  if (!target) return block("Longhorn is not installed: no storage class uses its provisioner.");
+  const target = to === "longhorn" ? pickLonghornClass(classes) : pickLocalPathClass(classes);
+  if (!target) {
+    return block(
+      to === "longhorn"
+        ? "Longhorn is not installed: no storage class uses its provisioner."
+        : "There is no local-path storage class to move to."
+    );
+  }
   result.targetStorageClass = target.metadata.name;
   const capacity = longhornCapacity(longhornNodes);
   result.longhornNodes = capacity.schedulable;
@@ -312,7 +337,7 @@ export async function inspectMigration(input: InspectInput): Promise<MigrateInsp
     if (!pvc) continue;
     const spec = (pvc.spec ?? {}) as PvcSpec;
     const className = spec.storageClassName ?? "";
-    if (provisioner.get(className) !== LOCAL_PATH_PROVISIONER) {
+    if (provisioner.get(className) !== PROVISIONER[from]) {
       if (className !== result.targetStorageClass) kept.push(`${claim} (${className || "no class"})`);
       continue;
     }
@@ -336,18 +361,18 @@ export async function inspectMigration(input: InspectInput): Promise<MigrateInsp
       sizeBytes,
       node: pvNode(pvSpec),
       reclaimPolicy: pvSpec.persistentVolumeReclaimPolicy ?? "Delete",
-      tmpClaim: dnsName(`${claim}-longhorn`, 253),
+      tmpClaim: dnsName(`${claim}-${to}`, 253),
       copyJob: dnsName(`${release}-copy-${input.runId}-${n}`),
     });
   }
   if (result.volumes.length === 0) {
     return block(
       kept.length > 0
-        ? `None of its volumes are on local-path (${kept.join(", ")}).`
-        : `${appId} has no local-path volumes to convert.`
+        ? `None of its volumes are on ${storageLabel(from)} (${kept.join(", ")}).`
+        : `${appId} has no ${storageLabel(from)} volumes to move.`
     );
   }
-  if (kept.length > 0) result.warnings.push(`Left as they are, not on local-path: ${kept.join(", ")}.`);
+  if (kept.length > 0) result.warnings.push(`Left as they are, not on ${storageLabel(from)}: ${kept.join(", ")}.`);
 
   for (const v of result.volumes) {
     if (pvcByName.has(v.tmpClaim)) return block(`A claim named ${v.tmpClaim} already exists in ${namespace}.`);
@@ -368,6 +393,14 @@ export async function inspectMigration(input: InspectInput): Promise<MigrateInsp
     }
   }
 
+  // A Longhorn volume has no node of its own; the kubelet of the node its pod
+  // runs on reports its usage.
+  for (const pod of pods) {
+    const nodeName = (pod.spec as { nodeName?: string } | undefined)?.nodeName;
+    if (!nodeName) continue;
+    const claims = new Set(claimNames(pod.spec as PodSpecLike));
+    for (const v of result.volumes) if (!v.node && claims.has(v.claim)) v.node = nodeName;
+  }
   const used = await usage(k8s, new Set(result.volumes.flatMap((v) => (v.node ? [v.node] : []))));
   let copyBytes = 0;
   for (const v of result.volumes) {
@@ -375,7 +408,7 @@ export async function inspectMigration(input: InspectInput): Promise<MigrateInsp
     if (u !== undefined) v.usedBytes = u;
     // local-path doesn't enforce a claim's size, so the data can outgrow it;
     // the Longhorn copy can't.
-    if (u !== undefined && u > v.sizeBytes) {
+    if (to === "longhorn" && u !== undefined && u > v.sizeBytes) {
       return block(`Claim ${v.claim} holds more data than its size (${v.size}), so it would not fit on Longhorn.`);
     }
     copyBytes += u ?? v.sizeBytes;
@@ -384,7 +417,7 @@ export async function inspectMigration(input: InspectInput): Promise<MigrateInsp
   result.downtimeSeconds = Math.round(FIXED_DOWNTIME_SECONDS * result.volumes.length + copySeconds);
   result.copyTimeoutSeconds = Math.max(MIN_COPY_TIMEOUT_SECONDS, Math.round(copySeconds * 5));
 
-  if (capacity.available !== undefined) {
+  if (to === "longhorn" && capacity.available !== undefined) {
     const replicas = Math.max(1, Math.min(capacity.schedulable, longhornReplicaCount(target)));
     const need = result.volumes.reduce((sum, v) => sum + v.sizeBytes, 0) * replicas;
     if (need > capacity.available) {
@@ -392,6 +425,11 @@ export async function inspectMigration(input: InspectInput): Promise<MigrateInsp
         `Longhorn reports less free space than these volumes reserve (${replicas} replica${replicas === 1 ? "" : "s"} each); the copy may not fit.`
       );
     }
+  }
+  if (to === "local-path") {
+    result.warnings.push(
+      "On local-path the data lives on one node's disk: if that node fails, the data is gone, and Longhorn's snapshots and backups no longer cover it."
+    );
   }
   if (result.volumes.some((v) => v.usedBytes === undefined)) {
     result.warnings.push("Some volumes' usage could not be read, so the downtime estimate assumes they are full.");
@@ -433,6 +471,11 @@ export async function inspectMigration(input: InspectInput): Promise<MigrateInsp
   }
   result.allowed = true;
   return result;
+}
+
+function pickLocalPathClass(classes: KubeObject[]): KubeObject | undefined {
+  const local = classes.filter((sc) => (sc as { provisioner?: string }).provisioner === LOCAL_PATH_PROVISIONER);
+  return local.find((sc) => sc.metadata.name === "local-path") ?? local[0];
 }
 
 function longhornReplicaCount(sc: KubeObject): number {
@@ -502,6 +545,8 @@ export function migrationFiles(i: MigrateInspection, options: MigrateRenderOptio
   });
   files["plan.json"] = JSON.stringify({
     app: i.appId,
+    from: storageLabel(otherSide(i.to)),
+    to: storageLabel(i.to),
     namespace: i.namespace,
     backupLabel: BACKUP_LABEL,
     copyTimeoutSeconds: i.copyTimeoutSeconds,
@@ -578,6 +623,8 @@ export const MIGRATE_SCRIPT = `set -eu
 P=/values/plan.json
 NS=$(jq -r .namespace "$P")
 APP=$(jq -r .app "$P")
+FROM=$(jq -r '.from // "local-path"' "$P")
+TO=$(jq -r '.to // "Longhorn"' "$P")
 COUNT=$(jq '.volumes | length' "$P")
 CLAIMS=$(jq -c '[.volumes[].claim]' "$P")
 STEP="starting"
@@ -676,7 +723,7 @@ i=0
 while [ "$i" -lt "$COUNT" ]; do
   claim=$(vol "$i" claim); old=$(vol "$i" pv); tmp=$(vol "$i" tmp); job=$(vol "$i" copyJob)
   STEP="copying $claim"
-  echo "+ Copying $claim to Longhorn"
+  echo "+ Copying $claim to $TO"
   k create -f "/values/tmp-$i.json"
   k create -f "/values/copy-$i.json"
   wait_job "$job" "$(jq -r .copyTimeoutSeconds "$P")"
@@ -684,7 +731,7 @@ while [ "$i" -lt "$COUNT" ]; do
   tmppv=$(k get pvc "$tmp" -o jsonpath='{.spec.volumeName}')
   echo "$tmppv" > "/tmp/tmppv-$i"
 
-  STEP="switching $claim to Longhorn"
+  STEP="switching $claim to $TO"
   echo "+ Switching $claim to the copy"
   pv_policy "$tmppv" Retain
   pv_policy "$old" Retain
@@ -721,7 +768,7 @@ if [ -n "$URL" ]; then
 fi
 COMMITTED=1
 
-echo "+ Deleting the old local-path volumes"
+echo "+ Deleting the old $FROM volumes"
 i=0
 while [ "$i" -lt "$COUNT" ]; do pv_policy "$(vol "$i" pv)" Delete; i=$((i + 1)); done
 i=0
@@ -744,7 +791,7 @@ if [ "$(jq 'has("helm")' "$P")" = true ]; then
   fi
 fi
 
-echo "Converted $COUNT volume(s) of $APP to Longhorn; the old local-path volumes were deleted."
+echo "Converted $COUNT volume(s) of $APP to $TO; the old $FROM volumes were deleted."
 `;
 
 // --- the action ----------------------------------------------------------------
@@ -826,7 +873,7 @@ function migrateSteps(t: AppTarget, i: MigrateInspection): DeployActionStep[] {
   ];
   for (const v of i.volumes) {
     steps.push({
-      label: `Copy ${v.claim} (${used(v)}) to Longhorn and switch the claim to the copy`,
+      label: `Copy ${v.claim} (${used(v)}) to ${storageLabel(i.to)} and switch the claim to the copy`,
       commands: [
         k("create", "-f", `${v.tmpClaim}.json`),
         k("create", "-f", `${v.copyJob}.json`),
@@ -847,7 +894,7 @@ function migrateSteps(t: AppTarget, i: MigrateInspection): DeployActionStep[] {
     ],
   });
   steps.push({
-    label: "Delete the old local-path volumes",
+    label: `Delete the old ${storageLabel(otherSide(i.to))} volumes`,
     commands: i.volumes.map((v) =>
       display(["kubectl", "patch", "pv", v.pv, "-p", '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'])
     ),
@@ -861,79 +908,88 @@ function migrateSteps(t: AppTarget, i: MigrateInspection): DeployActionStep[] {
   return steps;
 }
 
+// Both action kinds render here; migrate-to-longhorn is migrate-storage with
+// to: "longhorn" under its older name.
+export async function renderMigration(
+  kind: DeployActionKind,
+  appId: string,
+  to: StorageDirection,
+  ctx: ActionContext
+): Promise<ActionRendered> {
+  const target = appTarget(appId, ctx);
+  const title = `Move ${ctx.catalog?.get(appId)?.name ?? appId} to ${storageLabel(to)}`;
+  if (typeof target === "string") {
+    return blockedAction(kind, title, { appId, release: appId, namespace: "", version: "" }, target);
+  }
+  const base = { appId: target.appId, release: target.release, namespace: target.namespace, version: target.version };
+  if (!ctx.k8s) return blockedAction(kind, title, base, "The Kubernetes API is not available.");
+  const runId = newRunId();
+  const i = await inspectMigration({
+    k8s: ctx.k8s,
+    appId: target.appId,
+    release: target.release,
+    namespace: target.namespace,
+    entry: target.entry,
+    discovery: await ctx.discover(),
+    chartVersion: target.version || undefined,
+    runId,
+    to,
+  });
+  const volumes = actionVolumes(i);
+  if (!i.allowed) return blockedAction(kind, title, base, i.blockedBy!, volumes);
+  if (!ctx.enabled) {
+    return blockedAction(
+      kind,
+      title,
+      base,
+      `Deploys are off.${ctx.enableHint ? ` Turn them on with: ${ctx.enableHint}` : ""}`,
+      volumes
+    );
+  }
+
+  const changes: PlannedObject[] = [
+    ...i.workloads.map((w) => ({
+      kind: w.kind === "deployment" ? "Deployment" : "StatefulSet",
+      name: w.name,
+      namespace: i.namespace,
+    })),
+    ...i.volumes.map((v) => ({ kind: "PersistentVolumeClaim", name: v.claim, namespace: i.namespace })),
+    ...i.volumes.map((v) => ({ kind: "PersistentVolume", name: v.pv })),
+  ];
+  const creates: PlannedObject[] = i.volumes.flatMap((v) => [
+    { kind: "PersistentVolumeClaim", name: v.tmpClaim, namespace: i.namespace },
+    { kind: "Job", name: v.copyJob, namespace: i.namespace },
+  ]);
+  return {
+    ...base,
+    plan: {
+      kind,
+      title,
+      allowed: true,
+      steps: migrateSteps(target, i),
+      downtime: `${target.name} is stopped for ${describeDowntime(i.downtimeSeconds)} while its data is copied.`,
+      rollback:
+        `Until the old volumes are deleted, a failed step puts every claim back on its old volume and starts ` +
+        `${target.name} again; nothing is deleted.`,
+      changes,
+      creates,
+      warnings: i.warnings,
+      volumes,
+      offerReplicas: to === "longhorn" && i.longhornNodes > 1,
+    },
+    steps: [],
+    script: MIGRATE_SCRIPT,
+    deadlineSeconds: deadlineSeconds(i),
+    files: ctx.run ? migrationFiles(i, { image: ctx.image, runId, ownedLabels: ctx.k8s.ownedLabels() }) : {},
+  };
+}
+
 export const migrateAction: ActionRecipe<MigrateToLonghornAction> = {
   kind: "migrate-to-longhorn",
+  render: (request, ctx) => renderMigration("migrate-to-longhorn", request.appId, "longhorn", ctx),
+};
 
-  async render(request: MigrateToLonghornAction, ctx: ActionContext): Promise<ActionRendered> {
-    const target = appTarget(request.appId, ctx);
-    const title = `Convert ${ctx.catalog?.get(request.appId)?.name ?? request.appId} to Longhorn`;
-    if (typeof target === "string") {
-      return blockedAction(
-        "migrate-to-longhorn",
-        title,
-        { appId: request.appId, release: request.appId, namespace: "", version: "" },
-        target
-      );
-    }
-    const base = { appId: target.appId, release: target.release, namespace: target.namespace, version: target.version };
-    if (!ctx.k8s) return blockedAction("migrate-to-longhorn", title, base, "The Kubernetes API is not available.");
-    const runId = newRunId();
-    const i = await inspectMigration({
-      k8s: ctx.k8s,
-      appId: target.appId,
-      release: target.release,
-      namespace: target.namespace,
-      entry: target.entry,
-      discovery: await ctx.discover(),
-      chartVersion: target.version || undefined,
-      runId,
-    });
-    const volumes = actionVolumes(i);
-    if (!i.allowed) return blockedAction("migrate-to-longhorn", title, base, i.blockedBy!, volumes);
-    if (!ctx.enabled) {
-      return blockedAction(
-        "migrate-to-longhorn",
-        title,
-        base,
-        `Deploys are off.${ctx.enableHint ? ` Turn them on with: ${ctx.enableHint}` : ""}`,
-        volumes
-      );
-    }
-
-    const changes: PlannedObject[] = [
-      ...i.workloads.map((w) => ({
-        kind: w.kind === "deployment" ? "Deployment" : "StatefulSet",
-        name: w.name,
-        namespace: i.namespace,
-      })),
-      ...i.volumes.map((v) => ({ kind: "PersistentVolumeClaim", name: v.claim, namespace: i.namespace })),
-      ...i.volumes.map((v) => ({ kind: "PersistentVolume", name: v.pv })),
-    ];
-    const creates: PlannedObject[] = i.volumes.flatMap((v) => [
-      { kind: "PersistentVolumeClaim", name: v.tmpClaim, namespace: i.namespace },
-      { kind: "Job", name: v.copyJob, namespace: i.namespace },
-    ]);
-    return {
-      ...base,
-      plan: {
-        kind: "migrate-to-longhorn",
-        title,
-        allowed: true,
-        steps: migrateSteps(target, i),
-        downtime: `${target.name} is stopped for ${describeDowntime(i.downtimeSeconds)} while its data is copied.`,
-        rollback:
-          `Until the old volumes are deleted, a failed step puts every claim back on its old volume and starts ` +
-          `${target.name} again; nothing is deleted.`,
-        changes,
-        creates,
-        warnings: i.warnings,
-        volumes,
-        offerReplicas: i.longhornNodes > 1,
-      },
-      steps: [],
-      script: MIGRATE_SCRIPT,
-      deadlineSeconds: deadlineSeconds(i),
-      files: ctx.run ? migrationFiles(i, { image: ctx.image, runId, ownedLabels: ctx.k8s.ownedLabels() }) : {},
-    };
-  },
+export const migrateStorageAction: ActionRecipe<MigrateStorageAction> = {
+  kind: "migrate-storage",
+  render: (request, ctx) => renderMigration("migrate-storage", request.appId, request.to, ctx),
 };
