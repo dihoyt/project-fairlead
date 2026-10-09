@@ -1031,7 +1031,7 @@ export const mockConsoleBackupLonghorn: ConsoleBackupView = {
 };
 
 export const mockRecoveryKit = `# console recovery kit
-# release: console  namespace: console  chart: 0.2.0  created: 2026-10-09T00:00:00Z
+# release: console  namespace: console  build: 3f9c2e1  created: 2026-10-09T00:00:00Z
 # Open with: openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -a -A
 U2FsdGVkX19tb2NrbW9ja01PQ0tfTk9UX0FfUkVBTF9LSVQ=
 `;

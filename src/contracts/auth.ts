@@ -432,10 +432,11 @@ export interface PublicSignInResult {
 // "Sign in again to download the recovery kit". 409 without SECRETS_KEY.
 //
 // The response is a text file: "#" comment lines naming the product,
-// release, namespace, chart version and creation time, then one base64 line
+// release, namespace, build and creation time, then one base64 line
 // that `openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -a -A`
 // opens with the passphrase. Inside are KEY=value lines: SECRETS_KEY,
-// RELEASE, NAMESPACE, CHART_VERSION, CREATED_AT and KIT_VERSION=1.
+// RELEASE, NAMESPACE, VERSION (the build, as /healthz reports it),
+// CREATED_AT and KIT_VERSION=1.
 export interface RecoveryKitRequest {
   // At least 12 characters; never stored or logged.
   passphrase: string;
