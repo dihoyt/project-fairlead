@@ -127,6 +127,17 @@ async function finishJob(e: Env, jobId: string, ok: boolean) {
   await settle();
 }
 
+// A step shows "running" from the moment it is claimed, before its job
+// (and URL) exists, so a busy test run can read it in between.
+async function runOnceStarted(e: Env, runId: string, appId: string): Promise<BundleRunView> {
+  let run = await call<BundleRunView>(e, "GET", `/bundles/${runId}`);
+  for (let i = 0; i < 100 && !run.steps.find((s) => s.appId === appId)?.jobId; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    run = await call<BundleRunView>(e, "GET", `/bundles/${runId}`);
+  }
+  return run;
+}
+
 const states = (run: BundleRunView) => Object.fromEntries(run.steps.map((s) => [s.appId, s.state]));
 
 test("bundle plan: order, skips with reasons, shared answers fill each app", async () => {
@@ -199,7 +210,7 @@ test("bundle run: one step at a time, stops at the first failure", async () => {
   await call(e, "POST", "/bundles", { bundleId: "self-hosted", inputs: answers }, 409);
 
   await finishJob(e, "dj_1", true);
-  let run = await call<BundleRunView>(e, "GET", "/bundles/br_1");
+  let run = await runOnceStarted(e, "br_1", "authentik");
   assert.equal(states(run)["metrics-server"], "succeeded");
   assert.equal(states(run).authentik, "running");
   assert.equal(run.steps.find((s) => s.appId === "authentik")!.url, "https://auth.example.test");
