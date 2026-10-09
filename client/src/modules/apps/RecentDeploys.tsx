@@ -17,6 +17,10 @@ const MODE_LABEL: Record<DeployJobView["mode"] | DeployActionKind, string> = {
   "remove-app": "remove",
   "app-gate": "sign-in gate",
   "traefik-ports": "ports",
+  "node-cordon": "cordon",
+  "node-uncordon": "uncordon",
+  "node-drain": "drain",
+  "node-reboot": "reboot",
 };
 
 function JobsTable({
