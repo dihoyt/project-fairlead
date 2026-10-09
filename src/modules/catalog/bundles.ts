@@ -73,6 +73,18 @@ export const bundles: readonly CatalogBundle[] = [
         when: { input: "access", in: ["tailscale"] },
       },
       {
+        key: "signIn",
+        label: "Sign-in service",
+        help: "One login for the console and your apps. Pocket ID is lighter but passkey-only, so it needs https: Cloudflare Tunnel, Tailscale, or Direct with a certificate.",
+        kind: "select",
+        required: true,
+        default: "authentik",
+        options: [
+          { value: "authentik", label: "Authentik: passwords, two-factor and passkeys" },
+          { value: "pocket-id", label: "Pocket ID: passkeys only, a fraction of the memory" },
+        ],
+      },
+      {
         key: "adminEmail",
         label: "Admin email",
         help: "Used for the first admin accounts and for Let's Encrypt.",
@@ -112,7 +124,8 @@ export const bundles: readonly CatalogBundle[] = [
         required: false,
         note: "Every node needs open-iscsi installed; untick it if yours don't have it.",
       },
-      { appId: "authentik", required: true, hostPrefix: "auth" },
+      { appId: "authentik", required: true, hostPrefix: "auth", when: { input: "signIn", in: ["authentik"] } },
+      { appId: "pocket-id", required: true, hostPrefix: "auth", when: { input: "signIn", in: ["pocket-id"] } },
       { appId: "gitea", required: true, hostPrefix: "git", values: { adminUser: "gitea-admin" } },
     ],
   },

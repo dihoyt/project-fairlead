@@ -932,6 +932,32 @@ test("authentik: bootstrap credentials in its values, https restored behind a tu
   assert.match(secret.stringData["values.yaml"]!, /bootstrap_password: s3cret-Authentik/);
 });
 
+test("pocket-id: its host and a generated encryption key in its values, never gated, setup named", async () => {
+  const e = await setup({ catalog: createMockCatalogService({ entries: mockCatalog }) });
+  const inputs = { host: "auth.example.test" };
+
+  await call(e, "PUT", "/access", { mode: "cloudflare-tunnel", baseDomain: "example.test" });
+  let p = await call<DeployPlan>(e, "POST", "/plan", { appId: "pocket-id", inputs });
+  assert.equal(p.allowed, true, p.blockedBy);
+  assert.match(p.values, /^host: "?auth\.example\.test"?$/m);
+  assert.match(p.values, /fullnameOverride: "?pocket-id"?/);
+  assert.match(p.values, /encryptionKey: /);
+  assert.match(p.values, /persistence:\n\s+data:\n\s+enabled: true\n\s+size: "?1Gi"?/);
+  assert.doesNotMatch(p.values, /router.middlewares/, "people sign in through it, so the gate never covers it");
+  assert.ok(p.warnings.some((w) => w.includes("https://auth.example.test/setup")));
+  assert.ok(!p.warnings.some((w) => w.includes("passkeys fail")), "a tunnel serves https");
+
+  await call(e, "PUT", "/access", { mode: "local", baseDomain: "example.test" });
+  p = await call<DeployPlan>(e, "POST", "/plan", { appId: "pocket-id", inputs });
+  assert.ok(p.warnings.some((w) => w.includes("passkeys fail")));
+
+  await call(e, "POST", "/jobs", { appId: "pocket-id", mode: "dry-run", inputs });
+  const secret = (await e.k8s.get(RESOURCES.secrets, "deploy-pocket-id-values", NS)) as KubeObject & {
+    stringData: Record<string, string>;
+  };
+  assert.match(secret.stringData["values.yaml"]!, /encryptionKey: "?[A-Za-z0-9_+/=-]{16,}"?/);
+});
+
 test("the bundle's apps ask for what they use idle and are capped in memory", async () => {
   const e = await setup({ catalog: createMockCatalogService({ entries: withAuthentikPassword() }) });
   const plans: Array<[string, Record<string, unknown>, RegExp[]]> = [

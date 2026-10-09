@@ -65,6 +65,66 @@ Every flag is in [scripts/install/README.md](../scripts/install/README.md).
 Installing from a private fork or mirror takes `REGISTRY_USER` /
 `REGISTRY_TOKEN`, described there too.
 
+## Unattended setup from an env file
+
+`install.sh --env <file>` sets the console up on its first boot from a file of
+`KEY=value` lines, so a fresh install comes up with its admin password, public
+URL, connectors, email channel and app bundle already in place. Without
+`--env`, the installer uses `/etc/<slug>/install.env` (the product's slug, as in
+the namespace) when that file exists.
+
+```
+sudo install -m 600 /dev/stdin /root/install.env <<'ENV'
+ADMIN_PASSWORD=a-long-password-you-chose
+PUBLIC_URL=https://console.example.com
+CLOUDFLARE_API_TOKEN=...
+CLOUDFLARE_ZONE=example.com
+STORAGE_URL=cifs://nas.example.com/backups
+STORAGE_USER=backup
+STORAGE_SECRET=...
+SMTP_PRESET=gmail
+SMTP_USER=alerts@example.com
+SMTP_PASSWORD=...
+SMTP_FROM=alerts@example.com
+SMTP_TO=you@example.com
+BUNDLE=default
+ADMIN_EMAIL=you@example.com
+ENV
+curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install.sh | sudo sh -s -- --env /root/install.env --enable-deploy
+```
+
+Before changing anything, the installer checks every line: blank lines,
+`# comments`, `export KEY=value` and quoted values are fine; an unknown key, a
+key set twice or a line that isn't `KEY=value` stops it with the line number
+and the key, never the value. It stores the values in the Secret
+`install-seed` in the console's namespace, which the console can read and
+delete and nothing else, and once the install has succeeded it overwrites and
+deletes the file (`shred -u`, or zeros then `rm` where `shred` is missing).
+`--keep-env` keeps it. Empty values are left out. `--env` is for a first
+install: on a cluster where the console is already installed, it stops
+(unless the earlier `--env` install never finished, in which case it tries
+again). `update.sh` doesn't take it.
+
+On its first boot the console reads the Secret, keeps the values sealed with
+`SECRETS_KEY`, sets the admin password, the public URL and OIDC sign-in, and
+deletes the Secret. The rest is applied as the first admin who signs in, through
+the same checks and audit log as the forms; the welcome page does it on its
+own and shows a "Set up from your file" summary with each item's result and,
+for a failure, the reason. With `ADMIN_PASSWORD` set, that password signs in
+and is not asked to be changed (an authenticator, if required, still is); the
+installer prints no generated password.
+
+| Keys | Sets up |
+|---|---|
+| `ADMIN_PASSWORD` | The `admin` account's password, at least 10 characters. |
+| `PUBLIC_URL` | The public URL (Admin > Settings), e.g. `https://console.example.com`. |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCESS_APPS` | The Cloudflare connector, its tunnel and cloudflared. The account ID can be left out when the token sees one account. `CLOUDFLARE_ACCESS_APPS`: `never` (default), `always` or `per-app`. |
+| `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_ADMIN_GROUPS` | The Entra ID connector (the management app), then sign-in through the app registration it creates. Admin groups are object ids, comma separated. Needs an `https` public URL. |
+| `STORAGE_URL`, `STORAGE_PATH`, `STORAGE_ENDPOINT`, `STORAGE_USER`, `STORAGE_SECRET` | A backup storage target. The scheme picks the protocol: `nfs://server:/export`, `s3://bucket@region/` (with `STORAGE_ENDPOINT` for MinIO) or `cifs://server/share`. User and secret are the S3 access key pair or the SMB username and password. |
+| `SMTP_PRESET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TO` | An email notification channel. Presets: `gmail`, `yahoo`, `icloud`, `fastmail`, `sendgrid`, `mailgun`, `ses`, `smtp` (any server: give host and port), or `entra` (Microsoft 365 through the Entra connector, no password). The sign-in-to-send presets need a person at a browser, so they aren't offered here. `SMTP_TO`: comma separated. |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_LABEL`, `OIDC_ADMIN_GROUPS` | Sign-in through any OIDC provider, as in Admin > Sign-in. |
+| `BUNDLE`, `BUNDLE_ACCESS`, `BASE_DOMAIN`, `ADMIN_EMAIL`, `STORAGE_CLASS`, `AUTHENTIK_BOOTSTRAP_PASSWORD` | The Deploy bundle (needs `--enable-deploy`). `BUNDLE=default` takes the bundle's own ticks; a comma-separated list of optional apps (`longhorn`) ticks those instead. `BUNDLE_ACCESS`: `cloudflare-tunnel` (through the connector above; the default when a Cloudflare token is given), `local` (otherwise the default) or `direct`. `BASE_DOMAIN` defaults to `CLOUDFLARE_ZONE`. `ADMIN_EMAIL` is required. `AUTHENTIK_BOOTSTRAP_PASSWORD` is the apps' first admin password, `ADMIN_PASSWORD` when left out. |
+
 ## Updating
 
 `update.sh` upgrades an existing install in place to the newest published
@@ -205,7 +265,7 @@ Two grants need a decision:
 ## Deploying apps from the console
 
 The Apps page and the setup wizard can install tools from a fixed catalog
-(Headlamp, Longhorn, cert-manager, Authentik and others). This is off by
+(Headlamp, Longhorn, cert-manager, Authentik, Pocket ID and others). This is off by
 default (`deploy.enabled: false`): the console detects what is installed and
 shows the one command that turns deploys on, but changes nothing. Turn it on
 with `install.sh --enable-deploy`, or:

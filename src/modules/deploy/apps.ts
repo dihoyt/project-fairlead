@@ -408,6 +408,37 @@ export const recipes: Record<string, Recipe> = {
         : [`Finish setup at ${r.scheme}://${r.host ?? "<host>"}/if/flow/initial-setup/ to set the admin password.`],
   },
 
+  "pocket-id": {
+    values: (r) => ({
+      // APP_URL is https://<host>: the chart assumes https, which passkeys need anyway.
+      host: r.host,
+      encryptionKey: r.generated("encryptionKey"),
+      analyticsDisabled: true,
+      // The Service and StatefulSet named after the release, whatever it is.
+      fullnameOverride: r.release,
+      pocketID: { resources: resources("10m", "32Mi", "256Mi") },
+      persistence: { data: { enabled: true, size: r.app.storage, storageClass: storageClass(r) ?? "" } },
+      ingress: {
+        enabled: r.chartIngress,
+        className: r.defaults.ingressClass ?? "",
+        annotations: ingressAnnotations(r),
+        host: r.host,
+        paths: [{ path: "/", pathType: "Prefix" }],
+        tls: r.tls ? [{ hosts: [r.host], secretName: tlsSecret(r) }] : [],
+      },
+    }),
+    service: (r) => ({ name: r.release, port: 80 }),
+    warnings: (r) => {
+      const url = `https://${r.host ?? "<host>"}`;
+      return [
+        ...(r.scheme === "http"
+          ? [`Pocket ID serves itself as ${url}; passkeys fail until that address has https.`]
+          : []),
+        `Register the first admin's passkey at ${url}/setup, then make an API key under Settings > Admin > API Keys to wire up sign-in.`,
+      ];
+    },
+  },
+
   velero: {
     values: (r) => {
       const s3Url = str(r.inputs.s3Url);

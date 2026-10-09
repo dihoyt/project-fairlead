@@ -6,6 +6,8 @@ import type {
   OAuthConsentView,
   AuthentikWirePlan,
   AuthentikWireResult,
+  PocketIdWirePlan,
+  PocketIdWireResult,
   PublicSignInProvider,
   PublicSignInResult,
   Role,
@@ -15,6 +17,7 @@ import type {
 } from "../../contracts/auth.js";
 import { product } from "../../product.js";
 import { AuthentikError, authentikUrlProblem, issuerFor, wireAuthentik } from "../auth/authentik.js";
+import { PocketIdError, pocketIdIssuer, pocketIdUrlProblem, wirePocketId } from "../auth/pocketid.js";
 import { authOf, envAdmin, refuseUnready, type PlatformUser } from "../auth/identity.js";
 import { effectiveRule, ruleAllows } from "../auth/networks.js";
 import {
@@ -104,12 +107,22 @@ const isAdmin = (account: UserRow) => account.role === "admin" || envAdmin([acco
 const AUTHENTIK_TOKEN = { scope: "auth", id: "authentik-api" } as const;
 const WIRED_KEYS = ["auth.oidc.issuer", "auth.oidc.clientId", "auth.oidc.label", "auth.oidc.enabled"];
 
-const authentikBase = (raw: unknown, use: "public" | "api" = "public"): string => {
-  const value = typeof raw === "string" ? raw.trim().replace(/\/+$/, "") : "";
-  const problem = authentikUrlProblem(value, use);
-  if (problem !== null) throw new AdminError(400, problem);
-  return value;
-};
+const baseUrl =
+  (problemOf: (raw: string, use: "public" | "api") => string | null) =>
+  (raw: unknown, use: "public" | "api" = "public"): string => {
+    const value = typeof raw === "string" ? raw.trim().replace(/\/+$/, "") : "";
+    const problem = problemOf(value, use);
+    if (problem !== null) throw new AdminError(400, problem);
+    return value;
+  };
+const authentikBase = baseUrl(authentikUrlProblem);
+
+const POCKET_ID_KEY = { scope: "auth", id: "pocket-id-api" } as const;
+const pocketIdBase = baseUrl(pocketIdUrlProblem);
+// Pocket ID puts the groups claim in tokens only for this scope.
+const GROUPS_SCOPE = "groups";
+const pocketIdKeys = (adminGroups: boolean) =>
+  adminGroups ? [...WIRED_KEYS, "auth.oidc.adminGroups", "auth.oidc.scopes"] : WIRED_KEYS;
 
 type Handler = (req: Request, res: Response, admin: PlatformUser) => Promise<unknown> | unknown;
 
@@ -417,6 +430,116 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
         provider: outcome.provider,
         settings,
         tokenKept,
+        discovery,
+        testSignIn: "auth/oidc/start?link=1",
+      };
+    })
+  );
+
+  // --- Pocket ID ----------------------------------------------------------
+
+  router.get(
+    "/oidc/pocket-id",
+    route(async (req): Promise<PocketIdWirePlan> => {
+      const base = pocketIdBase(req.query.url);
+      const apiUrl = pocketIdBase(req.query.apiUrl || base, "api");
+      const origin = publicOrigin(core);
+      return {
+        pocketIdUrl: base,
+        ...(apiUrl !== base ? { apiUrl } : {}),
+        clientName: product.displayName,
+        clientId: product.slug,
+        redirectUri: origin ? `${origin}${CALLBACK_PATH}` : "",
+        issuer: pocketIdIssuer(base),
+        hasStoredKey: await core.secrets.has(POCKET_ID_KEY.scope, POCKET_ID_KEY.id),
+        blocked: signIn.blocked(WIRED_KEYS)?.message ?? null,
+      };
+    })
+  );
+
+  router.post(
+    "/oidc/pocket-id",
+    route(async (req, _res, admin): Promise<PocketIdWireResult> => {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const base = pocketIdBase(body.pocketIdUrl);
+      const apiUrl = pocketIdBase(body.apiUrl || base, "api");
+      let adminGroups: string[] | undefined;
+      if (body.adminGroups !== undefined) {
+        if (!Array.isArray(body.adminGroups)) throw new AdminError(400, "Admin groups must be a list.");
+        adminGroups = body.adminGroups.map((g) => String(g).trim()).filter(Boolean);
+      }
+      const settings = pocketIdKeys(adminGroups !== undefined);
+      const blocked = signIn.blocked(settings);
+      if (blocked !== null) throw new AdminError(blocked.status, blocked.message);
+
+      const pasted = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
+      const apiKey = pasted || ((await core.secrets.get(POCKET_ID_KEY.scope, POCKET_ID_KEY.id)) ?? "");
+      if (!apiKey) throw new AdminError(400, "Paste a Pocket ID API key.");
+
+      const origin = publicOrigin(core);
+      const redirectUri = `${origin}${CALLBACK_PATH}`;
+      let outcome;
+      try {
+        outcome = await wirePocketId({
+          apiUrl,
+          publicUrl: base,
+          apiKey,
+          clientId: product.slug,
+          name: product.displayName,
+          redirectUri,
+          launchUrl: origin,
+        });
+      } catch (err) {
+        if (err instanceof PocketIdError) throw new AdminError(502, err.message);
+        throw err;
+      }
+
+      const scopes = new Set(s.string("auth.oidc.scopes").split(/\s+/).filter(Boolean));
+      scopes.add(GROUPS_SCOPE);
+      try {
+        await signIn.setOidcClient(
+          {
+            issuer: outcome.issuer,
+            clientId: outcome.clientId,
+            clientSecret: outcome.clientSecret,
+            label: "Sign in with Pocket ID",
+            enabled: true,
+            ...(adminGroups !== undefined ? { adminGroups, scopes: [...scopes].join(" ") } : {}),
+          },
+          admin.id
+        );
+      } catch (err) {
+        if (err instanceof SignInError) throw new AdminError(err.status, err.message);
+        throw err;
+      }
+
+      const keyKept = body.keepKey === true;
+      if (keyKept) await core.secrets.putAs(POCKET_ID_KEY.scope, POCKET_ID_KEY.id, apiKey, admin.id);
+      else await core.secrets.delete(POCKET_ID_KEY.scope, POCKET_ID_KEY.id);
+
+      let discovery: PocketIdWireResult["discovery"];
+      try {
+        await discover(outcome.issuer);
+        discovery = { ok: true };
+      } catch (err) {
+        discovery = { ok: false, error: err instanceof OidcError ? err.message : "Discovery failed." };
+      }
+
+      record(
+        req,
+        admin,
+        "oidc-pocket-id-wire",
+        base,
+        `clientId=${outcome.clientId} client=${outcome.client} key=${keyKept ? "kept" : "discarded"}`
+      );
+      return {
+        pocketIdUrl: base,
+        issuer: outcome.issuer,
+        clientId: outcome.clientId,
+        redirectUri,
+        client: outcome.client,
+        settings,
+        keyKept,
         discovery,
         testSignIn: "auth/oidc/start?link=1",
       };

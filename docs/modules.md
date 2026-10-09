@@ -317,10 +317,10 @@ cluster. **Page**: Apps → Deploy, Catalog tab.
 - Entries: cert-manager, Traefik, metrics-server, Local Path Provisioner,
   Longhorn (headless: no Ingress for its UI; the `longhorn-frontend` Service
   stays for `kubectl port-forward`), Longhorn backups (the backup target),
-  Rancher, Headlamp, Gitea, Grafana, Authentik, Velero, ntfy, Cloudflare
-  Tunnel, Tailscale. Each pins a chart version per Kubernetes version range
-  and refuses one it doesn't fit. Velero is hidden from the picker until it is
-  installed; it can still be deployed over the API and MCP.
+  Rancher, Headlamp, Gitea, Grafana, Authentik, Pocket ID, Velero, ntfy,
+  Cloudflare Tunnel, Tailscale. Each pins a chart version per Kubernetes
+  version range and refuses one it doesn't fit. Velero is hidden from the
+  picker until it is installed; it can still be deployed over the API and MCP.
 - **Discovery** recognises installs by their labels, or by image when the
   labels are missing, whoever installed them, and checks the cluster basics
   (an ingress controller, cert-manager, a default storage class,
@@ -328,7 +328,9 @@ cluster. **Page**: Apps → Deploy, Catalog tab.
 - **The default bundle**: the access tool (Cloudflare Tunnel, Tailscale,
   local network or direct ports), Traefik, cert-manager, metrics-server,
   Local Path Provisioner, Longhorn (optional; it needs open-iscsi on every
-  node), Authentik at `auth.<domain>` and Gitea at `git.<domain>`. Anything
+  node), a sign-in service at `auth.<domain>` (Authentik by default, or
+  Pocket ID: passkeys only, a fraction of the memory, and https required)
+  and Gitea at `git.<domain>`. Anything
   already installed or covered by a basic is left out. Headlamp, Grafana and
   ntfy are catalog-only.
 - `GET /api/catalog/apps`, `GET /api/catalog/bundles`,
@@ -350,8 +352,8 @@ Installed and Apps → Deploy; the wizard's Access step.
 - **Sign-in gate**: apps the console publishes sit behind its sign-in through
   a Traefik forwardAuth Middleware, unless switched to **Public** on the
   Installed page. `auth.gate.allow` decides who gets through (admins, or
-  everyone who can sign in). Authentik and ntfy are never gated (people sign
-  in through one, phones talk to the other); for Gitea and Rancher a request
+  everyone who can sign in). Authentik, Pocket ID and ntfy are never gated
+  (people sign in through the first two, phones talk to the other); for Gitea and Rancher a request
   carrying its own `Authorization` header goes straight to the app, so git
   and API clients keep working. **Board**:
   Access, one check per published app.
