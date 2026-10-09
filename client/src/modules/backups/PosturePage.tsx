@@ -24,6 +24,7 @@ import type { Status } from "@contracts/health";
 import { PageHeader } from "../../shell/PageHeader";
 import { BackupTargetCard } from "./BackupTarget";
 import { ConsoleBackupCard } from "./ConsoleBackup";
+import { PostgresCard } from "./Postgres";
 import { SchedulesCard } from "./Schedules";
 import { VolumeActions } from "./VolumeActions";
 import {
@@ -302,6 +303,7 @@ export function PosturePage() {
         </SimpleGrid>
       ) : null}
       {data ? <ConsoleBackupCard me={me} onChanged={reload} /> : null}
+      {data ? <PostgresCard me={me} onChanged={reload} /> : null}
 
       {data ? (
         <>
