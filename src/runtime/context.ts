@@ -2,6 +2,7 @@ import express from "express";
 import type { Database } from "better-sqlite3";
 import type { BackupsRegistry } from "../contracts/backups.js";
 import type { EventBus, Events } from "../contracts/events.js";
+import { grantNamespaces } from "../contracts/grants.js";
 import type { HealthRegistry } from "../contracts/health.js";
 import type { MetricsRegistry } from "../contracts/metrics.js";
 import type { ModuleContext, ModuleId } from "../contracts/module.js";
@@ -62,7 +63,7 @@ export function buildContext(moduleId: ModuleId, shared: SharedRuntime): ModuleC
   return {
     moduleId,
     router,
-    route: (key, handler) => bindRoute(router, moduleId, key, handler),
+    route: (key, handler) => bindRoute(router, moduleId, key, handler, (req) => platform.identify(req)),
     publicRouter,
     publicRoute: (key, handler) => bindPublicRoute(publicRouter, moduleId, key, handler, publicErrorHandler(log)),
     db: shared.db,
@@ -79,6 +80,7 @@ export function buildContext(moduleId: ModuleId, shared: SharedRuntime): ModuleC
       res.status(403).json({ error: "You don't have permission to do that." });
       return null;
     },
+    visibleNamespaces: (req) => grantNamespaces(identify(req).token),
     call: (req, key, input) => callRoute(platform, req, key, input),
     health: shared.health,
     metrics: shared.metrics,

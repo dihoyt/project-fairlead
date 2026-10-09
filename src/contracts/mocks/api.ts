@@ -626,8 +626,18 @@ export const apiMocks: ApiMocks = {
       prefix: "api_Q7mz",
       expiresAt: null,
     },
+    {
+      ...mockApiToken,
+      id: "tok_3",
+      name: "Team apps CI",
+      prefix: "api_Rb2n",
+      namespaces: ["apps", "staging"],
+      areas: ["workloads", "deploy"],
+      lastUsedAt: null,
+    },
   ],
   "POST /api/admin/tokens": { token: mockApiToken, secret: "api_Xk3dMockSecretNotReal0000000000000000000" },
+  "PATCH /api/admin/tokens/:id": { ...mockApiToken, namespaces: ["apps"], areas: ["workloads"] },
   "DELETE /api/admin/tokens/:id": { ok: true },
   "POST /api/admin/oauth/consent": {
     client: { id: "cli_1", name: "Claude", redirectUri: "https://claude.ai/api/mcp/auth_callback" },

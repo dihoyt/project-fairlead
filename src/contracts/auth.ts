@@ -1,6 +1,8 @@
 // HTTP shapes for the platform's routes (S2), carried over from
 // code-console's. Kept free of server-only imports so the client can use them.
 
+import type { TokenArea } from "./grants.js";
+
 export interface Me {
   id: string;
   name: string;
@@ -147,6 +149,8 @@ export interface AuditRow {
 // only read; "write" may do whatever that admin may. It is sent as
 // `Authorization: Bearer <secret>` to /api and /mcp, never to /api/admin or
 // /api/auth (managing accounts, sign-in and tokens takes a signed-in session).
+// Its grant (./grants.ts) can narrow it further to some product areas and
+// some namespaces; a token without one reaches everything its scope allows.
 // The secret is shown once at creation and only its hash is stored.
 
 export type ApiTokenScope = "read" | "write";
@@ -155,6 +159,9 @@ export interface ApiTokenView {
   id: string;
   name: string;
   scope: ApiTokenScope;
+  // The grant's limits (ApiTokenGrant); absent: every namespace, every area.
+  namespaces?: string[];
+  areas?: TokenArea[];
   // The secret's first characters, to tell tokens apart; useless on its own.
   prefix: string;
   // The username the token acts as.
@@ -176,8 +183,20 @@ export interface ApiTokenView {
 export interface NewApiTokenRequest {
   name: string;
   scope: ApiTokenScope;
+  // Omitted or null: every namespace / every area. A list must not be empty.
+  namespaces?: string[] | null;
+  areas?: TokenArea[] | null;
   // Whole days from now, 1 to 3650; omitted or null: never expires.
   expiresInDays?: number | null;
+}
+
+// PATCH /api/admin/tokens/:id, OAuth grants included. Omitted: unchanged;
+// null namespaces or areas: every one. Takes effect on the token's next request.
+export interface ApiTokenChanges {
+  name?: string;
+  scope?: ApiTokenScope;
+  namespaces?: string[] | null;
+  areas?: TokenArea[] | null;
 }
 
 export interface NewApiToken {
@@ -232,6 +251,9 @@ export interface OAuthConsentRequest {
   // browser. deny: say where to send the browser with access_denied.
   decision: "preview" | "approve" | "deny";
   scope?: ApiTokenScope;
+  // approve: limits for the grant, as NewApiTokenRequest. Omitted: none.
+  namespaces?: string[] | null;
+  areas?: TokenArea[] | null;
 }
 
 export interface OAuthConsentView {

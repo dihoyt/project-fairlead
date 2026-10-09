@@ -1,7 +1,7 @@
 import express, { type Express } from "express";
 import { MCP_PATH } from "./contracts/mcp.js";
 import type { ModuleStatus } from "./contracts/system.js";
-import { apiErrorHandler } from "./runtime/http.js";
+import { apiErrorHandler, guardGrant } from "./runtime/http.js";
 import type { Runtime } from "./runtime/index.js";
 import { parseResetRequest, runReset } from "./runtime/reset.js";
 
@@ -49,6 +49,7 @@ export function createApp(runtime: Runtime, options: AppOptions = {}): Express {
   });
   app.get("/api/system/jobs", (req, res) => {
     const user = platform.identify(req);
+    if (!guardGrant(user, "GET /api/system/jobs", req, res)) return;
     if (!user || !platform.can(user, "admin")) {
       res.status(403).json({ error: "You don't have permission to do that." });
       return;
@@ -58,6 +59,7 @@ export function createApp(runtime: Runtime, options: AppOptions = {}): Express {
 
   app.post("/api/system/reset", (req, res, next) => {
     const user = platform.identify(req);
+    if (!guardGrant(user, "POST /api/system/reset", req, res)) return;
     if (!user || !platform.can(user, "admin")) {
       res.status(403).json({ error: "You don't have permission to do that." });
       return;
