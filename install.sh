@@ -992,6 +992,7 @@ YAML
     || restore_failed "the restore pod did not start"
   kube -n "$NAMESPACE" cp "$RESTORE_FROM" "$RELEASE-restore:/data/.$DB_FILE.restore" >/dev/null \
     || restore_failed "could not copy $RESTORE_FROM into the volume"
+  # shellcheck disable=SC2016
   kube -n "$NAMESPACE" exec "$RELEASE-restore" -- sh -c \
     'cd /data && rm -f "$1-wal" "$1-shm" && mv ".$1.restore" "$1"' sh "$DB_FILE" \
     || restore_failed "could not put the copy in place"
