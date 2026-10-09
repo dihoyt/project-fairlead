@@ -21,6 +21,9 @@ import type {
   NewUserRequest,
   OAuthConsentRequest,
   OAuthConsentView,
+  PocketIdWirePlan,
+  PocketIdWireRequest,
+  PocketIdWireResult,
   PublicSignInRequest,
   PublicSignInResult,
   SessionView,
@@ -187,6 +190,14 @@ export interface ApiRoutes {
   // Authentik unreachable, refused the token, or answered unexpectedly, with
   // its status in the error.
   "POST /api/admin/oidc/authentik": Route<None, None, AuthentikWireRequest, AuthentikWireResult>;
+  // Admin. As GET /api/admin/oidc/authentik, for Pocket ID.
+  "GET /api/admin/oidc/pocket-id": Route<None, { url: string; apiUrl?: string }, None, PocketIdWirePlan>;
+  // Admin, audited (never with the API key or secret). Creates or reuses
+  // the OIDC client, adds a client secret, saves
+  // auth.oidc.{issuer,clientId,label,enabled} (and adminGroups and scopes
+  // when admin groups are given) and the secret. Errors as POST
+  // /api/admin/oidc/authentik.
+  "POST /api/admin/oidc/pocket-id": Route<None, None, PocketIdWireRequest, PocketIdWireResult>;
   // Admin, audited (never with the secret). Points OIDC sign-in at Google
   // or Microsoft's multi-tenant endpoint and saves the allow and admin email
   // lists, turning on account creation at first sign-in (only allowed

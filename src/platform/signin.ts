@@ -17,6 +17,7 @@ const settingFor: Record<Exclude<keyof SignInOidcClient, "clientSecret">, string
   clientId: "auth.oidc.clientId",
   label: "auth.oidc.label",
   adminGroups: "auth.oidc.adminGroups",
+  scopes: "auth.oidc.scopes",
   enabled: "auth.oidc.enabled",
 };
 
@@ -49,7 +50,9 @@ export function createSignIn(core: Core): SignInService & {
         clientId: core.settings.string("auth.oidc.clientId"),
         hasSecret: await core.secrets.has(OIDC_SECRET.scope, OIDC_SECRET.id),
         redirectUri: origin ? `${origin}${CALLBACK_PATH}` : "",
-        blocked: blocked(Object.values(settingFor))?.message ?? null,
+        // Scopes are written only by a provider that needs more than the
+        // default, so OIDC_SCOPES set in the environment blocks only that one.
+        blocked: blocked(Object.values(settingFor).filter((key) => key !== settingFor.scopes))?.message ?? null,
       };
     },
     async setOidcClient(client, actor) {
