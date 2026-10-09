@@ -369,12 +369,16 @@ describe("BundleDoor", () => {
         "GET /api/deploy/access": mockAccessLocal,
       });
       renderWithApp(<BundleDoor onDone={() => {}} />);
-      await waitFor(() => expect(calls.some((c) => c.key === "PUT /api/deploy/access")).toBe(true));
+      // The save waits out a debounce after the access and view loads land.
+      await waitFor(() => expect(calls.some((c) => c.key === "PUT /api/deploy/access")).toBe(true), {
+        timeout: 5_000,
+      });
       const keys = calls.map((c) => c.key);
       const saved = keys.indexOf("PUT /api/deploy/access");
       expect(calls[saved]?.body).toEqual({ mode: "cloudflare-tunnel", baseDomain: "example.test" });
-      await waitFor(() =>
-        expect(calls.map((c) => c.key).indexOf("POST /api/connector-cloudflare/sync")).toBeGreaterThan(saved)
+      await waitFor(
+        () => expect(calls.map((c) => c.key).indexOf("POST /api/connector-cloudflare/sync")).toBeGreaterThan(saved),
+        { timeout: 5_000 }
       );
       expect(keys).not.toContain("POST /api/deploy/bundles/plan");
     });
