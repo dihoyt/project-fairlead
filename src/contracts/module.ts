@@ -33,6 +33,7 @@ export const MODULE_IDS = [
   "connector-cloudflare",
   "connector-entra",
   "connector-storage",
+  "postgres",
   "templates",
   "publish",
 ] as const;

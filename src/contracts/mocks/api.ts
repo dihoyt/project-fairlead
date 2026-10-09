@@ -66,6 +66,15 @@ import { mockCheckResults } from "./health.js";
 import { mockPortsView, mockTemplateJob, mockTemplatePlan, mockTemplatesView } from "./templates.js";
 import { mockSeriesResults } from "./metrics.js";
 import { mockNodeSummaries } from "./nodes.js";
+import {
+  mockPgBackupNowJob,
+  mockPgBackupsJob,
+  mockPgRestoreJob,
+  mockPgRestorePlan,
+  mockPostgresBackups,
+  mockPostgresCluster,
+  mockPostgresDatabases,
+} from "./postgres.js";
 import { mockClusterUsage, mockSpaceUsage } from "./workloads.js";
 import { DAY, HOUR, MOCK_NOW, isoAgo } from "./time.js";
 
@@ -793,6 +802,13 @@ export const apiMocks: ApiMocks = {
   "GET /api/backups/volumes/:uid/backups": mockRestorePoints,
   "POST /api/backups/restore/plan": mockRestorePlan,
   "POST /api/backups/restore": mockRestoreJob,
+  "GET /api/postgres/cluster": mockPostgresCluster,
+  "GET /api/postgres/databases": mockPostgresDatabases,
+  "GET /api/postgres/backups": mockPostgresBackups,
+  "PUT /api/postgres/backups": mockPgBackupsJob,
+  "POST /api/postgres/backups/now": mockPgBackupNowJob,
+  "POST /api/postgres/restore/plan": mockPgRestorePlan,
+  "POST /api/postgres/restore": mockPgRestoreJob,
 
   "GET /api/workloads/links": mockWorkloadLinks,
   "GET /api/workloads/namespaces": [

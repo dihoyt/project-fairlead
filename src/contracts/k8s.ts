@@ -52,6 +52,13 @@ export const RESOURCES = {
   fleetGitRepos: ref("fleet.cattle.io", "v1alpha1", "gitrepos", "GitRepo", true),
   fleetBundles: ref("fleet.cattle.io", "v1alpha1", "bundles", "Bundle", true),
   certificates: ref("cert-manager.io", "v1", "certificates", "Certificate", true),
+  // Shared Postgres (module "postgres"): CloudNativePG and its Barman Cloud plugin.
+  cnpgClusters: ref("postgresql.cnpg.io", "v1", "clusters", "Cluster", true),
+  cnpgBackups: ref("postgresql.cnpg.io", "v1", "backups", "Backup", true),
+  cnpgScheduledBackups: ref("postgresql.cnpg.io", "v1", "scheduledbackups", "ScheduledBackup", true),
+  cnpgDatabases: ref("postgresql.cnpg.io", "v1", "databases", "Database", true),
+  cnpgDatabaseRoles: ref("postgresql.cnpg.io", "v1", "databaseroles", "DatabaseRole", true),
+  barmanObjectStores: ref("barmancloud.cnpg.io", "v1", "objectstores", "ObjectStore", true),
   // Discovery (catalog module): what is installed and where it is reachable.
   ingresses: ref("networking.k8s.io", "v1", "ingresses", "Ingress", true),
   ingressClasses: ref("networking.k8s.io", "v1", "ingressclasses", "IngressClass", false),

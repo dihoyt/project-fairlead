@@ -115,6 +115,32 @@ const restoreRequest = {
   newClaim: z.string().optional().describe('new-pvc only. Default "<claim>-restored-<yyyymmdd>".'),
 };
 
+const pgBackupRequest = {
+  connectorId: z
+    .string()
+    .min(1)
+    .nullable()
+    .describe(
+      "Storage target id from list_storage_targets: S3/MinIO for point-in-time restore, NFS or SMB (Longhorn's backup target) for dumps. null turns backups off."
+    ),
+  schedule: z.string().optional().describe('Five-field cron of base backups or dumps. Default "0 2 * * *".'),
+  retention: z
+    .number()
+    .int()
+    .min(1)
+    .max(365)
+    .optional()
+    .describe("Point-in-time: days kept (up to 365). Dumps: dumps kept (up to 60). Default 14."),
+};
+
+const pgRestoreRequest = {
+  at: z
+    .string()
+    .optional()
+    .describe("Point-in-time only: the moment to recover to, ISO-8601, after firstRecoverabilityPoint."),
+  dumpId: z.string().optional().describe("Dumps only: a restore point's id from get_postgres_backups."),
+};
+
 const nodeArg = z.string().min(1).describe("Node name, from list_nodes.");
 
 const drainOptions = {
@@ -299,6 +325,12 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
     run: async (call, { uid }) => items(await call("GET /api/backups/volumes/:uid/backups", { params: { uid } })),
   },
 
+  list_databases: {
+    input: z.object({}),
+    run: async (call) => items(await call("GET /api/postgres/databases")),
+  },
+  get_postgres_backups: { input: z.object({}), run: (call) => call("GET /api/postgres/backups") },
+
   create_check: { input: z.object(checkFields), run: (call, body) => call("POST /api/checks", { body }) },
   update_check: {
     input: z.object({ id: idArg, ...z.object(checkFields).partial().shape }),
@@ -413,6 +445,19 @@ export const TOOLS: { [N in McpToolName]: ToolDef<N> } = {
   restore_volume: {
     input: z.object(restoreRequest),
     run: (call, body) => call("POST /api/backups/restore", { body }),
+  },
+  set_postgres_backups: {
+    input: z.object(pgBackupRequest),
+    run: (call, body) => call("PUT /api/postgres/backups", { body }),
+  },
+  backup_postgres_now: { input: z.object({}), run: (call) => call("POST /api/postgres/backups/now") },
+  plan_postgres_restore: {
+    input: z.object(pgRestoreRequest),
+    run: (call, body) => call("POST /api/postgres/restore/plan", { body }),
+  },
+  restore_postgres: {
+    input: z.object(pgRestoreRequest),
+    run: (call, body) => call("POST /api/postgres/restore", { body }),
   },
   plan_node_action: {
     input: z.object({

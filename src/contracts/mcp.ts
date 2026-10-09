@@ -40,6 +40,12 @@ import type {
 } from "./health.js";
 import type { HostView } from "./hosts.js";
 import type { NodeSummary } from "./metrics.js";
+import type {
+  PostgresBackupRequest,
+  PostgresBackupView,
+  PostgresDatabaseView,
+  PostgresRestoreRequest,
+} from "./postgres.js";
 import type { TemplateDeployRequest, TemplateJobRequest, TemplatePlan, TemplatesView } from "./templates.js";
 import type { LogLines, NamespaceView, PodView, WorkloadView } from "./workloads.js";
 
@@ -144,6 +150,10 @@ export interface McpTools {
   get_backup_schedules: { input: None; result: BackupSchedulesView };
   // GET /api/backups/volumes/:uid/backups
   list_volume_backups: { input: { uid: string }; result: Items<VolumeRestorePoint> };
+  // GET /api/postgres/databases
+  list_databases: { input: None; result: Items<PostgresDatabaseView> };
+  // GET /api/postgres/backups
+  get_postgres_backups: { input: None; result: PostgresBackupView };
 
   // --- write (a "write" token) ----------------------------------------------
   // POST /api/checks
@@ -195,6 +205,14 @@ export interface McpTools {
   plan_volume_restore: { input: VolumeRestoreRequest; result: DeployActionPlan };
   // POST /api/backups/restore
   restore_volume: { input: VolumeRestoreRequest; result: DeployJobView };
+  // PUT /api/postgres/backups
+  set_postgres_backups: { input: PostgresBackupRequest; result: DeployJobView };
+  // POST /api/postgres/backups/now
+  backup_postgres_now: { input: None; result: DeployJobView };
+  // POST /api/postgres/restore/plan; runs nothing.
+  plan_postgres_restore: { input: PostgresRestoreRequest; result: DeployActionPlan };
+  // POST /api/postgres/restore
+  restore_postgres: { input: PostgresRestoreRequest; result: DeployJobView };
   // POST /api/deploy/actions/plan with a node action; runs nothing.
   plan_node_action: { input: NodeActionRequest; result: DeployActionPlan };
   // POST /api/deploy/actions/run with node-cordon.
@@ -403,6 +421,24 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
     destructive: false,
   },
   {
+    name: "list_databases",
+    title: "Postgres databases",
+    description:
+      "Every database on the shared Postgres cluster with its role, the app it serves, its connection Secret, size and open connections.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "get_postgres_backups",
+    title: "Postgres backups",
+    description:
+      "How the shared Postgres is backed up: point-in-time (base backups and WAL archive on an S3/MinIO target) or nightly dumps (NFS/SMB through Longhorn), with the first recoverable moment, archive lag, last backup and restore points.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
     name: "create_check",
     title: "Add a check",
     description: "Adds an HTTP or TCP check that shows up on the Checks page and the health board.",
@@ -587,6 +623,41 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
     title: "Restore a volume",
     description:
       "Restores a backup to a new PVC, or in place (mode in-place), which stops the app and replaces the volume's current data with the backup's. Preview with plan_volume_restore first.",
+    scope: "write",
+    readOnly: false,
+    destructive: true,
+  },
+  {
+    name: "set_postgres_backups",
+    title: "Set up Postgres backups",
+    description:
+      "Backs the shared Postgres up to a storage target from list_storage_targets: S3/MinIO gets base backups plus continuous WAL archiving (point-in-time restore); NFS or SMB gets scheduled dumps, and must be Longhorn's backup target. null turns backups off. Starts a deploy job.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "backup_postgres_now",
+    title: "Back up Postgres now",
+    description: "Takes a base backup (point-in-time) or a dump of the shared Postgres now. Starts a deploy job.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "plan_postgres_restore",
+    title: "Preview a Postgres restore",
+    description:
+      "What restoring the shared Postgres would do, to a moment (`at`, point-in-time) or to a dump (`dumpId`) from get_postgres_backups; runs nothing.",
+    scope: "write",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "restore_postgres",
+    title: "Restore Postgres",
+    description:
+      "Restores the shared Postgres into a new cluster, to a moment (`at`) or a dump (`dumpId`), then points every app at it and restarts them; the old cluster is kept, stopped. Preview with plan_postgres_restore first.",
     scope: "write",
     readOnly: false,
     destructive: true,
