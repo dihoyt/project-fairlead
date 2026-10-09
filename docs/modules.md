@@ -388,7 +388,9 @@ Installed and Apps → Deploy; the wizard's Access step.
   answers on the copy; to Longhorn with an optional download first; to
   local-path with a warning that the data then lives on one node's disk and
   leaves Longhorn's backups), the Backups page's Longhorn set-up, give an app
-  a database on the shared Postgres (`pg-database`), remove a template app, publish a host directly
+  a database on the shared Postgres (`pg-database`), set up, run and restore
+  its backups (`pg-backups`, `pg-backup-now`, `pg-restore`) and delete a
+  cluster a restore replaced (`pg-remove-cluster`), remove a template app, publish a host directly
   with its own certificate, and open forwarded ports on k3s's Traefik
   (`deploy.forwardedPorts`).
 - Defaults for new apps (`deploy.baseDomain`, `deploy.ingressClass`,
@@ -416,7 +418,26 @@ Absent until the cluster exists.
   databases* (each role and database the operator has applied).
 - Database size and connection counts come from the primary's metrics
   exporter (port 9187), so the console needs no database credentials.
-- `GET /api/postgres/cluster`, `GET /api/postgres/databases`.
+- **Backups** (Backups page, *Shared Postgres* card): pick a storage target.
+  An S3 or MinIO bucket gets point-in-time recovery: the Barman Cloud plugin
+  archives every WAL segment to `<bucket>/<prefix>/postgres/` and takes base
+  backups on a schedule (default `0 2 * * *`, 14 days kept). Turning it on
+  restarts each instance once. NFS and SMB can't take a WAL archive, so they
+  get dumps instead: a CronJob runs `pg_dumpall` onto a Longhorn volume in
+  the "critical" group (14 dumps kept), which Longhorn backs up to its own
+  target; that target must be the one picked. The cluster's volumes then
+  count as protected in the backup posture.
+- **Restore** never touches the cluster in use: a new cluster is recovered
+  to the chosen moment (or initialised and loaded from the chosen dump),
+  each app gets its role and database there with a new password, its Secret
+  is pointed at it and the app restarts, backups move to the new cluster,
+  and the old one is labelled `previous`, hibernated and kept until it is
+  deleted from the card.
+- `GET /api/postgres/cluster`, `GET /api/postgres/databases`,
+  `GET|PUT /api/postgres/backups`, `POST /api/postgres/backups/now`,
+  `POST /api/postgres/restore/plan`, `POST /api/postgres/restore`; the MCP
+  tools `list_databases`, `get_postgres_backups`, `set_postgres_backups`,
+  `backup_postgres_now`, `plan_postgres_restore` and `restore_postgres`.
 
 ## Templates (`templates`)
 

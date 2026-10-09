@@ -20,7 +20,9 @@ import { consoleBackupAction } from "./console-backup.js";
 import { longhornTargetAction } from "./longhorn-target.js";
 import { migrateAction, migrateStorageAction } from "./migrate.js";
 import { NODE_NAME, nodeActions } from "./node.js";
+import { pgBackupNowAction, pgBackupsAction } from "./pg-backups.js";
 import { pgDatabaseAction } from "./pg-database.js";
+import { pgRemoveClusterAction, pgRestoreAction } from "./pg-restore.js";
 import { recurringAction } from "./recurring.js";
 import { restoreAction } from "./restore.js";
 import { removeAction } from "./remove.js";
@@ -132,6 +134,10 @@ const recipes: { [K in DeployActionKind]?: ActionRecipe<Extract<DeployActionRequ
   "longhorn-restore": restoreAction,
   "console-backup": consoleBackupAction,
   "pg-database": pgDatabaseAction,
+  "pg-backups": pgBackupsAction,
+  "pg-backup-now": pgBackupNowAction,
+  "pg-restore": pgRestoreAction,
+  "pg-remove-cluster": pgRemoveClusterAction,
 };
 
 export function actionRecipe<K extends DeployActionKind>(
@@ -182,6 +188,19 @@ export const actionSchema = z.discriminatedUnion("kind", [
     appId: z.string().min(1).max(40),
     namespace: z.string().min(1).max(63),
   }),
+  z.object({
+    kind: z.literal("pg-backups"),
+    connectorId: z.string().min(1).max(100).nullable(),
+    schedule: cronSchema.optional(),
+    retention: z.number().int().min(1).max(365).optional(),
+  }),
+  z.object({ kind: z.literal("pg-backup-now") }),
+  z.object({
+    kind: z.literal("pg-restore"),
+    at: z.string().datetime({ offset: true }).optional(),
+    dumpId: z.string().min(1).max(63).optional(),
+  }),
+  z.object({ kind: z.literal("pg-remove-cluster"), name: k8sName }),
   z.object({
     kind: z.literal("longhorn-restore"),
     namespace: k8sName,
