@@ -80,7 +80,7 @@ OIDC sign-in with TOTP; the setup wizard; the installer and Helm chart.
 | Unattended setup | `install.sh --env <file>` carries the admin password, public URL, connectors and bundle choices; the console applies them on first boot and the file is shredded. |
 | Email notifications | SMTP with an app password, "sign in to send" through your own Google or Microsoft OAuth client, and Microsoft 365 through the Entra connector, with presets and a test send. |
 | Entra without secret rotation | Certificate credentials the console rolls itself. |
-| A lighter identity provider | Pocket ID in the catalog beside Authentik, which stays the default. |
+| A lighter identity provider | Pocket ID in the catalog and as the bundle's alternative sign-in service, wired up from the Sign-in step; Authentik stays the default. |
 | Move to local-path | The reverse of Convert to Longhorn, with a warning that the data then lives on one node. |
 | Docs | README, docs and this roadmap kept in step with the build. |
 

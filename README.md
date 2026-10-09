@@ -16,7 +16,7 @@ The product's working name is Fairlead; the name the code uses lives only in `pr
 
 **Set up and run** (with app deploys turned on)
 
-- **A default bundle** for a first self-hosted cluster: an access tool (Cloudflare Tunnel, Tailscale, local network or direct ports), cert-manager, Authentik for sign-in, Gitea for git, and Longhorn for replicated storage, each with sensible requests and limits.
+- **A default bundle** for a first self-hosted cluster: an access tool (Cloudflare Tunnel, Tailscale, local network or direct ports), cert-manager, Authentik (or the lighter, passkey-only Pocket ID) for sign-in, Gitea for git, and Longhorn for replicated storage, each with sensible requests and limits.
 - **A catalog and Templates**: more apps (Headlamp, Grafana, ntfy, Rancher, Velero, ...), small app templates, your own container image as a custom app, and external services published through Traefik. A guardrail refuses host paths, privileged containers, host networking and RBAC in templates.
 - **Connectors** that manage other services for you: Cloudflare (tunnel, DNS records, optional Access apps, direct records with your public IP) and Microsoft Entra ID (the sign-in app registration and its secret).
 - **The console's sign-in in front of every app** it publishes, through a Traefik forward-auth gate, with a per-app Public switch.
