@@ -148,7 +148,7 @@ test("a link is shown once, works once without a session, and never exposes the 
     assert.match(script, /K3S_VERSION='v1\.31\.4\+k3s1'/);
     assert.match(script, /K3S_URL='https:\/\/10\.0\.0\.10:6443'/);
     assert.ok(script.includes(`K3S_TOKEN='${TOKEN}'`));
-    assert.match(script, /open-iscsi nfs-common/);
+    assert.match(script, /open-iscsi nfs-common cifs-utils/);
     assert.match(script, /sh -s - agent\n/);
     assert.match(script, /EXISTING_NODES='k3s-server k3s-agent-01'/);
 

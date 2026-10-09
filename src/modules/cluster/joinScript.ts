@@ -63,19 +63,19 @@ done
 echo "==> Checking that $K3S_URL is reachable"
 curl -ks --max-time 10 -o /dev/null "$K3S_URL/cacerts" || fail "can't reach $K3S_URL from here (firewall, or the address in the join Secret)."
 
-echo "==> Installing storage packages (open-iscsi, nfs)"
+echo "==> Installing storage packages (open-iscsi, nfs, cifs)"
 if command -v apt-get >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -qq
-  apt-get install -y -qq open-iscsi nfs-common >/dev/null
+  apt-get install -y -qq open-iscsi nfs-common cifs-utils >/dev/null
 elif command -v dnf >/dev/null 2>&1; then
-  dnf install -y -q iscsi-initiator-utils nfs-utils
+  dnf install -y -q iscsi-initiator-utils nfs-utils cifs-utils
 elif command -v yum >/dev/null 2>&1; then
-  yum install -y -q iscsi-initiator-utils nfs-utils
+  yum install -y -q iscsi-initiator-utils nfs-utils cifs-utils
 elif command -v zypper >/dev/null 2>&1; then
-  zypper --non-interactive --quiet install open-iscsi nfs-client
+  zypper --non-interactive --quiet install open-iscsi nfs-client cifs-utils
 else
-  echo "warning: no known package manager; install open-iscsi and an NFS client yourself for Longhorn and NFS volumes." >&2
+  echo "warning: no known package manager; install open-iscsi, an NFS client and cifs-utils yourself for Longhorn and NFS volumes." >&2
 fi
 if command -v systemctl >/dev/null 2>&1; then
   systemctl enable --now iscsid >/dev/null 2>&1 || true
