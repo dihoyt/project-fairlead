@@ -1,3 +1,4 @@
+import type { Request } from "express";
 import type { Module } from "../../contracts/module.js";
 import { Browser } from "./browser.js";
 import { declareLinks } from "./links.js";
@@ -26,7 +27,15 @@ const mod: Module = {
     ctx.scheduler.every("workloads.idle-watches", 60_000, () => browser.cache.sweep());
 
     ctx.route("GET /api/workloads/links", () => links());
-    ctx.route("GET /api/workloads/namespaces", () => browser.namespaces());
+    // A token limited to some namespaces sees only those in the lists.
+    const visible = (req: Request) => {
+      const allowed = ctx.visibleNamespaces(req);
+      return (namespace: string) => allowed === null || allowed.includes(namespace);
+    };
+    ctx.route("GET /api/workloads/namespaces", async (req) => {
+      const shown = visible(req);
+      return (await browser.namespaces()).filter((ns) => shown(ns.name));
+    });
     ctx.route("GET /api/workloads/namespaces/:namespace/workloads", (req) => browser.workloads(req.params.namespace));
     ctx.route("GET /api/workloads/namespaces/:namespace/pods", (req) =>
       browser.pods(req.params.namespace, req.query.workload || undefined)
@@ -45,7 +54,11 @@ const mod: Module = {
       range: parseRange(range),
       now: Date.now(),
     });
-    ctx.route("GET /api/workloads/usage", async (req) => clusterUsage(await usageInputs(req.query.range)));
+    ctx.route("GET /api/workloads/usage", async (req) => {
+      const shown = visible(req);
+      const report = clusterUsage(await usageInputs(req.query.range));
+      return { ...report, namespaces: report.namespaces.filter((ns) => shown(ns.namespace)) };
+    });
     ctx.route("GET /api/workloads/namespaces/:namespace/usage", async (req) => {
       await browser.namespace(req.params.namespace);
       return spaceUsage(req.params.namespace, await usageInputs(req.query.range));
