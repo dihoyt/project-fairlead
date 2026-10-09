@@ -40,6 +40,12 @@ REGISTRY_USER=<github user> REGISTRY_TOKEN=<token with read:packages> sh install
 4. Waits for the rollout, prints the URL and, on the first install only, the
    admin password with the command to read it again.
 
+With `--env <file>` (or `/etc/<slug>/install.env`), step 2 also stores the
+file's allow-listed keys in the Secret `install-seed`, which the console applies
+on first boot, and the file is shredded after a successful install unless
+`--keep-env`; see "Unattended setup from an env file" in
+[docs/install.md](../../docs/install.md).
+
 A re-run upgrades in place, keeping the release's earlier values
 (`--reset-then-reuse-values`) and applying only the flags given. `--values`
 files are applied last, so they override everything the installer sets.
