@@ -84,6 +84,30 @@ describe("DeployRolloutProgress", () => {
     expect(defaultStep(failedRun)?.appId).toBe("gitea");
   });
 
+  it("retries a failed rollout from its failed app and offers to uninstall it", async () => {
+    let resumed = false;
+    const { calls } = stubApi({
+      "GET /api/deploy/bundles/:id": () =>
+        resumed ? { ...failedRun, state: "running", finishedAt: undefined } : failedRun,
+      "POST /api/deploy/bundles/:id/retry": () => {
+        resumed = true;
+        return { ...failedRun, state: "running", finishedAt: undefined };
+      },
+      "GET /api/deploy/jobs/:id": mockFailedJob,
+    });
+    stubEventSource([]);
+    const onFinished = vi.fn();
+    renderWithApp(<DeployRolloutProgress runId={failedRun.id} names={{ gitea: "Gitea" }} onFinished={onFinished} />);
+    expect(within(await row("gitea")).getByRole("button", { name: "Uninstall" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Retry and continue" }));
+    await waitFor(() =>
+      expect(document.querySelector("[data-run-state]")?.getAttribute("data-run-state")).toBe("running")
+    );
+    expect(calls.some((c) => c.key === "POST /api/deploy/bundles/:id/retry")).toBe(true);
+    expect(screen.queryByRole("button", { name: "Retry and continue" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Cancel rollout" })).toBeInTheDocument();
+  });
+
   it("switches the log to an app the user picks", async () => {
     const { calls } = stubApi({ "GET /api/deploy/jobs/:id": mockDeployJob });
     stubEventSource([]);

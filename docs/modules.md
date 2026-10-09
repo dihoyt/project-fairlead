@@ -388,6 +388,16 @@ Installed and Apps → Deploy; the wizard's Access step.
 - **Upgrade all**: every app the console installed, upgraded in dependency
   order with `helm upgrade --reset-then-reuse-values`, so its values are kept
   and new chart defaults arrive; one app at a time from its row.
+- **Failed deploys**: an app whose last install or upgrade failed shows it on
+  the Installed page with **Retry** (`helm upgrade --reset-then-reuse-values`
+  at the same version, so the values and generated passwords of the failed
+  attempt are kept; **Deploy again** when that attempt never created the
+  release), **Reinstall** and **Uninstall** (`helm uninstall`, asking every
+  time whether its volumes are kept or deleted; Longhorn is never
+  uninstalled from here). A failed rollout in the wizard has **Retry and
+  continue**, which retries its failed apps and then runs the rest with the
+  answers it started with; a failed rollout keeps those answers, sealed,
+  until it is resumed or another rollout starts.
 - **Actions** on installed apps: raise Longhorn's replica count (Backups
   page), move an app's volumes between local-path and Longhorn under the same
   claim names, whichever way applies (the old volume is kept until the app
@@ -397,7 +407,7 @@ Installed and Apps → Deploy; the wizard's Access step.
   a database on the shared Postgres (`pg-database`), set up, run and restore
   its backups (`pg-backups`, `pg-backup-now`, `pg-restore`) and delete a
   cluster a restore replaced (`pg-remove-cluster`), the node actions above,
-  the console's own backup, remove a template app, publish a host directly
+  the console's own backup, remove a template app or uninstall a catalog app, publish a host directly
   with its own certificate, and open forwarded ports on k3s's Traefik
   (`deploy.forwardedPorts`).
 - Defaults for new apps (`deploy.baseDomain`, `deploy.ingressClass`,

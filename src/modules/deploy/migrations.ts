@@ -94,4 +94,12 @@ export const migrations: readonly Migration[] = [
       );
     `,
   },
+  {
+    version: 6,
+    name: "deploy retries",
+    up: `
+      -- The failed job a retry runs again.
+      ALTER TABLE deploy_jobs ADD COLUMN retry_of TEXT;
+    `,
+  },
 ];

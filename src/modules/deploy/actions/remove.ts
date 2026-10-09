@@ -40,6 +40,30 @@ else
 fi
 `;
 
+// Fixed program for a catalog app installed with Helm; inputs are files.
+// PVCs from a chart's StatefulSets outlive helm uninstall, so the volumes
+// are matched by the release's instance label.
+export const UNINSTALL_SCRIPT = `set -eu
+release=$(cat ${VALUES_DIR}/release)
+ns=$(cat ${VALUES_DIR}/namespace)
+if helm status "$release" --namespace "$ns" >/dev/null 2>&1; then
+  helm uninstall "$release" --namespace "$ns" --wait --timeout ${TIMEOUT}
+else
+  echo "Release $release was not found in $ns; nothing to uninstall."
+fi
+if [ "$(cat ${VALUES_DIR}/delete-volumes)" = "true" ]; then
+  kubectl delete pvc -l "app.kubernetes.io/instance=$release" --namespace "$ns" --ignore-not-found --wait=true --timeout=${TIMEOUT}
+  echo "Uninstalled $release and deleted its volumes."
+else
+  echo "Uninstalled $release; its volumes stay."
+fi
+`;
+
+// Everything else depends on these, so they are never removed from here.
+const NOT_REMOVABLE: Record<string, string> = {
+  longhorn: "Longhorn can't be uninstalled from here: every volume on it would go with it.",
+};
+
 const selector = (labels: Record<string, string>) =>
   Object.entries(labels)
     .map(([k, v]) => `${k}=${v}`)
@@ -114,7 +138,13 @@ export const removeAction: ActionRecipe<RemoveAppAction> = {
 
     const view = await ctx.call("GET /api/templates");
     const instance = view.instances.find((i) => i.name === request.appId);
-    if (!instance) return blocked(`${request.appId} is not an app deployed from Templates; only those can be removed.`);
+    if (!instance) {
+      const entry = ctx.catalog?.get(request.appId);
+      if (entry?.install.kind === "helm" && ours) return uninstall(request, ctx, base, entry.name, blocked);
+      return blocked(
+        `${request.appId} is not an app deployed from Templates or installed with Helm from here; only those can be removed.`
+      );
+    }
     const namespace = instance.namespace;
     const rendered = { ...base, namespace, version: base.version || instance.version };
     if (!ctx.enabled) {
@@ -231,3 +261,80 @@ export const removeAction: ActionRecipe<RemoveAppAction> = {
     };
   },
 };
+
+// helm uninstall for a catalog app the deploy runner installed.
+async function uninstall(
+  request: RemoveAppAction,
+  ctx: ActionContext,
+  base: { appId: string; release: string; namespace: string; version: string },
+  name: string,
+  blocked: (why: string) => ActionRendered
+): Promise<ActionRendered> {
+  const refused = NOT_REMOVABLE[request.appId];
+  if (refused) return blocked(refused);
+  if (!ctx.enabled) {
+    return blocked(`Deploys are off.${ctx.enableHint ? ` Turn them on with: ${ctx.enableHint}` : ""}`);
+  }
+  if (!ctx.k8s) return blocked("The cluster can't be read, so what would be deleted is unknown.");
+  const deleteVolumes = request.deleteVolumes === true;
+  const { release, namespace } = base;
+  const instanceLabel = `app.kubernetes.io/instance=${release}`;
+  const listed = await ctx.k8s.list(RESOURCES.pvcs, { namespace, labelSelector: instanceLabel });
+  const claims = (listed === "absent" ? [] : listed) as Claim[];
+  const volumes: ActionVolume[] = claims.map((claim) => ({
+    namespace,
+    claim: claim.metadata.name,
+    storageClass: claim.spec?.storageClassName ?? "",
+    size: claim.spec?.resources?.requests?.storage ?? "",
+  }));
+  const warnings: string[] = [];
+  if (volumes.length > 0) {
+    warnings.push(
+      deleteVolumes
+        ? `The data on ${volumes.map((v) => v.claim).join(", ")} is deleted for good.`
+        : `${volumes.map((v) => v.claim).join(", ")} ${volumes.length === 1 ? "stays" : "stay"}. ` +
+            `A fresh install generates new passwords, so an app that keeps its own database on them may not start against the old data.`
+    );
+  }
+  warnings.push(`The namespace ${namespace} stays.`);
+  const deletes: PlannedObject[] = [
+    { kind: "HelmRelease", name: release, namespace },
+    ...(deleteVolumes ? volumes.map((v) => ({ kind: "PersistentVolumeClaim", name: v.claim, namespace })) : []),
+  ];
+  const commands = [
+    ["helm", "uninstall", release, "--namespace", namespace, "--wait", "--timeout", TIMEOUT],
+    ...(deleteVolumes
+      ? [["kubectl", "delete", "pvc", "-l", instanceLabel, "--namespace", namespace, "--ignore-not-found"]]
+      : []),
+  ];
+  return {
+    ...base,
+    plan: {
+      kind: "remove-app",
+      title: `Uninstall ${name}`,
+      allowed: true,
+      steps: [
+        {
+          label: deleteVolumes
+            ? `Uninstall the Helm release ${release} and delete its volumes`
+            : `Uninstall the Helm release ${release}, keeping its volumes`,
+          commands: commands.map(display),
+        },
+      ],
+      downtime: `${name} stops until it is deployed again.`,
+      rollback:
+        deleteVolumes || volumes.length === 0
+          ? `Nothing can be put back; deploy ${name} again to start fresh.`
+          : `Deploy ${name} again; its volumes are still there.`,
+      changes: [],
+      creates: [],
+      deletes,
+      warnings,
+      ...(volumes.length > 0 ? { volumes } : {}),
+    },
+    steps: [],
+    script: UNINSTALL_SCRIPT,
+    deadlineSeconds: 600,
+    files: ctx.run ? { release, namespace, "delete-volumes": String(deleteVolumes) } : {},
+  };
+}

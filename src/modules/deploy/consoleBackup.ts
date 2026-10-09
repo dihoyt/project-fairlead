@@ -50,7 +50,13 @@ export function registerConsoleBackup(
       ctx.log.info("Skipping the console's scheduled backup", { reason: rendered.plan.blockedBy });
       return;
     }
-    await deployer.startAction(SCHEDULE_ACTOR, { kind: "console-backup" }, noCall);
+    try {
+      await deployer.startAction(SCHEDULE_ACTOR, { kind: "console-backup" }, noCall);
+    } catch (err) {
+      // The other pod's tick, or this pod's scheduled one, started it first.
+      if (err instanceof HttpError && err.status === 409) return;
+      throw err;
+    }
   }
 
   ctx.scheduler.every("deploy.console-backup", TICK_MS, () => tick());

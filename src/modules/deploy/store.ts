@@ -30,6 +30,7 @@ interface Row {
   log: string | null;
   log_redacted: number;
   log_truncated: number;
+  retry_of: string | null;
 }
 
 export const FINAL: readonly DeployJobState[] = ["succeeded", "failed", "cancelled"];
@@ -52,6 +53,7 @@ export interface NewJob {
   url?: string;
   jobNamespace: string;
   hasSecrets: boolean;
+  retryOf?: string;
   jobName(seq: number): string;
 }
 
@@ -72,6 +74,7 @@ function toRecord(row: Row): JobRecord {
     ...(row.message ? { message: row.message } : {}),
     ...(row.url ? { url: row.url } : {}),
     job: { namespace: row.job_namespace, name: row.job_name },
+    ...(row.retry_of ? { retryOf: row.retry_of } : {}),
   };
   return {
     view,
@@ -118,8 +121,8 @@ export class Store {
       this.db
         .prepare(
           `INSERT INTO deploy_jobs (seq, id, org_id, app_id, release, namespace, version, mode, action, state,
-             started_by, created_at, url, job_namespace, job_name, has_secrets)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`
+             started_by, created_at, url, job_namespace, job_name, has_secrets, retry_of)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           seq,
@@ -136,7 +139,8 @@ export class Store {
           job.url ?? null,
           job.jobNamespace,
           job.jobName(seq),
-          job.hasSecrets ? 1 : 0
+          job.hasSecrets ? 1 : 0,
+          job.retryOf ?? null
         );
       return { created: this.get(id)! };
     });
@@ -205,6 +209,17 @@ export class Store {
       )
       .all(this.orgId) as Array<{ release: string; version: string }>;
     return new Map(rows.map((row) => [row.release, row.version]));
+  }
+
+  // Whether an install or upgrade of the release started after the job.
+  laterInstall(release: string, id: string): boolean {
+    const row = this.db
+      .prepare(
+        `SELECT 1 FROM deploy_jobs WHERE org_id = ? AND release = ? AND mode IN ('install', 'upgrade')
+           AND seq > (SELECT seq FROM deploy_jobs WHERE org_id = ? AND id = ?) LIMIT 1`
+      )
+      .get(this.orgId, release, this.orgId, id);
+    return row !== undefined;
   }
 
   active(): JobRecord[] {

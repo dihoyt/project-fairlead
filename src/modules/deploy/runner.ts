@@ -552,6 +552,86 @@ export class Deployer {
     );
   }
 
+  // --- retries -------------------------------------------------------------
+
+  // Whether discovery sees the app's objects in the cluster: false means the
+  // failed attempt never got as far as creating the release; undefined
+  // when discovery can't tell.
+  async releaseCreated(appId: string): Promise<boolean | undefined> {
+    const { discovery } = await this.discover(true);
+    const state = discovery?.apps.find((app) => app.appId === appId)?.state;
+    return state === "installed" ? true : state === "not-installed" ? false : undefined;
+  }
+
+  // The failed install or upgrade, checked for a retry; throws why not.
+  retryable(id: string): { record: JobRecord; entry: CatalogEntry } {
+    const record = this.mustGet(id);
+    const { view } = record;
+    if (view.mode !== "install" && view.mode !== "upgrade") {
+      throw new HttpError(400, `${id} is not an install or upgrade, so there is nothing to retry.`);
+    }
+    if (view.state !== "failed" && view.state !== "cancelled") {
+      throw new HttpError(400, `${id} did not fail (${view.state}); there is nothing to retry.`);
+    }
+    if (this.store.laterInstall(view.release, id)) {
+      throw new HttpError(400, `${view.release} has been deployed again since ${id}; retry the latest attempt.`);
+    }
+    const entry = this.entries().find((e) => e.id === view.appId);
+    if (!entry) throw new HttpError(400, `${view.appId} is no longer in the catalog.`);
+    if (entry.install.kind === "patch") {
+      throw new HttpError(400, `${entry.name} is a setting change; deploy it again instead.`);
+    }
+    return { record, entry };
+  }
+
+  // Runs a failed install or upgrade again with the values Helm saved from
+  // it (upgradeSteps: --reset-then-reuse-values), so the passwords it
+  // generated stay what the data already on disk was made with.
+  async retry(actor: string, id: string): Promise<DeployJobView> {
+    const { record, entry } = this.retryable(id);
+    const { view } = record;
+    if (entry.install.kind === "helm" && (await this.releaseCreated(entry.id)) === false) {
+      throw new HttpError(
+        400,
+        `The failed attempt never created ${view.release}, so there are no saved values to retry with; deploy ${entry.name} again.`
+      );
+    }
+    const { steps, files, error } = upgradeSteps(
+      { entry, release: view.release, namespace: view.namespace },
+      view.version
+    );
+    if (error) throw new HttpError(400, error);
+    const gate = await this.gateSteps(entry);
+    steps.push(...gate.steps);
+    Object.assign(files, gate.files);
+    // Its log is on the record already; the pod would only linger.
+    await this.k8s()
+      ?.delete?.(RESOURCES.jobs, view.job.name, view.job.namespace)
+      .catch(() => undefined);
+    const started = await this.launch(
+      actor,
+      {
+        appId: view.appId,
+        release: view.release,
+        namespace: view.namespace,
+        version: view.version,
+        mode: view.mode,
+        url: view.url,
+        retryOf: view.id,
+      },
+      Object.keys(files).length > 0 ? files : { "values.yaml": "{}\n" },
+      steps,
+      []
+    );
+    this.ctx.audit.record({
+      actor,
+      action: "deploy.retry",
+      target: started.id,
+      detail: `${view.appId} ${view.version} ${view.mode}, retrying ${view.id}`,
+    });
+    return started;
+  }
+
   // --- actions -------------------------------------------------------------
 
   async renderAction(request: DeployActionRequest, call: ActionContext["call"], run = false): Promise<ActionRendered> {
@@ -624,6 +704,7 @@ export class Deployer {
       mode: DeployJobMode;
       action?: DeployActionKind;
       url?: string;
+      retryOf?: string;
     },
     files: Record<string, string>,
     steps: Step[],
@@ -645,6 +726,7 @@ export class Deployer {
         url: plan.url,
         jobNamespace,
         hasSecrets: secrets.length > 0,
+        ...(plan.retryOf ? { retryOf: plan.retryOf } : {}),
         jobName: (seq) => jobName(plan.release, seq),
       },
       this.iso()

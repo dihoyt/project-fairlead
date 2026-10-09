@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import type { BackupPosture, LonghornReplicaAdvice } from "@contracts/backups";
 import type { CatalogAppView } from "@contracts/catalog";
 import type { ManagedBy } from "@contracts/k8s";
-import type { AppGateView, PortsView, UpgradeCandidate, UpgradeReport } from "@contracts/deploy";
+import type { AppGateView, DeployJobView, PortsView, UpgradeCandidate, UpgradeReport } from "@contracts/deploy";
 import {
   CUSTOM_TEMPLATE,
   type AppTemplate,
@@ -14,7 +14,7 @@ import {
 } from "@contracts/templates";
 import { PageHeader } from "../../shell/PageHeader";
 import { useApi } from "../../ui";
-import { DeploysOff, JOB_STATE_COLOR } from "../../ui/deploy";
+import { DeployDialog, DeploysOff, JOB_STATE_COLOR, RetryButton, UninstallButton } from "../../ui/deploy";
 import { SessionContext } from "../../ui/session";
 import { ForwardedPortsPanel } from "../templates/ForwardedPorts";
 import { RemoveAppButton } from "../templates/RemoveApp";
@@ -45,6 +45,18 @@ export interface InstalledRow {
   instance?: TemplateInstance;
   upgrade?: UpgradeCandidate;
   gate?: AppGateView;
+  // A catalog app whose latest install or upgrade from here failed.
+  failed?: DeployJobView;
+}
+
+// The newest install or upgrade job per app, when it failed or was cancelled.
+export function failedDeploys(jobs: readonly DeployJobView[]): Map<string, DeployJobView> {
+  const latest = new Map<string, DeployJobView>();
+  for (const job of jobs.toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))) {
+    if (job.mode !== "install" && job.mode !== "upgrade") continue;
+    if (!latest.has(job.appId)) latest.set(job.appId, job);
+  }
+  return new Map([...latest].filter(([, job]) => job.state === "failed" || job.state === "cancelled"));
 }
 
 const hostPort = (address: string, port: number) => `${address.includes(":") ? `[${address}]` : address}:${port}`;
@@ -95,8 +107,10 @@ export function installedRows(
   instances: readonly TemplateInstance[],
   upgrades: UpgradeReport | undefined,
   gate: readonly AppGateView[],
-  ports?: PortsView
+  ports?: PortsView,
+  jobs: readonly DeployJobView[] = []
 ): InstalledRow[] {
+  const failed = failedDeploys(jobs);
   const upgradeOf = (id: string) => upgrades?.apps.find((u) => u.appId === id);
   const gateOf = (id: string) => gate.find((g) => g.appId === id);
   const rows: InstalledRow[] = [];
@@ -192,7 +206,46 @@ export function installedRows(
       gate: g,
     });
   }
+  for (const row of rows) {
+    const job = failed.get(row.id);
+    if (!job || row.instance || !row.ownedByUs) continue;
+    row.failed = job;
+    row.status = { label: `${job.mode} ${job.state}`, color: JOB_STATE_COLOR[job.state], detail: job.message };
+  }
   return rows.toSorted((a, b) => a.name.localeCompare(b.name));
+}
+
+// Retry, Uninstall and Reinstall for a catalog app whose deploy failed.
+// Retry needs the release the failed attempt made; without one, the app is
+// deployed again from the form.
+function FailedActions({ row, allowed, onChanged }: { row: InstalledRow; allowed: boolean; onChanged: () => void }) {
+  const [deploying, setDeploying] = useState(false);
+  const job = row.failed!;
+  const helm = row.app?.install.kind === "helm";
+  const created = !helm || row.app?.detected.state !== "not-installed";
+  return (
+    <>
+      {created ? (
+        <RetryButton job={job} name={row.name} disabled={!allowed} onChanged={onChanged} />
+      ) : (
+        <Button size="xs" variant="light" disabled={!allowed} onClick={() => setDeploying(true)}>
+          Deploy again
+        </Button>
+      )}
+      {helm && row.id !== "longhorn" ? (
+        <>
+          <UninstallButton appId={row.id} name={row.name} reinstall disabled={!allowed} onChanged={onChanged} />
+          <UninstallButton appId={row.id} name={row.name} disabled={!allowed} onChanged={onChanged} />
+        </>
+      ) : null}
+      <DeployDialog
+        appId={row.id}
+        opened={deploying}
+        onClose={() => setDeploying(false)}
+        onDeployed={() => onChanged()}
+      />
+    </>
+  );
 }
 
 function Address({ row }: { row: InstalledRow }) {
@@ -305,7 +358,8 @@ function Row({
       </Table.Td>
       <Table.Td>
         <Group gap={4} wrap="nowrap" justify="flex-end">
-          {upgrade && canUpgrade(upgrade) ? (
+          {row.failed && admin ? <FailedActions row={row} allowed={allowed} onChanged={onChanged} /> : null}
+          {upgrade && canUpgrade(upgrade) && !row.failed ? (
             <Button size="xs" variant="light" disabled={!allowed} onClick={() => onUpgrade(upgrade)}>
               Upgrade
             </Button>
@@ -340,9 +394,18 @@ export function InstalledPage() {
   const ports = useApi("GET /api/deploy/ports");
   const posture = useApi("GET /api/backups/posture");
   const longhorn = useApi("GET /api/longhorn/replicas");
+  const jobs = useApi("GET /api/deploy/jobs", { query: { limit: "200" } }, { pollMs: POLL_MS });
   const [picked, setPicked] = useState<UpgradeCandidate[] | null>(null);
 
-  const reloads = [apps.reload, templates.reload, upgrades.reload, gate.reload, ports.reload, posture.reload];
+  const reloads = [
+    apps.reload,
+    templates.reload,
+    upgrades.reload,
+    gate.reload,
+    ports.reload,
+    posture.reload,
+    jobs.reload,
+  ];
   const changed = useCallback(() => {
     setRefresh(true);
     for (const reload of reloads) reload();
@@ -355,7 +418,8 @@ export function InstalledPage() {
     templates.data?.instances ?? [],
     upgrades.data ?? undefined,
     gate.data?.apps ?? [],
-    ports.data ?? undefined
+    ports.data ?? undefined,
+    jobs.data ?? []
   );
   const names = Object.fromEntries(rows.map((row) => [row.id, row.name]));
   const enabled = status.data?.enabled !== false;
