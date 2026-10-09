@@ -6,6 +6,7 @@ import type { OnboardingState, OnboardingStep, OnboardingStepId } from "@contrac
 import { PageHeader } from "../../shell/PageHeader";
 import { apiRequest, useApi, useSession } from "../../ui";
 import { BundleDoor } from "./BundleDoor";
+import { SeedSummary } from "./SeedSummary";
 import { AccessStep } from "./steps/AccessStep";
 import type { StepProps } from "./shared";
 import { ChecksStep } from "./steps/ChecksStep";
@@ -184,6 +185,7 @@ export function WelcomePage() {
           </>
         }
       />
+      <SeedSummary />
       {door === null ? <Doors onPick={setDoor} /> : null}
       {door === "bundle" ? <BundleDoor onDone={() => setDoor("custom")} /> : null}
       {door === "custom" ? (
