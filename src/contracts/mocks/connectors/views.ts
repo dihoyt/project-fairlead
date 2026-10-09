@@ -7,7 +7,10 @@ import type {
   ConnectorView,
   EntraGroup,
   EntraSignInView,
+  StorageTargetView,
 } from "../../connectors.js";
+import { STORAGE_TARGET_KIND } from "../../connectors.js";
+import type { CheckResult } from "../../health.js";
 import { HOUR, isoAgo } from "../time.js";
 
 export const mockCloudflareKind: ConnectorKindView = {
@@ -252,3 +255,156 @@ export const mockEntraCertificate = `-----BEGIN CERTIFICATE-----
 MIIBszCCAVmgAwIBAgIUQ2VydGlmaWNhdGVNb2NrT25seTAKBggqhkjOPQQDAjAa
 -----END CERTIFICATE-----
 `;
+// --- Storage targets ----------------------------------------------------------
+
+export const mockStorageTargetKind: ConnectorKindView = {
+  kind: STORAGE_TARGET_KIND,
+  label: "Storage target",
+  description:
+    "A place backups go: an NFS export, an S3 or MinIO bucket, or an SMB/CIFS share. " +
+    "S3 needs an access key that can list, read and write the bucket; SMB a user that can write the share.",
+  capabilities: ["backup-target"],
+  fields: [
+    {
+      key: "protocol",
+      label: "Protocol",
+      type: "select",
+      required: true,
+      options: [
+        { value: "nfs", label: "NFS export" },
+        { value: "s3", label: "S3 or MinIO bucket" },
+        { value: "smb", label: "SMB/CIFS share" },
+      ],
+    },
+    {
+      key: "url",
+      label: "Target URL",
+      type: "text",
+      required: true,
+      help: "nfs://server:/export, s3://bucket@region/ or cifs://server/share",
+      placeholder: "nfs://nas.example.com:/backups",
+    },
+    { key: "path", label: "Path prefix", type: "text", required: false, help: "A folder under it, for this cluster." },
+    {
+      key: "endpoint",
+      label: "S3 endpoint",
+      type: "url",
+      required: false,
+      help: "MinIO or another S3-compatible server; empty for AWS.",
+      placeholder: "https://minio.example.com:9000",
+      showWhen: { key: "protocol", values: ["s3"] },
+    },
+    {
+      key: "accessKeyId",
+      label: "Access key ID",
+      type: "text",
+      required: false,
+      showWhen: { key: "protocol", values: ["s3"] },
+    },
+    {
+      key: "secretAccessKey",
+      label: "Secret access key",
+      type: "secret",
+      required: false,
+      showWhen: { key: "protocol", values: ["s3"] },
+    },
+    {
+      key: "username",
+      label: "Username",
+      type: "text",
+      required: false,
+      showWhen: { key: "protocol", values: ["smb"] },
+    },
+    {
+      key: "password",
+      label: "Password",
+      type: "secret",
+      required: false,
+      showWhen: { key: "protocol", values: ["smb"] },
+    },
+  ],
+  single: false,
+};
+
+const reach = (id: string, label: string, status: CheckResult["status"], detail: string, raw?: unknown) => ({
+  id,
+  label,
+  status,
+  detail,
+  observedAt: isoAgo(60_000),
+  ...(raw === undefined ? {} : { raw }),
+});
+
+// NFS, reachable, Longhorn's target and available.
+export const mockNfsTarget: StorageTargetView = {
+  id: "cn_st1",
+  name: "NAS backups",
+  protocol: "nfs",
+  url: "nfs://nas.example.test:/volume1/backups/cluster/",
+  server: "nas.example.test",
+  hasCredentials: false,
+  status: "ok",
+  checks: [reach("tcp", "NFS port", "ok", "nas.example.test:2049 accepts connections (4 ms)")],
+  checkedAt: isoAgo(60_000),
+  usedBy: [{ kind: "longhorn", label: "Longhorn backup target", available: true, lastSyncAt: isoAgo(5 * 60_000) }],
+};
+
+// MinIO, keys proved by a signed ListObjectsV2, not used yet.
+export const mockS3Target: StorageTargetView = {
+  id: "cn_st2",
+  name: "MinIO",
+  protocol: "s3",
+  url: "s3://cluster-backups@us-east-1/",
+  endpoint: "https://minio.example.test:9000",
+  server: "minio.example.test",
+  hasCredentials: true,
+  status: "ok",
+  checks: [
+    reach("tcp", "Endpoint", "ok", "minio.example.test:9000 accepts connections (6 ms)"),
+    reach("list", "Bucket access", "ok", "Listed cluster-backups with the access key (0 objects)"),
+  ],
+  checkedAt: isoAgo(60_000),
+  usedBy: [],
+};
+
+// SMB, the server refuses port 445.
+export const mockSmbTarget: StorageTargetView = {
+  id: "cn_st3",
+  name: "Office share",
+  protocol: "smb",
+  url: "cifs://fileserver.example.test/backups/",
+  server: "fileserver.example.test",
+  hasCredentials: true,
+  status: "crit",
+  checks: [
+    reach("tcp", "SMB port", "crit", "fileserver.example.test:445 refused the connection", {
+      error: "connect ECONNREFUSED 10.0.0.30:445",
+    }),
+  ],
+  checkedAt: isoAgo(60_000),
+  usedBy: [],
+};
+
+export const mockStorageTargets: StorageTargetView[] = [mockNfsTarget, mockS3Target, mockSmbTarget];
+
+// The S3 target as GET /api/connectors shows it.
+export const mockStorageConnector: ConnectorView = {
+  id: mockS3Target.id,
+  kind: STORAGE_TARGET_KIND,
+  name: mockS3Target.name,
+  config: {
+    protocol: "s3",
+    url: "s3://cluster-backups@us-east-1/",
+    path: "",
+    endpoint: "https://minio.example.test:9000",
+    accessKeyId: "AKIAMOCKMOCKMOCK0001",
+    username: "",
+  },
+  secrets: { secretAccessKey: true, password: false },
+  status: mockS3Target.status,
+  checks: mockS3Target.checks,
+  checkedAt: mockS3Target.checkedAt,
+  createdAt: isoAgo(2 * HOUR),
+  createdBy: "admin",
+  updatedAt: isoAgo(2 * HOUR),
+};

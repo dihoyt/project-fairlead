@@ -1,10 +1,14 @@
 import type {
+  BackupSchedule,
+  BackupSchedulesView,
   BackupSource,
   BackupTarget,
+  BackupTargetView,
   CapacitySource,
   LonghornReplicaAdvice,
   ProtectedVolume,
   PvcRef,
+  VolumeRestorePoint,
 } from "../backups.js";
 import { DAY, HOUR, MOCK_NOW, isoAgo } from "./time.js";
 
@@ -126,3 +130,67 @@ export const mockReplicaAdviceOk: LonghornReplicaAdvice = {
   volumes: [],
   detail: "Every volume has 2 replicas across 2 nodes.",
 };
+
+// --- Backup set-up --------------------------------------------------------------
+
+// Longhorn's target set from the NFS mock storage target (mockNfsTarget).
+export const mockBackupTargetView: BackupTargetView = {
+  connectorId: "cn_st1",
+  name: "NAS backups",
+  protocol: "nfs",
+  url: "nfs://nas.example.test:/volume1/backups/cluster/",
+  available: true,
+  lastSyncAt: isoAgo(5 * 60_000),
+  longhorn: "installed",
+};
+
+export const mockBackupTargetUnavailable: BackupTargetView = {
+  ...mockBackupTargetView,
+  available: false,
+  message: "failed to mount nfs://nas.example.test:/volume1/backups/cluster/: mount.nfs: access denied by server",
+};
+
+export const mockBackupTargetUnset: BackupTargetView = { url: "", longhorn: "installed" };
+
+// What GET /api/backups/schedules offers while none is set.
+export const mockSuggestedSchedules: BackupSchedule[] = [
+  { group: "default", snapshotCron: "0 * * * *", snapshotRetain: 24, backupCron: "0 3 * * *", backupRetain: 14 },
+  { group: "critical", backupCron: "0 */6 * * *", backupRetain: 28 },
+];
+
+export const mockBackupSchedules: BackupSchedulesView = {
+  schedules: mockSuggestedSchedules,
+  longhorn: "installed",
+};
+
+export const mockBackupSchedulesUnset: BackupSchedulesView = {
+  schedules: [],
+  suggested: mockSuggestedSchedules,
+  longhorn: "installed",
+};
+
+// The postgres volume's backups: two completed, one running.
+export const mockRestorePoints: VolumeRestorePoint[] = [
+  {
+    id: "backup-7d2e9f",
+    at: isoAgo(20 * 60_000),
+    state: "in-progress",
+    createdBy: "manual",
+  },
+  {
+    id: "backup-6f1c2a",
+    at: isoAgo(10 * HOUR),
+    state: "completed",
+    sizeBytes: 3.2 * 2 ** 30,
+    createdBy: "test-default-backup",
+    url: "nfs://nas.example.test:/volume1/backups/cluster/?backup=backup-6f1c2a&volume=pvc-5e1d",
+  },
+  {
+    id: "backup-41b0c8",
+    at: isoAgo(DAY + 10 * HOUR),
+    state: "completed",
+    sizeBytes: 3.1 * 2 ** 30,
+    createdBy: "test-default-backup",
+    url: "nfs://nas.example.test:/volume1/backups/cluster/?backup=backup-41b0c8&volume=pvc-5e1d",
+  },
+];

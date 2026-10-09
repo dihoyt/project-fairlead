@@ -162,6 +162,15 @@ export const ROUTE_ACCESS: { [K in RouteKey]: RouteAccess } = {
   "GET /api/backups/posture": a("backups"),
   "GET /api/backups/posture.csv": a("backups"),
   "POST /api/backups/volumes/:uid/restore-tests": a("backups"),
+  "GET /api/backups/target": a("backups"),
+  "PUT /api/backups/target": a("backups"),
+  "GET /api/backups/schedules": a("backups"),
+  "PUT /api/backups/schedules": a("backups"),
+  "PUT /api/backups/volumes/:uid/groups": a("backups"),
+  "POST /api/backups/volumes/:uid/backup-now": a("backups"),
+  "GET /api/backups/volumes/:uid/backups": a("backups"),
+  "POST /api/backups/restore/plan": a("backups"),
+  "POST /api/backups/restore": a("backups"),
 
   "GET /api/workloads/links": a("workloads"),
   "GET /api/workloads/namespaces": a("workloads"),
@@ -232,9 +241,14 @@ export const ROUTE_ACCESS: { [K in RouteKey]: RouteAccess } = {
   "GET /api/connector-entra/certificate": a("connectors"),
   "POST /api/connector-entra/signin": a("connectors"),
   "GET /api/connector-entra/groups": a("connectors"),
+  "GET /api/connector-storage/targets": a("connectors"),
+  "GET /api/connector-storage/targets/:id": a("connectors"),
 
   "GET /api/onboarding/state": "open",
   "POST /api/onboarding/steps/:step": "full",
+  "GET /api/onboarding/seed": "open",
+  "POST /api/onboarding/seed/apply": "session",
+  "POST /api/onboarding/seed/dismiss": "session",
 };
 
 // The route each MCP tool is listed by: tools/list shows a tool only when
@@ -258,6 +272,9 @@ export const MCP_TOOL_ROUTES: { [K in McpToolName]: RouteKey } = {
   list_templates: "GET /api/templates",
   get_entra_signin: "GET /api/connector-entra/view",
   list_entra_groups: "GET /api/connector-entra/groups",
+  list_storage_targets: "GET /api/connector-storage/targets",
+  get_backup_schedules: "GET /api/backups/schedules",
+  list_volume_backups: "GET /api/backups/volumes/:uid/backups",
   create_check: "POST /api/checks",
   update_check: "PUT /api/checks/:id",
   delete_check: "DELETE /api/checks/:id",
@@ -275,6 +292,11 @@ export const MCP_TOOL_ROUTES: { [K in McpToolName]: RouteKey } = {
   plan_template_removal: "POST /api/deploy/actions/plan",
   remove_template_app: "POST /api/deploy/actions/run",
   setup_entra_signin: "POST /api/connector-entra/signin",
+  set_backup_target: "PUT /api/backups/target",
+  set_backup_schedule: "PUT /api/backups/schedules",
+  backup_volume_now: "POST /api/backups/volumes/:uid/backup-now",
+  plan_volume_restore: "POST /api/backups/restore/plan",
+  restore_volume: "POST /api/backups/restore",
   // Node actions run as deploy actions, so they need the deploy area.
   plan_node_action: "POST /api/deploy/actions/plan",
   cordon_node: "POST /api/deploy/actions/run",

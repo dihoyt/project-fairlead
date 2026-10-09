@@ -1,6 +1,8 @@
 import crypto from "node:crypto";
 import type { SignInOidcClient, SignInService } from "../contracts/platform.js";
 import { CALLBACK_PATH, OIDC_KEY, OIDC_SECRET } from "./auth/oidc.js";
+import { hashPassword, passwordProblem } from "./auth/passwords.js";
+import { userByUsername } from "./auth/users.js";
 import { publicOrigin, type Core } from "./core.js";
 import { secretKeyConfigured } from "./secretBox.js";
 
@@ -91,6 +93,31 @@ export function createSignIn(core: Core): SignInService & {
         action: "auth.oidc.wire",
         target: client.issuer,
         detail: `clientId=${client.clientId} auth=${client.clientKey ? "private_key_jwt" : "client_secret"} settings=${values.map(([key]) => key).join(",")}`,
+        result: "ok",
+      });
+    },
+    async seedAdminPassword(password, actor) {
+      const problem = passwordProblem(password);
+      if (problem) throw new SignInError(400, problem);
+      const account = userByUsername(core.db, "admin");
+      if (account === null || account.lastLoginAt !== null) return false;
+      const hash = await hashPassword(password);
+      // Checked again with the write: a sign-in during the hash wins.
+      const changed = core.db
+        .prepare("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ? AND last_login_at IS NULL")
+        .run(hash, account.id).changes;
+      if (changed === 0) return false;
+      core.audit.record({ actor, action: "auth.seed-password", target: "admin", result: "ok" });
+      return true;
+    },
+    async setPublicUrl(url, actor) {
+      const value = core.settings.definition("site.publicUrl").coerce(url);
+      core.settings.set("site.publicUrl", value, actor);
+      core.audit.record({
+        actor,
+        action: "admin.setting-change",
+        target: "site.publicUrl",
+        detail: JSON.stringify(value),
         result: "ok",
       });
     },

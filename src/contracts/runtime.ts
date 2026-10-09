@@ -1,6 +1,6 @@
 import type { Database } from "better-sqlite3";
 import type { CatalogService } from "./catalog.js";
-import type { ConnectorRegistry } from "./connectors.js";
+import type { ConnectorRegistry, StorageTargetService } from "./connectors.js";
 import type { DeployService } from "./deploy.js";
 import type { K8sApi } from "./k8s.js";
 import type { EntraMailService } from "./notify.js";
@@ -62,6 +62,8 @@ export interface Services {
   metrics: MetricsQuery;
   // Provided by module "connectors" (B1).
   connectors: ConnectorRegistry;
+  // Provided by module "connector-storage".
+  "storage-targets": StorageTargetService;
   // Provided by module "connector-entra".
   entraMail: EntraMailService;
   // Provided by the platform before any module registers.

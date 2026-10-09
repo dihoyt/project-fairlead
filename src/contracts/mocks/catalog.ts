@@ -236,6 +236,7 @@ const catalogEntries: CatalogEntry[] = [
     ],
     exposesUi: false,
     prerequisites: ["An S3-compatible bucket: AWS, Backblaze B2, MinIO or a NAS that speaks S3."],
+    hidden: true,
   },
   {
     id: "longhorn-backup-target",
@@ -950,6 +951,49 @@ export const mockReplicasJob: DeployJobView = {
   mode: "action",
   action: "longhorn-replicas",
   job: { namespace: "console", name: "deploy-longhorn-7" },
+};
+
+// The Backups page's set-up jobs: each a deploy action on release "longhorn".
+const backupActionJob = (id: string, action: NonNullable<DeployJobView["action"]>): DeployJobView => ({
+  ...mockReplicasJob,
+  id,
+  action,
+  job: { namespace: "console", name: `deploy-longhorn-${id.slice(3)}` },
+});
+
+export const mockBackupTargetJob = backupActionJob("dj_21", "longhorn-target");
+export const mockBackupRecurringJob = backupActionJob("dj_22", "longhorn-recurring");
+export const mockBackupNowJob = backupActionJob("dj_23", "longhorn-backup-now");
+export const mockRestoreJob = backupActionJob("dj_24", "longhorn-restore");
+
+// Restore postgres-data's backup-6f1c2a to a new claim.
+export const mockRestorePlan: DeployActionPlan = {
+  kind: "longhorn-restore",
+  title: "Restore postgres-data to postgres-data-restored-20261009",
+  allowed: true,
+  steps: [
+    {
+      label: "Restore backup-6f1c2a into a new Longhorn volume",
+      commands: ["kubectl apply --namespace longhorn-system -f /values/volume.yaml"],
+    },
+    {
+      label: "Bind postgres-data-restored-20261009 to it",
+      commands: [
+        "kubectl apply --namespace apps -f /values/claim.yaml",
+        "kubectl wait --namespace apps --for=jsonpath={.status.phase}=Bound pvc/postgres-data-restored-20261009 --timeout=10m",
+      ],
+    },
+  ],
+  rollback: "The new volume and claim are deleted; postgres-data is never touched.",
+  changes: [],
+  creates: [
+    { kind: "Volume", name: "postgres-data-restored-20261009", namespace: "longhorn-system" },
+    { kind: "PersistentVolumeClaim", name: "postgres-data-restored-20261009", namespace: "apps" },
+    { kind: "Job", name: "deploy-longhorn-24", namespace: "console" },
+    { kind: "Secret", name: "deploy-longhorn-values", namespace: "console" },
+  ],
+  warnings: ["The app keeps using postgres-data; point it at the restored claim yourself, or restore in place."],
+  volumes: [{ namespace: "apps", claim: "postgres-data", storageClass: "longhorn", size: "50Gi" }],
 };
 
 export const mockMigratePlan: DeployActionPlan = {

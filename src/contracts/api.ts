@@ -31,7 +31,18 @@ import type {
   UserChangesRequest,
   UserView,
 } from "./auth.js";
-import type { BackupPosture, LonghornReplicaAdvice, RestoreTestMark } from "./backups.js";
+import type {
+  BackupPosture,
+  BackupSchedulesRequest,
+  BackupSchedulesView,
+  BackupTargetRequest,
+  BackupTargetView,
+  LonghornReplicaAdvice,
+  RestoreTestMark,
+  VolumeBackupSettings,
+  VolumeRestorePoint,
+  VolumeRestoreRequest,
+} from "./backups.js";
 import type { CatalogAppView, CatalogBundleView, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
 import type {
@@ -52,6 +63,7 @@ import type {
   EntraGroup,
   EntraSignInRequest,
   EntraSignInView,
+  StorageTargetView,
 } from "./connectors.js";
 import type { JoinLink, JoinLinkRequest, JoinStatus } from "./cluster.js";
 import type {
@@ -94,7 +106,7 @@ import type {
   EmailSetupView,
   TestSendResult,
 } from "./notify.js";
-import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
+import type { InstallSeedView, OnboardingState, OnboardingStepId } from "./onboarding.js";
 import type { ResetRequest, ResetResult } from "./reset.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
 import type { TemplateDeployRequest, TemplateJobRequest, TemplatePlan, TemplatesView } from "./templates.js";
@@ -321,6 +333,25 @@ export interface ApiRoutes {
     { at: string; note: string },
     RestoreTestMark
   >;
+  // Set-up (round 4). Reads are open to anyone signed in; the rest need
+  // "write" and answer with the deploy job they started (DeployActionRequest
+  // in ./deploy.ts), or its 400 when deploys are off or the plan is blocked.
+  "GET /api/backups/target": Route<None, None, None, BackupTargetView>;
+  // longhorn-target. 404 for a connectorId that is no storage target.
+  "PUT /api/backups/target": Route<None, None, BackupTargetRequest, DeployJobView>;
+  "GET /api/backups/schedules": Route<None, None, None, BackupSchedulesView>;
+  // longhorn-recurring with schedules. 400 for a bad group name or cron.
+  "PUT /api/backups/schedules": Route<None, None, BackupSchedulesRequest, DeployJobView>;
+  // longhorn-recurring with this volume. 404 for a PVC that is not on Longhorn.
+  "PUT /api/backups/volumes/:uid/groups": Route<{ uid: string }, None, VolumeBackupSettings, DeployJobView>;
+  // longhorn-backup-now.
+  "POST /api/backups/volumes/:uid/backup-now": Route<{ uid: string }, None, None, DeployJobView>;
+  // The volume's backups on the target, newest first; empty when none.
+  "GET /api/backups/volumes/:uid/backups": Route<{ uid: string }, None, None, VolumeRestorePoint[]>;
+  // longhorn-restore's preview (POST /api/deploy/actions/plan); runs nothing.
+  "POST /api/backups/restore/plan": Route<None, None, VolumeRestoreRequest, DeployActionPlan>;
+  // longhorn-restore.
+  "POST /api/backups/restore": Route<None, None, VolumeRestoreRequest, DeployJobView>;
 
   // --- workloads (A13) ----------------------------------------------------
   "GET /api/workloads/links": Route<None, None, None, WorkloadLinks>;
@@ -498,6 +529,12 @@ export interface ApiRoutes {
   // without a connector; 502 when Graph refuses (it needs Group.Read.All).
   "GET /api/connector-entra/groups": Route<None, { search?: string }, None, EntraGroup[]>;
 
+  // --- connector-storage (round 4) -----------------------------------------
+  // The storage-target connectors as StorageTargetService sees them. Create,
+  // edit, test and remove go through /api/connectors (kind "storage-target").
+  "GET /api/connector-storage/targets": Route<None, None, None, StorageTargetView[]>;
+  "GET /api/connector-storage/targets/:id": Route<{ id: string }, None, None, StorageTargetView>;
+
   // --- onboarding (A14) ---------------------------------------------------
   "GET /api/onboarding/state": Route<None, None, None, OnboardingState>;
   "POST /api/onboarding/steps/:step": Route<
@@ -506,6 +543,15 @@ export interface ApiRoutes {
     { action: "done" | "skip" },
     OnboardingState
   >;
+  // The install seed (./onboarding.ts): what was set up from install.sh's
+  // env file and what still waits.
+  "GET /api/onboarding/seed": Route<None, None, None, InstallSeedView>;
+  // Write. Applies the pending items as the caller, one after another, and
+  // answers when each has run (the bundle item when its run has started).
+  // Items already run are left alone, so a second call changes nothing.
+  "POST /api/onboarding/seed/apply": Route<None, None, None, InstallSeedView>;
+  // Write. Hides the summary for everyone.
+  "POST /api/onboarding/seed/dismiss": Route<None, None, None, InstallSeedView>;
 }
 
 export type RouteKey = keyof ApiRoutes;

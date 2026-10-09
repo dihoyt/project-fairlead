@@ -10,7 +10,7 @@ import { RangeControl, useRange } from "./shared";
 export function NodesPage() {
   const { me } = useSession();
   const [range, setRange] = useRange();
-  const { data, error, loading } = useApi("GET /api/metrics-k8s/nodes", undefined, { pollMs: 30_000 });
+  const { data, error, loading, reload } = useApi("GET /api/metrics-k8s/nodes", undefined, { pollMs: 30_000 });
 
   return (
     <Stack gap="md">
@@ -28,7 +28,7 @@ export function NodesPage() {
         </Alert>
       ) : null}
       {loading && !data ? <Loader size="sm" /> : null}
-      {data ? <NodeTable nodes={data} range={range} /> : null}
+      {data ? <NodeTable nodes={data} range={range} onChanged={reload} /> : null}
     </Stack>
   );
 }

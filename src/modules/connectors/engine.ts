@@ -243,6 +243,10 @@ export function createConnectors(options: ConnectorsOptions) {
       const row = store.get(id);
       return row && unseal(row);
     },
+    async view(id) {
+      const row = store.get(id);
+      return row && view(row);
+    },
     owned: (instanceId) => ownedStore(db, orgId, instanceId, now),
     async clearSecret(instanceId, field) {
       const row = store.get(instanceId);

@@ -1,6 +1,7 @@
 import type { CheckResult } from "../../health.js";
 import type {
   ConnectorInstance,
+  ConnectorView,
   ConnectorKind,
   ConnectorRegistry,
   ConnectorValues,
@@ -33,6 +34,9 @@ export interface MockConnectorRegistry extends ConnectorRegistry {
   // Stores an instance as the connectors module would after a save.
   addInstance(instance: ConnectorInstance): void;
   reports: Map<string, DriftReport>;
+  // What view() answers per instance; unset ones get a view built from the
+  // instance with status "unknown" and no checks.
+  views: Map<string, ConnectorView>;
 }
 
 // In-memory stand-in for module "connectors", so a connector module tests
@@ -42,6 +46,7 @@ export function createMockConnectorRegistry(instances: ConnectorInstance[] = [])
   const stored = new Map(instances.map((i) => [i.id, structuredClone(i)]));
   const owned = new Map<string, OwnedStore>();
   const reports = new Map<string, DriftReport>();
+  const views = new Map<string, ConnectorView>();
   const ownedFor = (instanceId: string) => {
     let store = owned.get(instanceId);
     if (!store) owned.set(instanceId, (store = createMemoryOwnedStore()));
@@ -58,6 +63,25 @@ export function createMockConnectorRegistry(instances: ConnectorInstance[] = [])
     instance: async (id) => {
       const found = stored.get(id);
       return found && structuredClone(found);
+    },
+    async view(id) {
+      const set = views.get(id);
+      if (set) return structuredClone(set);
+      const found = stored.get(id);
+      if (!found) return undefined;
+      const at = now();
+      return {
+        id: found.id,
+        kind: found.kind,
+        name: found.name,
+        config: structuredClone(found.config),
+        secrets: Object.fromEntries(Object.keys(found.secrets).map((k) => [k, true])),
+        status: "unknown",
+        checks: [],
+        createdAt: at,
+        createdBy: "admin",
+        updatedAt: at,
+      };
     },
     owned: ownedFor,
     async clearSecret(instanceId, field) {
@@ -77,6 +101,7 @@ export function createMockConnectorRegistry(instances: ConnectorInstance[] = [])
       return report;
     },
     reports,
+    views,
   };
 }
 

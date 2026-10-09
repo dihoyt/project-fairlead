@@ -9,13 +9,17 @@ import type { CategoryDetail, CheckResult, HealthBoard, HealthLinkView, HealthTi
 import type { HostView } from "../hosts.js";
 import type { ChannelView, EmailSetupView } from "../notify.js";
 import type { OnboardingState } from "../onboarding.js";
+import { mockSeedDone } from "./seed.js";
 import type { PodView, WorkloadLinks } from "../workloads.js";
 import {
   mockFailingVolume,
   mockNeverBackedUpVolume,
   mockProtectedVolume,
   mockPvcs,
+  mockBackupSchedules,
+  mockBackupTargetView,
   mockReplicaAdvice,
+  mockRestorePoints,
   mockStaleVolume,
   mockTargets,
 } from "./backups.js";
@@ -33,8 +37,13 @@ import {
   mockFailedJob,
   mockGateStatus,
   mockHostKeypair,
+  mockBackupNowJob,
+  mockBackupRecurringJob,
+  mockBackupTargetJob,
   mockReplicasJob,
   mockReplicasPlan,
+  mockRestoreJob,
+  mockRestorePlan,
   mockRunningJob,
   mockUpgradeReport,
   mockUpgradeRun,
@@ -50,6 +59,8 @@ import {
   mockEntraGroups,
   mockEntraCertificate,
   mockEntraSignIn,
+  mockNfsTarget,
+  mockStorageTargets,
 } from "./connectors/views.js";
 import { mockCheckResults } from "./health.js";
 import { mockPortsView, mockTemplateJob, mockTemplatePlan, mockTemplatesView } from "./templates.js";
@@ -141,6 +152,8 @@ const postureRow = (
 
 export const mockPosture: BackupPosture = {
   generatedAt: now,
+  target: mockBackupTargetView,
+  schedules: mockBackupSchedules.schedules,
   sources: [
     { id: "longhorn", label: "Longhorn", state: "ok", volumes: 3 },
     { id: "velero", label: "Velero", state: "ok", volumes: 1 },
@@ -751,6 +764,15 @@ export const apiMocks: ApiMocks = {
     note: "Restored into scratch namespace, app started",
     by: "admin",
   },
+  "GET /api/backups/target": mockBackupTargetView,
+  "PUT /api/backups/target": mockBackupTargetJob,
+  "GET /api/backups/schedules": mockBackupSchedules,
+  "PUT /api/backups/schedules": mockBackupRecurringJob,
+  "PUT /api/backups/volumes/:uid/groups": mockBackupRecurringJob,
+  "POST /api/backups/volumes/:uid/backup-now": mockBackupNowJob,
+  "GET /api/backups/volumes/:uid/backups": mockRestorePoints,
+  "POST /api/backups/restore/plan": mockRestorePlan,
+  "POST /api/backups/restore": mockRestoreJob,
 
   "GET /api/workloads/links": mockWorkloadLinks,
   "GET /api/workloads/namespaces": [
@@ -877,6 +899,8 @@ export const apiMocks: ApiMocks = {
   "GET /api/connector-entra/certificate": mockEntraCertificate,
   "POST /api/connector-entra/signin": mockEntraSignIn,
   "GET /api/connector-entra/groups": mockEntraGroups,
+  "GET /api/connector-storage/targets": mockStorageTargets,
+  "GET /api/connector-storage/targets/:id": mockNfsTarget,
   "POST /api/mcp": {
     jsonrpc: "2.0",
     id: 1,
@@ -887,4 +911,7 @@ export const apiMocks: ApiMocks = {
 
   "GET /api/onboarding/state": mockOnboarding,
   "POST /api/onboarding/steps/:step": mockOnboarding,
+  "GET /api/onboarding/seed": mockSeedDone,
+  "POST /api/onboarding/seed/apply": mockSeedDone,
+  "POST /api/onboarding/seed/dismiss": { ...mockSeedDone, dismissed: true },
 };

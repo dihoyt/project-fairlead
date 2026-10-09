@@ -132,6 +132,10 @@ export interface CatalogEntry {
   //   or its clients are never browsers (ntfy's phone apps, the console's
   //   own alerts).
   gate?: "credentials" | "public";
+  // Left out of the catalog picker while it is not installed: kept for
+  // clusters that want it and still deployable over the deploy API and
+  // MCP (Velero, while backups are Longhorn-first).
+  hidden?: boolean;
 }
 
 // Rough, in bytes, from the pinned version's defaults.

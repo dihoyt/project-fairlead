@@ -48,6 +48,9 @@ export interface JobSpecInput {
   script?: string;
   // Default DEADLINE_SECONDS.
   deadlineSeconds?: number;
+  // Kept off this node: a drain would evict the Job's own pod, and a reboot
+  // would end it.
+  avoidNode?: string;
 }
 
 export function jobManifest(input: JobSpecInput): KubeObject {
@@ -65,6 +68,23 @@ export function jobManifest(input: JobSpecInput): KubeObject {
         spec: {
           serviceAccountName: input.serviceAccount,
           restartPolicy: "Never",
+          ...(input.avoidNode
+            ? {
+                affinity: {
+                  nodeAffinity: {
+                    requiredDuringSchedulingIgnoredDuringExecution: {
+                      nodeSelectorTerms: [
+                        {
+                          matchExpressions: [
+                            { key: "kubernetes.io/hostname", operator: "NotIn", values: [input.avoidNode] },
+                          ],
+                        },
+                      ],
+                    },
+                  },
+                },
+              }
+            : {}),
           securityContext: {
             runAsNonRoot: true,
             runAsUser: 65532,

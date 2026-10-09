@@ -21,7 +21,9 @@ import {
 import { mockCheckResults } from "../../src/contracts/mocks/health.js";
 import { createFakeK8s, mockClusterObjects, mockLonghornObjects } from "../../src/contracts/mocks/k8s.js";
 import { mockSeries } from "../../src/contracts/mocks/metrics.js";
+import { mockSeedEnv, mockSeedSecret, mockSeedDone, mockSeedPending } from "../../src/contracts/mocks/seed.js";
 import { MOCK_NOW } from "../../src/contracts/mocks/time.js";
+import { INSTALL_SEED_KEYS, INSTALL_SEED_SECRET } from "../../src/contracts/onboarding.js";
 import { RESOURCES, type KubeObject } from "../../src/contracts/k8s.js";
 import { STATUS_SEVERITY } from "../../src/contracts/health.js";
 
@@ -191,4 +193,20 @@ test("fake k8s create labels the object as owned, refuses duplicates and records
     k8s.writes.map((w) => `${w.verb} ${w.name}`),
     ["create deploy-x-1", "delete deploy-x-1", "delete missing"]
   );
+});
+
+test("the seed Secret mock carries the env file's keys, base64 as the API server sends them", () => {
+  const secret = mockSeedSecret("example-ns");
+  assert.equal(secret.metadata.name, INSTALL_SEED_SECRET.name);
+  const data = secret.data as Record<string, string>;
+  for (const [key, value] of Object.entries(mockSeedEnv)) {
+    assert.ok((INSTALL_SEED_KEYS as readonly string[]).includes(key), key);
+    assert.equal(Buffer.from(data[key]!, "base64").toString("utf8"), value);
+  }
+});
+
+test("the seed summaries: pending items have no time, done has none pending", () => {
+  assert.ok(mockSeedPending.items.some((item) => item.state === "pending" && item.at === undefined));
+  assert.ok(mockSeedDone.items.every((item) => item.state !== "pending" && item.at));
+  assert.equal(new Set(INSTALL_SEED_KEYS).size, INSTALL_SEED_KEYS.length);
 });

@@ -14,6 +14,7 @@ import type { Step } from "../apps.js";
 import { backupAction } from "./backup.js";
 import { gateAction, type GateActionContext } from "./gate.js";
 import { migrateAction } from "./migrate.js";
+import { NODE_NAME, nodeActions } from "./node.js";
 import { removeAction } from "./remove.js";
 import { replicasAction } from "./replicas.js";
 import { portsAction } from "../ports.js";
@@ -59,6 +60,8 @@ export interface ActionRendered {
   // The Job's activeDeadlineSeconds; default 900.
   deadlineSeconds?: number;
   files: Record<string, string>;
+  // A node the Job's pod must not run on: the one an action drains or reboots.
+  avoidNode?: string;
   // Values the run carries that its log must never show.
   secrets?: string[];
   // Called once the Job is created, e.g. to keep a per-run token under the
@@ -78,6 +81,7 @@ const recipes: { [K in DeployActionKind]?: ActionRecipe<Extract<DeployActionRequ
   "remove-app": removeAction,
   "app-gate": gateAction,
   "traefik-ports": portsAction,
+  ...nodeActions,
 };
 
 export function actionRecipe<K extends DeployActionKind>(
@@ -85,6 +89,13 @@ export function actionRecipe<K extends DeployActionKind>(
 ): ActionRecipe<Extract<DeployActionRequest, { kind: K }>> | undefined {
   return recipes[kind];
 }
+
+const nodeName = z.string().regex(NODE_NAME).max(253);
+const drainOptions = {
+  ignoreDaemonSets: z.boolean().optional(),
+  deleteEmptyDirData: z.boolean().optional(),
+  timeoutSeconds: z.number().int().min(30).max(3600).optional(),
+};
 
 export const actionSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -97,4 +108,8 @@ export const actionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("remove-app"), appId: z.string().min(1).max(100), deleteVolumes: z.boolean().optional() }),
   z.object({ kind: z.literal("app-gate"), appId: z.string().min(1).max(100), public: z.boolean() }),
   z.object({ kind: z.literal("traefik-ports") }),
+  z.object({ kind: z.literal("node-cordon"), node: nodeName }),
+  z.object({ kind: z.literal("node-uncordon"), node: nodeName }),
+  z.object({ kind: z.literal("node-drain"), node: nodeName, ...drainOptions }),
+  z.object({ kind: z.literal("node-reboot"), node: nodeName, ...drainOptions }),
 ]);
