@@ -127,7 +127,11 @@ export function SignInSettingsPage() {
               <PasswordInput
                 label="Client secret"
                 description={
-                  data.oidc.hasSecret ? "A secret is stored. Enter a new one to replace it." : "No secret stored yet."
+                  data.oidc.hasKey
+                    ? "Sign-in uses a certificate the Entra connector manages. A secret saved here replaces it."
+                    : data.oidc.hasSecret
+                      ? "A secret is stored. Enter a new one to replace it."
+                      : "No secret stored yet."
                 }
                 value={secret}
                 onChange={(e) => setSecret(e.currentTarget.value)}

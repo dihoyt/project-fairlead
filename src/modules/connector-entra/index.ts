@@ -1,18 +1,22 @@
 import type { ConnectorInstance, EntraSignInView } from "../../contracts/connectors.js";
 import type { Module, ModuleContext } from "../../contracts/module.js";
 import { HttpError } from "../../runtime/http.js";
-import { GRAPH_BASE, GraphError, LOGIN_BASE, consentUrlFor, type GraphEndpoints } from "./graph.js";
+import { product } from "../../product.js";
+import { GRAPH_BASE, GraphError, LOGIN_BASE, consentUrlFor, isCertificate, type GraphEndpoints } from "./graph.js";
 import {
   KIND,
   SigninRefused,
   createEntraKind,
+  credentialOf,
   graphFor,
   instanceValues,
+  managementCertificate,
   redirectProblem,
   setUpSignIn,
   specOf,
   type EntraDeps,
 } from "./kind.js";
+import { loadManagement, managementView } from "./management.js";
 import { migrations } from "./migrations.js";
 
 export interface EntraModuleOptions {
@@ -34,16 +38,18 @@ const graphFailure = (err: unknown): never => {
 };
 
 export function register(ctx: ModuleContext, options: EntraModuleOptions = {}): void {
+  const current = async (): Promise<ConnectorInstance | undefined> =>
+    (await ctx.services.get("connectors").instances(KIND))[0];
   const deps: EntraDeps = {
     endpoints: options.endpoints ?? { login: LOGIN_BASE, graph: GRAPH_BASE },
     signIn: () => ctx.services.get("signin"),
     owned: (id) => ctx.services.get("connectors").owned(id),
+    connectors: () => ctx.services.get("connectors"),
+    secrets: ctx.secrets,
+    current,
     now: options.now ?? (() => new Date()),
   };
   ctx.services.get("connectors").addKind(createEntraKind(deps));
-
-  const current = async (): Promise<ConnectorInstance | undefined> =>
-    (await ctx.services.get("connectors").instances(KIND))[0];
 
   ctx.services.provide("entraMail", {
     async status() {
@@ -52,7 +58,8 @@ export function register(ctx: ModuleContext, options: EntraModuleOptions = {}): 
         return { ready: false, reason: "Add the Microsoft Entra ID connector first (Admin > Connectors)." };
       const values = instanceValues(instance);
       const tenantId = (values.tenantId ?? "").trim();
-      if (!tenantId || !values.clientId || !values.clientSecret) {
+      const certificate = (await loadManagement(deps, instance.id))?.working === true;
+      if (!tenantId || !values.clientId || (!values.clientSecret && !certificate)) {
         return {
           ready: false,
           ...(tenantId ? { tenantId } : {}),
@@ -64,7 +71,7 @@ export function register(ctx: ModuleContext, options: EntraModuleOptions = {}): 
     async sendMail(from, message, signal) {
       const instance = await current();
       if (!instance) throw new Error("Add the Microsoft Entra ID connector first (Admin > Connectors).");
-      await graphFor(instanceValues(instance), deps).sendMail(from, message, signal);
+      await (await graphFor(instance, deps, signal)).sendMail(from, message, signal);
     },
   });
 
@@ -87,22 +94,28 @@ export function register(ctx: ModuleContext, options: EntraModuleOptions = {}): 
       redirectUri: oidc.redirectUri,
       wired: false,
       consentUrl: consentUrlFor(tenantId, instance.config.clientId ?? "", deps.endpoints),
+      management: managementView(instance, await loadManagement(deps, instance.id)),
       ...(problem ? { warning: problem } : {}),
     };
     const mine = specOf(deps.owned(instance.id));
     if (!mine) return out;
     out.wired = oidc.clientId === mine.spec.appId;
     let state: NonNullable<EntraSignInView["app"]>["state"] = "in-sync";
+    const certificate = credentialOf(mine.spec) === "certificate";
     let redirectUris = [mine.spec.redirectUri];
     try {
-      const app = await graphFor(instanceValues(instance), deps).getApplication(mine.externalId, signal);
+      const app = await (await graphFor(instance, deps, signal)).getApplication(mine.externalId, signal);
       if (!app) state = "missing";
       else {
         redirectUris = app.web?.redirectUris ?? [];
         const keyIds = (app.passwordCredentials ?? []).map((p) => p.keyId);
+        const thumbprint = mine.spec.cert?.thumbprint;
+        const credentialOk = certificate
+          ? thumbprint !== undefined && (app.keyCredentials ?? []).some((k) => isCertificate(k, thumbprint))
+          : mine.spec.keyId !== undefined && keyIds.includes(mine.spec.keyId);
         const uriOk =
           !oidc.redirectUri || problem !== null || (redirectUris.length === 1 && redirectUris[0] === oidc.redirectUri);
-        if (!uriOk || !keyIds.includes(mine.spec.keyId)) state = "drifted";
+        if (!uriOk || !credentialOk) state = "drifted";
       }
     } catch (err) {
       if (!out.warning) out.warning = `Entra could not be read: ${err instanceof Error ? err.message : String(err)}`;
@@ -112,13 +125,27 @@ export function register(ctx: ModuleContext, options: EntraModuleOptions = {}): 
       objectId: mine.externalId,
       displayName: mine.spec.displayName,
       redirectUris,
-      secretExpiresAt: mine.spec.secretExpiresAt,
+      credential: credentialOf(mine.spec),
+      ...(certificate && mine.spec.cert ? { certificateExpiresAt: mine.spec.cert.notAfter } : {}),
+      ...(!certificate && mine.spec.secretExpiresAt ? { secretExpiresAt: mine.spec.secretExpiresAt } : {}),
       state,
     };
     return out;
   }
 
   ctx.route("GET /api/connector-entra/view", async () => view());
+
+  ctx.route("GET /api/connector-entra/certificate", async (req, res) => {
+    if (!ctx.require(req, res, "admin")) return undefined;
+    const instance = await mustHave();
+    const cert = await managementCertificate(deps, instance.id);
+    res
+      .status(200)
+      .type("application/x-pem-file")
+      .set("Content-Disposition", `attachment; filename="${product.slug}-entra-connector.pem"`)
+      .send(cert.certificate);
+    return undefined;
+  });
 
   ctx.route("POST /api/connector-entra/signin", async (req, res) => {
     const user = ctx.require(req, res, "admin");
@@ -142,7 +169,7 @@ export function register(ctx: ModuleContext, options: EntraModuleOptions = {}): 
       actor: user.id,
       action: "connector-entra.signin",
       target: outcome.spec.appId,
-      detail: `${outcome.created ? "created" : "reused"} app registration; redirect ${outcome.spec.redirectUri}`,
+      detail: `${outcome.created ? "created" : "reused"} app registration; ${credentialOf(outcome.spec)} credential; redirect ${outcome.spec.redirectUri}`,
     });
     return view();
   });
@@ -152,7 +179,7 @@ export function register(ctx: ModuleContext, options: EntraModuleOptions = {}): 
     const instance = await mustHave();
     const search = typeof req.query.search === "string" ? req.query.search : "";
     try {
-      return await graphFor(instanceValues(instance), deps).groups(search);
+      return await (await graphFor(instance, deps)).groups(search);
     } catch (err) {
       return graphFailure(err);
     }

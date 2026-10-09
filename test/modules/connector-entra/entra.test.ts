@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { afterEach, test } from "node:test";
 import type { ConnectorInstance, EntraGroup, EntraSignInView } from "../../../src/contracts/connectors.js";
 import {
   createMockConnectorRegistry,
   type MockConnectorRegistry,
 } from "../../../src/contracts/mocks/connectors/index.js";
-import { createMockContext, mockViewer, type MockContext } from "../../../src/contracts/mocks/context.js";
+import { createMockContext, mockAdmin, mockViewer, type MockContext } from "../../../src/contracts/mocks/context.js";
 import { createMockSignIn, type MockSignIn } from "../../../src/contracts/mocks/signin.js";
 import entra, { register } from "../../../src/modules/connector-entra/index.js";
 import { DAY_MS, KIND, OWNED_KIND, SIGNIN_KEY, specOf } from "../../../src/modules/connector-entra/kind.js";
+import { DELETE_SECRET_STEP, UPLOAD_STEP } from "../../../src/modules/connector-entra/management.js";
 import { product } from "../../../src/product.js";
 import { listen } from "../../runtime/helpers.js";
 import { MGMT_CLIENT, MGMT_SECRET, TENANT, startFakeGraph, type FakeGraph } from "./fakeGraph.js";
@@ -39,8 +41,11 @@ afterEach(async () => {
   while (open.length) await open.pop()!.close();
 });
 
-async function setup(options: { connector?: boolean; redirectUri?: string } = {}): Promise<Setup> {
+async function setup(
+  options: { connector?: boolean; redirectUri?: string; refuseKeys?: boolean } = {}
+): Promise<Setup> {
   const graph = await startFakeGraph();
+  graph.refuseKeys = options.refuseKeys;
   const registry = createMockConnectorRegistry(options.connector === false ? [] : [instance()]);
   const signIn = createMockSignIn({ redirectUri: options.redirectUri ?? REDIRECT });
   const m = createMockContext("connector-entra", {
@@ -62,7 +67,11 @@ async function setup(options: { connector?: boolean; redirectUri?: string } = {}
         headers: body === undefined ? {} : { "content-type": "application/json" },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
-      return { status: res.status, body: (await res.json()) as T & { error?: string } };
+      const text = await res.text();
+      return {
+        status: res.status,
+        body: (res.headers.get("content-type")?.includes("json") ? JSON.parse(text) : text) as T & { error?: string },
+      };
     },
     async close() {
       await server.close();
@@ -79,7 +88,7 @@ const signal = () => new AbortController().signal;
 const values = (secret = MGMT_SECRET) => ({ tenantId: TENANT, clientId: MGMT_CLIENT, clientSecret: secret });
 const byId = <T extends { id: string }>(list: T[], id: string) => list.find((c) => c.id === id);
 
-test("registers one identity kind with the tenant, client id and a write-only secret", async () => {
+test("registers one identity kind with the tenant, client and object ids and a bootstrap secret", async () => {
   const s = await setup();
   const kind = kindOf(s);
   assert.equal(kind.label, "Microsoft Entra ID");
@@ -90,7 +99,8 @@ test("registers one identity kind with the tenant, client id and a write-only se
     [
       ["tenantId", "text", true],
       ["clientId", "text", true],
-      ["clientSecret", "secret", true],
+      ["objectId", "text", false],
+      ["clientSecret", "secret", false],
     ]
   );
 });
@@ -155,7 +165,10 @@ test("an http public URL is warned about: Entra refuses it", async () => {
   assert.equal(s.signIn.writes.length, 0);
 });
 
-test("setting up sign-in creates the app registration and points sign-in at it", async () => {
+const thumbprintOf = (pem: string) =>
+  crypto.createHash("sha1").update(new crypto.X509Certificate(pem).raw).digest("hex").toUpperCase();
+
+test("setting up sign-in creates the app registration with a certificate and points sign-in at its key", async () => {
   const s = await setup();
   const res = await s.call<EntraSignInView>("POST", "/signin", { adminGroups: ["g-admins", " g-admins "] });
   assert.equal(res.status, 200, res.body.error);
@@ -167,63 +180,106 @@ test("setting up sign-in creates the app registration and points sign-in at it",
   assert.deepEqual(app.tags, [product.ownerMarker.externalTag]);
   assert.equal(app.groupMembershipClaims, "SecurityGroup");
   assert.equal(app.body.signInAudience, "AzureADMyOrg");
-  assert.equal(app.passwordCredentials.length, 1);
-  const days = (Date.parse(app.passwordCredentials[0]!.endDateTime) - START) / DAY_MS;
-  assert.equal(days, 365);
+  assert.equal(app.passwordCredentials.length, 0);
+  assert.equal(app.keyCredentials.length, 1);
 
   assert.equal(s.signIn.writes.length, 1);
   const { client, actor } = s.signIn.writes[0]!;
   assert.equal(actor, "admin");
-  assert.deepEqual(client, {
+  const { clientKey, ...rest } = client;
+  assert.deepEqual(rest, {
     issuer: `${s.graph.endpoints.login}/${TENANT}/v2.0`,
     clientId: app.appId,
-    clientSecret: app.passwordCredentials[0]!.secretText,
     label: "Sign in with Microsoft",
     enabled: true,
     adminGroups: ["g-admins"],
   });
+  // The key sign-in holds matches the certificate on the app, valid a year.
+  const cert = new crypto.X509Certificate(clientKey!.certificate!);
+  assert.equal(cert.raw.toString("base64"), app.keyCredentials[0]!.key);
+  assert.ok(cert.checkPrivateKey(crypto.createPrivateKey(clientKey!.privateKey)));
+  assert.equal(Math.round((Date.parse(cert.validTo) - START) / DAY_MS), 365);
+  assert.match(app.keyCredentials[0]!.displayName, new RegExp(thumbprintOf(clientKey!.certificate!)));
+  assert.equal(s.signIn.state.hasKey, true);
+  assert.equal(s.signIn.state.hasSecret, false);
 
   const owned = s.registry.owned("cn_e").get(SIGNIN_KEY, OWNED_KIND)!;
   assert.equal(owned.externalId, app.id);
+  assert.doesNotMatch(JSON.stringify(owned), /PRIVATE KEY/);
 
   assert.equal(res.body.wired, true);
   assert.equal(res.body.tenantId, TENANT);
   assert.equal(res.body.app?.appId, app.appId);
   assert.equal(res.body.app?.state, "in-sync");
+  assert.equal(res.body.app?.credential, "certificate");
+  assert.equal(res.body.app?.certificateExpiresAt, new Date(Date.parse(cert.validTo)).toISOString());
+  assert.equal(res.body.app?.secretExpiresAt, undefined);
   assert.equal(res.body.consentUrl, `${s.graph.endpoints.login}/${TENANT}/adminconsent?client_id=${MGMT_CLIENT}`);
 
   const audit = s.m.audit.find((a) => a.action === "connector-entra.signin")!;
   assert.equal(audit.target, app.appId);
-  assert.match(audit.detail ?? "", /created/);
+  assert.match(audit.detail ?? "", /created app registration; certificate credential/);
   const everything = JSON.stringify([res.body, s.m.audit]);
-  assert.doesNotMatch(everything, new RegExp(app.passwordCredentials[0]!.secretText));
+  assert.doesNotMatch(everything, /PRIVATE KEY/);
   assert.doesNotMatch(everything, new RegExp(MGMT_SECRET));
 });
 
-test("running it again reuses the app; the old secret goes at the next sync", async () => {
+test("running it again reuses the app; the replaced certificate goes at the next sync", async () => {
   const s = await setup();
   await s.call("POST", "/signin", {});
   const app = [...s.graph.apps.values()][0]!;
-  const first = app.passwordCredentials[0]!.keyId;
+  const first = app.keyCredentials[0]!.key;
   app.web.redirectUris = ["https://old.example.test/auth/oidc/callback"];
 
   const res = await s.call<EntraSignInView>("POST", "/signin", { label: "Company sign-in" });
   assert.equal(res.status, 200, res.body.error);
   assert.equal(s.graph.apps.size, 1);
   assert.deepEqual(app.web.redirectUris, [REDIRECT]);
-  assert.equal(app.passwordCredentials.length, 2);
+  // Both, so sign-in never waits on Entra's replication of the new one.
+  assert.deepEqual(app.keyCredentials[0]!.key, first);
+  assert.equal(app.keyCredentials.length, 2);
   assert.equal(s.signIn.writes[1]!.client.label, "Company sign-in");
-  assert.equal(s.signIn.secret, app.passwordCredentials[1]!.secretText);
+  assert.equal(
+    new crypto.X509Certificate(s.signIn.key!.certificate!).raw.toString("base64"),
+    app.keyCredentials[1]!.key
+  );
   assert.equal(s.signIn.writes[1]!.client.adminGroups, undefined);
   assert.match(s.m.audit.at(-1)!.detail ?? "", /reused/);
 
   const report = await s.registry.reconcile("cn_e");
-  assert.deepEqual(
-    app.passwordCredentials.map((p) => p.keyId),
-    [specOf(s.registry.owned("cn_e"))!.spec.keyId]
-  );
-  assert.ok(!app.passwordCredentials.some((p) => p.keyId === first));
-  assert.equal(report?.items[0]?.state, "in-sync");
+  assert.equal(app.keyCredentials.length, 1);
+  assert.notEqual(app.keyCredentials[0]!.key, first);
+  assert.equal(report?.items.find((i) => i.key === SIGNIN_KEY)?.state, "in-sync");
+});
+
+test("a tenant that refuses certificates gets a client secret instead", async () => {
+  const s = await setup({ refuseKeys: true });
+  const res = await s.call<EntraSignInView>("POST", "/signin", {});
+  assert.equal(res.status, 200, res.body.error);
+  const app = [...s.graph.apps.values()][0]!;
+  assert.equal(app.keyCredentials.length, 0);
+  assert.equal(app.passwordCredentials.length, 1);
+  const days = (Date.parse(app.passwordCredentials[0]!.endDateTime) - START) / DAY_MS;
+  assert.equal(days, 365);
+  assert.equal(s.signIn.secret, app.passwordCredentials[0]!.secretText);
+  assert.equal(s.signIn.key, undefined);
+  assert.equal(res.body.app?.credential, "secret");
+  assert.ok(res.body.app?.secretExpiresAt);
+  assert.doesNotMatch(JSON.stringify([res.body, s.m.audit]), new RegExp(app.passwordCredentials[0]!.secretText));
+
+  // Once the tenant takes certificates, the next sync moves sign-in to one
+  // and the secret goes the sync after.
+  s.graph.refuseKeys = false;
+  const report = await s.registry.reconcile("cn_e");
+  const item = report!.items.find((i) => i.key === SIGNIN_KEY)!;
+  assert.deepEqual(item.diff, [{ path: "credential", want: "certificate", have: "client secret" }]);
+  assert.equal(app.keyCredentials.length, 1);
+  assert.ok(s.signIn.key);
+  assert.equal(s.signIn.writes.at(-1)!.actor, "connector-entra");
+  assert.equal(app.passwordCredentials.length, 1);
+  await s.registry.reconcile("cn_e");
+  assert.equal(app.passwordCredentials.length, 0);
+  assert.equal((await s.call<EntraSignInView>("GET", "/view")).body.app?.credential, "certificate");
 });
 
 test("sign-in setup needs a connector, an admin and a usable sign-in store", async () => {
@@ -275,7 +331,7 @@ test("reconcile puts a changed redirect URI and groups claim back", async () => 
   assert.equal(view.body.app?.state, "drifted");
 
   const report = await s.registry.reconcile("cn_e");
-  const item = report!.items[0]!;
+  const item = report!.items.find((i) => i.key === SIGNIN_KEY)!;
   assert.equal(item.state, "drifted");
   assert.deepEqual(
     item.diff?.map((d) => d.path),
@@ -293,30 +349,83 @@ test("reconcile puts a changed redirect URI and groups claim back", async () => 
   // An http one is not applied: the last good one stays.
   s.signIn.state.redirectUri = "http://10.0.0.5/auth/oidc/callback";
   const again = await s.registry.reconcile("cn_e");
-  assert.equal(again?.items[0]?.state, "in-sync");
+  assert.equal(again?.items.find((i) => i.key === SIGNIN_KEY)?.state, "in-sync");
   assert.deepEqual(app.web.redirectUris, ["https://new.example.test/auth/oidc/callback"]);
   assert.match((await s.call<EntraSignInView>("GET", "/view")).body.warning ?? "", /refuses http/);
 });
 
-test("the client secret is rotated 30 days before it expires and sign-in follows", async () => {
+test("the certificate is replaced 30 days before it expires and sign-in follows", async () => {
   const s = await setup();
+  await s.call("POST", "/signin", {});
+  const app = [...s.graph.apps.values()][0]!;
+  const original = app.keyCredentials[0]!;
+
+  s.clock.now = START + 300 * DAY_MS;
+  assert.equal((await s.registry.reconcile("cn_e"))?.items.find((i) => i.key === SIGNIN_KEY)?.state, "in-sync");
+  const okHealth = await kindOf(s).health!(instance(), signal());
+  assert.equal(byId(okHealth, "secret")!.status, "ok");
+  assert.match(byId(okHealth, "secret")!.detail, /^Certificate, valid until 2027-10-08/);
+
+  s.clock.now = START + 340 * DAY_MS;
+  const warn = await kindOf(s).health!(instance(), signal());
+  assert.equal(byId(warn, "secret")!.status, "warn");
+  assert.match(byId(warn, "secret")!.detail, /The certificate expires 2027-10-08; the next sync replaces it/);
+
+  const report = await s.registry.reconcile("cn_e");
+  const item = report!.items.find((i) => i.key === SIGNIN_KEY)!;
+  assert.equal(item.state, "drifted");
+  assert.equal(item.diff?.[0]?.path, "certificate");
+  assert.equal(app.keyCredentials.length, 2);
+  const fresh = app.keyCredentials[1]!;
+  assert.equal(new crypto.X509Certificate(s.signIn.key!.certificate!).raw.toString("base64"), fresh.key);
+  assert.equal(s.signIn.writes.at(-1)!.actor, "connector-entra");
+  assert.equal(s.signIn.writes.at(-1)!.client.label, undefined);
+
+  await s.registry.reconcile("cn_e");
+  assert.deepEqual(
+    app.keyCredentials.map((k) => k.key),
+    [fresh.key]
+  );
+  assert.notEqual(fresh.key, original.key);
+  assert.equal(byId(await kindOf(s).health!(instance(), signal()), "secret")!.status, "ok");
+});
+
+test("a certificate deleted in the portal is replaced at once", async () => {
+  const s = await setup();
+  await s.call("POST", "/signin", {});
+  const app = [...s.graph.apps.values()][0]!;
+  app.keyCredentials = [];
+  assert.equal((await s.call<EntraSignInView>("GET", "/view")).body.app?.state, "drifted");
+  const report = await s.registry.reconcile("cn_e");
+  assert.equal(report?.items.find((i) => i.key === SIGNIN_KEY)?.diff?.[0]?.have, "removed outside this install");
+  assert.equal(app.keyCredentials.length, 1);
+  assert.equal(
+    new crypto.X509Certificate(s.signIn.key!.certificate!).raw.toString("base64"),
+    app.keyCredentials[0]!.key
+  );
+  assert.equal(specOf(s.registry.owned("cn_e"))!.spec.previousCert, undefined);
+});
+
+test("the client secret is rotated 30 days before it expires and sign-in follows", async () => {
+  const s = await setup({ refuseKeys: true });
   await s.call("POST", "/signin", {});
   const app = [...s.graph.apps.values()][0]!;
   const original = app.passwordCredentials[0]!;
 
   s.clock.now = START + 300 * DAY_MS;
-  assert.equal((await s.registry.reconcile("cn_e"))?.items[0]?.state, "in-sync");
+  assert.equal((await s.registry.reconcile("cn_e"))?.items.find((i) => i.key === SIGNIN_KEY)?.state, "in-sync");
   const okHealth = await kindOf(s).health!(instance(), signal());
   assert.equal(byId(okHealth, "secret")!.status, "ok");
 
   s.clock.now = START + 340 * DAY_MS;
   const warn = await kindOf(s).health!(instance(), signal());
   assert.equal(byId(warn, "secret")!.status, "warn");
-  assert.match(byId(warn, "secret")!.detail, /Expires 2027-10-08; the next sync rotates it/);
+  assert.match(byId(warn, "secret")!.detail, /The client secret expires 2027-10-08; the next sync replaces it/);
 
   const report = await s.registry.reconcile("cn_e");
-  assert.equal(report?.items[0]?.state, "drifted");
-  assert.equal(report?.items[0]?.diff?.[0]?.path, "secret");
+  const item = report!.items.find((i) => i.key === SIGNIN_KEY)!;
+  assert.equal(item.state, "drifted");
+  assert.equal(item.diff?.[0]?.path, "secret");
   assert.equal(app.passwordCredentials.length, 2);
   const fresh = app.passwordCredentials[1]!;
   assert.equal(s.signIn.secret, fresh.secretText);
@@ -336,12 +445,12 @@ test("the client secret is rotated 30 days before it expires and sign-in follows
 });
 
 test("an expired secret on a wired app is crit until rotated; another client's app is left alone", async () => {
-  const s = await setup();
+  const s = await setup({ refuseKeys: true });
   await s.call("POST", "/signin", {});
   s.clock.now = START + 400 * DAY_MS;
   const crit = byId(await kindOf(s).health!(instance(), signal()), "secret")!;
   assert.equal(crit.status, "crit");
-  assert.match(crit.detail, /Expired/);
+  assert.match(crit.detail, /client secret expired/);
 
   // Sign-in moved to another provider: nothing to rotate for.
   s.signIn.state.clientId = "someone-else";
@@ -354,12 +463,12 @@ test("an expired secret on a wired app is crit until rotated; another client's a
 });
 
 test("a secret deleted in the portal is replaced at once", async () => {
-  const s = await setup();
+  const s = await setup({ refuseKeys: true });
   await s.call("POST", "/signin", {});
   const app = [...s.graph.apps.values()][0]!;
   app.passwordCredentials = [];
   const report = await s.registry.reconcile("cn_e");
-  assert.equal(report?.items[0]?.diff?.[0]?.have, "removed outside this install");
+  assert.equal(report?.items.find((i) => i.key === SIGNIN_KEY)?.diff?.[0]?.have, "removed outside this install");
   assert.equal(app.passwordCredentials.length, 1);
   assert.equal(s.signIn.secret, app.passwordCredentials[0]!.secretText);
   assert.equal(specOf(s.registry.owned("cn_e"))!.spec.previousKeyId, undefined);
@@ -373,13 +482,16 @@ test("an app deleted in the portal is recreated and sign-in moved to it", async 
   assert.equal((await s.call<EntraSignInView>("GET", "/view")).body.app?.state, "missing");
 
   const report = await s.registry.reconcile("cn_e");
-  const item = report!.items[0]!;
+  const item = report!.items.find((i) => i.key === SIGNIN_KEY)!;
   assert.equal(item.state, "missing");
   const fresh = [...s.graph.apps.values()][0]!;
   assert.notEqual(fresh.appId, gone.appId);
   assert.deepEqual(fresh.web.redirectUris, [REDIRECT]);
   assert.equal(s.signIn.state.clientId, fresh.appId);
-  assert.equal(s.signIn.secret, fresh.passwordCredentials[0]!.secretText);
+  assert.equal(
+    new crypto.X509Certificate(s.signIn.key!.certificate!).raw.toString("base64"),
+    fresh.keyCredentials[0]!.key
+  );
   assert.equal(specOf(s.registry.owned("cn_e"))!.externalId, fresh.id);
 });
 
@@ -460,4 +572,140 @@ test("entraMail sends as a mailbox in the app's scope and reports Graph's refusa
   const status = await none.m.ctx.services.get("entraMail").status();
   assert.equal(status.ready, false);
   assert.match(status.reason ?? "", /Entra ID connector/);
+});
+
+const currentInstance = async (s: Setup) => (await s.registry.instance("cn_e"))!;
+
+test("with OwnedBy only, the admin uploads the console's certificate once and the secret is retired", async () => {
+  const s = await setup();
+  const mgmt = s.graph.management;
+  await s.registry.reconcile("cn_e");
+  let view = (await s.call<EntraSignInView>("GET", "/view")).body;
+  assert.deepEqual(view.management, { credential: "secret", secretStored: true, step: UPLOAD_STEP });
+  const pending = byId(await kindOf(s).health!(await currentInstance(s), signal()), "management")!;
+  assert.equal(pending.status, "warn");
+  assert.equal(pending.deepLink, "api/connector-entra/certificate");
+
+  const pem = await s.call<string>("GET", "/certificate");
+  assert.equal(pem.status, 200);
+  assert.match(pem.body, /^-----BEGIN CERTIFICATE-----/);
+  assert.doesNotMatch(pem.body, /PRIVATE/);
+  assert.equal((await s.call<string>("GET", "/certificate")).body, pem.body);
+  s.m.setUser(mockViewer);
+  assert.equal((await s.call("GET", "/certificate")).status, 403);
+  s.m.setUser(mockAdmin);
+
+  // The admin uploads it in the portal.
+  mgmt.keyCredentials.push({
+    keyId: "k-admin",
+    displayName: "uploaded by hand",
+    key: new crypto.X509Certificate(pem.body).raw.toString("base64"),
+  });
+  const switched = await s.registry.reconcile("cn_e");
+  assert.deepEqual(switched?.items.find((i) => i.key === "management")?.diff, [
+    { path: "credential", want: "certificate", have: "secret" },
+  ]);
+  view = (await s.call<EntraSignInView>("GET", "/view")).body;
+  assert.equal(view.management?.credential, "certificate");
+  assert.equal(view.management?.step, DELETE_SECRET_STEP);
+  assert.equal(view.management?.secretStored, true);
+  assert.ok(view.management?.certificateExpiresAt);
+
+  // The admin deletes the secret: the console forgets it too.
+  mgmt.passwordCredentials = [];
+  await s.registry.reconcile("cn_e");
+  assert.equal((await currentInstance(s)).secrets.clientSecret, undefined);
+  view = (await s.call<EntraSignInView>("GET", "/view")).body;
+  assert.deepEqual(
+    { ...view.management, certificateExpiresAt: undefined },
+    { credential: "certificate", secretStored: false, certificateExpiresAt: undefined }
+  );
+  assert.equal(byId(await kindOf(s).health!(await currentInstance(s), signal()), "management")!.status, "ok");
+
+  // An edit form tested without a secret signs in with the certificate.
+  const checks = await kindOf(s).verify({ tenantId: TENANT, clientId: MGMT_CLIENT }, signal());
+  assert.equal(byId(checks, "graph")!.status, "ok");
+  assert.match(byId(checks, "graph")!.detail, /with its certificate/);
+
+  // Sign-in setup and mail run on it.
+  const before = s.graph.tokenCredentials.length;
+  assert.equal((await s.call<EntraSignInView>("POST", "/signin", {})).status, 200);
+  s.graph.mailboxes = ["alerts@example.com"];
+  const mail = s.m.ctx.services.get("entraMail");
+  assert.deepEqual(await mail.status(), { ready: true, tenantId: TENANT });
+  await mail.sendMail("alerts@example.com", { to: ["ops@example.com"], subject: "s", text: "t", html: "<p>t</p>" });
+  assert.equal(s.graph.mail.length, 1);
+  assert.ok(s.graph.tokenCredentials.slice(before).every((c) => c === "certificate"));
+});
+
+test("when the management app may write itself, the console uploads its certificate and deletes the secret", async () => {
+  const s = await setup();
+  const mgmt = s.graph.management;
+  mgmt.selfAccess = true;
+  const first = await s.registry.reconcile("cn_e");
+  assert.equal(mgmt.keyCredentials.length, 1);
+  assert.equal(first?.items.find((i) => i.key === "management")?.diff?.[0]?.path, "keyCredentials");
+  assert.equal(mgmt.passwordCredentials.length, 1);
+
+  const second = await s.registry.reconcile("cn_e");
+  assert.deepEqual(
+    second?.items.filter((i) => i.key === "management").flatMap((i) => i.diff?.map((d) => d.path)),
+    ["credential", "clientSecret"]
+  );
+  assert.equal(mgmt.passwordCredentials.length, 0);
+  assert.equal((await currentInstance(s)).secrets.clientSecret, undefined);
+  const view = (await s.call<EntraSignInView>("GET", "/view")).body;
+  assert.equal(view.management?.credential, "certificate");
+  assert.equal(view.management?.step, undefined);
+  assert.equal(view.management?.secretStored, false);
+});
+
+test("a secret that matches more than one of the app's secrets is left for the admin to delete", async () => {
+  const s = await setup();
+  const mgmt = s.graph.management;
+  mgmt.selfAccess = true;
+  mgmt.passwordCredentials.push({
+    keyId: "other",
+    displayName: "someone else's",
+    endDateTime: "2028-01-01T00:00:00Z",
+    secretText: `${MGMT_SECRET.slice(0, 3)}-different`,
+  });
+  await s.registry.reconcile("cn_e");
+  await s.registry.reconcile("cn_e");
+  assert.equal(mgmt.passwordCredentials.length, 2);
+  assert.equal((await s.call<EntraSignInView>("GET", "/view")).body.management?.step, DELETE_SECRET_STEP);
+});
+
+test("the management certificate is rolled with addKey before it expires, and the old one removed", async () => {
+  const s = await setup();
+  const mgmt = s.graph.management;
+  mgmt.selfAccess = true;
+  await s.registry.reconcile("cn_e");
+  await s.registry.reconcile("cn_e");
+  const original = mgmt.keyCredentials[0]!.key;
+
+  // Plain OwnedBy and no object id: the console can't name itself in a proof.
+  mgmt.selfAccess = false;
+  s.clock.now = START + 340 * DAY_MS;
+  await s.registry.reconcile("cn_e");
+  assert.equal(mgmt.keyCredentials.length, 1);
+  assert.match(
+    (await s.call<EntraSignInView>("GET", "/view")).body.management?.step ?? "",
+    /Add the management app's Object ID/
+  );
+
+  s.registry.addInstance({ ...(await currentInstance(s)), config: { ...instance().config, objectId: mgmt.id } });
+  const rolled = await s.registry.reconcile("cn_e");
+  assert.equal(rolled?.items.find((i) => i.key === "management")?.diff?.[0]?.path, "certificate");
+  assert.equal(mgmt.keyCredentials.length, 2);
+  // Graph still answers on either while Entra replicates.
+  assert.equal((await s.call("GET", "/groups")).status, 200);
+
+  await s.registry.reconcile("cn_e");
+  assert.equal(mgmt.keyCredentials.length, 1);
+  assert.notEqual(mgmt.keyCredentials[0]!.key, original);
+  const view = (await s.call<EntraSignInView>("GET", "/view")).body;
+  assert.equal(view.management?.credential, "certificate");
+  assert.equal(view.management?.step, undefined);
+  assert.equal(Math.round((Date.parse(view.management!.certificateExpiresAt!) - s.clock.now) / DAY_MS), 365);
 });

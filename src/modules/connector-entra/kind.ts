@@ -1,19 +1,39 @@
 import crypto from "node:crypto";
-import type { ConnectorInstance, ConnectorKind, ConnectorValues, OwnedStore } from "../../contracts/connectors.js";
+import type {
+  ConnectorInstance,
+  ConnectorKind,
+  ConnectorValues,
+  EntraCredential,
+  OwnedStore,
+} from "../../contracts/connectors.js";
 import type { CheckResult, Status } from "../../contracts/health.js";
 import type { DriftItem, DriftReport } from "../../contracts/ownership.js";
-import type { SignInOidcView, SignInService } from "../../contracts/platform.js";
+import type { SignInClientKey, SignInOidcView, SignInService } from "../../contracts/platform.js";
 import { product } from "../../product.js";
 import {
   GraphError,
   consentUrlFor,
-  createGraphClient,
+  isCertificate,
   issuerFor,
+  keyCredentialBody,
   tokenRoles,
   type GraphApplication,
   type GraphClient,
-  type GraphEndpoints,
 } from "./graph.js";
+import {
+  CERT_LIFETIME_MS,
+  DAY_MS,
+  ROTATE_BEFORE_MS,
+  certDisplayName,
+  forgetManagement,
+  issueCertificate,
+  loadManagement,
+  managementCertificate,
+  managementView,
+  reconcileManagement,
+  signInManagement,
+  type ManagementDeps,
+} from "./management.js";
 
 export const KIND = "entra";
 // The sign-in app registration, the only object the connector keeps today.
@@ -21,46 +41,62 @@ export const OWNED_KIND = "entra-app";
 export const SIGNIN_KEY = "signin";
 export const ACTOR = "connector-entra";
 
-export const DAY_MS = 24 * 60 * 60 * 1000;
-// A client secret lives this long; it is replaced once it has less than
-// ROTATE_BEFORE_MS left.
-export const SECRET_LIFETIME_MS = 365 * DAY_MS;
-export const ROTATE_BEFORE_MS = 30 * DAY_MS;
+export { DAY_MS, ROTATE_BEFORE_MS } from "./management.js";
+// A client secret (for tenants that refuse the sign-in app a certificate)
+// lives as long as a certificate.
+export const SECRET_LIFETIME_MS = CERT_LIFETIME_MS;
 
 const MANAGE_ROLES = ["Application.ReadWrite.OwnedBy", "Application.ReadWrite.All"];
 const GROUP_ROLES = ["Group.Read.All", "GroupMember.Read.All", "Directory.Read.All"];
+
+// A sign-in certificate's public half. The private key goes to sign-in
+// (services "signin") and is not kept here.
+export interface SigninCert {
+  // base64 DER, so the list can be PATCHed back while it is replaced.
+  der: string;
+  thumbprint: string;
+  notAfter: string;
+}
 
 // What the connector remembers about the sign-in app in OwnedStore.
 export interface SigninSpec {
   appId: string;
   displayName: string;
   redirectUri: string;
-  // The client secret sign-in uses.
-  keyId: string;
-  secretExpiresAt: string;
-  // A secret replaced by rotation, removed by the next reconcile so sign-in
-  // never holds a secret Entra has not finished replicating.
+  // Unset on apps set up before certificates: "secret".
+  credential?: EntraCredential;
+  cert?: SigninCert;
+  // A certificate replaced by rotation, removed by the next reconcile so
+  // sign-in never depends on a key Entra has not finished replicating.
+  previousCert?: SigninCert;
+  // The client secret sign-in uses (credential "secret").
+  keyId?: string;
+  secretExpiresAt?: string;
+  // A secret replaced by rotation or by a certificate, removed by the next
+  // reconcile for the same reason.
   previousKeyId?: string;
 }
 
-export interface EntraDeps {
-  endpoints: GraphEndpoints;
+export interface EntraDeps extends ManagementDeps {
   signIn(): SignInService;
   owned(instanceId: string): OwnedStore;
-  now(): Date;
+  // The saved instance, if any (the kind is single).
+  current(): Promise<ConnectorInstance | undefined>;
 }
+
+export const credentialOf = (spec: SigninSpec): EntraCredential => spec.credential ?? "secret";
 
 export const appDisplayName = () => `${product.displayName} sign-in`;
 
-export function graphFor(values: ConnectorValues, deps: Pick<EntraDeps, "endpoints">): GraphClient {
-  return createGraphClient(
-    {
-      tenantId: (values.tenantId ?? "").trim(),
-      clientId: (values.clientId ?? "").trim(),
-      clientSecret: values.clientSecret ?? "",
-    },
-    deps.endpoints
-  );
+// Graph as the saved instance's management app, with whichever of its
+// credentials works.
+export async function graphFor(
+  instance: ConnectorInstance,
+  deps: EntraDeps,
+  signal?: AbortSignal
+): Promise<GraphClient> {
+  const state = await loadManagement(deps, instance.id);
+  return (await signInManagement(instanceValues(instance), state, deps, signal)).graph;
 }
 
 export const instanceValues = (instance: ConnectorInstance): ConnectorValues => ({
@@ -94,7 +130,7 @@ export function specOf(owned: OwnedStore): { externalId: string; spec: SigninSpe
 export function putSpec(owned: OwnedStore, objectId: string, spec: SigninSpec): void {
   const specHash = crypto
     .createHash("sha256")
-    .update(JSON.stringify([spec.appId, spec.redirectUri, spec.keyId]))
+    .update(JSON.stringify([spec.appId, spec.redirectUri, spec.cert?.thumbprint ?? spec.keyId]))
     .digest("hex");
   owned.put({
     key: SIGNIN_KEY,
@@ -163,8 +199,22 @@ export async function verifyValues(
   const results: CheckResult[] = [];
   let roles: string[] = [];
   try {
-    roles = tokenRoles(await graphFor(values, deps).token(signal, true));
-    results.push(check("graph", "Microsoft Graph", "ok", `Signed in to tenant ${tenantId} as ${clientId}`, now));
+    // A form tested after the secret was retired has no secret: the saved
+    // instance's certificate stands in when the ids are the same.
+    const saved = await deps.current();
+    const same = saved && saved.config.tenantId === tenantId && saved.config.clientId === clientId;
+    const state = same ? await loadManagement(deps, saved.id) : undefined;
+    const signedIn = await signInManagement(values, state, deps, signal, true);
+    roles = tokenRoles(await signedIn.graph.token(signal));
+    results.push(
+      check(
+        "graph",
+        "Microsoft Graph",
+        "ok",
+        `Signed in to tenant ${tenantId} as ${clientId} with its ${signedIn.credential === "certificate" ? "certificate" : "client secret"}`,
+        now
+      )
+    );
   } catch (err) {
     results.push(
       check("graph", "Microsoft Graph", "crit", err instanceof Error ? err.message : String(err), now, failure(err))
@@ -204,37 +254,77 @@ export async function verifyValues(
   return results;
 }
 
-function secretCheck(owned: OwnedStore, oidc: SignInOidcView | undefined, now: Date): CheckResult {
-  const label = "Sign-in client secret";
+function credentialCheck(owned: OwnedStore, oidc: SignInOidcView | undefined, now: Date): CheckResult {
+  const label = "Sign-in credential";
   const mine = specOf(owned);
   if (!mine) return check("secret", label, "absent", "No sign-in app registration created yet", now);
-  const expires = Date.parse(mine.spec.secretExpiresAt);
+  const certificate = credentialOf(mine.spec) === "certificate";
+  const what = certificate ? "certificate" : "client secret";
+  const until = (certificate ? mine.spec.cert?.notAfter : mine.spec.secretExpiresAt) ?? "";
+  const expires = Date.parse(until);
   const wired = oidc?.clientId === mine.spec.appId;
   if (!wired) {
     return check(
       "secret",
       label,
       "ok",
-      `Sign-in uses another client, so ${mine.spec.appId}'s secret (until ${day(mine.spec.secretExpiresAt)}) is not rotated`,
+      `Sign-in uses another client, so ${mine.spec.appId}'s ${what} (until ${day(until)}) is not replaced`,
       now
     );
   }
-  if (expires <= now.getTime())
+  if (!(expires > now.getTime()))
     return check(
       "secret",
       label,
       "crit",
-      `Expired ${day(mine.spec.secretExpiresAt)}; sign-in through Entra fails until it is rotated`,
+      `The ${what} expired ${day(until)}; sign-in through Entra fails until the next sync replaces it`,
       now,
-      {
-        keyId: mine.spec.keyId,
-      }
+      { credential: what }
     );
   if (expires - now.getTime() < ROTATE_BEFORE_MS)
-    return check("secret", label, "warn", `Expires ${day(mine.spec.secretExpiresAt)}; the next sync rotates it`, now, {
-      keyId: mine.spec.keyId,
+    return check("secret", label, "warn", `The ${what} expires ${day(until)}; the next sync replaces it`, now, {
+      credential: what,
     });
-  return check("secret", label, "ok", `Valid until ${day(mine.spec.secretExpiresAt)}; rotated 30 days before`, now);
+  return check(
+    "secret",
+    label,
+    "ok",
+    certificate
+      ? `Certificate, valid until ${day(until)}; replaced 30 days before`
+      : `Client secret, valid until ${day(until)}; replaced 30 days before (the tenant refused a certificate)`,
+    now
+  );
+}
+
+function managementCheck(
+  instance: ConnectorInstance,
+  state: Awaited<ReturnType<typeof loadManagement>>,
+  now: Date
+): CheckResult {
+  const label = "Connector credential";
+  const view = managementView(instance, state);
+  const link = { deepLink: "api/connector-entra/certificate" };
+  if (view.step) return { ...check("management", label, "warn", view.step, now), ...(state ? link : {}) };
+  if (view.credential === "secret")
+    return {
+      ...check(
+        "management",
+        label,
+        "warn",
+        "Signs in with the pasted client secret until the next sync moves it to a certificate",
+        now
+      ),
+      ...link,
+    };
+  return check(
+    "management",
+    label,
+    "ok",
+    view.certificateExpiresAt
+      ? `Certificate, valid until ${day(view.certificateExpiresAt)}; replaced 30 days before`
+      : "Certificate",
+    now
+  );
 }
 
 async function newSecret(graph: GraphClient, objectId: string, now: Date, signal: AbortSignal) {
@@ -252,9 +342,72 @@ export interface SigninOutcome {
   created: boolean;
 }
 
+// A fresh credential for the sign-in app: a certificate added beside
+// `keep` (the certificate sign-in uses now, so it keeps working until the
+// next reconcile removes it), or a client secret when Graph refuses the
+// certificate.
+const signinKeyBody = (c: { der: string; thumbprint: string }) =>
+  keyCredentialBody({ key: c.der, displayName: certDisplayName("sign-in", c.thumbprint) });
+
+interface FreshCredential {
+  part: Partial<SigninSpec>;
+  client: { clientKey: SignInClientKey } | { clientSecret: string };
+}
+
+async function freshCredential(
+  graph: GraphClient,
+  objectId: string,
+  keep: SigninCert | undefined,
+  now: Date,
+  signal: AbortSignal
+): Promise<FreshCredential>;
+async function freshCredential(
+  graph: GraphClient,
+  objectId: string,
+  keep: SigninCert | undefined,
+  now: Date,
+  signal: AbortSignal,
+  orSecret: boolean
+): Promise<FreshCredential | undefined>;
+async function freshCredential(
+  graph: GraphClient,
+  objectId: string,
+  keep: SigninCert | undefined,
+  now: Date,
+  signal: AbortSignal,
+  orSecret = true
+): Promise<FreshCredential | undefined> {
+  const cert = issueCertificate("sign-in", now);
+  try {
+    // The app is the console's own, so its key list is the console's to set.
+    await graph.updateApplication(
+      objectId,
+      { keyCredentials: [...(keep ? [signinKeyBody(keep)] : []), signinKeyBody(cert)] },
+      signal
+    );
+    return {
+      part: {
+        credential: "certificate",
+        cert: { der: cert.der, thumbprint: cert.thumbprint, notAfter: cert.notAfter },
+        ...(keep ? { previousCert: keep } : {}),
+      },
+      client: { clientKey: { privateKey: cert.privateKey, certificate: cert.certificate } },
+    };
+  } catch (err) {
+    if (!(err instanceof GraphError) || err.status === 401 || err.status >= 500) throw err;
+    if (!orSecret) return undefined;
+    const password = await newSecret(graph, objectId, now, signal);
+    return {
+      part: { credential: "secret", keyId: password.keyId, secretExpiresAt: password.endDateTime },
+      client: { clientSecret: password.secretText },
+    };
+  }
+}
+
 // Creates the sign-in app (or reuses the one this instance owns), puts the
-// wanted redirect URI on it, makes a client secret and points sign-in at
-// it. Old secrets this install made are removed on the next reconcile.
+// wanted redirect URI on it, gives it a fresh certificate (a client secret
+// if the tenant refuses one) and points sign-in at it. The credential it
+// replaces is removed on the next reconcile.
 export async function setUpSignIn(
   instance: ConnectorInstance,
   deps: EntraDeps,
@@ -267,7 +420,7 @@ export async function setUpSignIn(
   if (problem) throw new SigninRefused(400, problem);
   if (oidc.blocked) throw new SigninRefused(oidc.blocked.includes("SECRETS_KEY") ? 409 : 400, oidc.blocked);
 
-  const graph = graphFor(instanceValues(instance), deps);
+  const graph = await graphFor(instance, deps, signal);
   const owned = deps.owned(instance.id);
   const mine = specOf(owned);
   let app: GraphApplication | undefined = mine ? await graph.getApplication(mine.externalId, signal) : undefined;
@@ -281,23 +434,26 @@ export async function setUpSignIn(
       signal
     );
   }
-  const password = await newSecret(graph, app.id, now, signal);
+  // Recorded before anything else can fail, so the app stays owned (and
+  // removable) rather than orphaned in the tenant.
+  if (created)
+    putSpec(owned, app.id, { appId: app.appId, displayName: app.displayName, redirectUri: oidc.redirectUri });
+  const reused = mine && !created ? mine.spec : undefined;
+  const keep = reused && credentialOf(reused) === "certificate" ? reused.cert : undefined;
+  const { part, client } = await freshCredential(graph, app.id, keep, now, signal);
   const spec: SigninSpec = {
     appId: app.appId,
     displayName: app.displayName,
     redirectUri: oidc.redirectUri,
-    keyId: password.keyId,
-    secretExpiresAt: password.endDateTime,
-    ...(mine && !created ? { previousKeyId: mine.spec.keyId } : {}),
+    ...part,
+    ...(reused?.keyId ? { previousKeyId: reused.keyId } : {}),
   };
-  // Recorded before sign-in changes, so a failure below still leaves the
-  // app owned (and removable) rather than orphaned in the tenant.
   putSpec(owned, app.id, spec);
   await deps.signIn().setOidcClient(
     {
       issuer: issuerFor(instance.config.tenantId ?? "", deps.endpoints),
       clientId: app.appId,
-      clientSecret: password.secretText,
+      ...client,
       label: options.label ?? "Sign in with Microsoft",
       enabled: true,
       ...(options.adminGroups !== undefined ? { adminGroups: options.adminGroups } : {}),
@@ -324,6 +480,9 @@ export async function reconcileSignIn(
   const now = deps.now();
   const items: DriftItem[] = [];
   const report = () => ({ checkedAt: now.toISOString(), items });
+
+  items.push(...(await reconcileManagement(instance, deps, signal)));
+
   const mine = specOf(owned);
   // Nothing wanted until an admin sets sign-in up.
   if (!mine) return report();
@@ -331,7 +490,7 @@ export async function reconcileSignIn(
   const oidc = await deps.signIn().oidc();
   const wired = oidc.clientId === mine.spec.appId;
   const redirectUri = redirectProblem(oidc.redirectUri) === null ? oidc.redirectUri : mine.spec.redirectUri;
-  const graph = graphFor(instanceValues(instance), deps);
+  const graph = await graphFor(instance, deps, signal);
   const issuer = issuerFor(instance.config.tenantId ?? "", deps.endpoints);
   const base = { key: SIGNIN_KEY, kind: OWNED_KIND };
 
@@ -339,17 +498,10 @@ export async function reconcileSignIn(
   if (!app) {
     // Deleted in the portal: recreated, and sign-in moved to it if it used the old one.
     const fresh = await graph.createApplication(desiredApplication(redirectUri), signal);
-    const password = await newSecret(graph, fresh.id, now, signal);
-    putSpec(owned, fresh.id, {
-      appId: fresh.appId,
-      displayName: fresh.displayName,
-      redirectUri,
-      keyId: password.keyId,
-      secretExpiresAt: password.endDateTime,
-    });
-    if (wired) {
-      await deps.signIn().setOidcClient({ issuer, clientId: fresh.appId, clientSecret: password.secretText }, ACTOR);
-    }
+    putSpec(owned, fresh.id, { appId: fresh.appId, displayName: fresh.displayName, redirectUri });
+    const { part, client } = await freshCredential(graph, fresh.id, undefined, now, signal);
+    putSpec(owned, fresh.id, { appId: fresh.appId, displayName: fresh.displayName, redirectUri, ...part });
+    if (wired) await deps.signIn().setOidcClient({ issuer, clientId: fresh.appId, ...client }, ACTOR);
     items.push({
       ...base,
       externalId: fresh.id,
@@ -374,31 +526,57 @@ export async function reconcileSignIn(
 
   let spec: SigninSpec = { ...mine.spec, redirectUri, displayName: app.displayName };
   const keyIds = new Set((app.passwordCredentials ?? []).map((p) => p.keyId));
+  const certs = app.keyCredentials ?? [];
+  const has = (cert: SigninCert | undefined) =>
+    cert !== undefined && certs.some((k) => isCertificate(k, cert.thumbprint));
 
   if (spec.previousKeyId) {
     if (keyIds.has(spec.previousKeyId)) await graph.removePassword(app.id, spec.previousKeyId, signal);
     const { previousKeyId: _removed, ...rest } = spec;
     spec = rest;
   }
+  if (spec.previousCert) {
+    if (has(spec.previousCert)) {
+      const current = spec.cert && has(spec.cert) ? [spec.cert] : [];
+      await graph.updateApplication(
+        app.id,
+        {
+          keyCredentials: current.map(signinKeyBody),
+        },
+        signal
+      );
+    }
+    const { previousCert: _removed, ...rest } = spec;
+    spec = rest;
+  }
 
-  const secretGone = !keyIds.has(spec.keyId);
-  const expiring = Date.parse(spec.secretExpiresAt) - now.getTime() < ROTATE_BEFORE_MS;
-  if (wired && (secretGone || expiring)) {
-    const password = await newSecret(graph, app.id, now, signal);
-    const previous = spec.keyId;
-    spec = {
-      ...spec,
-      keyId: password.keyId,
-      secretExpiresAt: password.endDateTime,
-      ...(secretGone ? {} : { previousKeyId: previous }),
-    };
+  const certificate = credentialOf(spec) === "certificate";
+  const gone = certificate ? !has(spec.cert) : !spec.keyId || !keyIds.has(spec.keyId);
+  const until = (certificate ? spec.cert?.notAfter : spec.secretExpiresAt) ?? "";
+  const expiring = !(Date.parse(until) - now.getTime() >= ROTATE_BEFORE_MS);
+  // Apps on a secret move to a certificate when the tenant takes one; the
+  // secret stays (and is rotated as before) when it does not.
+  const due = gone || expiring;
+  const fresh =
+    wired && (due || !certificate)
+      ? await freshCredential(graph, app.id, certificate && !gone ? spec.cert : undefined, now, signal, due)
+      : undefined;
+  if (fresh) {
+    const switched = fresh.part.credential === "certificate" && !certificate;
+    const replacedSecret = !certificate && !gone ? spec.keyId : undefined;
+    const { cert: _c, previousCert: _p, keyId: _k, secretExpiresAt: _s, credential: _cr, ...rest } = spec;
+    spec = { ...rest, ...fresh.part, ...(replacedSecret ? { previousKeyId: replacedSecret } : {}) };
     putSpec(owned, app.id, spec);
-    await deps.signIn().setOidcClient({ issuer, clientId: app.appId, clientSecret: password.secretText }, ACTOR);
-    diff.push({
-      path: "secret",
-      want: `valid for more than ${ROTATE_BEFORE_MS / DAY_MS} days`,
-      have: secretGone ? "removed outside this install" : `expires ${day(mine.spec.secretExpiresAt)}`,
-    });
+    await deps.signIn().setOidcClient({ issuer, clientId: app.appId, ...fresh.client }, ACTOR);
+    diff.push(
+      switched
+        ? { path: "credential", want: "certificate", have: "client secret" }
+        : {
+            path: certificate ? "certificate" : "secret",
+            want: `valid for more than ${ROTATE_BEFORE_MS / DAY_MS} days`,
+            have: gone ? "removed outside this install" : `expires ${day(until)}`,
+          }
+    );
   } else {
     putSpec(owned, app.id, spec);
   }
@@ -433,9 +611,10 @@ export function createEntraKind(deps: EntraDeps): ConnectorKind {
     kind: KIND,
     label: "Microsoft Entra ID",
     description:
-      "Creates and rotates the app registration this install signs in through. " +
+      "Creates the app registration this install signs in through and keeps its certificate current. " +
       "Needs an app registration with Microsoft Graph's Application.ReadWrite.OwnedBy application permission " +
-      "(and Group.Read.All to pick admin groups), admin consented.",
+      "(and Group.Read.All to pick admin groups), admin consented. Its client secret is only used until the " +
+      "console's own certificate is on the app.",
     capabilities: ["identity"],
     fields: [
       {
@@ -454,11 +633,19 @@ export function createEntraKind(deps: EntraDeps): ConnectorKind {
         help: "Application (client) ID of the management app registration, not the sign-in app.",
       },
       {
+        key: "objectId",
+        label: "Object ID",
+        type: "text",
+        required: false,
+        placeholder: "00000000-0000-0000-0000-000000000000",
+        help: "Object ID of the management app, from its Overview page. Lets the console replace its own certificate before it expires.",
+      },
+      {
         key: "clientSecret",
         label: "Client secret",
         type: "secret",
-        required: true,
-        help: "A client secret's value from Certificates & secrets.",
+        required: false,
+        help: "A client secret's value from Certificates & secrets. Used once: the console moves to a certificate and the secret is deleted.",
       },
     ],
     single: true,
@@ -466,14 +653,21 @@ export function createEntraKind(deps: EntraDeps): ConnectorKind {
     verify,
     async health(instance, signal) {
       const results = await verify(instanceValues(instance), signal);
-      results.push(secretCheck(deps.owned(instance.id), await oidcOf(deps), deps.now()));
+      const now = deps.now();
+      results.push(managementCheck(instance, await loadManagement(deps, instance.id), now));
+      results.push(credentialCheck(deps.owned(instance.id), await oidcOf(deps), now));
       return results;
     },
     reconcile: (instance, owned, signal) => reconcileSignIn(instance, owned, deps, signal),
     async cleanup(instance, owned) {
-      const graph = graphFor(instanceValues(instance), deps);
       let removed = 0;
       const errors: string[] = [];
+      let graph: GraphClient;
+      try {
+        graph = await graphFor(instance, deps);
+      } catch (err) {
+        return { removed, errors: [`Microsoft Graph: ${err instanceof Error ? err.message : String(err)}`] };
+      }
       for (const row of owned.list(OWNED_KIND)) {
         try {
           if (row.externalId) await graph.deleteApplication(row.externalId);
@@ -485,7 +679,12 @@ export function createEntraKind(deps: EntraDeps): ConnectorKind {
           );
         }
       }
+      // The certificate stays on the management app, which the admin
+      // removes with it; the private key goes with the connector.
+      if (errors.length === 0) await forgetManagement(deps, instance.id);
       return { removed, errors };
     },
   };
 }
+
+export { managementCertificate };
