@@ -5,5 +5,5 @@ type: application
 # Edge builds publish as <version>-edge.<run number>, and the installer takes the
 # highest; this must sort above every tag already in the registry (0.1.0-edge.* there
 # includes builds from an earlier repository whose run numbers ran higher).
-version: 0.1.1
-appVersion: "0.1.1"
+version: 0.2.0
+appVersion: "0.2.0"
