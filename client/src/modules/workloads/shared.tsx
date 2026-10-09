@@ -95,7 +95,10 @@ export function workloadStatus(w: WorkloadView): { status: Status; label: string
     case "CronJob":
       return w.ready === "suspended" ? { status: "absent", label: "Suspended" } : { status: "ok", label: "Scheduled" };
     case "Job":
-      return w.available >= w.desired ? { status: "ok", label: "Complete" } : { status: "warn", label: "Running" };
+      if (w.finished === "failed") return { status: "crit", label: "Failed" };
+      return w.finished === "complete" || w.available >= w.desired
+        ? { status: "ok", label: "Complete" }
+        : { status: "warn", label: "Running" };
     default:
       if (w.desired === 0) return { status: "ok", label: "Scaled to 0" };
       if (w.available >= w.desired) return { status: "ok", label: "Available" };
