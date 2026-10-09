@@ -425,3 +425,21 @@ export interface PublicSignInResult {
   // The issuer's discovery document as read back after saving.
   discovery: { ok: boolean; error?: string };
 }
+
+// POST /api/admin/recovery-kit. Admin, session only, audited. Re-auth: a
+// local account gives its password (and a TOTP code when enrolled); an OIDC
+// account must have signed in within the last 15 minutes, else 401 with
+// "Sign in again to download the recovery kit". 409 without SECRETS_KEY.
+//
+// The response is a text file: "#" comment lines naming the product,
+// release, namespace, build and creation time, then one base64 line
+// that `openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -a -A`
+// opens with the passphrase. Inside are KEY=value lines: SECRETS_KEY,
+// RELEASE, NAMESPACE, VERSION (the build, as /healthz reports it),
+// CREATED_AT and KIT_VERSION=1.
+export interface RecoveryKitRequest {
+  // At least 12 characters; never stored or logged.
+  passphrase: string;
+  password?: string;
+  code?: string;
+}

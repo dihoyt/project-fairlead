@@ -112,6 +112,7 @@ export const ROUTE_ACCESS: { [K in RouteKey]: RouteAccess } = {
   "PATCH /api/admin/tokens/:id": "session",
   "DELETE /api/admin/tokens/:id": "session",
   "POST /api/admin/oauth/consent": "session",
+  "POST /api/admin/recovery-kit": "session",
 
   "GET /api/k8s/capabilities": "open",
 
@@ -173,6 +174,8 @@ export const ROUTE_ACCESS: { [K in RouteKey]: RouteAccess } = {
   "GET /api/backups/volumes/:uid/backups": a("backups"),
   "POST /api/backups/restore/plan": a("backups"),
   "POST /api/backups/restore": a("backups"),
+  "GET /api/backups/console": a("backups"),
+  "POST /api/backups/console/backup-now": a("backups"),
 
   "GET /api/workloads/links": a("workloads"),
   "GET /api/workloads/namespaces": a("workloads"),
@@ -195,6 +198,7 @@ export const ROUTE_ACCESS: { [K in RouteKey]: RouteAccess } = {
   "PUT /api/deploy/access": a("deploy"),
   "POST /api/deploy/plan": a("deploy", nsBody),
   "POST /api/deploy/jobs": a("deploy", nsBody),
+  "GET /api/deploy/console-backup": a("deploy"),
   "GET /api/deploy/jobs": a("deploy"),
   "GET /api/deploy/jobs/:id": a("deploy"),
   "GET /api/deploy/jobs/:id/logs": a("deploy"),

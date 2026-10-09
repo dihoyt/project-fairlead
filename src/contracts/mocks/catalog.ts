@@ -12,9 +12,12 @@ import type {
   DiscoveryReport,
   IngressHost,
 } from "../catalog.js";
+import type { ConsoleBackupView } from "../backups.js";
 import {
+  CONSOLE_BACKUP_APP,
   UPGRADE_RUN,
   type AccessView,
+  type ConsoleNightlyView,
   type BundlePlan,
   type BundleRunView,
   type DeployActionPlan,
@@ -980,6 +983,58 @@ export const mockBackupTargetJob = backupActionJob("dj_21", "longhorn-target");
 export const mockBackupRecurringJob = backupActionJob("dj_22", "longhorn-recurring");
 export const mockBackupNowJob = backupActionJob("dj_23", "longhorn-backup-now");
 export const mockRestoreJob = backupActionJob("dj_24", "longhorn-restore");
+
+// The console's nightly copy: last night's run, onto the NFS target.
+export const mockConsoleBackupJob: DeployJobView = {
+  ...mockReplicasJob,
+  id: "dj_25",
+  appId: CONSOLE_BACKUP_APP,
+  release: "console",
+  namespace: "console",
+  action: "console-backup",
+  state: "succeeded",
+  startedBy: "schedule",
+  createdAt: isoAgo(22 * HOUR),
+  startedAt: isoAgo(22 * HOUR),
+  finishedAt: isoAgo(22 * HOUR - 40_000),
+  message: "Copied console-20261008T033000Z.db (2.4 MB) to nfs://nas.example.test:/volume1/backups/cluster/",
+  job: { namespace: "console", name: "deploy-console-25" },
+};
+
+export const mockConsoleNightly: ConsoleNightlyView = {
+  schedule: "30 3 * * *",
+  keep: 14,
+  target: { connectorId: "cn_st1", name: "NAS", url: "nfs://nas.example.test:/volume1/backups/cluster/" },
+  last: mockConsoleBackupJob,
+  lastGood: { at: isoAgo(22 * HOUR), file: "console-20261008T033000Z.db", sizeBytes: 2_516_582 },
+  nextAt: isoAgo(-2 * HOUR),
+};
+
+// On local-path: the nightly copy is all there is.
+export const mockConsoleBackup: ConsoleBackupView = {
+  claim: { namespace: "console", name: "console", uid: "uid-console" },
+  storageClass: "local-path",
+  storage: "local-path",
+  nightly: mockConsoleNightly,
+  secretsKey: true,
+  restoreCommand:
+    "sudo ./install.sh --restore ./recovery-kit.txt --from ./console-20261008T033000Z.db --release console --namespace console",
+};
+
+// On Longhorn, in the critical group; the nightly copy still runs.
+export const mockConsoleBackupLonghorn: ConsoleBackupView = {
+  ...mockConsoleBackup,
+  storageClass: "longhorn",
+  storage: "longhorn",
+  groups: ["critical"],
+  lastVolumeBackupAt: isoAgo(5 * HOUR),
+};
+
+export const mockRecoveryKit = `# console recovery kit
+# release: console  namespace: console  build: 3f9c2e1  created: 2026-10-09T00:00:00Z
+# Open with: openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -a -A
+U2FsdGVkX19tb2NrbW9ja01PQ0tfTk9UX0FfUkVBTF9LSVQ=
+`;
 
 // Restore postgres-data's backup-6f1c2a to a new claim.
 export const mockRestorePlan: DeployActionPlan = {
