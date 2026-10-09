@@ -19,3 +19,4 @@ export {
 export { BundlePlanView } from "./BundlePlanView";
 export { DeployRolloutProgress, defaultStep, type DeployRolloutProgressProps } from "./DeployRolloutProgress";
 export { ActionPlanView, RaiseReplicas } from "./RaiseReplicas";
+export { RetryButton, UninstallButton, UninstallDialog } from "./Recovery";

@@ -13,7 +13,7 @@ import { createMockContext, type MockContext } from "../../../src/contracts/mock
 import { createFakeK8s, type FakeK8s } from "../../../src/contracts/mocks/k8s.js";
 import { mockTemplatesView } from "../../../src/contracts/mocks/templates.js";
 import { MOCK_NOW } from "../../../src/contracts/mocks/time.js";
-import { checksFor, REMOVE_SCRIPT } from "../../../src/modules/deploy/actions/remove.js";
+import { checksFor, REMOVE_SCRIPT, UNINSTALL_SCRIPT } from "../../../src/modules/deploy/actions/remove.js";
 import mod, { registerDeploy } from "../../../src/modules/deploy/index.js";
 import type { Deployer } from "../../../src/modules/deploy/runner.js";
 import { product } from "../../../src/product.js";
@@ -310,4 +310,98 @@ test("script: refuses a namespace without the label; a gone one is fine", { skip
   const gone = runScript({ labelled: false, exists: false, deleteVolumes: true });
   assert.equal(gone.status, 0);
   assert.equal(gone.out, "Namespace status was already gone.");
+});
+
+function giteaRelease(e: Env, state = "failed") {
+  e.mock.ctx.db
+    .prepare(
+      `INSERT INTO deploy_jobs (seq, id, app_id, release, namespace, version, mode, state, started_by, created_at,
+         job_namespace, job_name)
+       VALUES (2, 'dj_2', 'gitea', 'gitea', 'gitea', '12.7.0', 'install', ?, 'admin', ?, ?, ?)`
+    )
+    .run(state, new Date(MOCK_NOW).toISOString(), NS, "deploy-gitea-2");
+}
+
+const claim = (name: string, instance: string): KubeObject =>
+  ({
+    apiVersion: "v1",
+    kind: "PersistentVolumeClaim",
+    metadata: { name, namespace: "gitea", labels: { "app.kubernetes.io/instance": instance } },
+    spec: { storageClassName: "local-path", resources: { requests: { storage: "5Gi" } } },
+  }) as KubeObject;
+
+function withGiteaClaims(): FakeK8s {
+  const k8s = cluster();
+  k8s.upsert(RESOURCES.pvcs, claim("data-gitea-0", "gitea"));
+  k8s.upsert(RESOURCES.pvcs, claim("other-app", "other"));
+  return k8s;
+}
+
+test("uninstall: a Helm catalog app deployed from here, keeping or deleting the release's volumes", async () => {
+  const e = await setup({ k8s: withGiteaClaims() });
+  giteaRelease(e);
+  const keep = await post<DeployActionPlan>(e, "/actions/plan", { kind: "remove-app", appId: "gitea" });
+  assert.equal(keep.allowed, true, keep.blockedBy);
+  assert.equal(keep.title, "Uninstall Gitea");
+  assert.deepEqual(
+    keep.volumes?.map((v) => v.claim),
+    ["data-gitea-0"]
+  );
+  assert.deepEqual(
+    keep.deletes?.map((d) => `${d.kind}/${d.name}`),
+    ["HelmRelease/gitea"]
+  );
+  assert.deepEqual(keep.steps[0]!.commands, ["helm uninstall gitea --namespace gitea --wait --timeout 5m"]);
+  assert.ok(keep.warnings.some((w) => w.startsWith("data-gitea-0 stays")));
+
+  const drop = await post<DeployActionPlan>(e, "/actions/plan", {
+    kind: "remove-app",
+    appId: "gitea",
+    deleteVolumes: true,
+  });
+  assert.deepEqual(
+    drop.deletes?.map((d) => `${d.kind}/${d.name}`),
+    ["HelmRelease/gitea", "PersistentVolumeClaim/data-gitea-0"]
+  );
+  assert.ok(drop.warnings.includes("The data on data-gitea-0 is deleted for good."));
+
+  const view = await post<DeployJobView>(e, "/actions/run", {
+    kind: "remove-app",
+    appId: "gitea",
+    deleteVolumes: true,
+  });
+  assert.equal(view.release, "gitea");
+  const job = (await e.k8s.get(RESOURCES.jobs, view.job.name, NS)) as KubeObject & {
+    spec: { template: { spec: { containers: Array<{ command: string[] }> } } };
+  };
+  assert.equal(job.spec.template.spec.containers[0]!.command[2], UNINSTALL_SCRIPT);
+  const secret = (await e.k8s.get(RESOURCES.secrets, view.job.name.replace(/-\d+$/, "-values"), NS)) as KubeObject & {
+    stringData: Record<string, string>;
+  };
+  assert.deepEqual(secret.stringData, { release: "gitea", namespace: "gitea", "delete-volumes": "true" });
+
+  await e.deployer.ensureWatch();
+  e.k8s.upsert(RESOURCES.jobs, { ...job, status: { conditions: [{ type: "Complete", status: "True" }] } });
+  await settle();
+  assert.deepEqual(
+    e.deployer.releases().map((r) => r.appId),
+    [],
+    "an uninstalled release is no longer listed"
+  );
+});
+
+test("uninstall: Longhorn and apps not deployed from here are refused", async () => {
+  const e = await setup();
+  e.mock.ctx.db
+    .prepare(
+      `INSERT INTO deploy_jobs (seq, id, app_id, release, namespace, version, mode, state, started_by, created_at,
+         job_namespace, job_name)
+       VALUES (3, 'dj_3', 'longhorn', 'longhorn', 'longhorn-system', '1.13.0', 'install', 'failed', 'admin', ?, ?, ?)`
+    )
+    .run(new Date(MOCK_NOW).toISOString(), NS, "deploy-longhorn-3");
+  const longhorn = await post<DeployActionPlan>(e, "/actions/plan", { kind: "remove-app", appId: "longhorn" });
+  assert.equal(longhorn.allowed, false);
+  assert.match(longhorn.blockedBy ?? "", /every volume/);
+  const headlamp = await post<DeployActionPlan>(e, "/actions/plan", { kind: "remove-app", appId: "headlamp" });
+  assert.equal(headlamp.allowed, false);
 });

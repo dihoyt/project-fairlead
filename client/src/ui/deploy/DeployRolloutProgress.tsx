@@ -14,12 +14,13 @@ import {
   Tooltip,
   UnstyledButton,
 } from "@mantine/core";
-import { IconExternalLink, IconPlayerStop } from "@tabler/icons-react";
-import type { BundleRunView } from "@contracts/deploy";
+import { IconExternalLink, IconPlayerStop, IconRefresh } from "@tabler/icons-react";
+import { UPGRADE_RUN, type BundleRunView } from "@contracts/deploy";
 import { apiRequest, useApi } from "../api";
 import { SessionContext } from "../session";
 import { relativeTime } from "../time";
 import { DeployJobProgress } from "./DeployJobProgress";
+import { UninstallButton } from "./Recovery";
 import { SkippedSteps } from "./SkippedSteps";
 import { RUN_STATE_COLOR, STEP_STATE_COLOR, STEP_STATE_VARIANT } from "./jobs";
 
@@ -60,10 +61,15 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
+  const [retried, setRetried] = useState<BundleRunView | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const reported = useRef<string | null>(null);
 
-  // A poll after the cancel answers with the server's view, which wins.
-  const view = run.data && (!cancelled || run.data.state !== "running") ? run.data : (cancelled ?? run.data);
+  // A poll after the cancel answers with the server's view, which wins; a
+  // resumed run's own answer wins over a poll that still shows it failed.
+  const polled = retried && run.data?.state === "failed" ? retried : run.data;
+  const view = polled && (!cancelled || polled.state !== "running") ? polled : (cancelled ?? polled);
   const done = view !== null && view.state !== "running";
   const label = (appId: string) => names?.[appId] ?? catalog.data?.find((app) => app.id === appId)?.name ?? appId;
 
@@ -72,10 +78,31 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
   }, [done]);
 
   useEffect(() => {
+    if (retried && run.data && run.data.state !== "failed") setRetried(null);
+  }, [retried, run.data]);
+
+  useEffect(() => {
     if (!view || !done || reported.current === view.id) return;
     reported.current = view.id;
     onFinished?.(view);
   }, [view, done, onFinished]);
+
+  // Resumes the run from its failed app; the poll and the report start over.
+  async function retry() {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      const resumed = await apiRequest("POST /api/deploy/bundles/:id/retry", { params: { id: runId } });
+      reported.current = null;
+      setPicked(null);
+      setRetried(resumed);
+      setFinished(false);
+    } catch (err) {
+      setRetryError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   async function cancel() {
     setCancelling(true);
@@ -108,7 +135,10 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
   const settled = counted.filter((step) => ["succeeded", "failed", "cancelled"].includes(step.state)).length;
   const succeeded = counted.filter((step) => step.state === "succeeded").length;
   const selected = view.steps.find((step) => step.appId === picked && step.jobId) ?? defaultStep(view);
-  const canCancel = !done && (session?.me.admin ?? true);
+  const admin = session?.me.admin ?? true;
+  const canCancel = !done && admin;
+  const canRetry = admin && view.state === "failed";
+  const isUpgrade = view.bundleId === UPGRADE_RUN;
 
   return (
     <Stack gap="sm" data-run-state={view.state}>
@@ -143,6 +173,23 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
             </Button>
           </Tooltip>
         ) : null}
+        {canRetry ? (
+          <Tooltip
+            label="Runs the failed apps again with the values their first attempt saved, then the apps after them."
+            multiline
+            maw={280}
+          >
+            <Button
+              size="compact-xs"
+              variant="light"
+              leftSection={<IconRefresh size={14} />}
+              loading={retrying}
+              onClick={() => void retry()}
+            >
+              Retry and continue
+            </Button>
+          </Tooltip>
+        ) : null}
       </Group>
       <Progress
         value={counted.length ? (settled / counted.length) * 100 : 100}
@@ -151,6 +198,11 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
         animated={!done}
         aria-label="Rollout progress"
       />
+      {retryError ? (
+        <Alert color="red" variant="light" p="xs">
+          {retryError}
+        </Alert>
+      ) : null}
       {cancelError ? (
         <Alert color="red" variant="light" p="xs">
           {cancelError}
@@ -207,6 +259,13 @@ export function DeployRolloutProgress({ runId, names, onFinished }: DeployRollou
                     </Text>
                   ) : null}
                 </Table.Td>
+                {done ? (
+                  <Table.Td w={1}>
+                    {step.state === "failed" && admin && !isUpgrade ? (
+                      <UninstallButton appId={step.appId} name={label(step.appId)} />
+                    ) : null}
+                  </Table.Td>
+                ) : null}
               </Table.Tr>
             );
           })}

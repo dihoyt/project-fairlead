@@ -43,6 +43,8 @@ interface Step {
   message?: string;
   url?: string;
   claimedAt?: string;
+  // Set on a failed step a resumed run picks up: the job to retry.
+  retryOf?: string;
 }
 
 interface Row {
@@ -87,7 +89,7 @@ export function view(run: Run): BundleRunView {
     startedBy: run.startedBy,
     createdAt: run.createdAt,
     ...(run.finishedAt ? { finishedAt: run.finishedAt } : {}),
-    steps: run.steps.map(({ claimedAt: _claimed, ...step }) => step),
+    steps: run.steps.map(({ claimedAt: _claimed, retryOf: _retry, ...step }) => step),
   };
 }
 
@@ -401,6 +403,12 @@ export class Bundles {
       JSON.stringify(this.masked(bundle, request))
     );
     if ("busy" in inserted) throw new HttpError(409, `Bundle run ${inserted.busy} is still running.`);
+    // A new rollout supersedes any failed one, so their answers go.
+    for (const old of this.runs.list()) {
+      if (old.state === "failed" && old.bundleId !== UPGRADE_RUN) {
+        await this.ctx.secrets.delete("deploy", old.id).catch(() => undefined);
+      }
+    }
     this.requests.set(inserted.id, request);
     const access = typeof request.inputs?.access === "string" ? request.inputs.access : "";
     const baseDomain =
@@ -492,12 +500,79 @@ export class Bundles {
     return this.get(id);
   }
 
+  // Resumes a failed run: each failed step goes back in the queue to be
+  // retried, and the pending ones run after it.
+  async retry(actor: string, id: string): Promise<BundleRunView> {
+    const run = this.runs.get(id);
+    if (!run) throw new HttpError(404, `No bundle run "${id}".`);
+    if (run.state !== "failed")
+      throw new HttpError(400, `${id} did not fail (${run.state}); there is nothing to retry.`);
+    const busy = this.runs.running()[0];
+    if (busy) throw new HttpError(409, `Bundle run ${busy.id} is still running.`);
+    if (run.bundleId !== UPGRADE_RUN && !(await this.request(run))) {
+      throw new HttpError(400, "This rollout's answers are gone; start it again.");
+    }
+    const failed = run.steps.filter((step) => step.state === "failed");
+    for (const step of failed) {
+      step.state = "pending";
+      if (step.jobId) step.retryOf = step.jobId;
+      delete step.jobId;
+      delete step.message;
+      delete step.url;
+    }
+    run.state = "running";
+    delete run.finishedAt;
+    if (!this.runs.save(run)) throw new HttpError(409, `${id} changed while it was being resumed; try again.`);
+    this.ctx.audit.record({
+      actor,
+      action: "deploy.retry-bundle",
+      target: id,
+      detail: `${run.bundleId}: retrying ${failed.map((step) => step.appId).join(", ") || "nothing"}`,
+    });
+    await this.advanceAll();
+    return this.get(id);
+  }
+
+  // Starts a resumed step's retry from the release's latest install or
+  // upgrade, which may be newer than the step's own job (retried from the
+  // Installed page since): one still going is waited on, one that worked
+  // completes the step. "fresh" when there is nothing to retry (uninstalled
+  // since, or the release was never created): the step installs afresh.
+  private async startRetry(run: Run, next: Step): Promise<"started" | "done" | "fresh"> {
+    const own = next.retryOf!;
+    delete next.retryOf;
+    const latest = this.deployer.releases().find((r) => r.appId === next.appId);
+    if (!latest) return run.bundleId === UPGRADE_RUN ? this.retryJob(run, next, own) : "fresh";
+    if (latest.state === "succeeded" || latest.state === "pending" || latest.state === "running") {
+      next.jobId = latest.jobId;
+      if (latest.state !== "succeeded") return "started";
+      next.state = "succeeded";
+      return "done";
+    }
+    return this.retryJob(run, next, latest.jobId);
+  }
+
+  private async retryJob(run: Run, next: Step, jobId: string): Promise<"started" | "fresh"> {
+    try {
+      const job = await this.deployer.retry(run.startedBy, jobId);
+      next.jobId = job.id;
+      if (job.url) next.url = job.url;
+      return "started";
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 400 && run.bundleId !== UPGRADE_RUN) return "fresh";
+      throw err;
+    }
+  }
+
   private async finishRun(run: Run, state: BundleRunState): Promise<boolean> {
     run.state = state;
     run.finishedAt = this.iso();
     if (!this.runs.save(run)) return false;
     this.requests.delete(run.id);
-    await this.ctx.secrets.delete("deploy", run.id).catch(() => undefined);
+    // A failed rollout keeps its answers so it can be resumed.
+    if (state !== "failed" || run.bundleId === UPGRADE_RUN) {
+      await this.ctx.secrets.delete("deploy", run.id).catch(() => undefined);
+    }
     this.ctx.bus.emit("deploy.bundle-finished", { runId: run.id, bundleId: run.bundleId, state });
     return true;
   }
@@ -563,6 +638,33 @@ export class Bundles {
     if (!next) {
       await this.finishRun(run, run.steps.some((step) => step.state === "failed") ? "failed" : "succeeded");
       return;
+    }
+    if (next.retryOf) {
+      next.state = "running";
+      next.claimedAt = this.iso();
+      if (!this.runs.save(run)) return;
+      try {
+        const outcome = await this.startRetry(run, next);
+        if (outcome !== "fresh") {
+          delete next.claimedAt;
+          if (!this.runs.save(run)) return;
+          if (outcome === "done") return this.advance(run);
+          return;
+        }
+        next.state = "pending";
+        delete next.claimedAt;
+        if (!this.runs.save(run)) return;
+      } catch (err) {
+        next.state = "failed";
+        next.message = errorMessage(err);
+        delete next.claimedAt;
+        if (!this.optional(run, next.appId)) {
+          await this.finishRun(run, "failed");
+          return;
+        }
+        if (!this.runs.save(run)) return;
+        return this.advance(run);
+      }
     }
     if (run.bundleId === UPGRADE_RUN) return this.advanceUpgrade(run, next);
     const request = await this.request(run);

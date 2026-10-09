@@ -155,6 +155,13 @@ export function registerDeploy(
     return deployer.cancel(user.id, req.params.id);
   });
 
+  ctx.route("POST /api/deploy/jobs/:id/retry", async (req, res) => {
+    const user = ctx.require(req, res, "write");
+    if (!user) return undefined;
+    visibleJob(req, req.params.id);
+    return deployer.retry(user.id, req.params.id);
+  });
+
   ctx.route("POST /api/deploy/bundles/plan", async (req, res) => {
     if (!ctx.require(req, res, "write")) return undefined;
     return bundles.plan(parse(bundleSchema, req.body) as BundleRequest);
@@ -183,6 +190,12 @@ export function registerDeploy(
       wanted: ctx.services.has("templates") ? ctx.services.get("templates").forwardedPorts() : [],
     })
   );
+
+  ctx.route("POST /api/deploy/bundles/:id/retry", async (req, res) => {
+    const user = ctx.require(req, res, "write");
+    if (!user) return undefined;
+    return bundles.retry(user.id, req.params.id);
+  });
 
   ctx.route("GET /api/deploy/upgrades", (req) => deployer.upgradeReport(req.query.refresh === "1"));
 

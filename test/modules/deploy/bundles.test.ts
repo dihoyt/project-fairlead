@@ -449,3 +449,127 @@ test("bundle access: the tunnel token applies only to a pasted-token setup, whic
   assert.equal(stale.steps[0]!.skip, true);
   assert.equal(stale.steps[0]!.reason, "Not needed for how you reach the apps");
 });
+
+// --- retries ---------------------------------------------------------------
+
+const detectedAs = (discovery: DiscoveryReport, appId: string, state: "installed" | "not-installed") => {
+  const app = discovery.apps.find((a) => a.appId === appId)!;
+  app.state = state;
+  app.namespace = appId;
+};
+
+async function scriptOf(e: Env, jobId: string): Promise<string> {
+  const view = await jobView(e, jobId);
+  const job = (await e.k8s.get(RESOURCES.jobs, view.job.name, NS)) as KubeObject & {
+    spec: { template: { spec: { containers: Array<{ command: string[] }> } } };
+  };
+  return job.spec.template.spec.containers[0]!.command[2]!;
+}
+
+async function failedAuthentik(e: Env): Promise<void> {
+  await call<BundleRunView>(e, "POST", "/bundles", { bundleId: "self-hosted", inputs: answers });
+  await finishJob(e, "dj_1", true);
+  await runOnceStarted(e, "br_1", "authentik");
+  await finishJob(e, "dj_2", false);
+}
+
+test("retry: a failed rollout keeps its answers, retries the failed app with Helm's saved values, then carries on", async () => {
+  const discovery = structuredClone(mockDiscovery);
+  const e = await setup(undefined, discovery);
+  await failedAuthentik(e);
+  assert.equal(e.mock.secrets.size, 1, "a failed run keeps its sealed answers");
+
+  detectedAs(discovery, "authentik", "installed");
+  const resumed = await call<BundleRunView>(e, "POST", "/bundles/br_1/retry");
+  assert.equal(resumed.state, "running");
+  const step = resumed.steps.find((s) => s.appId === "authentik")!;
+  assert.equal(step.state, "running");
+  assert.equal(step.jobId, "dj_3");
+  assert.equal(step.message, undefined);
+
+  const retry = await jobView(e, "dj_3");
+  assert.equal(retry.retryOf, "dj_2");
+  assert.equal(retry.mode, "install");
+  const script = await scriptOf(e, "dj_3");
+  assert.match(script, /'helm' 'upgrade' 'authentik' 'authentik' '--repo' /);
+  assert.match(script, /'--reset-then-reuse-values'/);
+  assert.doesNotMatch(script, /'--install'/);
+  assert.ok(
+    e.k8s.writes.some((w) => w.verb === "delete" && w.ref.plural === "jobs" && w.name === "deploy-authentik-2"),
+    "the failed Job is deleted first"
+  );
+  assert.ok(e.mock.audit.some((a) => a.action === "deploy.retry-bundle" && a.target === "br_1"));
+
+  await finishJob(e, "dj_3", true);
+  const run = await runOnceStarted(e, "br_1", "gitea");
+  assert.equal(states(run).authentik, "succeeded");
+  assert.equal(states(run).gitea, "running");
+  const values = (await e.k8s.get(RESOURCES.secrets, "deploy-gitea-values", NS)) as KubeObject & {
+    stringData: Record<string, string>;
+  };
+  assert.match(values.stringData["values.yaml"]!, new RegExp(PASSWORD), "the saved answers carry on");
+  assert.equal(e.deployer.releases().find((r) => r.appId === "authentik")?.state, "succeeded");
+});
+
+test("retry: a step whose release was never created installs afresh", async () => {
+  const discovery = structuredClone(mockDiscovery);
+  detectedAs(discovery, "authentik", "not-installed");
+  const e = await setup(undefined, discovery);
+  await failedAuthentik(e);
+  await call(e, "POST", "/jobs/dj_2/retry", undefined, 400);
+  await call<BundleRunView>(e, "POST", "/bundles/br_1/retry");
+  const run = await runOnceStarted(e, "br_1", "authentik");
+  const job = await jobView(e, run.steps.find((s) => s.appId === "authentik")!.jobId!);
+  assert.equal(job.retryOf, undefined);
+  assert.match(await scriptOf(e, job.id), /'helm' 'upgrade' '--install' 'authentik'/);
+});
+
+test("retry: refused for a run or job that didn't fail, a later deploy, or while another run is going", async () => {
+  const discovery = structuredClone(mockDiscovery);
+  const e = await setup(undefined, discovery);
+  await call<BundleRunView>(e, "POST", "/bundles", { bundleId: "self-hosted", inputs: answers });
+  await call(e, "POST", "/bundles/br_1/retry", undefined, 400);
+  await call(e, "POST", "/jobs/dj_1/retry", undefined, 400);
+  await finishJob(e, "dj_1", true);
+  await call(e, "POST", "/jobs/dj_1/retry", undefined, 400);
+  await runOnceStarted(e, "br_1", "authentik");
+  await finishJob(e, "dj_2", false);
+
+  detectedAs(discovery, "authentik", "installed");
+  const retried = await call<DeployJobView>(e, "POST", "/jobs/dj_2/retry");
+  assert.equal(retried.retryOf, "dj_2");
+  assert.ok(e.mock.audit.some((a) => a.action === "deploy.retry" && a.target === retried.id));
+  const later = await call<{ error: string }>(e, "POST", "/jobs/dj_2/retry", undefined, 400);
+  assert.match(later.error, /deployed again/);
+  await call(e, "POST", "/bundles/nope/retry", undefined, 404);
+});
+
+test("retry: a new rollout drops the answers a failed one kept", async () => {
+  const e = await setup();
+  await failedAuthentik(e);
+  assert.equal(e.mock.secrets.size, 1);
+  await call<BundleRunView>(e, "POST", "/bundles", { bundleId: "self-hosted", inputs: answers });
+  assert.ok(![...e.mock.secrets.keys()].some((k) => k.includes("br_1")), "br_1's answers are gone");
+  await call(e, "POST", "/bundles/br_1/retry", undefined, 409);
+});
+
+test("retry: a rollout resumed after its failed app was fixed from the Installed page carries on from there", async () => {
+  const discovery = structuredClone(mockDiscovery);
+  const e = await setup(undefined, discovery);
+  await failedAuthentik(e);
+  detectedAs(discovery, "authentik", "installed");
+  const fixed = await call<DeployJobView>(e, "POST", "/jobs/dj_2/retry");
+  await finishJob(e, fixed.id, true);
+
+  await call<BundleRunView>(e, "POST", "/bundles/br_1/retry");
+  const run = await runOnceStarted(e, "br_1", "gitea");
+  const authentik = run.steps.find((s) => s.appId === "authentik")!;
+  assert.equal(authentik.state, "succeeded");
+  assert.equal(authentik.jobId, fixed.id);
+  assert.equal(states(run).gitea, "running");
+  assert.equal(
+    (await call<DeployJobView[]>(e, "GET", "/jobs?appId=authentik")).length,
+    2,
+    "authentik is not deployed a third time"
+  );
+});

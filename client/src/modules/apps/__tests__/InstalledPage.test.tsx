@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { mockCatalogApps, mockGateStatus, mockUpgradeReport } from "@contracts/mocks/catalog";
+import { mockCatalogApps, mockFailedJob, mockGateStatus, mockUpgradeReport } from "@contracts/mocks/catalog";
 import {
   mockPortsView,
   mockTemplatesView,
@@ -107,6 +107,82 @@ describe("InstalledPage", () => {
       kind: "remove-app",
       appId: "status",
       deleteVolumes: false,
+    });
+  });
+
+  it("marks an app whose deploy failed and offers Retry, Reinstall and Uninstall", async () => {
+    const failedGitea = {
+      ...mockFailedJob,
+      appId: "gitea",
+      release: "gitea",
+      namespace: "gitea",
+      message: "Error: timed out",
+    };
+    const created = mockCatalogApps.map((app) =>
+      app.id === "gitea" ? { ...app, detected: { ...app.detected, state: "installed" as const, ownedByUs: true } } : app
+    );
+    const { calls } = stubApi({ "GET /api/deploy/jobs": [failedGitea], "GET /api/catalog/apps": created });
+    stubEventSource([]);
+    renderWithApp(<InstalledPage />);
+    const gitea = await waitFor(async () => {
+      const el = await row("gitea");
+      expect(within(el).getByText("install failed")).toBeInTheDocument();
+      return el;
+    });
+    expect(within(gitea).queryByRole("button", { name: "Upgrade" })).toBeNull();
+    expect(within(gitea).getByRole("button", { name: "Reinstall" })).toBeInTheDocument();
+    expect(within(gitea).getByRole("button", { name: "Uninstall" })).toBeInTheDocument();
+    fireEvent.click(within(gitea).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(calls.some((c) => c.key === "POST /api/deploy/jobs/:id/retry")).toBe(true));
+    expect(calls.find((c) => c.key === "POST /api/deploy/jobs/:id/retry")!.url.pathname).toMatch(
+      /\/jobs\/dj_3\/retry$/
+    );
+    expect(await screen.findByText("Retry Gitea")).toBeInTheDocument();
+  });
+
+  it("deploys again from the form when the failed attempt never created the release", async () => {
+    const failedGitea = { ...mockFailedJob, appId: "gitea", release: "gitea", namespace: "gitea" };
+    stubApi({ "GET /api/deploy/jobs": [failedGitea] });
+    renderWithApp(<InstalledPage />);
+    const gitea = await waitFor(async () => {
+      const el = await row("gitea");
+      within(el).getByText("install failed");
+      return el;
+    });
+    expect(within(gitea).queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(within(gitea).getByRole("button", { name: "Deploy again" })).toBeInTheDocument();
+  });
+
+  it("asks whether to keep the volumes before it uninstalls", async () => {
+    const failedGitea = { ...mockFailedJob, appId: "gitea", release: "gitea", namespace: "gitea" };
+    const plan = {
+      ...mockTemplateRemovePlan,
+      title: "Uninstall Gitea",
+      deletes: [{ kind: "HelmRelease", name: "gitea", namespace: "gitea" }],
+    };
+    const { calls } = stubApi({
+      "GET /api/deploy/jobs": [failedGitea],
+      "POST /api/deploy/actions/plan": plan,
+      "POST /api/deploy/actions/run": mockTemplateRemoveJob,
+    });
+    stubEventSource([]);
+    renderWithApp(<InstalledPage />);
+    const gitea = await waitFor(async () => {
+      const el = await row("gitea");
+      within(el).getByText("install failed");
+      return el;
+    });
+    fireEvent.click(within(gitea).getByRole("button", { name: "Uninstall" }));
+    const go = await screen.findByRole("button", { name: "Uninstall Gitea" });
+    expect(go).toBeDisabled();
+    fireEvent.click(screen.getByRole("radio", { name: "Delete the volumes and their data for good" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Uninstall Gitea" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Uninstall Gitea" }));
+    await waitFor(() => expect(calls.some((c) => c.key === "POST /api/deploy/actions/run")).toBe(true));
+    expect(calls.find((c) => c.key === "POST /api/deploy/actions/run")!.body).toEqual({
+      kind: "remove-app",
+      appId: "gitea",
+      deleteVolumes: true,
     });
   });
 });
