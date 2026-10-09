@@ -205,7 +205,7 @@ Two grants need a decision:
 ## Deploying apps from the console
 
 The Apps page and the setup wizard can install tools from a fixed catalog
-(Headlamp, Longhorn, cert-manager, Authentik and others). This is off by
+(Headlamp, Longhorn, cert-manager, Authentik, Pocket ID and others). This is off by
 default (`deploy.enabled: false`): the console detects what is installed and
 shows the one command that turns deploys on, but changes nothing. Turn it on
 with `install.sh --enable-deploy`, or:

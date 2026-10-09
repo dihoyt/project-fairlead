@@ -102,6 +102,27 @@ whose verified email is on the allowed list can sign in with their own account.
 The preset saves the allowed and admin email lists and turns on account
 creation at first sign-in; it refuses an empty allowed list.
 
+#### Authentik and Pocket ID
+
+Once either is installed (from the bundle or the catalog), the Sign-in step
+offers to wire it up: the console creates its own client there through the
+app's API and fills in the settings above.
+
+- Authentik: paste the bootstrap token or an admin's API token. It creates an
+  OAuth2/OpenID provider and an application with the product's slug; members
+  of `authentik Admins` can be made admins here.
+- Pocket ID: register the first admin's passkey at `https://<host>/setup`,
+  then make an API key under Settings, Admin, API Keys and paste it. It
+  creates an OIDC client whose ID is the product's slug, with a new client
+  secret on every run (remove old ones in Pocket ID). The issuer is Pocket
+  ID's own address. Naming an admin group also adds the `groups` scope,
+  which Pocket ID needs to send group membership. Passkeys need https, so
+  Pocket ID must be reached through Cloudflare Tunnel, Tailscale, or Direct
+  with a certificate.
+
+Either way the token or key is used once unless you tick to keep it (sealed
+with `SECRETS_KEY`).
+
 #### Public URL
 
 Set it at the first setup step or under Admin, Settings, General. The setup

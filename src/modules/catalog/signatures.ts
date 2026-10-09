@@ -62,6 +62,11 @@ export const signatures: Record<string, Signature> = {
     charts: ["authentik"],
     images: ["goauthentik/server"],
   },
+  "pocket-id": {
+    names: ["pocket-id"],
+    charts: ["pocket-id"],
+    images: ["pocket-id/pocket-id", "stonith404/pocket-id"],
+  },
   velero: {
     names: ["velero"],
     charts: ["velero"],

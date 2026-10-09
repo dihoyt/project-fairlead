@@ -320,7 +320,7 @@ describe("discovery over the real fixture set", () => {
   });
 
   test("apps that are not there are not-installed, never unknown", () => {
-    for (const id of ["grafana", "authentik", "velero", "ntfy", "tailscale-operator"]) {
+    for (const id of ["grafana", "authentik", "pocket-id", "velero", "ntfy", "tailscale-operator"]) {
       assert.equal(app(report, id).state, "not-installed", id);
     }
     // A sidecar image from a different repository under the same org must not match.
@@ -722,19 +722,22 @@ describe("deploy bundles", () => {
     assert.deepEqual(skipped, ["traefik", "cert-manager", "metrics-server", "local-path-provisioner"]);
     assert.match(view.items.find((i) => i.appId === "metrics-server")!.reason!, /^Already /);
     assert.match(view.items.find((i) => i.appId === "traefik")!.reason!, /^Already covered: IngressClass traefik/);
-    // Items for one way of reaching the apps are left to the client, which
-    // knows the answer.
+    // Items for one way of reaching the apps, or one sign-in service, are
+    // left to the client, which knows the answer.
     assert.deepEqual(
       view.items.filter((i) => i.when).map((i) => [i.appId, i.when!.in]),
       [
         ["cloudflared", ["token"]],
         ["tailscale-operator", ["tailscale"]],
+        ["authentik", ["authentik"]],
+        ["pocket-id", ["pocket-id"]],
       ]
     );
     assert.deepEqual(
       view.items.filter((i) => i.selected && !i.when).map((i) => i.appId),
-      ["longhorn", "authentik", "gitea"]
+      ["longhorn", "gitea"]
     );
+    assert.equal(view.inputs.find((i) => i.key === "signIn")!.default, "authentik");
     assert.equal(
       view.items.find((i) => i.appId === "ntfy"),
       undefined,

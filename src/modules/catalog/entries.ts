@@ -222,6 +222,25 @@ const entries: CatalogEntry[] = [
     prerequisites: [],
   },
   {
+    id: "pocket-id",
+    name: "Pocket ID",
+    summary: "A lighter sign-in service: people sign in to your apps with a passkey, no passwords.",
+    slots: ["sign-in"],
+    homepage: "https://pocket-id.org",
+    // Community chart; Pocket ID publishes none of its own.
+    install: helm("https://anza-labs.github.io/charts", "pocket-id", "2.2.2"),
+    namespace: "pocket-id",
+    requires: [],
+    inputs: [host()],
+    // Sign-in gate: people sign in to the console through it.
+    gate: "public",
+    exposesUi: true,
+    storage: "1Gi",
+    prerequisites: [
+      "Passkeys work only over https: reach it through Cloudflare Tunnel, Tailscale, or Direct with a certificate.",
+    ],
+  },
+  {
     id: "velero",
     name: "Velero",
     summary: "Backs up your apps and their volumes to S3-compatible storage, on a schedule.",
@@ -335,6 +354,7 @@ const imageMiB: Record<string, number> = {
   grafana: 500,
   // The server image and Postgres.
   authentik: 1300,
+  "pocket-id": 60,
   // Velero, its AWS plugin and the node agent (same image).
   velero: 350,
   ntfy: 60,
@@ -353,6 +373,7 @@ const memoryMiB: Record<string, number> = {
   longhorn: 640,
   gitea: 160,
   authentik: 1056,
+  "pocket-id": 32,
   ntfy: 32,
   cloudflared: 64,
   "tailscale-operator": 64,
