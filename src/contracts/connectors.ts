@@ -20,7 +20,9 @@ export type ConnectorCapability =
   // Puts a sign-in in front of a hostname.
   | "access"
   // Creates sign-in app registrations and lists groups.
-  | "identity";
+  | "identity"
+  // A place backups are written to (NFS export, S3 bucket, SMB share).
+  | "backup-target";
 
 export interface ConnectorField {
   // Key in ConnectorRequest.values.
@@ -29,9 +31,14 @@ export interface ConnectorField {
   help?: string;
   placeholder?: string;
   // "secret": write-only. Sealed with SECRETS_KEY, never returned or logged,
-  // reported as ConnectorView.secrets[key].
-  type: "text" | "secret" | "url";
+  // reported as ConnectorView.secrets[key]. "select": one of `options`.
+  type: "text" | "secret" | "url" | "select";
   required: boolean;
+  // "select" only.
+  options?: Array<{ value: string; label: string }>;
+  // Shown (and sent) only while another field holds one of these values,
+  // e.g. S3 keys only when protocol is "s3". A hidden field is sent as "".
+  showWhen?: { key: string; values: string[] };
 }
 
 export interface ConnectorKindView {
@@ -163,11 +170,101 @@ export interface ConnectorRegistry {
   addKind(kind: ConnectorKind): void;
   instances(kind: string): Promise<ConnectorInstance[]>;
   instance(id: string): Promise<ConnectorInstance | undefined>;
+  // What GET /api/connectors/:id answers (status and the latest checks),
+  // for a kind that reports its instances in a view of its own.
+  view(id: string): Promise<ConnectorView | undefined>;
   owned(instanceId: string): OwnedStore;
   // Runs the kind's reconcile now (one at a time per instance), stores the
   // report on the instance and returns it. Undefined for an unknown instance
   // or a kind without reconcile.
   reconcile(instanceId: string): Promise<DriftReport | undefined>;
+}
+
+// --- Storage targets (module "connector-storage") ---------------------------
+//
+// Kind "storage-target", any number of instances: a place backups go. Fields
+// (ConnectorField.key):
+//   protocol         "nfs" | "s3" | "smb" (select)
+//   url              nfs://server:/export, s3://bucket@region/, cifs://server/share
+//                    (Longhorn's backup target URL forms)
+//   path             optional prefix under the export, bucket or share: "cluster-a"
+//   endpoint         S3/MinIO only: "https://minio.example.com:9000"; empty for AWS
+//   accessKeyId      S3 only
+//   secretAccessKey  S3 only (secret)
+//   username         SMB only
+//   password         SMB only (secret)
+// Protocol-specific fields are required: false in the field list (they show
+// by showWhen) and the kind's verify refuses a protocol missing its own.
+// verify and health check reachability from the console pod: TCP to 2049
+// (nfs), 445 (smb) or the S3 endpoint, and for S3 a signed ListObjectsV2 on
+// the bucket proving the keys. A mount is proved only by Longhorn, once the
+// target is applied (BackupTarget.status.available), reported in usedBy.
+
+export const STORAGE_TARGET_KIND = "storage-target";
+
+export type StorageProtocol = "nfs" | "s3" | "smb";
+
+export interface StorageTargetUse {
+  // longhorn: Longhorn's default BackupTarget points at this target.
+  // postgres: the shared Postgres cluster archives to it (round 4, C6).
+  kind: "longhorn" | "postgres";
+  // "Longhorn backup target", "Postgres WAL archive".
+  label: string;
+  // Longhorn: BackupTarget.status.available; absent until it reports.
+  available?: boolean;
+  // Longhorn's condition message when unavailable, verbatim.
+  message?: string;
+  // Longhorn: BackupTarget.status.lastSyncedAt.
+  lastSyncAt?: string;
+}
+
+export interface StorageTargetView {
+  // The connector instance id.
+  id: string;
+  name: string;
+  protocol: StorageProtocol;
+  // The full target URL with `path` applied and no credentials: what
+  // Longhorn's BackupTarget gets. "s3://backups@us-east-1/cluster-a/".
+  url: string;
+  // S3/MinIO only.
+  endpoint?: string;
+  // The server or host part of url: "nas.example.com", for matching Hosts.
+  server?: string;
+  // s3: secretAccessKey stored; smb: password stored; nfs: always false.
+  hasCredentials: boolean;
+  // Worst of checks; "unknown" until the first check ran.
+  status: Status;
+  // Reachability per protocol, each with a detail (ConnectorView.checks).
+  checks: CheckResult[];
+  checkedAt?: string;
+  // What points at it now; empty when nothing does.
+  usedBy: StorageTargetUse[];
+}
+
+// The Secret a consumer reads the target's credentials from, in the keys
+// Longhorn expects (S3: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and, with an
+// endpoint, AWS_ENDPOINTS; SMB: CIFS_USERNAME, CIFS_PASSWORD). CNPG's
+// barmanObjectStore takes the same Secret by key reference. Server only: it
+// carries the values, so it goes into a deploy job's values, never to a
+// route or a log.
+export interface StorageCredentialsSecret {
+  apiVersion: "v1";
+  kind: "Secret";
+  metadata: { name: string; namespace: string; labels: Record<string, string> };
+  type: "Opaque";
+  stringData: Record<string, string>;
+}
+
+// Provided by module "connector-storage" as ctx.services.get("storage-targets").
+export interface StorageTargetService {
+  // Every storage-target instance, by name.
+  list(): Promise<StorageTargetView[]>;
+  get(id: string): Promise<StorageTargetView | undefined>;
+  // The credential Secret for target `id` in `namespace`, named
+  // "<ownerMarker.externalPrefix>backup-<id>" and labelled managed-by.
+  // Undefined for nfs, which takes none. Rejects for an unknown id, or a
+  // target whose credential is not stored.
+  credentialsSecret(id: string, namespace: string): Promise<StorageCredentialsSecret | undefined>;
 }
 
 // --- Cloudflare (module "connector-cloudflare") -----------------------------

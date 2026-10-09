@@ -45,6 +45,29 @@ export function register(ctx: ModuleContext, options: EntraModuleOptions = {}): 
   const current = async (): Promise<ConnectorInstance | undefined> =>
     (await ctx.services.get("connectors").instances(KIND))[0];
 
+  ctx.services.provide("entraMail", {
+    async status() {
+      const instance = await current();
+      if (!instance)
+        return { ready: false, reason: "Add the Microsoft Entra ID connector first (Admin > Connectors)." };
+      const values = instanceValues(instance);
+      const tenantId = (values.tenantId ?? "").trim();
+      if (!tenantId || !values.clientId || !values.clientSecret) {
+        return {
+          ready: false,
+          ...(tenantId ? { tenantId } : {}),
+          reason: "The Entra connector has no management app credentials saved.",
+        };
+      }
+      return { ready: true, tenantId };
+    },
+    async sendMail(from, message, signal) {
+      const instance = await current();
+      if (!instance) throw new Error("Add the Microsoft Entra ID connector first (Admin > Connectors).");
+      await graphFor(instanceValues(instance), deps).sendMail(from, message, signal);
+    },
+  });
+
   const mustHave = async (): Promise<ConnectorInstance> => {
     const instance = await current();
     if (!instance) throw new HttpError(409, "Add the Microsoft Entra ID connector first (Admin > Connectors).");

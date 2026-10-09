@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { Alert, Button, Group, PasswordInput, SegmentedControl, Select, Stack, Switch, TextInput } from "@mantine/core";
-import type { ChannelRequest, ChannelView } from "@contracts/notify";
+import type { ChannelKind, ChannelRequest, ChannelView, EmailConfig } from "@contracts/notify";
+import { useApi } from "../../ui";
+import { EmailFields, emailSecretField, emptyEmail } from "./EmailFields";
 import {
   CHANNEL_CHOICES,
   choiceKind,
@@ -9,6 +11,12 @@ import {
   type ChannelChoice,
   type WebhookKind,
 } from "./ntfyChoice";
+
+type FormChoice = ChannelChoice | "email";
+
+const FORM_CHOICES: { value: FormChoice; label: string }[] = [...CHANNEL_CHOICES, { value: "email", label: "Email" }];
+
+const formKind = (choice: FormChoice): ChannelKind => (choice === "email" ? "email" : choiceKind(choice));
 
 const SECRET_FIELD: Record<WebhookKind, { label: string; placeholder: string; description: string }> = {
   webhook: {
@@ -28,8 +36,10 @@ const SECRET_FIELD: Record<WebhookKind, { label: string; placeholder: string; de
   },
 };
 
-function initialChoice(channel: ChannelView): ChannelChoice {
-  if (channel.kind === "email") return "webhook";
+const EMAIL_SECRET_REQUIRED = (email: EmailConfig) =>
+  emailSecretField(email.preset)?.label === "Client secret" || Boolean(email.username);
+
+function initialChoice(channel: ChannelView): FormChoice {
   if (channel.kind !== "ntfy") return channel.kind;
   return (channel.config.server ?? PUBLIC_NTFY) === PUBLIC_NTFY ? "ntfy-public" : "ntfy-self";
 }
@@ -43,8 +53,15 @@ export function ChannelForm({
   onSubmit: (req: ChannelRequest) => Promise<void>;
   onCancel: () => void;
 }) {
-  const [choice, setChoice] = useState<ChannelChoice>(channel ? initialChoice(channel) : "ntfy-public");
-  const kind = choiceKind(choice);
+  const [choice, setChoice] = useState<FormChoice>(channel ? initialChoice(channel) : "ntfy-public");
+  const kind = formKind(choice);
+  const [email, setEmail] = useState<EmailConfig>(() => {
+    const saved = channel?.config.email;
+    if (!saved) return emptyEmail();
+    const { mode: _mode, account: _account, ...config } = saved;
+    return config;
+  });
+  const setup = useApi("GET /api/notify/email/setup");
   const [label, setLabel] = useState(channel?.label ?? "");
   const [enabled, setEnabled] = useState(channel?.enabled ?? true);
   const [minSeverity, setMinSeverity] = useState<"warn" | "crit">(channel?.minSeverity ?? "warn");
@@ -57,18 +74,23 @@ export function ChannelForm({
 
   const takeServer = useCallback((url: string) => setServer(url), []);
 
-  function pick(next: ChannelChoice) {
+  function pick(next: FormChoice) {
     setChoice(next);
     if (next === "ntfy-public") setServer(PUBLIC_NTFY);
     else if (next === "ntfy-self" && server === PUBLIC_NTFY) setServer("");
   }
 
-  const field = SECRET_FIELD[kind];
+  const emailField = kind === "email" ? emailSecretField(email.preset) : null;
+  const field = kind === "email" ? emailField && { ...emailField, placeholder: "" } : SECRET_FIELD[kind as WebhookKind];
   const editing = channel !== undefined;
 
   async function submit() {
     const req: ChannelRequest = { kind, label, enabled, minSeverity };
     if (kind === "ntfy") req.config = { server, topic };
+    if (kind === "email") {
+      const to = email.to.map((t) => t.trim()).filter(Boolean);
+      req.config = { email: { ...email, to, from: email.from?.trim() ?? "" } };
+    }
     if (clearSecret) req.secret = "";
     else if (secret) req.secret = secret;
     setBusy(true);
@@ -85,7 +107,7 @@ export function ChannelForm({
   return (
     <Stack>
       {!editing && (
-        <SegmentedControl value={choice} onChange={(value) => pick(value as ChannelChoice)} data={CHANNEL_CHOICES} />
+        <SegmentedControl value={choice} onChange={(value) => pick(value as FormChoice)} data={FORM_CHOICES} />
       )}
       {!editing && choice === "ntfy-self" && <SelfHostedNtfy onServer={takeServer} />}
       <TextInput label="Name" required value={label} onChange={(e) => setLabel(e.currentTarget.value)} />
@@ -95,17 +117,30 @@ export function ChannelForm({
           <TextInput label="Topic" required value={topic} onChange={(e) => setTopic(e.currentTarget.value)} />
         </>
       )}
-      <PasswordInput
-        label={field.label}
-        description={
-          editing && channel.hasSecret ? `${field.description} Leave empty to keep the stored one.` : field.description
-        }
-        placeholder={editing && channel.hasSecret ? "•••••• stored" : field.placeholder}
-        required={!editing && kind !== "ntfy"}
-        value={secret}
-        disabled={clearSecret}
-        onChange={(e) => setSecret(e.currentTarget.value)}
-      />
+      {kind === "email" && (
+        <EmailFields
+          value={email}
+          onChange={setEmail}
+          setup={setup.data ?? undefined}
+          account={channel?.config.email?.account}
+          editing={editing}
+        />
+      )}
+      {field && (
+        <PasswordInput
+          label={field.label}
+          description={
+            editing && channel.hasSecret
+              ? `${field.description} Leave empty to keep the stored one.`
+              : field.description
+          }
+          placeholder={editing && channel.hasSecret ? "•••••• stored" : field.placeholder}
+          required={!editing && (kind === "email" ? EMAIL_SECRET_REQUIRED(email) : kind !== "ntfy")}
+          value={secret}
+          disabled={clearSecret}
+          onChange={(e) => setSecret(e.currentTarget.value)}
+        />
+      )}
       {editing && kind === "ntfy" && channel.hasSecret && (
         <Switch
           label="Remove the stored token"

@@ -8,10 +8,16 @@
 // Server-free on purpose: the client and the docs list the tools from here.
 
 import type { ApiTokenScope } from "./auth.js";
-import type { BackupPosture } from "./backups.js";
+import type {
+  BackupPosture,
+  BackupSchedule,
+  BackupSchedulesView,
+  VolumeRestorePoint,
+  VolumeRestoreRequest,
+} from "./backups.js";
 import type { CatalogAppView, CatalogInput, CatalogSlot, DetectState, DiscoveryReport } from "./catalog.js";
 import type { CheckRequest, CheckView } from "./checks.js";
-import type { EntraGroup, EntraSignInRequest, EntraSignInView } from "./connectors.js";
+import type { EntraGroup, EntraSignInRequest, EntraSignInView, StorageTargetView } from "./connectors.js";
 import type {
   BundlePlan,
   BundleRequest,
@@ -132,6 +138,12 @@ export interface McpTools {
   get_entra_signin: { input: None; result: EntraSignInView };
   // GET /api/connector-entra/groups, by display name prefix.
   list_entra_groups: { input: { search?: string }; result: Items<EntraGroup> };
+  // GET /api/connector-storage/targets. Never carries a credential.
+  list_storage_targets: { input: None; result: Items<StorageTargetView> };
+  // GET /api/backups/schedules
+  get_backup_schedules: { input: None; result: BackupSchedulesView };
+  // GET /api/backups/volumes/:uid/backups
+  list_volume_backups: { input: { uid: string }; result: Items<VolumeRestorePoint> };
 
   // --- write (a "write" token) ----------------------------------------------
   // POST /api/checks
@@ -172,6 +184,17 @@ export interface McpTools {
   remove_template_app: { input: RemoveTemplateAppInput; result: DeployJobView };
   // POST /api/connector-entra/signin
   setup_entra_signin: { input: EntraSignInRequest; result: EntraSignInView };
+  // PUT /api/backups/target
+  set_backup_target: { input: { connectorId: string | null }; result: DeployJobView };
+  // GET /api/backups/schedules, then PUT /api/backups/schedules with this
+  // group's schedule replaced (or added); the other groups stay.
+  set_backup_schedule: { input: BackupSchedule; result: DeployJobView };
+  // POST /api/backups/volumes/:uid/backup-now
+  backup_volume_now: { input: { uid: string }; result: DeployJobView };
+  // POST /api/backups/restore/plan; runs nothing.
+  plan_volume_restore: { input: VolumeRestoreRequest; result: DeployActionPlan };
+  // POST /api/backups/restore
+  restore_volume: { input: VolumeRestoreRequest; result: DeployJobView };
   // POST /api/deploy/actions/plan with a node action; runs nothing.
   plan_node_action: { input: NodeActionRequest; result: DeployActionPlan };
   // POST /api/deploy/actions/run with node-cordon.
@@ -353,6 +376,33 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
     destructive: false,
   },
   {
+    name: "list_storage_targets",
+    title: "Storage targets",
+    description:
+      "Every backup destination (NFS export, S3/MinIO bucket, SMB share) with its reachability checks and what uses it, such as Longhorn's backup target. Never shows a credential.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "get_backup_schedules",
+    title: "Backup schedules",
+    description:
+      'Longhorn\'s recurring snapshot and backup schedule per volume group ("default" covers every volume in no other group), or the suggested ones while none is set.',
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "list_volume_backups",
+    title: "A volume's backups",
+    description:
+      "The backups of one volume on the backup target, newest first, by the PVC's uid from get_backup_posture: the restore points restore_volume takes.",
+    scope: "read",
+    readOnly: true,
+    destructive: false,
+  },
+  {
     name: "create_check",
     title: "Add a check",
     description: "Adds an HTTP or TCP check that shows up on the Checks page and the health board.",
@@ -496,6 +546,50 @@ export const MCP_TOOLS: readonly McpToolSpec[] = [
     scope: "write",
     readOnly: false,
     destructive: false,
+  },
+  {
+    name: "set_backup_target",
+    title: "Set the backup target",
+    description:
+      "Points Longhorn's backup target at a storage target from list_storage_targets (with its credential Secret), or clears it with null. Starts a deploy job.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "set_backup_schedule",
+    title: "Set a backup schedule",
+    description:
+      "Sets one volume group's recurring snapshot and backup crons and how many of each to keep; other groups stay as they are. A cron left out turns that half off. Starts a deploy job.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "backup_volume_now",
+    title: "Back up a volume now",
+    description: "Snapshots one Longhorn volume (by PVC uid) and backs it up to the target now. Starts a deploy job.",
+    scope: "write",
+    readOnly: false,
+    destructive: false,
+  },
+  {
+    name: "plan_volume_restore",
+    title: "Preview a volume restore",
+    description:
+      "What restoring a backup from list_volume_backups would do: to a new PVC beside the old one (default), or in place with the app scaled down meanwhile; runs nothing.",
+    scope: "write",
+    readOnly: true,
+    destructive: false,
+  },
+  {
+    name: "restore_volume",
+    title: "Restore a volume",
+    description:
+      "Restores a backup to a new PVC, or in place (mode in-place), which stops the app and replaces the volume's current data with the backup's. Preview with plan_volume_restore first.",
+    scope: "write",
+    readOnly: false,
+    destructive: true,
   },
   {
     name: "plan_node_action",
