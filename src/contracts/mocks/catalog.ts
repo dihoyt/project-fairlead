@@ -804,6 +804,19 @@ export const mockFailedJob: DeployJobView = {
   job: { namespace: "console", name: "deploy-longhorn-3" },
 };
 
+// A retry of mockFailedJob, running.
+export const mockRetryJob: DeployJobView = {
+  ...mockFailedJob,
+  id: "dj_4",
+  state: "running",
+  createdAt: isoAgo(60_000),
+  startedAt: isoAgo(55_000),
+  finishedAt: undefined,
+  message: undefined,
+  job: { namespace: "console", name: "deploy-longhorn-4" },
+  retryOf: mockFailedJob.id,
+};
+
 export const mockDeployLog: string[] = [
   'Release "headlamp" does not exist. Installing it now.',
   "NAME: headlamp",
@@ -871,6 +884,17 @@ export const mockBundleRun: BundleRunView = {
     if (step.appId === "gitea") return { appId: step.appId, state: "running" as const, jobId: "dj_gitea" };
     return { appId: step.appId, state: "pending" as const };
   }),
+};
+
+// A bundle run whose required step failed, the rest left pending.
+export const mockFailedBundleRun: BundleRunView = {
+  ...mockBundleRun,
+  id: "br_2",
+  state: "failed",
+  finishedAt: isoAgo(5 * 60_000),
+  steps: mockBundleRun.steps.map((step) =>
+    step.state === "running" ? { ...step, state: "failed" as const, message: "Error: context deadline exceeded" } : step
+  ),
 };
 
 // Gitea can move up, Headlamp is current, Longhorn's pin needs a newer

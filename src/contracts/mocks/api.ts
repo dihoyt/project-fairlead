@@ -35,6 +35,8 @@ import {
   mockDeployStatus,
   mockDiscovery,
   mockFailedJob,
+  mockFailedBundleRun,
+  mockRetryJob,
   mockGateStatus,
   mockHostKeypair,
   mockBackupNowJob,
@@ -895,6 +897,7 @@ export const apiMocks: ApiMocks = {
   "GET /api/deploy/jobs/:id/logs": { lines: mockDeployLog, redacted: 0, truncated: false },
   "GET /api/deploy/jobs/:id/logs/stream": mockDeployLog.map((line) => ({ line })),
   "POST /api/deploy/jobs/:id/cancel": { ...mockRunningJob, state: "cancelled", finishedAt: now },
+  "POST /api/deploy/jobs/:id/retry": mockRetryJob,
   "POST /api/deploy/bundles/plan": mockBundlePlan,
   "POST /api/deploy/bundles": mockBundleRun,
   "GET /api/deploy/bundles": [mockBundleRun],
@@ -904,6 +907,14 @@ export const apiMocks: ApiMocks = {
     state: "cancelled",
     finishedAt: now,
     steps: mockBundleRun.steps.map((step) => (step.state === "running" ? { ...step, state: "cancelled" } : step)),
+  },
+  "POST /api/deploy/bundles/:id/retry": {
+    ...mockFailedBundleRun,
+    state: "running",
+    finishedAt: undefined,
+    steps: mockFailedBundleRun.steps.map((step) =>
+      step.state === "failed" ? { appId: step.appId, state: "running", jobId: "dj_4" } : step
+    ),
   },
   "GET /api/deploy/upgrades": mockUpgradeReport,
   "POST /api/deploy/upgrades": mockUpgradeRun,
