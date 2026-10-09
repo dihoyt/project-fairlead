@@ -5,6 +5,7 @@ import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
 import { Link } from "react-router";
 import type { NodeSparkMetric, NodeSummary } from "@contracts/metrics";
 import { StatusBadge, formatValue, type ChartUnit, type Status } from "../../ui";
+import { NodeActions } from "./NodeActions";
 import { NodeCharts } from "./NodePage";
 import type { NodeRange } from "./shared";
 
@@ -149,11 +150,20 @@ function Cell({ children }: { children: ReactNode }) {
   return <Table.Td style={{ whiteSpace: "nowrap" }}>{children}</Table.Td>;
 }
 
-export function NodeTable({ nodes, range }: { nodes: NodeSummary[]; range: NodeRange }) {
+export function NodeTable({
+  nodes,
+  range,
+  onChanged,
+}: {
+  nodes: NodeSummary[];
+  range: NodeRange;
+  // After a node action finishes, to read the node's new state.
+  onChanged?: () => void;
+}) {
   const [open, setOpen] = useState<string | undefined>();
   const longhorn = nodes.some((n) => n.longhornAvailableBytes !== undefined);
   const metrics = nodes.some((n) => n.load1 !== undefined || n.spark?.load) ? METRICS : METRICS.slice(0, -1);
-  const columns = 5 + metrics.length + (longhorn ? 1 : 0);
+  const columns = 6 + metrics.length + (longhorn ? 1 : 0);
   const toggle = (name: string) => setOpen((current) => (current === name ? undefined : name));
 
   return (
@@ -170,6 +180,7 @@ export function NodeTable({ nodes, range }: { nodes: NodeSummary[]; range: NodeR
               <Table.Th key={m.metric}>{m.label}</Table.Th>
             ))}
             {longhorn ? <Table.Th>Longhorn</Table.Th> : null}
+            <Table.Th aria-label="Actions" />
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -224,6 +235,9 @@ export function NodeTable({ nodes, range }: { nodes: NodeSummary[]; range: NodeR
                       </Text>
                     </Cell>
                   ) : null}
+                  <Cell>
+                    <NodeActions node={node} onDone={onChanged} />
+                  </Cell>
                 </Table.Tr>
                 {expanded ? (
                   <Table.Tr>

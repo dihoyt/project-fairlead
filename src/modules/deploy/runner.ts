@@ -535,7 +535,7 @@ export class Deployer {
       Object.keys(rendered.files).length > 0 ? rendered.files : { "values.yaml": "{}\n" },
       rendered.steps,
       rendered.secrets ?? [],
-      { script: rendered.script, deadlineSeconds: rendered.deadlineSeconds }
+      { script: rendered.script, deadlineSeconds: rendered.deadlineSeconds, avoidNode: rendered.avoidNode }
     );
     try {
       await rendered.onStarted?.(view);
@@ -559,7 +559,7 @@ export class Deployer {
     files: Record<string, string>,
     steps: Step[],
     secrets: string[],
-    program: { script?: string; deadlineSeconds?: number } = {}
+    program: { script?: string; deadlineSeconds?: number; avoidNode?: string } = {}
   ): Promise<DeployJobView> {
     const k8s = this.k8s()!;
     const jobNamespace = this.config.namespace();

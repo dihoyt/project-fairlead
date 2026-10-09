@@ -110,6 +110,8 @@ Read (any token):
 
 Write (a read-and-write token): `create_check`, `update_check` (only the fields you give change), `delete_check`, `run_check`, `accept_check_status` (the Checks page's "Accept this status"), `create_link`, `update_link`, `delete_link`, `plan_app_deploy`, `deploy_app`, `plan_bundle`, `start_bundle`, `plan_template_deploy`, `deploy_template`, `plan_template_removal`, `remove_template_app` (keeps the app's namespace and volumes unless `deleteVolumes` is true), `setup_entra_signin` (`adminGroups` takes group object ids, not names), `plan_node_action`, `cordon_node`, `uncordon_node`, `drain_node` (eviction API, so PodDisruptionBudgets are respected; DaemonSet pods stay by default; no force option), `reboot_node` (drains, reboots, waits for Ready, uncordons), `set_backup_target`, `set_backup_schedule` (one group at a time; the others stay), `backup_volume_now`, `plan_volume_restore`, `restore_volume` (`mode: "in-place"` stops the app and replaces the volume's data; the default `new-pvc` leaves it alone).
 
+Node actions run as deploy Jobs, so they need deploys turned on; see [Node actions](modules.md#node-actions-deploy).
+
 Template deploys go through the same guardrail as the Templates page: a template or custom app that asks for host paths, host networking, a privileged container, extra capabilities or an admin role binding is refused, over MCP as in the UI.
 
 Results are the same shapes the REST API returns (lists come back as `{ "items": [...] }`). No tool returns a stored secret: check secrets, host credentials, the SSH private key, the cluster join token and secret settings are write-only or not reachable at all. Deploys still need deploys turned on (`install.sh --enable-deploy`); without it `plan_app_deploy` says so.
