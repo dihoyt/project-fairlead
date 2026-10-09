@@ -93,6 +93,8 @@ export const ROUTE_ACCESS: { [K in RouteKey]: RouteAccess } = {
   "POST /api/admin/oidc/test": "session",
   "GET /api/admin/oidc/authentik": "session",
   "POST /api/admin/oidc/authentik": "session",
+  "GET /api/admin/oidc/pocket-id": "session",
+  "POST /api/admin/oidc/pocket-id": "session",
   "POST /api/admin/oidc/public": "session",
   "GET /api/admin/users": "session",
   "POST /api/admin/users": "session",

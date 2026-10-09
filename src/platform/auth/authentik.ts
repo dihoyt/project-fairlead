@@ -77,20 +77,23 @@ export const issuerFor = (baseUrl: string, slug: string): string => `${baseUrl}/
 const isLocal = (host: string) => host === "localhost" || host === "127.0.0.1" || host === "[::1]";
 const isClusterService = (host: string) => host.endsWith(".svc") || host.endsWith(".svc.cluster.local");
 
-// `api`: the token goes there in a header, so plain http only to this
+// `api`: a token goes there in a header, so plain http only to this
 // machine or a cluster Service, where it never leaves the cluster network.
-export function authentikUrlProblem(raw: string, use: "public" | "api"): string | null {
+export function apiUrlProblem(raw: string, use: "public" | "api", name: string): string | null {
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
-    return "Enter Authentik's address, starting with https://.";
+    return `Enter ${name}'s address, starting with https://.`;
   }
   if (url.protocol === "https:") return null;
-  if (url.protocol !== "http:") return "Enter Authentik's address, starting with https://.";
+  if (url.protocol !== "http:") return `Enter ${name}'s address, starting with https://.`;
   if (use === "public" || isLocal(url.hostname) || isClusterService(url.hostname)) return null;
-  return "Authentik's API must be reached over https or through its in-cluster Service, or the token would cross the network in the clear.";
+  return `${name}'s API must be reached over https or through its in-cluster Service, or the token would cross the network in the clear.`;
 }
+
+export const authentikUrlProblem = (raw: string, use: "public" | "api"): string | null =>
+  apiUrlProblem(raw, use, "Authentik");
 
 export function authentikClient(baseUrl: string, token: string) {
   const host = new URL(baseUrl).host;

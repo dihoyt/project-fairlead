@@ -109,13 +109,16 @@ export interface SignInOidcClient {
   // Left out: unchanged.
   label?: string;
   adminGroups?: string[];
+  // auth.oidc.scopes, space-separated.
+  scopes?: string;
   enabled?: boolean;
 }
 
 export interface SignInService {
   oidc(): Promise<SignInOidcView>;
-  // The same writes as POST /api/admin/oidc/authentik: the client secret (or
-  // key) and the auth.oidc.* settings given, audited as "auth.oidc.wire" with `actor`
+  // The same writes as POST /api/admin/oidc/authentik and /pocket-id: the
+  // client secret (or key) and the auth.oidc.* settings given, audited as
+  // "auth.oidc.wire" with `actor`
   // (the username, or the module id for scheduled work). Throws with the
   // reason, writing nothing, when no public URL is set, SECRETS_KEY is
   // unset, one of the settings is locked by the environment, or the client
