@@ -406,13 +406,37 @@ export interface LonghornRestoreAction {
   newClaim?: string;
 }
 
-// The console's own data, now: SQLite's online backup of its database to a
-// file on its volume, copied to the storage target. Runs in the console's
-// namespace under the installer ServiceAccount. Nightly runs are scheduled
-// by module "backups" through the same action.
+// The console's own data, now: a consistent snapshot of its database
+// (SQLite's VACUUM INTO, so it is whole under WAL) copied to a storage
+// target as "<release>-<UTC timestamp>.db" under "<externalPrefix>console/",
+// keeping the newest `keep`. Runs in the console's namespace under the
+// installer ServiceAccount; the job row's appId is CONSOLE_BACKUP_APP.
+// Nightly runs are started by module "deploy" itself on the
+// deploy.consoleBackup schedule, as actor "schedule".
 export interface ConsoleBackupAction {
   kind: "console-backup";
-  connectorId: string;
+  // Default: the storage target behind Longhorn's backup target, else the
+  // only storage target. The plan is refused when neither resolves.
+  connectorId?: string;
+  // 1 to 90, default the deploy.consoleBackupKeep setting (14).
+  keep?: number;
+}
+
+export const CONSOLE_BACKUP_APP = "console";
+
+// GET /api/deploy/console-backup: the nightly copy's schedule and last run.
+export interface ConsoleNightlyView {
+  // Five-field cron in UTC from deploy.consoleBackup; "" when off.
+  schedule: string;
+  keep: number;
+  // The target the next run would use, or why there is none.
+  target?: { connectorId: string; name: string; url: string };
+  blockedBy?: string;
+  // Newest console-backup job, scheduled or by hand.
+  last?: DeployJobView;
+  // Newest succeeded one: the copy install.sh --restore would take.
+  lastGood?: { at: string; file: string; sizeBytes?: number };
+  nextAt?: string;
 }
 // --- Node actions ---
 // Each runs as an action job like the rest, under the installer

@@ -427,13 +427,41 @@ with an API token".
 
 **Page**: Admin → Connectors.
 
-- With a management app registration's tenant, client ID and secret, it
-  creates the console's sign-in app registration (redirect URI from the
-  public URL, which must be https), makes its client secret and points OIDC
-  sign-in at it. Secrets are rotated before they expire; the old one is
-  removed on the next reconcile.
+- Needs a management app registration with Microsoft Graph's
+  `Application.ReadWrite.OwnedBy` application permission, admin consented
+  (`Group.Read.All` too, to pick admin groups by name). Save its tenant ID,
+  client ID, object ID (from its Overview page) and a client secret.
+- **Sign-in**: it creates the console's sign-in app registration (redirect
+  URI from the public URL, which must be https), gives it a certificate
+  whose private key never leaves the console, and points OIDC sign-in at it.
+  Sign-in authenticates to Entra with a signed client assertion
+  (`private_key_jwt`), so the sign-in app has no client secret. The
+  certificate is replaced 30 days before it expires; the old one is removed
+  on the next sync. A tenant that refuses certificates gets a client secret
+  instead, rotated the same way, and moves to a certificate once it accepts
+  one. Sign-in apps set up before certificates move on the first sync.
+- **The connector's own credential**: the client secret you paste is only
+  for getting started. The console makes a certificate for the management
+  app and gets it onto the app:
+  - If the management app may write itself (it is an owner of itself, or
+    holds `Application.ReadWrite.All`), the console uploads the certificate,
+    switches to it and deletes the secret in Entra, all within two syncs.
+  - With `Application.ReadWrite.OwnedBy` alone it can't, so the connector's
+    "Connector credential" check (and the Sign-in step) asks you to upload
+    the certificate once: download it from the check's link
+    (`GET /api/connector-entra/certificate`, PEM, public material only) and
+    add it under the management app's Certificates & secrets. On the next
+    sync the console signs in with it and asks you to delete the client
+    secret there; once Entra refuses the secret, the console forgets it too.
+  - From then on it replaces its own certificate 30 days before expiry with
+    Graph's `addKey` / `removeKey`, which an app may call on itself with no
+    permission, proving it holds the current key. That needs the object ID:
+    the field above, or read from Graph when the app may read itself.
+  - A secret saved on the connector later still works: the console falls
+    back to it whenever the certificate is refused.
 - Lists security groups by name for `auth.oidc.adminGroups` (needs
   `Group.Read.All`).
+- Microsoft 365 email (Notifications) sends with the same credential.
 
 ## Storage targets (`connector-storage`)
 

@@ -81,6 +81,11 @@ the UI hasn't.
 | `auth.session.idleDays` | `SESSION_IDLE_DAYS` | `14` | Sign out after this much inactivity. |
 | `auth.session.maxDays` | `SESSION_MAX_DAYS` | `30` | Absolute session lifetime. |
 
+The OIDC client authenticates to the provider's token endpoint with the
+client secret (Admin > Settings), or, when a connector set sign-in up with a
+key pair (the Entra connector does), with a signed `private_key_jwt` client
+assertion and no secret at all. Saving a client secret replaces the key.
+
 #### Google and Microsoft accounts
 
 The Sign-in step offers **Google** and **Microsoft** beside the generic form.

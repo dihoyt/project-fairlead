@@ -133,6 +133,19 @@ export function EntraWire({
     </Alert>
   ) : null;
 
+  const management = v.management?.step ? (
+    <Alert color="yellow" data-entra-management>
+      <Stack gap={6}>
+        <Text size="sm">{v.management.step}</Text>
+        <Group>
+          <Anchor href={new URL("api/connector-entra/certificate", document.baseURI).href} size="sm">
+            Download the certificate
+          </Anchor>
+        </Group>
+      </Stack>
+    </Alert>
+  ) : null;
+
   const blocked = v.warning !== undefined && (isHttpWarning(v.warning) || !v.redirectUri);
 
   if (v.wired && v.app && !open) {
@@ -142,9 +155,11 @@ export function EntraWire({
           <Stack gap={4}>
             <Text size="sm">
               App registration <Code>{v.app.displayName}</Code> (client ID <Code>{v.app.appId}</Code>)
-              {v.app.secretExpiresAt
-                ? `; its secret is valid until ${day(v.app.secretExpiresAt)} and is replaced 30 days before.`
-                : "."}
+              {v.app.credential === "certificate" && v.app.certificateExpiresAt
+                ? `; it signs in with a certificate valid until ${day(v.app.certificateExpiresAt)}, replaced 30 days before.`
+                : v.app.secretExpiresAt
+                  ? `; its secret is valid until ${day(v.app.secretExpiresAt)} and is replaced 30 days before.`
+                  : "."}
             </Text>
             {v.app.state === "in-sync" ? null : (
               <Text size="sm">
@@ -157,6 +172,7 @@ export function EntraWire({
           </Stack>
         </Alert>
         {warning}
+        {management}
         <Group>
           <Button size="xs" variant="subtle" onClick={() => setOpen(true)}>
             Change admin groups or run again
@@ -170,6 +186,7 @@ export function EntraWire({
     return (
       <Stack gap="xs" data-entra-ready>
         {warning}
+        {management}
         <Group gap="xs">
           <Button size="xs" disabled={blocked} onClick={() => setOpen(true)}>
             Set up sign-in with Entra
@@ -199,7 +216,10 @@ export function EntraWire({
             ) : null}{" "}
             with redirect URI <Code>{v.redirectUri}</Code> and the groups claim
           </List.Item>
-          <List.Item>a new client secret, valid for a year and replaced 30 days before it expires</List.Item>
+          <List.Item>
+            a certificate, valid for a year and replaced 30 days before it expires (a client secret if the tenant
+            refuses certificates)
+          </List.Item>
           <List.Item>and turns on sign-in here with that client</List.Item>
         </List>
         {v.consentUrl ? (
