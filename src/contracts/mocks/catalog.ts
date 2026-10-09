@@ -1018,7 +1018,7 @@ export const mockConsoleBackup: ConsoleBackupView = {
   nightly: mockConsoleNightly,
   secretsKey: true,
   restoreCommand:
-    "curl -fsSL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install.sh | sudo bash -s -- --restore ./recovery-kit.txt --from ./console-20261008T033000Z.db",
+    "sudo ./install.sh --restore ./recovery-kit.txt --from ./console-20261008T033000Z.db --release console --namespace console",
 };
 
 // On Longhorn, in the critical group; the nightly copy still runs.
