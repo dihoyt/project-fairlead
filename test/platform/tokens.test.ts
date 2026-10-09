@@ -114,3 +114,67 @@ test("creation validates its input and is audited", async () => {
   const audit = app.db.prepare("SELECT action, detail FROM audit_log WHERE action = 'admin.token-create'").all();
   assert.deepEqual(audit, [{ action: "admin.token-create", detail: "audited (read)" }]);
 });
+
+// Routes in two areas, one namespaced, to see a grant applied end to end.
+const scoped: Module[] = [
+  {
+    id: "workloads",
+    milestone: "A",
+    register(ctx) {
+      ctx.route("GET /api/workloads/namespaces/:namespace/pods", () => []);
+    },
+  },
+  {
+    id: "checks",
+    milestone: "A",
+    register(ctx) {
+      ctx.route("GET /api/checks", () => []);
+    },
+  },
+];
+
+test("a grant limits a token to its areas and namespaces, and can be changed", async () => {
+  await app.close();
+  app = await boot({ modules: scoped });
+  await app.makeUser("root", "root password!!", { role: "admin" });
+  cookie = (await app.login("root", "root password!!")).cookie;
+
+  const { token, secret } = await mint({ name: "ci", scope: "read", areas: ["workloads"], namespaces: ["apps"] });
+  assert.deepEqual([token.areas, token.namespaces], [["workloads"], ["apps"]]);
+  assert.equal((await bearer(secret, "GET", "/api/workloads/namespaces/apps/pods")).status, 200);
+  assert.equal((await bearer(secret, "GET", "/api/workloads/namespaces/other/pods")).status, 403);
+  assert.equal((await bearer(secret, "GET", "/api/checks")).status, 403);
+  assert.equal((await bearer(secret)).status, 200);
+
+  const res = await app.send("PATCH", `/api/admin/tokens/${token.id}`, { areas: null, namespaces: ["other"] }, cookie);
+  assert.equal(res.status, 200);
+  const changed = (await res.json()) as ApiTokenView;
+  assert.equal(changed.areas, undefined);
+  assert.deepEqual(changed.namespaces, ["other"]);
+  assert.equal((await bearer(secret, "GET", "/api/workloads/namespaces/other/pods")).status, 200);
+  assert.equal((await bearer(secret, "GET", "/api/workloads/namespaces/apps/pods")).status, 403);
+  assert.equal((await bearer(secret, "GET", "/api/checks")).status, 200);
+
+  assert.equal((await app.send("PATCH", "/api/admin/tokens/tok_nope", { name: "x" }, cookie)).status, 404);
+  const audit = app.db.prepare("SELECT detail FROM audit_log WHERE action = 'admin.token-update'").all();
+  assert.deepEqual(audit, [{ detail: "ci (read; namespaces other)" }]);
+});
+
+test("a token stored before grants reaches everything", async () => {
+  const { secret } = await mint({ name: "old", scope: "write" });
+  const stored = app.db.prepare("SELECT namespaces, areas FROM api_tokens").get();
+  assert.deepEqual(stored, { namespaces: null, areas: null });
+  assert.equal((await bearer(secret, "POST", "/api/mcp")).status, 200);
+});
+
+test("grant limits are validated", async () => {
+  for (const body of [
+    { name: "x", scope: "read", areas: [] },
+    { name: "x", scope: "read", areas: ["admin"] },
+    { name: "x", scope: "read", namespaces: [] },
+    { name: "x", scope: "read", namespaces: ["Not_A_Namespace"] },
+    { name: "x", scope: "read", namespaces: "apps" },
+  ]) {
+    assert.equal((await app.send("POST", "/api/admin/tokens", body, cookie)).status, 400, JSON.stringify(body));
+  }
+});

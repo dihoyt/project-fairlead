@@ -29,7 +29,7 @@ import {
 import { generateTempPassword, hashPassword, passwordProblem } from "../auth/passwords.js";
 import { revokeAllSessions, revokeSession, sessionHandle, sessionsOf } from "../auth/sessions.js";
 import { OAuthError, checkAuthorizeRequest, issueCode, redirectWith, scopeOf } from "../auth/oauth.js";
-import { createToken, listTokens, revokeToken, tokenView } from "../auth/tokens.js";
+import { createToken, limitsOf, listTokens, revokeToken, tokenView, updateToken } from "../auth/tokens.js";
 import { clearTotp, totpEnabledFor } from "../auth/totp.js";
 import {
   countActiveAdmins,
@@ -63,6 +63,22 @@ class AdminError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+function tokenLimits(body: Record<string, unknown>): ReturnType<typeof limitsOf> {
+  try {
+    return limitsOf(body);
+  } catch (err) {
+    throw new AdminError(400, (err as Error).message);
+  }
+}
+
+// For the audit row: the scope and, when limited, what to.
+function grantSummary(row: { scope: string; namespaces?: string[]; areas?: string[] }): string {
+  const parts = [row.scope];
+  if (row.areas) parts.push(`areas ${row.areas.join(", ")}`);
+  if (row.namespaces) parts.push(`namespaces ${row.namespaces.join(", ")}`);
+  return parts.join("; ");
 }
 
 function roleOf(raw: unknown): Role {
@@ -697,9 +713,42 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
       if (days !== null && (typeof days !== "number" || !Number.isInteger(days) || days < 1 || days > 3650)) {
         throw new AdminError(400, "Expiry must be a whole number of days from 1 to 3650, or none.");
       }
-      const { row, secret } = createToken(core, { name, scope: body.scope, userId: admin.userId, expiresInDays: days });
-      record(req, admin, "token-create", row.id, `${name} (${row.scope})`);
+      const limits = tokenLimits(body);
+      const { row, secret } = createToken(core, {
+        name,
+        scope: body.scope,
+        ...(limits.namespaces ? { namespaces: limits.namespaces } : {}),
+        ...(limits.areas ? { areas: limits.areas } : {}),
+        userId: admin.userId,
+        expiresInDays: days,
+      });
+      record(req, admin, "token-create", row.id, `${name} (${grantSummary(row)})`);
       return { token: tokenView(core, row, isAdmin), secret };
+    })
+  );
+
+  router.patch(
+    "/tokens/:id",
+    route((req, _res, admin) => {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      let name: string | undefined;
+      if (body.name !== undefined) {
+        name = typeof body.name === "string" ? body.name.trim() : "";
+        if (!name || name.length > 80) throw new AdminError(400, "Give the token a name of up to 80 characters.");
+      }
+      if (body.scope !== undefined && body.scope !== "read" && body.scope !== "write") {
+        throw new AdminError(400, "Scope must be read or write.");
+      }
+      const limits = tokenLimits(body);
+      const row = updateToken(core, req.params.id ?? "", {
+        ...(name !== undefined ? { name } : {}),
+        ...(body.scope !== undefined ? { scope: body.scope as "read" | "write" } : {}),
+        ...(limits.namespaces !== undefined ? { namespaces: limits.namespaces } : {}),
+        ...(limits.areas !== undefined ? { areas: limits.areas } : {}),
+      });
+      if (row === null) throw new AdminError(404, "No such token.");
+      record(req, admin, "token-update", row.id, `${row.name} (${grantSummary(row)})`);
+      return tokenView(core, row, isAdmin);
     })
   );
 
@@ -743,14 +792,20 @@ export function adminRouter(core: Core, signIn = createSignIn(core)): Router {
       }
       const scope = body.scope ?? requestedScope;
       if (scope !== "read" && scope !== "write") throw new AdminError(400, "Scope must be read or write.");
+      const limits = tokenLimits(body as Record<string, unknown>);
+      const grant = {
+        scope,
+        ...(limits.namespaces ? { namespaces: limits.namespaces } : {}),
+        ...(limits.areas ? { areas: limits.areas } : {}),
+      };
       const code = issueCode(core, {
         clientId: client.clientId,
         userId: admin.userId,
-        scope,
+        ...grant,
         redirectUri,
         codeChallenge: params.code_challenge!,
       });
-      record(req, admin, "oauth-approve", client.clientId, `${client.name} (${scope})`);
+      record(req, admin, "oauth-approve", client.clientId, `${client.name} (${grantSummary(grant)})`);
       return { ...view, redirect: redirectWith(redirectUri, { code, state: params.state }) };
     })
   );

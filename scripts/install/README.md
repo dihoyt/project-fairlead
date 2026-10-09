@@ -11,23 +11,18 @@ pinned, checksum-verified Helm when Helm is missing.
 
 ## Fetching it
 
-While the repository is private, fetch it through the GitHub API with a token
-that can read the repository:
-
-```
-gh api -H 'Accept: application/vnd.github.raw' repos/dihoyt/project-fairlead/contents/install.sh > install.sh
-REGISTRY_USER=<github user> REGISTRY_TOKEN=<token with read:packages> sh install.sh
-```
-
-`REGISTRY_USER` / `REGISTRY_TOKEN` are only needed while the ghcr packages are
-private: the installer logs Helm in for the chart and creates a pull secret for
-the image.
-
-Once the repository and packages are public:
-
 ```
 curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install.sh | sh -
 curl -sfL https://raw.githubusercontent.com/dihoyt/project-fairlead/main/install.sh | sh -s -- --host console.example.test
+```
+
+From a private fork, fetch it through the GitHub API with a token that can
+read the repository, and pass registry credentials so the installer logs Helm
+in for the chart and creates a pull secret for the image:
+
+```
+gh api -H 'Accept: application/vnd.github.raw' repos/<owner>/<repo>/contents/install.sh > install.sh
+REGISTRY_USER=<github user> REGISTRY_TOKEN=<token with read:packages> sh install.sh
 ```
 
 ## What it does

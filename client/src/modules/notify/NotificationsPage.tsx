@@ -6,10 +6,11 @@ import { StatusBadge } from "../../ui";
 import { notifyApi } from "./api";
 import { ChannelForm } from "./ChannelForm";
 
-const KIND_LABEL = { webhook: "Webhook", ntfy: "ntfy", discord: "Discord" } as const;
+const KIND_LABEL = { webhook: "Webhook", ntfy: "ntfy", discord: "Discord", email: "Email" } as const;
 
 function destination(channel: ChannelView): string {
   if (channel.kind === "ntfy") return `${channel.config.server ?? "https://ntfy.sh"}/${channel.config.topic ?? ""}`;
+  if (channel.kind === "email") return channel.config.email?.to.join(", ") ?? "";
   return channel.hasSecret ? "URL stored" : "No URL stored";
 }
 

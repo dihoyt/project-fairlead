@@ -16,6 +16,7 @@ import { createScheduler } from "../../runtime/scheduler.js";
 import { createServiceRegistry } from "../../runtime/services.js";
 import type { ApiRoutes, RouteKey } from "../api.js";
 import type { Events } from "../events.js";
+import type { ApiTokenGrant } from "../grants.js";
 import type { CallInput, ModuleContext, ModuleId } from "../module.js";
 import type { AuditEntry, Platform, User } from "../platform.js";
 import type { Migration, Services } from "../runtime.js";
@@ -36,6 +37,14 @@ export const mockAdmin: User = {
 };
 
 export const mockViewer: User = { ...mockAdmin, id: "viewer", name: "Viewer", admin: false };
+
+// mockAdmin calling with an API token whose grant is `grant` (default: a
+// write token limited to workloads in namespace "apps").
+export function mockTokenUser(
+  grant: ApiTokenGrant = { scope: "write", areas: ["workloads"], namespaces: ["apps"] }
+): User {
+  return { ...mockAdmin, source: "token", token: { id: "tok_mock", ...grant } };
+}
 
 const secretKey = (scope: string, id: string) => `${scope}/${id}`;
 

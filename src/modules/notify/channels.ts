@@ -20,7 +20,12 @@ export interface DeliveryResult {
 
 // Whether a kind cannot work without its secret: for these the secret is the
 // destination URL itself, which may embed a token.
-export const SECRET_REQUIRED: Record<ChannelKind, boolean> = { webhook: true, discord: true, ntfy: false };
+export const SECRET_REQUIRED: Record<ChannelKind, boolean> = {
+  webhook: true,
+  discord: true,
+  ntfy: false,
+  email: false,
+};
 
 const DISCORD_COLOR: Record<Status, number> = {
   crit: 0xe03131,
@@ -50,6 +55,8 @@ function body(p: WebhookPayload): string {
 function request(d: Delivery): { url: string; headers: Record<string, string>; json: unknown } {
   const p = d.payload;
   switch (d.kind) {
+    case "email":
+      throw new Error("Email is not sent over a webhook.");
     case "webhook":
       return { url: d.secret ?? "", headers: {}, json: p };
     case "discord":
@@ -98,6 +105,7 @@ function redact(message: string, secret: string | null): string {
 export async function deliver(d: Delivery, signal?: AbortSignal): Promise<DeliveryResult> {
   if (SECRET_REQUIRED[d.kind] && !d.secret) return { ok: false, error: "No URL is stored for this channel." };
   if (d.kind === "ntfy" && !d.config.topic) return { ok: false, error: "No ntfy topic is set." };
+  if (d.kind === "email") return { ok: false, error: "Email channels are not available in this build." };
   const { url, headers, json } = request(d);
   const timeout = AbortSignal.timeout(TIMEOUT_MS);
   try {

@@ -7,6 +7,7 @@
 import type {
   AccountView,
   AdminOverview,
+  ApiTokenChanges,
   ApiTokenView,
   AuditRow,
   AuthentikWirePlan,
@@ -85,7 +86,14 @@ import type { HostKeypair, HostRequest, HostTestResult, HostView } from "./hosts
 import type { CapabilityReport } from "./k8s.js";
 import type { JsonRpcMessage } from "./mcp.js";
 import type { NodeSummary, SeriesInfo, SeriesResult } from "./metrics.js";
-import type { ChannelRequest, ChannelView, TestSendResult } from "./notify.js";
+import type {
+  ChannelRequest,
+  ChannelView,
+  EmailOAuthCallbackQuery,
+  EmailOAuthStart,
+  EmailSetupView,
+  TestSendResult,
+} from "./notify.js";
 import type { OnboardingState, OnboardingStepId } from "./onboarding.js";
 import type { ResetRequest, ResetResult } from "./reset.js";
 import type { Draining, Healthz, JobsView, ModuleStatus } from "./system.js";
@@ -204,6 +212,9 @@ export interface ApiRoutes {
   // 400 for an empty name (over 80 characters) or an expiry outside 1-3650 days.
   "POST /api/admin/tokens": Route<None, None, NewApiTokenRequest, NewApiToken>;
   // Revokes at once: the next request with it is a 401. Unknown id: 404.
+  // Changes a token's name, scope or grant (OAuth grants too). 400 as POST
+  // for a bad name, scope or an empty list; unknown id: 404.
+  "PATCH /api/admin/tokens/:id": Route<{ id: string }, None, ApiTokenChanges, ApiTokenView>;
   "DELETE /api/admin/tokens/:id": Route<{ id: string }, None, None, Ok>;
   // The consent page of the MCP OAuth flow (see OAuthAuthorizeParams). Admin
   // with a signed-in session; approve and deny are audited. 400 with the
@@ -260,6 +271,15 @@ export interface ApiRoutes {
   "PUT /api/notify/channels/:id": Route<{ id: string }, None, ChannelRequest, ChannelView>;
   "DELETE /api/notify/channels/:id": Route<{ id: string }, None, None, Ok>;
   "POST /api/notify/channels/:id/test": Route<{ id: string }, None, None, TestSendResult>;
+  "GET /api/notify/email/setup": Route<None, None, None, EmailSetupView>;
+  // Write. 400 unless the channel is an email channel with an "oauth"
+  // preset, a client id and a stored client secret; 409 when
+  // EmailSetupView.oauthBlocked.
+  "POST /api/notify/channels/:id/oauth": Route<{ id: string }, None, None, EmailOAuthStart>;
+  // A browser navigation back from Google or Microsoft, not JSON: exchanges
+  // the code, seals the refresh token, records the account, audits
+  // "notify.oauth", and redirects (EmailOAuthCallbackQuery).
+  "GET /api/notify/oauth/callback": Route<None, EmailOAuthCallbackQuery, None, TextBody<"text/html">>;
 
   // --- hosts (A9) ---------------------------------------------------------
   "GET /api/hosts": Route<None, None, None, HostView[]>;
