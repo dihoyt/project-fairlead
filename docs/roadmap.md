@@ -44,7 +44,7 @@ OIDC sign-in with TOTP; the setup wizard; the installer and Helm chart.
 - The app catalog, discovery of what is already installed, and the deploy
   runner (helm and kubectl Jobs under the installer ServiceAccount, off by
   default).
-- The default bundle: access tool, cert-manager, Authentik, Gitea, Longhorn.
+- The default bundle: access tool, cert-manager, Authentik, Gitea, Fleet, Longhorn.
 - The Access step: Cloudflare Tunnel, Tailscale, local network or direct
   ports, with a storage preflight.
 - `install.sh`, `update.sh` and `add-node.sh`; join links from the console;

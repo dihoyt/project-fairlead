@@ -399,6 +399,45 @@ export const recipes: Record<string, Recipe> = {
     },
   },
 
+  fleet: {
+    values: () => ({
+      // Every controller container; the agent Fleet deploys sets its own.
+      resources: resources("10m", "48Mi", "512Mi"),
+      extraLabels: { fleetController: labels(), gitjob: labels(), helmops: labels() },
+    }),
+    // Fleet's CRDs come in their own chart, pinned to the same version, and
+    // must exist before the controllers start.
+    before: (r) => {
+      const install = r.app.install;
+      if (install.kind !== "helm") return [];
+      return [
+        {
+          argv: [
+            "helm",
+            "upgrade",
+            "--install",
+            "fleet-crd",
+            "fleet-crd",
+            "--repo",
+            install.repo,
+            "--version",
+            install.version,
+            "--namespace",
+            r.namespace,
+            "--create-namespace",
+            "--wait",
+            "--timeout",
+            "5m",
+          ],
+          dryRun: "--dry-run=server",
+        },
+      ];
+    },
+    warnings: () => [
+      "Fleet watches no repositories yet: add a GitRepo pointing at your Git server (Gitea in this bundle) to start deploying from it.",
+    ],
+  },
+
   rancher: {
     values: (r) => ({
       hostname: r.host,

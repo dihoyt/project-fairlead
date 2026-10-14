@@ -169,6 +169,21 @@ const entries: CatalogEntry[] = [
     prerequisites: [],
   },
   {
+    id: "fleet",
+    name: "Fleet",
+    summary: "Keeps the cluster in step with your Git repositories: what is in Git is what runs (GitOps).",
+    slots: ["cluster-basics"],
+    homepage: "https://fleet.rancher.io",
+    // Standalone Fleet, not Rancher; its CRDs are a chart of their own,
+    // installed first by the recipe.
+    install: helm("https://rancher.github.io/fleet-helm-charts", "fleet", "0.16.2"),
+    namespace: "cattle-fleet-system",
+    requires: [],
+    inputs: [],
+    exposesUi: false,
+    prerequisites: [],
+  },
+  {
     id: "rancher",
     name: "Rancher",
     summary: "A full web console for managing Kubernetes clusters.",
@@ -414,6 +429,8 @@ const imageMiB: Record<string, number> = {
   // The Postgres image the operator runs.
   postgres: 450,
   "pocket-id": 60,
+  // rancher/fleet for the controllers, rancher/fleet-agent for the local agent.
+  fleet: 350,
   // Velero, its AWS plugin and the node agent (same image).
   velero: 350,
   ntfy: 60,
@@ -437,6 +454,8 @@ const memoryMiB: Record<string, number> = {
   // Two instances at the requests ../deploy/apps.ts sets.
   postgres: 512,
   "pocket-id": 32,
+  // Five controller containers at the requests ../deploy/apps.ts sets, plus the agent.
+  fleet: 304,
   ntfy: 32,
   cloudflared: 64,
   "tailscale-operator": 64,

@@ -14,7 +14,7 @@ export const bundles: readonly CatalogBundle[] = [
   {
     id: "self-hosted",
     name: "Deploy bundle",
-    summary: "Sets up the whole self-hosted toolkit with sensible defaults: sign-in, Git and phone alerts.",
+    summary: "Sets up the whole self-hosted toolkit with sensible defaults: sign-in, Git, GitOps and phone alerts.",
     inputs: [
       {
         key: "access",
@@ -136,6 +136,11 @@ export const bundles: readonly CatalogBundle[] = [
       { appId: "authentik", required: true, hostPrefix: "auth", when: { input: "signIn", in: ["authentik"] } },
       { appId: "pocket-id", required: true, hostPrefix: "auth", when: { input: "signIn", in: ["pocket-id"] } },
       { appId: "gitea", required: true, hostPrefix: "git", values: { adminUser: "gitea-admin" } },
+      {
+        appId: "fleet",
+        required: false,
+        note: "Deploys what you push to Git, and its health shows under GitOps. Untick it if you deploy some other way.",
+      },
     ],
   },
 ];
