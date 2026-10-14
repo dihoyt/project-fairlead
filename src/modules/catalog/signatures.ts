@@ -47,6 +47,13 @@ export const signatures: Record<string, Signature> = {
     charts: ["plugin-barman-cloud"],
     images: ["cloudnative-pg/plugin-barman-cloud"],
   },
+  // Rancher runs its own Fleet in the same namespace, so a Rancher cluster
+  // reads as having Fleet already.
+  fleet: {
+    names: ["fleet-controller", "gitjob", "fleet-agent"],
+    charts: ["fleet"],
+    images: ["rancher/fleet", "rancher/fleet-agent"],
+  },
   rancher: {
     names: ["rancher"],
     charts: ["rancher"],

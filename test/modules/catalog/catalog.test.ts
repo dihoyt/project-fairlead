@@ -740,8 +740,10 @@ describe("deploy bundles", () => {
     );
     assert.deepEqual(
       view.items.filter((i) => i.selected && !i.when).map((i) => i.appId),
-      ["longhorn", "gitea"]
+      ["longhorn", "gitea", "fleet"]
     );
+    const fleet = view.items.find((i) => i.appId === "fleet")!;
+    assert.equal(fleet.required, false, "Fleet can be unticked");
     assert.equal(view.inputs.find((i) => i.key === "signIn")!.default, "authentik");
     assert.equal(
       view.items.find((i) => i.appId === "ntfy"),

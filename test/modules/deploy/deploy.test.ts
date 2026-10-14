@@ -21,6 +21,7 @@ import { summarize, type Deployer } from "../../../src/modules/deploy/runner.js"
 import { toYaml } from "../../../src/modules/deploy/yaml.js";
 import { firstService } from "../../../src/modules/deploy/manifest.js";
 import { mockCatalog } from "../../../src/contracts/mocks/catalog.js";
+import { catalog } from "../../../src/modules/catalog/entries.js";
 import type { CatalogEntry, DiscoveryReport } from "../../../src/contracts/catalog.js";
 import { createRedactor } from "../../../src/modules/deploy/redact.js";
 import { product } from "../../../src/product.js";
@@ -956,6 +957,27 @@ test("pocket-id: its host and a generated encryption key in its values, never ga
     stringData: Record<string, string>;
   };
   assert.match(secret.stringData["values.yaml"]!, /encryptionKey: "?[A-Za-z0-9_+/=-]{16,}"?/);
+});
+
+test("plan: Fleet installs its CRD chart first, at the same version, then the controllers", async () => {
+  const fleet = catalog.find((entry) => entry.id === "fleet")!;
+  const e = await setup({
+    catalog: createMockCatalogService({ entries: [...mockCatalog.filter((x) => x.id !== "fleet"), fleet] }),
+  });
+  const p = await call<DeployPlan>(e, "POST", "/plan", { appId: "fleet", inputs: {} });
+  assert.equal(p.allowed, true, p.blockedBy);
+  const repo = "https://rancher.github.io/fleet-helm-charts";
+  const version = fleet.install.kind === "helm" ? fleet.install.version : "";
+  assert.deepEqual(p.commands, [
+    `helm upgrade --install fleet-crd fleet-crd --repo ${repo} --version ${version} --namespace cattle-fleet-system ` +
+      "--create-namespace --wait --timeout 5m",
+    `helm upgrade --install fleet fleet --repo ${repo} --version ${version} --namespace cattle-fleet-system ` +
+      "--create-namespace --values /values/values.yaml --wait --timeout 10m",
+  ]);
+  assert.match(p.values, /resources:\n\s+requests:\n\s+cpu: "10m"\n\s+memory: "48Mi"\n\s+limits:\n\s+memory: "512Mi"/);
+  assert.match(p.values, /extraLabels:\n\s+fleetController:/);
+  assert.equal(p.url, undefined);
+  assert.ok(p.warnings.some((w) => /no repositories yet/.test(w)));
 });
 
 test("the bundle's apps ask for what they use idle and are capped in memory", async () => {

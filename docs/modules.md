@@ -340,7 +340,7 @@ cluster. **Page**: Apps → Deploy, Catalog tab.
 - Entries: cert-manager, Traefik, metrics-server, Local Path Provisioner,
   Longhorn (headless: no Ingress for its UI; the `longhorn-frontend` Service
   stays for `kubectl port-forward`), Longhorn backups (the backup target),
-  Rancher, Headlamp, Gitea, Grafana, Authentik, Pocket ID, Velero, ntfy,
+  Fleet, Rancher, Headlamp, Gitea, Grafana, Authentik, Pocket ID, Velero, ntfy,
   Cloudflare Tunnel, Tailscale, CloudNativePG, its Barman Cloud plugin and
   the shared Postgres cluster. Each pins a chart version per Kubernetes
   version range and refuses one it doesn't fit. Velero is hidden from the
@@ -354,7 +354,9 @@ cluster. **Page**: Apps → Deploy, Catalog tab.
   Local Path Provisioner, Longhorn (optional; it needs open-iscsi on every
   node), a sign-in service at `auth.<domain>` (Authentik by default, or
   Pocket ID: passkeys only, a fraction of the memory, and https required)
-  and Gitea at `git.<domain>`. With Authentik ticked the bundle also adds
+  Gitea at `git.<domain>` and Fleet (optional; standalone Fleet with its
+  CRD chart installed first, so the GitOps health board has something to
+  watch; left out on a Rancher cluster, which runs its own). With Authentik ticked the bundle also adds
   CloudNativePG and the shared Postgres cluster ahead of it (and the Barman
   Cloud plugin, optional, for point-in-time recovery to S3 or MinIO).
   Anything already installed or covered by a basic is left out. Headlamp, Grafana and
